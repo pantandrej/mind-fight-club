@@ -722,12 +722,12 @@ async function joinDuel(){
 }
 
 function subscribeDuelRoom(code){
-  if(duelChannel)duelChannel.unsubscribe();
-  duelChannel=sb.channel('duel-'+code)
-    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'duel_rooms',filter:'code=eq.'+code},payload=>{
-      handleRoomUpdate(payload.new);
-    })
-    .subscribe();
+  if(duelChannel)clearInterval(duelChannel);
+  // Poll every 2 seconds — more reliable than realtime for MVP
+  duelChannel = setInterval(async ()=>{
+    const {data,error}=await sb.from('duel_rooms').select('*').eq('code',code).single();
+    if(!error && data) handleRoomUpdate(data);
+  }, 2000);
 }
 
 function handleRoomUpdate(room){
@@ -898,7 +898,7 @@ function showDuelResult(){
   showDuelSection('duel-result');
 }
 function resetDuel(){
-  if(duelChannel){duelChannel.unsubscribe();duelChannel=null;}
+  if(duelChannel){clearInterval(duelChannel);duelChannel=null;}
   duelRoom=null;duelRole=null;
   document.getElementById('join-code-input').value='';
   showDuelSection('duel-lobby');
