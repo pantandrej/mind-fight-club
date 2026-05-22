@@ -741,7 +741,9 @@ function handleRoomUpdate(room){
   }
   // Guest: load questions only once on first 'started' event
   if(room.status==='started' && duelRole==='guest' && duelQuestions.length===0){
-    duelQuestions=room.questions;
+    // Parse questions — Supabase may return them as string or object
+    const qs = typeof room.questions === 'string' ? JSON.parse(room.questions) : room.questions;
+    duelQuestions=qs;
     duelIdx=0;duelMyScore=0;duelOppScore=0;
     buildDuelBattle();
     return;
@@ -762,10 +764,15 @@ function handleRoomUpdate(room){
 }
 
 async function startDuelGame(){
-  // Pick 7 random questions, store in room so both players get same
-  const questions=[...ALL_Q].sort(()=>Math.random()-.5).slice(0,7).map(q=>({...q}));
-  await sb.from('duel_rooms').update({status:'started',questions}).eq('code',duelRoom);
-  duelQuestions=questions;duelIdx=0;duelMyScore=0;duelOppScore=0;
+  // Pick 7 random questions, store in Supabase so BOTH players get EXACT same set
+  const questions=[...ALL_Q].sort(()=>Math.random()-.5).slice(0,7).map(q=>({
+    cat:q.cat, q:q.q, a:[...q.a], c:q.c, t:q.t
+  }));
+  // Save to DB first, then start from saved copy to guarantee same questions
+  const {error} = await sb.from('duel_rooms').update({status:'started', questions: questions}).eq('code',duelRoom);
+  if(error){ toast('Error starting game. Try again.'); return; }
+  duelQuestions=questions;
+  duelIdx=0;duelMyScore=0;duelOppScore=0;
   buildDuelBattle();
 }
 
