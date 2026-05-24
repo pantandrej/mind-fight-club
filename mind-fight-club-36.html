@@ -1,0 +1,2977 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#6c63ff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Mind Fight Club">
+<link rel="manifest" href="/manifest.json">
+<title>Mind Fight Club</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --bg:#0d0d1a;--bg2:#13132a;--bg3:#1a1a35;
+  --accent:#6c63ff;--accent2:#8b83ff;
+  --gold:#f0c040;--red:#e05555;--green:#44cc88;
+  --text:#f0f0ff;--muted:rgba(200,200,255,0.4);--border:rgba(108,99,255,0.2);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100vh;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow-x:hidden;position:relative}
+.screen{display:none;flex-direction:column;align-items:center;min-height:100vh;overflow-x:hidden}
+.screen.active{display:flex}
+
+/* HEADER */
+.hdr{width:100%;max-width:560px;display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:0.5px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:10;gap:8px}
+.logo{font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--accent2);flex-shrink:0}
+.hdr-right{display:flex;align-items:center;gap:8px}
+.lang-toggle{display:flex;background:var(--bg2);border:0.5px solid var(--border);border-radius:20px;padding:2px;gap:2px}
+.lang-btn{padding:3px 9px;border-radius:16px;font-size:11px;font-weight:700;cursor:pointer;border:none;background:transparent;color:var(--muted);font-family:inherit;transition:all .15s}
+.lang-btn.active{background:var(--accent);color:#fff}
+.neurons-pill{display:flex;align-items:center;gap:5px;background:rgba(108,99,255,.15);border:0.5px solid rgba(108,99,255,.35);padding:4px 10px;border-radius:20px;font-size:12px;font-weight:800;color:var(--accent2)}
+.n-orb{width:6px;height:6px;background:var(--accent2);border-radius:50%}
+.streak-pill{display:none;align-items:center;gap:4px;font-size:12px;font-weight:800;color:var(--gold);background:rgba(240,192,64,.1);border:0.5px solid rgba(240,192,64,.3);padding:4px 9px;border-radius:20px}
+
+/* AUTH */
+#auth{justify-content:center;align-items:center;padding:20px}
+.auth-inner{width:100%;max-width:360px;text-align:center}
+.auth-logo{font-size:56px;margin-bottom:16px}
+.auth-title{font-size:28px;font-weight:800;margin-bottom:8px}
+.auth-sub{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:32px}
+.google-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;background:#fff;border:none;border-radius:14px;padding:15px 20px;font-size:15px;font-weight:700;color:#1a1a1a;cursor:pointer;font-family:inherit;margin-bottom:12px;transition:opacity .15s}
+.google-btn:hover{opacity:.9}
+.auth-or{font-size:12px;color:var(--muted);margin-bottom:12px}
+.guest-btn{width:100%;background:transparent;border:0.5px solid var(--border);border-radius:14px;padding:14px;font-size:14px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit;margin-bottom:12px;transition:background .15s}
+.guest-btn:hover{background:rgba(108,99,255,.1)}
+.auth-note{font-size:11px;color:var(--muted)}
+
+/* HOME */
+#home{justify-content:flex-start;padding-bottom:80px;overflow-x:hidden}
+.home-inner{width:100%;max-width:560px;padding:20px 16px 0;overflow-x:hidden}
+.home-hero{background:linear-gradient(135deg,var(--bg3),var(--bg2));border:0.5px solid var(--border);border-radius:20px;padding:24px 20px;margin-bottom:18px;text-align:center;position:relative;overflow:hidden}
+.home-hero::before{content:'';position:absolute;top:-60px;right:-60px;width:200px;height:200px;background:radial-gradient(circle,rgba(108,99,255,.15),transparent 70%);pointer-events:none}
+.hero-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--accent2);margin-bottom:8px;opacity:.7}
+.hero-title{font-size:24px;font-weight:800;margin-bottom:8px;line-height:1.2}
+.hero-sub{font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:20px}
+.play-btn{width:100%;background:var(--accent);border:none;border-radius:14px;padding:14px;font-size:15px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit;transition:opacity .15s}
+.play-btn:hover{opacity:.88}
+.section-title{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
+.mode-card{background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;padding:14px;cursor:pointer;transition:border-color .15s,background .15s}
+.mode-card:hover,.mode-card.active-mode{border-color:var(--accent);background:rgba(108,99,255,.12)}
+.mode-icon{font-size:20px;margin-bottom:6px}
+.mode-name{font-size:13px;font-weight:700;margin-bottom:2px}
+.mode-desc{font-size:11px;color:var(--muted);line-height:1.3}
+.cat-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}
+.chip{padding:5px 12px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;border:0.5px solid var(--border);background:var(--bg2);color:var(--muted);transition:all .15s}
+.chip.sel{background:rgba(108,99,255,.2);border-color:var(--accent);color:var(--accent2)}
+.chip.all-chip{color:var(--accent2);border-color:rgba(108,99,255,.4)}
+
+/* ACHIEVEMENTS */
+.achievements-row{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:4px;scrollbar-width:none}
+.achievements-row::-webkit-scrollbar{display:none}
+.badge{background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:10px 12px;text-align:center;flex-shrink:0;min-width:70px}
+.badge.earned{border-color:var(--gold);background:rgba(240,192,64,.08)}
+.badge-icon{font-size:20px;margin-bottom:4px}
+.badge-name{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.badge.earned .badge-name{color:var(--gold)}
+
+/* QUIZ */
+#quiz{justify-content:flex-start}
+.quiz-inner{width:100%;max-width:560px;padding:16px 16px 80px;flex:1;display:flex;flex-direction:column}
+.prog-dots{display:flex;gap:4px;justify-content:center;margin-bottom:14px}
+.dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.1);transition:background .3s}
+.dot.active{background:rgba(108,99,255,.5)}.dot.done{background:var(--green)}.dot.miss{background:var(--red)}
+.meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.cat-pill{font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--accent2);background:rgba(108,99,255,.12);border:0.5px solid rgba(108,99,255,.3);padding:3px 9px;border-radius:4px}
+.q-counter{font-size:12px;color:var(--muted);font-weight:600}
+.timer-wrap{margin-bottom:16px}
+.timer-bg{height:3px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden}
+.timer-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .85s linear,background .4s}
+.timer-row{display:flex;justify-content:space-between;margin-top:5px}
+.t-val{font-size:12px;font-weight:800;color:var(--accent2);transition:color .3s;font-variant-numeric:tabular-nums}
+.p-val{font-size:12px;color:var(--muted)}
+.q-text{font-size:18px;font-weight:700;line-height:1.4;margin-bottom:18px;flex-shrink:0}
+.answers{display:flex;flex-direction:column;gap:8px}
+.ans{width:100%;background:rgba(255,255,255,.03);border:0.5px solid rgba(255,255,255,.1);border-radius:12px;padding:12px 14px;text-align:left;cursor:pointer;color:var(--text);font-size:14px;font-family:inherit;display:flex;align-items:center;gap:10px;transition:background .15s,border-color .15s,transform .1s}
+.ans:hover:not(:disabled){background:rgba(108,99,255,.08);border-color:rgba(108,99,255,.4);transform:translateX(3px)}
+.ans:disabled{cursor:default}
+.ans.correct{background:rgba(68,204,136,.13);border-color:var(--green);color:var(--green)}
+.ans.wrong{background:rgba(224,85,85,.1);border-color:rgba(224,85,85,.45);color:rgba(230,110,110,.9)}
+.ans-l{width:26px;height:26px;border-radius:7px;background:rgba(255,255,255,.07);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:var(--muted);flex-shrink:0;transition:all .15s}
+.ans.correct .ans-l{background:var(--green);color:#fff}
+.ans.wrong .ans-l{background:rgba(224,85,85,.5);color:#fff}
+.fb{margin-top:10px;padding:10px 14px;border-radius:10px;font-size:13px;font-weight:700;opacity:0;transition:opacity .25s;text-align:center}
+.fb.show{opacity:1}
+.fb.ok{background:rgba(68,204,136,.1);color:var(--green);border:0.5px solid rgba(68,204,136,.25)}
+.fb.no{background:rgba(224,85,85,.08);color:rgba(230,110,110,.9);border:0.5px solid rgba(224,85,85,.2)}
+.next-btn{margin-top:12px;width:100%;background:var(--accent);border:none;border-radius:12px;padding:13px;font-size:15px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit;opacity:0;pointer-events:none;transition:opacity .2s}
+.next-btn.show{opacity:1;pointer-events:all}
+.next-btn:hover{opacity:.88}
+
+/* DUEL */
+#duel{justify-content:flex-start}
+.duel-inner{width:100%;max-width:560px;padding:16px 16px 80px}
+.duel-section{display:none;flex-direction:column;gap:14px}
+.duel-section.active{display:flex}
+.duel-hero{background:linear-gradient(135deg,var(--bg3),var(--bg2));border:0.5px solid var(--border);border-radius:18px;padding:24px 20px;text-align:center}
+.duel-hero-icon{font-size:44px;margin-bottom:10px}
+.duel-hero-title{font-size:20px;font-weight:800;margin-bottom:6px}
+.duel-hero-sub{font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:20px}
+.big-btn{width:100%;background:var(--accent);border:none;border-radius:14px;padding:14px;font-size:15px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit;transition:opacity .15s;margin-bottom:8px}
+.big-btn:hover{opacity:.88}
+.big-btn.gold{background:var(--gold);color:#1a1a00}
+.big-btn.green{background:var(--green);color:#0a1a10}
+.divider-or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12px;margin:4px 0}
+.divider-or::before,.divider-or::after{content:'';flex:1;height:0.5px;background:var(--border)}
+.code-input-row{display:flex;gap:8px}
+.code-input{flex:1;background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:12px 14px;font-size:14px;color:var(--text);font-family:inherit;outline:none;text-transform:uppercase;letter-spacing:2px;transition:border-color .15s}
+.code-input:focus{border-color:rgba(108,99,255,.6)}
+.code-input::placeholder{text-transform:none;letter-spacing:0;color:var(--muted)}
+.join-btn{background:var(--bg3);border:0.5px solid var(--border);border-radius:12px;padding:12px 18px;font-size:13px;font-weight:800;color:var(--accent2);cursor:pointer;font-family:inherit;white-space:nowrap;transition:background .15s}
+.join-btn:hover{background:rgba(108,99,255,.15)}
+.code-box{background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;padding:18px;text-align:center}
+.code-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.code-big{font-size:38px;font-weight:800;color:var(--accent2);letter-spacing:8px;margin-bottom:12px}
+.link-row{display:flex;align-items:center;gap:8px;background:var(--bg3);border:0.5px solid var(--border);border-radius:10px;padding:9px 12px}
+.link-txt{flex:1;font-size:11px;color:var(--accent2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.copy-btn{padding:5px 12px;background:rgba(108,99,255,.2);border:0.5px solid rgba(108,99,255,.4);border-radius:8px;font-size:12px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit;white-space:nowrap}
+.copy-btn:hover{background:rgba(108,99,255,.35)}
+.players-vs{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px}
+.p-slot{background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;padding:14px 10px;text-align:center}
+.p-slot.ready{border-color:var(--green)}
+.p-slot.waiting{border-style:dashed}
+.p-av{width:42px;height:42px;border-radius:50%;margin:0 auto 7px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800}
+.p-nm{font-size:12px;font-weight:700;margin-bottom:3px}
+.p-st{font-size:11px;color:var(--muted)}
+.p-st.ok{color:var(--green)}
+.vs-circle{width:32px;height:32px;border-radius:50%;background:var(--bg3);border:0.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:var(--muted)}
+.pulse-dot{width:8px;height:8px;background:var(--gold);border-radius:50%;animation:pulseA 1.2s ease-in-out infinite;margin:0 auto 5px}
+@keyframes pulseA{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.6)}}
+.wait-txt{font-size:12px;color:var(--muted);text-align:center;display:flex;align-items:center;justify-content:center;gap:6px}
+/* Duel live scores */
+.duel-live-scores{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;padding:12px 14px}
+.ds-side{text-align:center}
+.ds-name{font-size:10px;color:var(--muted);margin-bottom:3px;font-weight:700;text-transform:uppercase}
+.ds-score{font-size:26px;font-weight:800;color:var(--accent2)}
+.ds-score.opp{color:var(--gold)}
+.opp-hint{font-size:11px;color:var(--muted);text-align:center;min-height:16px}
+.opp-hint.answered{color:var(--green)}
+/* Duel result */
+.duel-result-icon{font-size:60px;text-align:center}
+.duel-result-title{font-size:24px;font-weight:800;text-align:center}
+.duel-result-sub{font-size:13px;color:var(--muted);text-align:center}
+.result-scores{display:flex;gap:10px}
+.result-box{flex:1;background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:14px 8px;text-align:center}
+.result-box.winner{border-color:var(--gold)}
+.rb-score{font-size:26px;font-weight:800;color:var(--accent2)}
+.rb-name{font-size:11px;color:var(--muted);margin-top:4px}
+
+/* TOURNAMENT */
+#tournament{justify-content:flex-start}
+.tourn-inner{width:100%;max-width:560px;padding:16px 16px 80px}
+.tourn-section{display:none;flex-direction:column;gap:14px}
+.tourn-section.active{display:flex}
+.tourn-hero{background:linear-gradient(135deg,var(--bg3),var(--bg2));border:0.5px solid var(--border);border-radius:18px;padding:20px;text-align:center}
+.tourn-badge{display:inline-block;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);background:rgba(240,192,64,.1);border:0.5px solid rgba(240,192,64,.3);padding:3px 10px;border-radius:20px;margin-bottom:8px}
+.tourn-title{font-size:20px;font-weight:800;margin-bottom:4px}
+.tourn-meta{font-size:12px;color:var(--muted)}
+.live-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(224,85,85,.12);border:0.5px solid rgba(224,85,85,.35);border-radius:20px;padding:4px 10px;font-size:11px;font-weight:800;color:#e05555}
+.live-dot{width:6px;height:6px;background:#e05555;border-radius:50%;animation:pulseA 1s ease-in-out infinite}
+.lb-box{background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;overflow:hidden}
+.lb-hdr{padding:10px 14px;border-bottom:0.5px solid var(--border);font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between}
+.lb-row{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:0.5px solid rgba(108,99,255,.06)}
+.lb-row:last-child{border-bottom:none}
+.lb-row.me{background:rgba(108,99,255,.08)}
+.lb-rank{font-size:13px;font-weight:800;color:var(--muted);width:18px;text-align:center;flex-shrink:0}
+.lb-av{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0}
+.lb-name{flex:1;font-size:13px;font-weight:600}
+.lb-score{font-size:13px;font-weight:800;color:var(--accent2)}
+.lb-score.me{color:var(--gold)}
+
+/* WAITLIST */
+#waitlist{justify-content:center;align-items:center;padding:20px 16px 80px}
+.wl-inner{width:100%;max-width:400px;text-align:center}
+.wl-badge{display:inline-block;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--accent2);background:rgba(108,99,255,.12);border:0.5px solid rgba(108,99,255,.3);padding:4px 12px;border-radius:20px;margin-bottom:16px}
+.wl-title{font-size:22px;font-weight:800;margin-bottom:8px;line-height:1.3}
+.wl-sub{font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:20px}
+.wl-form{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+.wl-input{width:100%;background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:12px 14px;font-size:14px;color:var(--text);font-family:inherit;outline:none;transition:border-color .15s}
+.wl-input:focus{border-color:rgba(108,99,255,.6)}
+.wl-input::placeholder{color:var(--muted)}
+.wl-btn{width:100%;background:var(--accent);border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit}
+.wl-thanks{display:none;flex-direction:column;align-items:center;gap:10px;padding:20px 0}
+.wl-thanks .check{font-size:44px}
+.wl-thanks h2{font-size:20px;font-weight:800;color:var(--green)}
+.wl-thanks p{font-size:13px;color:var(--muted);text-align:center;line-height:1.5}
+.wl-count{font-size:12px;color:var(--muted);margin-top:8px}
+.wl-count span{font-weight:800;color:var(--accent2)}
+
+/* SCORE */
+#score{justify-content:center;align-items:center;padding:20px 16px 80px}
+.score-inner{width:100%;max-width:400px;text-align:center}
+.score-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.score-big{font-size:68px;font-weight:800;color:var(--accent2);line-height:1}
+.score-sub{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+/* badge earned popup */
+.badge-earned{background:rgba(240,192,64,.12);border:0.5px solid rgba(240,192,64,.4);border-radius:12px;padding:10px 16px;margin-bottom:16px;font-size:13px;font-weight:700;color:var(--gold);display:none;text-align:center}
+.badge-earned.show{display:block}
+.stats-row{display:flex;gap:8px;margin-bottom:20px}
+.stat-box{flex:1;background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:12px 6px;text-align:center}
+.stat-v{font-size:20px;font-weight:800}
+.stat-l{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:3px}
+.score-btns{display:flex;flex-direction:column;gap:8px}
+.score-main-btn{width:100%;background:var(--accent);border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit}
+.score-sec-btn{width:100%;background:transparent;border:0.5px solid var(--border);border-radius:12px;padding:12px;font-size:13px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit}
+.score-sec-btn:hover{background:rgba(108,99,255,.1)}
+
+/* NAV */
+.nav{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:center;background:var(--bg);border-top:0.5px solid var(--border);padding:6px 0 10px;z-index:20}
+.nav-inner{display:flex;max-width:560px;width:100%}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px;cursor:pointer;border:none;background:transparent;font-family:inherit}
+.nav-icon{font-size:18px;line-height:1}
+.nav-label{font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted)}
+.nav-item.active .nav-label{color:var(--accent2)}
+
+/* Toast */
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--bg3);border:0.5px solid var(--border);border-radius:12px;padding:10px 18px;font-size:13px;font-weight:700;color:var(--text);z-index:1000;opacity:0;transition:opacity .3s;pointer-events:none;max-width:calc(100vw - 40px);text-align:center;line-height:1.4}
+.toast.show{opacity:1}
+
+/* PROFILE */
+#profile{justify-content:flex-start}
+.profile-inner{width:100%;max-width:560px;padding:20px 16px 80px;display:flex;flex-direction:column;gap:0}
+.profile-hero{background:linear-gradient(135deg,var(--bg3),var(--bg2));border:0.5px solid var(--border);border-radius:20px;padding:24px 20px;text-align:center;margin-bottom:20px}
+.profile-av{width:64px;height:64px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;color:#fff;margin:0 auto 12px}
+.profile-name{font-size:20px;font-weight:800;margin-bottom:4px}
+.profile-email{font-size:12px;color:var(--muted);margin-bottom:14px}
+.profile-signout{background:transparent;border:0.5px solid var(--border);border-radius:10px;padding:7px 16px;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit;transition:border-color .15s}
+.profile-signout:hover{border-color:var(--red);color:var(--red)}
+.profile-stats-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:20px}
+.pstat-box{background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:14px 8px;text-align:center}
+.pstat-val{font-size:22px;font-weight:800;color:var(--text)}
+.pstat-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-top:4px}
+.profile-badges-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:20px}
+.profile-badge{background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:12px 8px;text-align:center}
+.profile-badge.earned{border-color:var(--gold);background:rgba(240,192,64,.08)}
+.pb-icon{font-size:24px;margin-bottom:5px}
+.pb-name{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;line-height:1.2}
+.profile-badge.earned .pb-name{color:var(--gold)}
+
+/* SHOP */
+#shop{justify-content:flex-start}
+.shop-inner{width:100%;max-width:560px;padding:16px 16px 80px;display:flex;flex-direction:column;gap:14px}
+
+/* Daily challenge */
+.daily-card{background:linear-gradient(135deg,#1a1a3a,#13132a);border:0.5px solid rgba(108,99,255,.35);border-radius:18px;padding:18px}
+.daily-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
+.daily-label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent2);margin-bottom:4px}
+.daily-title{font-size:16px;font-weight:800;color:var(--text);line-height:1.3}
+.daily-reward{font-size:18px;font-weight:800;color:var(--gold);white-space:nowrap;margin-left:12px}
+.daily-progress-bar{height:6px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden;margin-bottom:8px}
+.daily-progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:3px;transition:width .4s ease}
+.daily-bottom{display:flex;justify-content:space-between;align-items:center}
+.daily-prog-txt{font-size:12px;color:var(--muted);font-weight:700}
+.daily-streak{font-size:12px;color:var(--gold);font-weight:700}
+.daily-done{background:rgba(68,204,136,.1);border-color:var(--green) !important}
+.daily-done .daily-reward{color:var(--green)}
+
+/* Referral */
+.ref-card{background:var(--bg2);border:0.5px solid var(--border);border-radius:16px;padding:16px}
+.ref-title{font-size:15px;font-weight:800;margin-bottom:4px}
+.ref-sub{font-size:12px;color:var(--muted);line-height:1.4}
+.ref-stats{display:flex;gap:16px;margin-top:8px}
+.ref-stat{display:flex;align-items:baseline;gap:3px}
+.ref-num{font-size:20px;font-weight:800;color:var(--accent2)}
+.ref-lbl{font-size:12px;color:var(--muted)}
+
+/* Packs */
+.shop-title{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)}
+.packs-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pack-card{background:var(--bg2);border:0.5px solid var(--border);border-radius:16px;padding:16px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s;position:relative}
+.pack-card:hover{border-color:rgba(108,99,255,.5);background:var(--bg3)}
+.pack-card.owned{border-color:var(--green);background:rgba(68,204,136,.05)}
+.pack-card.owned::after{content:'✓';position:absolute;top:8px;right:10px;font-size:14px;color:var(--green);font-weight:800}
+.pack-icon{font-size:32px;margin-bottom:8px}
+.pack-name{font-size:13px;font-weight:800;margin-bottom:4px}
+.pack-desc{font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.3}
+.pack-price{font-size:13px;font-weight:800;color:var(--gold)}
+.pack-price.free{color:var(--green)}
+.pack-play-btn{background:var(--green);color:#0a1a10;font-size:13px;font-weight:800;padding:8px 16px;border-radius:10px;margin-top:4px}
+
+/* Player level badge */
+.level-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(240,192,64,.1);border:0.5px solid rgba(240,192,64,.3);border-radius:20px;padding:4px 12px;font-size:12px;font-weight:800;color:var(--gold);margin-bottom:12px}
+
+.profile-guest{text-align:center;padding:24px 16px;display:flex;flex-direction:column;align-items:center}
+
+
+/* MEDIA QUESTIONS */
+.q-media{margin-bottom:16px;border-radius:12px;overflow:hidden;background:var(--bg2);border:0.5px solid var(--border)}
+.q-media img{width:100%;max-height:220px;object-fit:cover;display:block}
+.q-audio{display:flex;align-items:center;justify-content:center;padding:20px;gap:12px}
+.audio-play-btn{
+  width:52px;height:52px;border-radius:50%;background:var(--accent);
+  border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:20px;flex-shrink:0;transition:opacity .15s;
+}
+.audio-play-btn:hover{opacity:.88}
+.audio-label{font-size:13px;color:var(--muted);font-weight:600}
+.audio-progress{flex:1;height:4px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden;cursor:pointer}
+.audio-progress-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .1s}
+.q-media-hint{font-size:11px;color:var(--muted);text-align:center;padding:6px;border-top:0.5px solid var(--border)}
+
+
+/* TEAMS */
+#teams{justify-content:flex-start}
+.teams-inner{width:100%;max-width:560px;padding:16px 16px 100px;display:flex;flex-direction:column;gap:14px;position:relative;z-index:1}
+.team-section{display:flex;flex-direction:column;gap:10px}
+.team-hero{background:linear-gradient(135deg,var(--bg3),var(--bg2));border:0.5px solid var(--border);border-radius:18px;padding:24px 20px;text-align:center}
+.team-hero-title{font-size:20px;font-weight:800;margin-bottom:6px}
+.team-hero-sub{font-size:12px;color:var(--muted);line-height:1.5}
+.team-card{background:var(--bg2);border:0.5px solid rgba(108,99,255,.35);border-radius:16px;padding:16px}
+.team-card-top{display:flex;align-items:center;gap:12px}
+.team-emoji{font-size:32px;flex-shrink:0}
+.team-name{font-size:16px;font-weight:800;flex:1}
+.team-code-small{font-size:11px;color:var(--muted);margin-top:2px}
+.team-total-score{text-align:right;font-size:26px;font-weight:800;color:var(--accent2);flex-shrink:0}
+
+@keyframes pop{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+.pop{animation:pop .2s ease}
+
+/* CITY INPUT */
+.city-input{width:100%;background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:11px 14px;font-size:14px;color:var(--text);font-family:inherit;outline:none;transition:border-color .15s;margin-bottom:10px}
+.city-input:focus{border-color:rgba(108,99,255,.6)}
+.city-input::placeholder{color:var(--muted)}
+.city-tag{display:inline-flex;align-items:center;gap:5px;background:rgba(108,99,255,.15);border:0.5px solid rgba(108,99,255,.3);border-radius:20px;padding:4px 10px;font-size:11px;font-weight:700;color:var(--accent2)}
+
+/* SHARE SCREEN */
+#share{justify-content:center;align-items:center;padding:20px 16px 100px}
+.share-inner{width:100%;max-width:400px;display:flex;flex-direction:column;align-items:center;gap:16px}
+.share-card{width:100%;background:linear-gradient(135deg,var(--bg3),var(--bg2));border:0.5px solid var(--border);border-radius:20px;padding:24px 20px;text-align:center}
+.share-score{font-size:64px;font-weight:800;color:var(--accent2);line-height:1}
+.share-label{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-top:4px;margin-bottom:12px}
+.share-rank{font-size:15px;font-weight:800;color:var(--gold);margin-bottom:4px}
+.share-city{font-size:12px;color:var(--muted)}
+.share-btns{width:100%;display:flex;flex-direction:column;gap:8px}
+.share-btn{width:100%;border:none;border-radius:13px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px}
+.share-btn.tg{background:#2CA5E0;color:#fff}
+.share-btn.wa{background:#25D366;color:#fff}
+.share-btn.copy{background:var(--bg3);border:0.5px solid var(--border);color:var(--accent2)}
+.share-btn.duel{background:var(--accent);color:#fff}
+.share-btn.team{background:rgba(240,192,64,.15);border:0.5px solid rgba(240,192,64,.3);color:var(--gold)}
+
+/* CITY LEADERBOARD */
+.city-lb-wrap{width:100%;max-width:560px;padding:16px 16px 100px;display:flex;flex-direction:column;gap:14px}
+.city-tabs{display:flex;gap:6px;margin-bottom:4px}
+.city-tab{flex:1;padding:9px;border-radius:10px;font-size:12px;font-weight:800;cursor:pointer;border:0.5px solid var(--border);background:var(--bg2);color:var(--muted);font-family:inherit;transition:all .15s;text-align:center}
+.city-tab.active{background:rgba(108,99,255,.2);border-color:var(--accent);color:var(--accent2)}
+.my-city-row{background:rgba(108,99,255,.08);border:0.5px solid rgba(108,99,255,.2);border-radius:12px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;font-size:13px}
+.my-city-name{font-weight:700;color:var(--accent2)}
+.my-city-rank{font-size:11px;color:var(--muted)}
+.lb-city-tag{font-size:10px;color:var(--muted);background:var(--bg3);border-radius:4px;padding:2px 6px;margin-left:6px}
+</style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div class="screen active" id="auth">
+  <div class="auth-inner">
+    <div class="auth-logo">⚡</div>
+    <div class="auth-title">Mind Fight Club</div>
+    <div class="auth-sub" id="auth-sub">Sign in to save your neurons and compete globally</div>
+    <div id="auth-error" style="display:none;background:rgba(224,85,85,.1);border:0.5px solid rgba(224,85,85,.3);border-radius:10px;padding:10px 14px;font-size:12px;color:#e06666;margin-bottom:12px;line-height:1.4;word-break:break-word"></div>
+    <button class="google-btn" id="google-sign-in-btn" onclick="signInGoogle()">
+      <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.548 0 9s.348 2.825.957 4.039l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"/></svg>
+      <span id="auth-google-btn">Continue with Google</span>
+    </button>
+    <div class="auth-or">or</div>
+    <button class="guest-btn" id="auth-email-toggle-btn" onclick="toggleEmailAuth()" style="font-size:13px">📧 <span id="auth-email-toggle-txt">Sign in with Email</span></button>
+    <div id="auth-email-form" style="display:none;width:100%;margin-top:8px">
+      <input id="auth-email-input" type="email" placeholder="Email" autocomplete="email"
+        style="width:100%;background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:12px 14px;font-size:14px;color:var(--text);font-family:inherit;outline:none;margin-bottom:8px"
+        onkeydown="if(event.key==='Enter')document.getElementById('auth-pass-input').focus()"/>
+      <input id="auth-pass-input" type="password" placeholder="Password (min 6 chars)" autocomplete="current-password"
+        style="width:100%;background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:12px 14px;font-size:14px;color:var(--text);font-family:inherit;outline:none;margin-bottom:8px"
+        onkeydown="if(event.key==='Enter')signInEmail()"/>
+      <div style="display:flex;gap:8px">
+        <button onclick="signInEmail()" style="flex:1;background:var(--accent);border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit" id="auth-signin-btn">Sign In</button>
+        <button onclick="signUpEmail()" style="flex:1;background:transparent;border:0.5px solid var(--border);border-radius:12px;padding:12px;font-size:14px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit" id="auth-signup-btn">Register</button>
+      </div>
+      <div id="auth-email-hint" style="font-size:11px;color:var(--muted);margin-top:8px;text-align:center;line-height:1.4"></div>
+    </div>
+    <div class="auth-or" id="auth-or">or</div>
+    <button class="guest-btn" id="auth-guest-btn" onclick="continueAsGuest()">Continue as guest</button>
+    <div class="auth-note" id="auth-note">Guest progress won't be saved between sessions</div>
+  </div>
+</div>
+
+<!-- HOME -->
+<div class="screen" id="home">
+  <div class="hdr">
+    <div class="logo">MFC</div>
+    <div class="hdr-right">
+      <div class="lang-toggle">
+        <button class="lang-btn active" onclick="setLang('en')">EN</button>
+        <button class="lang-btn" onclick="setLang('ru')">RU</button>
+      </div>
+      <div class="neurons-pill"><div class="n-orb"></div><span id="n-home">0</span></div>
+    </div>
+  </div>
+  <div class="home-inner">
+    <div class="home-hero">
+      <div class="hero-label" id="h-label">Beta · English launch</div>
+      <div class="hero-title" id="h-title">Fight for your brain</div>
+      <div class="hero-sub" id="h-sub">Endless quiz feed, real-time duels, and tournaments — all in one place.</div>
+      <button class="play-btn" id="h-play" onclick="startQuiz()">⚡ Play now</button>
+    </div>
+    <!-- Daily challenge teaser -->
+    <div id="home-daily-teaser" style="background:rgba(108,99,255,.1);border:0.5px solid rgba(108,99,255,.3);border-radius:14px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;cursor:pointer" onclick="showScreen('shop')">
+      <div>
+        <div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--accent2);margin-bottom:2px" id="home-daily-label">Daily Challenge</div>
+        <div style="font-size:13px;font-weight:700" id="home-daily-title">Tap to see today's challenge</div>
+      </div>
+      <div style="font-size:20px;color:var(--gold)" id="home-daily-reward">+50 ⚡</div>
+    </div>
+    <div class="section-title" id="h-mode-title">Mode</div>
+    <div class="mode-grid">
+      <div class="mode-card active-mode" id="mode-feed" onclick="selectMode('feed')">
+        <div class="mode-icon">📱</div>
+        <div class="mode-name" id="m-feed-name">Endless feed</div>
+        <div class="mode-desc" id="m-feed-desc">Random questions, earn neurons</div>
+      </div>
+      <div class="mode-card" id="mode-duel" onclick="selectMode('duel')">
+        <div class="mode-icon">⚔️</div>
+        <div class="mode-name" id="m-duel-name">Live Duel</div>
+        <div class="mode-desc" id="m-duel-desc">Real-time battle with a friend</div>
+      </div>
+    </div>
+    <div class="section-title" id="h-topic-title">Topic</div>
+    <div class="cat-chips" id="cat-chips">
+      <div class="chip all-chip sel" data-cat="ALL" onclick="toggleCat(this)" id="chip-all">All topics</div>
+      <div class="chip" data-cat="SCIENCE" onclick="toggleCat(this)">🔬 <span class="chip-label">Science</span></div>
+      <div class="chip" data-cat="HISTORY" onclick="toggleCat(this)">📜 <span class="chip-label">History</span></div>
+      <div class="chip" data-cat="GEOGRAPHY" onclick="toggleCat(this)">🌍 <span class="chip-label">Geography</span></div>
+      <div class="chip" data-cat="CINEMA" onclick="toggleCat(this)">🎬 <span class="chip-label">Cinema</span></div>
+      <div class="chip" data-cat="SPORTS" onclick="toggleCat(this)">⚽ <span class="chip-label">Sports</span></div>
+      <div class="chip" data-cat="MUSIC" onclick="toggleCat(this)">🎵 <span class="chip-label">Music</span></div>
+      <div class="chip" data-cat="DISNEY" onclick="toggleCat(this)">🏰 Disney</div>
+      <div class="chip" data-cat="ART" onclick="toggleCat(this)">🎨 <span class="chip-label">Art</span></div>
+      <div class="chip" data-cat="GAMING" onclick="toggleCat(this)">🎮 <span class="chip-label">Gaming</span></div>
+    </div>
+    <div class="section-title" id="h-badges-title">Achievements</div>
+    <div class="achievements-row" id="achievements-row">
+      <div class="badge" id="badge-first"><div class="badge-icon">⚡</div><div class="badge-name" id="b-first">First game</div></div>
+      <div class="badge" id="badge-streak3"><div class="badge-icon">🔥</div><div class="badge-name" id="b-streak3">Streak x3</div></div>
+      <div class="badge" id="badge-streak5"><div class="badge-icon">💥</div><div class="badge-name" id="b-streak5">Streak x5</div></div>
+      <div class="badge" id="badge-perfect"><div class="badge-icon">🎯</div><div class="badge-name" id="b-perfect">Perfect</div></div>
+      <div class="badge" id="badge-duel"><div class="badge-icon">⚔️</div><div class="badge-name" id="b-duel">First duel</div></div>
+      <div class="badge" id="badge-tourn"><div class="badge-icon">🏆</div><div class="badge-name" id="b-tourn">Tournament</div></div>
+      <div class="badge" id="badge-neurons100"><div class="badge-icon">🧠</div><div class="badge-name" id="b-neurons100">100 neurons</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- QUIZ -->
+<div class="screen" id="quiz">
+  <div class="hdr">
+    <div class="logo">MFC</div>
+    <div class="hdr-right">
+      <div class="streak-pill" id="streak-pill"><span>🔥</span><span id="streak-num">0</span></div>
+      <div class="neurons-pill"><div class="n-orb"></div><span id="n-quiz">0</span></div>
+    </div>
+  </div>
+  <div class="quiz-inner">
+    <div class="prog-dots" id="prog-dots"></div>
+    <div class="meta"><span class="cat-pill" id="cat-pill">—</span><span class="q-counter" id="q-counter">1/10</span></div>
+    <div class="timer-wrap">
+      <div class="timer-bg"><div class="timer-fill" id="timer-fill"></div></div>
+      <div class="timer-row"><span class="t-val" id="t-val">20s</span><span class="p-val" id="p-val">+20</span></div>
+    </div>
+    <div id="q-media-container"></div>
+    <div class="q-text" id="q-text">—</div>
+    <div class="answers" id="answers"></div>
+    <div class="fb" id="fb"></div>
+    <button class="next-btn" id="next-btn" onclick="nextQ()">Next →</button>
+  </div>
+</div>
+
+<!-- DUEL -->
+<div class="screen" id="duel">
+  <div class="hdr">
+    <div class="logo">MFC</div>
+    <div class="hdr-right">
+      <div class="neurons-pill"><div class="n-orb"></div><span id="n-duel">0</span></div>
+    </div>
+  </div>
+  <div class="duel-inner">
+    <!-- LOBBY -->
+    <div class="duel-section active" id="d-lobby">
+      <div class="duel-hero">
+        <div class="duel-hero-icon">⚔️</div>
+        <div class="duel-hero-title" id="d-title">Live Duel</div>
+        <div class="duel-hero-sub" id="d-sub">Challenge a friend to a real-time quiz battle. Same questions, same timer — whoever answers faster wins.</div>
+        <button class="big-btn" onclick="createDuel()" id="d-create-btn">⚡ Create a duel room</button>
+        <div class="divider-or" id="d-or">or join with a code</div>
+        <div class="code-input-row">
+          <input class="code-input" id="join-code-input" type="text" maxlength="6" placeholder="Enter 6-letter code" oninput="this.value=this.value.toUpperCase()"/>
+          <button class="join-btn" onclick="joinDuel()" id="d-join-btn">Join →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- WAITING -->
+    <div class="duel-section" id="d-waiting">
+      <div class="code-box">
+        <div class="code-label" id="d-code-label">Share this code with your friend</div>
+        <div class="code-big" id="d-code-display">——</div>
+        <div class="link-row">
+          <div class="link-txt" id="d-link-txt">...</div>
+          <button class="copy-btn" onclick="copyDuelLink()" id="d-copy-btn">Copy</button>
+        </div>
+      </div>
+      <div class="players-vs">
+        <div class="p-slot ready" id="slot-me">
+          <div class="p-av" style="background:rgba(108,99,255,.2);color:var(--accent2)">Y</div>
+          <div class="p-nm" id="d-me-name">You</div>
+          <div class="p-st ok" id="d-slot-ready-txt">✓ Ready</div>
+        </div>
+        <div class="vs-circle">VS</div>
+        <div class="p-slot waiting" id="slot-opp">
+          <div class="pulse-dot" id="opp-pulse"></div>
+          <div class="p-nm" id="opp-name-wait">Waiting...</div>
+          <div class="p-st" id="opp-status-wait">Share the code</div>
+        </div>
+      </div>
+      <button class="big-btn green" id="d-start-btn" onclick="startDuelGame()" style="display:none" id="d-start-game-btn">⚔️ Start the battle!</button>
+      <div class="wait-txt" id="d-wait-txt"><div class="pulse-dot"></div><span>Waiting for opponent...</span></div>
+    </div>
+
+    <!-- BATTLE -->
+    <div class="duel-section" id="d-battle">
+      <div class="duel-live-scores">
+        <div class="ds-side"><div class="ds-name" id="ds-me-name">You</div><div class="ds-score" id="ds-me-score">0</div></div>
+        <div style="font-size:16px;color:var(--muted)">⚔️</div>
+        <div class="ds-side"><div class="ds-name" id="ds-opp-name">Opponent</div><div class="ds-score opp" id="ds-opp-score">0</div></div>
+      </div>
+      <div class="opp-hint" id="opp-hint"></div>
+      <div class="prog-dots" id="d-prog-dots"></div>
+      <div class="meta"><span class="cat-pill" id="d-cat-pill">—</span><span class="q-counter" id="d-q-counter">1/7</span></div>
+      <div class="timer-wrap">
+        <div class="timer-bg"><div class="timer-fill" id="d-timer-fill"></div></div>
+        <div class="timer-row"><span class="t-val" id="d-t-val">20s</span><span class="p-val" id="d-p-val">+20</span></div>
+      </div>
+      <div id="d-media-container"></div>
+      <div class="q-text" id="d-q-text">—</div>
+      <div class="answers" id="d-answers"></div>
+      <div class="fb" id="d-fb"></div>
+      <button class="next-btn" id="d-next-btn" onclick="duelNextQ()">Next →</button>
+    </div>
+
+    <!-- RESULT -->
+    <div class="duel-section" id="d-result">
+      <div class="duel-result-icon" id="d-result-icon">🏆</div>
+      <div class="duel-result-title" id="d-result-title">You win!</div>
+      <div class="duel-result-sub" id="d-result-sub">You outscored your opponent.</div>
+      <div class="result-scores">
+        <div class="result-box" id="d-res-me-box"><div class="rb-score" id="d-res-me-score">0</div><div class="rb-name" id="d-res-me-name">You</div></div>
+        <div class="result-box" id="d-res-opp-box"><div class="rb-score" id="d-res-opp-score">0</div><div class="rb-name" id="d-res-opp-name">Opponent</div></div>
+      </div>
+      <button class="big-btn" style="margin-top:8px" onclick="resetDuel()" id="d-play-again-btn">Play again</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOURNAMENT -->
+<div class="screen" id="tournament">
+  <div class="hdr">
+    <div class="logo">MFC</div>
+    <div class="hdr-right"><div class="neurons-pill"><div class="n-orb"></div><span id="n-tourn">0</span></div></div>
+  </div>
+  <div class="tourn-inner">
+    <!-- LOBBY -->
+    <div class="tourn-section active" id="t-lobby">
+      <div class="tourn-hero">
+        <div class="tourn-badge">🏆 Tournament</div>
+        <div class="tourn-title" id="t-title">Mind Championship</div>
+        <div class="tourn-meta" id="t-meta">10 questions · All topics · Up to 50 players</div>
+      </div>
+      <button class="big-btn gold" onclick="createTournament()" id="t-create-btn">⚡ Create tournament room</button>
+      <div class="divider-or">or</div>
+      <div class="code-input-row">
+        <input class="code-input" id="t-join-code" type="text" maxlength="6" placeholder="Enter room code" oninput="this.value=this.value.toUpperCase()"/>
+        <button class="join-btn" onclick="joinTournament()" id="t-join-btn">Join →</button>
+      </div>
+    </div>
+    <!-- WAITING -->
+    <div class="tourn-section" id="t-waiting">
+      <div class="code-box">
+        <div class="code-label" id="t-code-label">Room code — share with players</div>
+        <div class="code-big" id="t-code-display">——</div>
+        <div class="link-row">
+          <div class="link-txt" id="t-link-txt">...</div>
+          <button class="copy-btn" onclick="copyTournLink()" id="t-copy-btn">Copy</button>
+        </div>
+      </div>
+      <div class="lb-box">
+        <div class="lb-hdr"><span id="t-players-label">Players joined</span><span id="t-player-count">0/50</span></div>
+        <div id="t-players-list"></div>
+      </div>
+      <button class="big-btn gold" id="t-start-btn" onclick="startTournament()" style="display:none">🏆 Start!</button>
+      <div class="wait-txt" id="t-wait-txt"><div class="pulse-dot"></div><span id="t-wait-label">Waiting for host to start...</span></div>
+    </div>
+    <!-- GAME -->
+    <div class="tourn-section" id="t-game">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div class="live-badge"><div class="live-dot"></div>LIVE</div>
+        <div style="font-size:13px;color:var(--muted)"><span id="t-score-label">Score:</span> <span id="t-my-score-display" style="color:var(--accent2);font-weight:800">0</span></div>
+      </div>
+      <div class="prog-dots" id="t-prog-dots"></div>
+      <div class="meta"><span class="cat-pill" id="t-cat-pill">—</span><span class="q-counter" id="t-q-counter">1/10</span></div>
+      <div class="timer-wrap">
+        <div class="timer-bg"><div class="timer-fill" id="t-timer-fill"></div></div>
+        <div class="timer-row"><span class="t-val" id="t-t-val">20s</span><span class="p-val" id="t-p-val">+20</span></div>
+      </div>
+      <div id="t-media-container"></div>
+      <div class="q-text" id="t-q-text">—</div>
+      <div class="answers" id="t-answers"></div>
+      <div class="fb" id="t-fb"></div>
+      <button class="next-btn" id="t-next-btn" onclick="tNextQ()">Next →</button>
+      <!-- Live leaderboard during game -->
+      <div class="lb-box" id="t-live-lb-box" style="margin-top:8px">
+        <div class="lb-hdr">Live standings</div>
+        <div id="t-live-lb"></div>
+      </div>
+    </div>
+    <!-- RESULTS -->
+    <div class="tourn-section" id="t-results">
+      <div style="text-align:center">
+        <div style="font-size:48px;margin-bottom:8px">🏆</div>
+        <div style="font-size:22px;font-weight:800" id="t-over-title">Tournament Over!</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:4px" id="t-final-label">Final standings</div>
+      </div>
+      <div class="lb-box"><div class="lb-hdr" id="t-final-hdr">Leaderboard</div><div id="t-final-lb"></div></div>
+      <button class="big-btn gold" onclick="resetTournament()" id="t-again-btn">Play again</button>
+    </div>
+  </div>
+</div>
+
+<!-- WAITLIST -->
+<div class="screen" id="waitlist">
+  <div class="wl-inner">
+    <div class="wl-badge" id="wl-badge">Early access</div>
+    <div class="wl-title" id="wl-title">The app is coming.<br>Be the first.</div>
+    <div class="wl-sub" id="wl-sub">We're building Mind Fight Club — a global platform for intellectual battles.</div>
+    <div class="wl-form" id="wl-form">
+      <input class="wl-input" id="wl-name" type="text" placeholder="Your name"/>
+      <input class="wl-input" id="wl-email" type="email" placeholder="Email"/>
+      <select class="wl-input" id="wl-country" style="appearance:none;cursor:pointer">
+        <option value="">Country</option>
+        <option>United States</option><option>United Kingdom</option><option>Germany</option>
+        <option>France</option><option>Canada</option><option>Australia</option>
+        <option>UAE</option><option>Russia / CIS</option><option>Other</option>
+      </select>
+      <button class="wl-btn" id="wl-submit-btn" onclick="submitWL()">Get early access →</button>
+    </div>
+    <div class="wl-thanks" id="wl-thanks">
+      <div class="check">✅</div>
+      <h2 id="wl-thanks-title">You're on the list!</h2>
+      <p id="wl-thanks-sub">We'll email you when Mind Fight Club launches.</p>
+    </div>
+    <div class="wl-count" id="wl-count">Joined: <span id="wl-num">247</span> people from 38 countries</div>
+  </div>
+</div>
+
+<!-- SCORE -->
+<div class="screen" id="score">
+  <div class="score-inner">
+    <div class="score-label" id="sc-label">Round complete</div>
+    <div class="score-big" id="sc-neurons">0</div>
+    <div class="score-sub" id="sc-sub">neurons earned</div>
+    <div class="badge-earned" id="badge-earned-popup"></div>
+    <div class="stats-row">
+      <div class="stat-box"><div class="stat-v" id="sc-correct">0/0</div><div class="stat-l" id="sc-correct-label">Correct</div></div>
+      <div class="stat-box"><div class="stat-v" id="sc-streak">0</div><div class="stat-l" id="sc-streak-label">Best streak</div></div>
+      <div class="stat-box"><div class="stat-v" id="sc-acc">0%</div><div class="stat-l" id="sc-acc-label">Accuracy</div></div>
+    </div>
+    <div class="score-btns">
+      <button class="score-main-btn" id="sc-again-btn" onclick="restartQuiz()">⚡ Play again</button>
+      <button class="score-sec-btn" id="sc-share-btn" onclick="showShareScreen()">📤 Share result</button>
+      <button class="score-sec-btn" id="sc-duel-btn" onclick="showScreen('duel')">⚔️ Live Duel</button>
+      <button class="score-sec-btn" id="sc-tourn-btn" onclick="showScreen('tournament')">🏆 Tournament</button>
+    </div>
+  </div>
+</div>
+
+<!-- SHARE -->
+<div class="screen" id="share">
+  <div class="hdr">
+    <div class="logo">MFC</div>
+    <div class="hdr-right"><div class="neurons-pill"><div class="n-orb"></div><span id="n-share">0</span></div></div>
+  </div>
+  <div class="share-inner">
+    <div class="share-card">
+      <div style="font-size:13px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">MIND FIGHT CLUB</div>
+      <div class="share-score" id="share-score">0</div>
+      <div class="share-label" id="share-label">neurons earned</div>
+      <div class="share-rank" id="share-rank"></div>
+      <div class="share-city" id="share-city"></div>
+    </div>
+    <div class="share-btns">
+      <button class="share-btn tg" onclick="shareToTelegram()">✈️ <span id="sh-tg">Share to Telegram</span></button>
+      <button class="share-btn wa" onclick="shareToWhatsApp()">💬 <span id="sh-wa">Share to WhatsApp</span></button>
+      <button class="share-btn copy" onclick="copyShareLink()">🔗 <span id="sh-copy">Copy link</span></button>
+      <button class="share-btn duel" onclick="showScreen('duel')">⚔️ <span id="sh-duel">Challenge a friend</span></button>
+      <button class="share-btn team" onclick="showTeamsScreen()">🏟️ <span id="sh-team">Join / create team</span></button>
+    </div>
+    <button class="score-sec-btn" style="width:100%;margin-top:4px" onclick="showScreen('home')" id="sh-home">← Back to home</button>
+  </div>
+</div>
+
+
+
+
+<!-- TEAMS -->
+<div class="screen" id="teams">
+  <div class="hdr">
+    <div class="logo">MFC</div>
+    <div class="hdr-right">
+      <div class="neurons-pill"><div class="n-orb"></div><span id="n-teams">0</span></div>
+    </div>
+  </div>
+  <div class="teams-inner">
+    <!-- No team -->
+    <div id="team-none" class="team-section">
+      <div class="team-hero">
+        <div style="font-size:48px;margin-bottom:12px">🏟️</div>
+        <div class="team-hero-title" id="th-title">Teams</div>
+        <div class="team-hero-sub" id="th-sub">Join a team and compete together. Your neurons contribute to your city league.</div>
+      </div>
+      <button class="big-btn" onclick="showCreateTeam()" id="t-create-team-btn">⚡ Create a team</button>
+      <div class="divider-or" id="t-team-or">or join existing</div>
+      <div class="code-input-row">
+        <input class="code-input" id="team-join-input" type="text" maxlength="6" placeholder="Team code" oninput="this.value=this.value.toUpperCase()"/>
+        <button class="join-btn" onclick="joinTeam()" id="t-join-team-btn">Join →</button>
+      </div>
+    </div>
+
+    <!-- Create team form -->
+    <div id="team-create" class="team-section" style="display:none">
+      <div style="font-size:15px;font-weight:800;margin-bottom:4px" id="tc-title">Create Team</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:14px" id="tc-sub">Your team will appear in the city leaderboard</div>
+      <input class="code-input" id="team-name-input" type="text" maxlength="24" placeholder="Team name (e.g. Miami Sharks)" style="width:100%;letter-spacing:0;font-size:14px;margin-bottom:10px"/>
+      <input class="city-input" id="team-city-input" type="text" maxlength="32" placeholder="City (e.g. Miami, Saint Petersburg)" />
+      <select class="code-input" id="team-emoji-select" style="letter-spacing:0;font-size:20px;cursor:pointer;margin-bottom:16px">
+        <option>⚡</option><option>🧠</option><option>🔥</option><option>🏆</option>
+        <option>🚀</option><option>💥</option><option>🎯</option><option>🦁</option>
+        <option>🐺</option><option>🦊</option><option>⚔️</option><option>🌟</option>
+      </select>
+      <button class="big-btn" onclick="createTeam()" id="tc-confirm-btn">Create →</button>
+      <button class="score-sec-btn" style="margin-top:8px" onclick="cancelCreateTeam()" id="tc-cancel-btn">← Cancel</button>
+    </div>
+
+    <!-- My team -->
+    <div id="team-mine" class="team-section" style="display:none">
+      <div class="team-card" id="team-card-header">
+        <div class="team-card-top">
+          <div class="team-emoji" id="my-team-emoji">⚡</div>
+          <div style="flex:1">
+            <div class="team-name" id="my-team-name">Team Name</div>
+            <div class="team-code-small" id="my-team-code">Code: ——</div>
+            <div class="team-code-small" id="my-team-city" style="color:var(--accent2);margin-top:2px"></div>
+          </div>
+          <div class="team-total-score"><div id="my-team-score">0</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">neurons</div></div>
+        </div>
+      </div>
+      <div class="lb-box">
+        <div class="lb-hdr"><span id="tm-members-label">Members</span><span id="my-team-count">0</span></div>
+        <div id="team-members-list"></div>
+      </div>
+      <button class="big-btn" style="margin-top:4px" onclick="copyTeamCode()" id="tm-invite-btn">🔗 Invite friends</button>
+      <button class="score-sec-btn" style="margin-top:8px;color:var(--red);border-color:rgba(224,85,85,.3)" onclick="leaveTeam()" id="tm-leave-btn">Leave team</button>
+    </div>
+
+    <!-- City leaderboard tabs -->
+    <div style="margin-top:4px">
+      <div class="section-title" id="t-global-title" style="margin-bottom:8px">🌆 City Leaderboard</div>
+      <div class="city-tabs">
+        <button class="city-tab active" id="city-tab-teams" onclick="switchCityTab('teams')">Teams</button>
+        <button class="city-tab" id="city-tab-players" onclick="switchCityTab('players')">Players</button>
+      </div>
+      <div class="lb-box" id="global-teams-lb"><div style="padding:16px;text-align:center;color:var(--muted);font-size:13px">Loading...</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- SHOP -->
+<div class="screen" id="shop">
+  <div class="hdr">
+    <div class="logo">MFC</div>
+    <div class="hdr-right">
+      <div class="lang-toggle">
+        <button class="lang-btn active" onclick="setLang('en')">EN</button>
+        <button class="lang-btn" onclick="setLang('ru')">RU</button>
+      </div>
+      <div class="neurons-pill"><div class="n-orb"></div><span id="n-shop">0</span></div>
+    </div>
+  </div>
+  <div class="shop-inner">
+    <!-- Daily challenge -->
+    <div class="daily-card" id="daily-card">
+      <div class="daily-top">
+        <div>
+          <div class="daily-label" id="daily-label">Daily Challenge</div>
+          <div class="daily-title" id="daily-title">Loading...</div>
+        </div>
+        <div class="daily-reward" id="daily-reward">+50 ⚡</div>
+      </div>
+      <div class="daily-progress-bar"><div class="daily-progress-fill" id="daily-fill"></div></div>
+      <div class="daily-bottom">
+        <div class="daily-prog-txt" id="daily-prog-txt">0 / 5</div>
+        <div class="daily-streak" id="daily-streak">🔥 0 day streak</div>
+      </div>
+      <button class="big-btn" style="margin-top:12px" id="daily-play-btn" onclick="playDailyChallenge()">Play now →</button>
+    </div>
+
+    <!-- Referral -->
+    <div class="ref-card">
+      <div class="ref-title" id="ref-title">Invite friends</div>
+      <div class="ref-sub" id="ref-sub">Both of you get +50 neurons when they sign up</div>
+      <div class="link-row" style="margin:12px 0">
+        <div class="link-txt" id="ref-link">Sign in to get your link</div>
+        <button class="copy-btn" onclick="copyRefLink()" id="ref-copy-btn">Copy</button>
+      </div>
+      <div class="ref-stats">
+        <div class="ref-stat"><span class="ref-num" id="ref-count">0</span><span class="ref-lbl" id="ref-count-lbl"> friends invited</span></div>
+        <div class="ref-stat"><span class="ref-num" id="ref-earned">0</span><span class="ref-lbl" id="ref-earned-lbl"> neurons earned</span></div>
+      </div>
+    </div>
+
+    <!-- Question packs shop -->
+    <div class="shop-title" id="shop-section-title">Question Packs</div>
+    <div class="packs-grid" id="packs-grid"></div>
+  </div>
+</div>
+
+<!-- PROFILE -->
+<div class="screen" id="profile">
+  <div class="hdr">
+    <div class="logo">MFC</div>
+    <div class="hdr-right">
+      <div class="neurons-pill"><div class="n-orb"></div><span id="n-profile">0</span></div>
+    </div>
+  </div>
+  <div class="profile-inner">
+    <!-- Avatar + name -->
+    <div class="profile-hero" id="profile-hero-div">
+      <div class="profile-av" id="profile-av">?</div>
+      <div class="profile-name" id="profile-name">Player</div>
+      <div class="profile-email" id="profile-email"></div>
+      <div id="profile-city-wrap" style="margin:8px 0 4px;display:flex;align-items:center;justify-content:center;gap:8px">
+        <div class="city-tag" id="profile-city-tag" style="display:none">📍 <span id="profile-city-display"></span></div>
+        <button id="profile-city-btn" onclick="toggleCityEdit()" style="background:none;border:0.5px solid var(--border);border-radius:8px;padding:4px 10px;font-size:11px;color:var(--muted);cursor:pointer;font-family:inherit">+ Add city</button>
+      </div>
+      <div id="profile-city-edit" style="display:none;margin-top:8px">
+        <div style="display:flex;gap:6px">
+          <input class="city-input" id="profile-city-input" type="text" maxlength="32" placeholder="Your city" style="margin-bottom:0;flex:1"/>
+          <button onclick="saveProfileCity()" style="background:var(--accent);border:none;border-radius:10px;padding:8px 12px;font-size:12px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit;white-space:nowrap">Save</button>
+        </div>
+      </div>
+      <button class="profile-signout" onclick="signOut()" id="profile-signout-btn" style="margin-top:12px">Sign out</button>
+    </div>
+    <!-- Stats -->
+    <div class="section-title" id="profile-stats-title">Statistics</div>
+    <div class="profile-stats-grid">
+      <div class="pstat-box">
+        <div class="pstat-val" id="ps-neurons">0</div>
+        <div class="pstat-lbl" id="ps-neurons-lbl">Neurons</div>
+      </div>
+      <div class="pstat-box">
+        <div class="pstat-val" id="ps-games">0</div>
+        <div class="pstat-lbl" id="ps-games-lbl">Games</div>
+      </div>
+      <div class="pstat-box">
+        <div class="pstat-val" id="ps-streak">0</div>
+        <div class="pstat-lbl" id="ps-streak-lbl">Best streak</div>
+      </div>
+      <div class="pstat-box">
+        <div class="pstat-val" id="ps-acc">0%</div>
+        <div class="pstat-lbl" id="ps-acc-lbl">Accuracy</div>
+      </div>
+      <div class="pstat-box">
+        <div class="pstat-val" id="ps-duels">0</div>
+        <div class="pstat-lbl" id="ps-duels-lbl">Duels won</div>
+      </div>
+      <div class="pstat-box">
+        <div class="pstat-val" id="ps-correct">0</div>
+        <div class="pstat-lbl" id="ps-correct-lbl">Correct answers</div>
+      </div>
+    </div>
+    <!-- Badges -->
+    <div class="section-title" id="profile-badges-title">Achievements</div>
+    <div class="profile-badges-grid" id="profile-badges-grid"></div>
+    <!-- Guest message -->
+    <div class="profile-guest" id="profile-guest" style="display:none">
+      <div style="font-size:36px;margin-bottom:12px">👤</div>
+      <div style="font-size:16px;font-weight:800;margin-bottom:8px" id="pg-title">You're playing as guest</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.5" id="pg-sub">Sign in to save your progress and compete globally</div>
+      <button class="google-btn" onclick="signInGoogle()" style="max-width:300px;margin:0 auto">
+        <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.548 0 9s.348 2.825.957 4.039l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"/></svg>
+        <span id="pg-google-btn">Sign in with Google</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-inner">
+    <button class="nav-item active" id="nav-home" onclick="showScreen('home')"><div class="nav-icon">🏠</div><div class="nav-label" id="nav-home-label">Home</div></button>
+    <button class="nav-item" id="nav-quiz" onclick="startQuiz()"><div class="nav-icon">⚡</div><div class="nav-label" id="nav-play-label">Play</div></button>
+    <button class="nav-item" id="nav-duel" onclick="showScreen('duel')"><div class="nav-icon">⚔️</div><div class="nav-label" id="nav-duel-label">Duel</div></button>
+    <button class="nav-item" id="nav-teams" onclick="showTeamsScreen()"><div class="nav-icon">🏟️</div><div class="nav-label" id="nav-teams-label">Teams</div></button>
+    <button class="nav-item" id="nav-tournament" onclick="showScreen('tournament')"><div class="nav-icon">🏆</div><div class="nav-label" id="nav-cup-label">Cup</div></button>
+    <button class="nav-item" id="nav-profile" onclick="showScreen('profile')"><div class="nav-icon">👤</div><div class="nav-label" id="nav-profile-label">Profile</div></button>
+  </div>
+</nav>
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════
+// SUPABASE
+// ═══════════════════════════════════════════
+const SUPA_URL='https://nhmidxkohjpcnhjucuuh.supabase.co';
+const SUPA_KEY='sb_publishable_lFVRCP-PPnGnNzn9G60A3A_gTy40vMs';
+const sb=supabase.createClient(SUPA_URL,SUPA_KEY);
+
+// ═══════════════════════════════════════════
+// ANALYTICS
+// ═══════════════════════════════════════════
+const _sessionId = Math.random().toString(36).slice(2);
+async function track(eventName, props={}){
+  try{
+    await sb.from('analytics_events').insert({
+      user_id: currentUser?.id || null,
+      session_id: _sessionId,
+      event_name: eventName,
+      properties: {lang, ...props},
+      created_at: new Date().toISOString()
+    });
+  }catch(e){ /* analytics must never break the app */ }
+}
+// Track app open
+setTimeout(()=>track('app_opened'), 500);
+
+// ═══════════════════════════════════════════
+// I18N
+// ═══════════════════════════════════════════
+const T={
+  en:{
+    authSub:'Sign in to save your neurons and compete globally',
+    authGoogle:'Continue with Google',authOr:'or',
+    authGuest:'Continue as guest',authNote:"Guest progress won't be saved",
+    hLabel:'Beta · English launch',hTitle:'Fight for your brain',
+    hSub:'Endless quiz feed, real-time duels, and tournaments — all in one place.',
+    hPlay:'⚡ Play now',hMode:'Mode',hTopic:'Topic',hBadges:'Achievements',
+    mFeedName:'Endless feed',mFeedDesc:'Random questions, earn neurons',
+    mDuelName:'Live Duel',mDuelDesc:'Real-time battle with a friend',
+    chipAll:'All topics',
+    categories:{SCIENCE:'Science',HISTORY:'History',GEOGRAPHY:'Geography',CINEMA:'Cinema',SPORTS:'Sports',MUSIC:'Music',ART:'Art',GAMING:'Gaming'},
+    bFirst:'First game',bStreak3:'Streak x3',bStreak5:'Streak x5',bPerfect:'Perfect',bDuel:'First duel',bTourn:'Tournament',bNeurons:'100 neurons',
+    dTitle:'Live Duel',dSub:'Challenge a friend to a real-time quiz battle. Same questions, same timer — whoever answers faster wins.',
+    dCreate:'⚡ Create a duel room',dOr:'or join with a code',dCodePlaceholder:'Enter 6-letter code',dJoin:'Join →',
+    dCodeLabel:'Share this code with your friend',dCopy:'Copy',dCopied:'Copied!',dReady:'✓ Ready',dWaiting:'Waiting...',dShareCode:'Share the code',
+    dStart:'⚔️ Start the battle!',dWaitOpp:'Waiting for opponent...',
+    dWin:'You win!',dLose:'You lost!',dTie:"It's a tie!",dWinSub:'You outscored your opponent.',dLoseSub:'Better luck next time!',dTieSub:'Perfectly matched brains.',
+    dPlayAgain:'Play again',
+    tTitle:'Mind Championship',tMeta:'10 questions · All topics · Up to 50 players',
+    tCreate:'⚡ Create tournament room',tJoin:'Join →',tCodeLabel:'Room code — share with players',
+    tCopy:'Copy',tCopied:'Copied!',tPlayersLabel:'Players joined',tStart:'🏆 Start!',tWait:'Waiting for host to start...',
+    tScoreLabel:'Score:',tOverTitle:'Tournament Over!',tFinalLabel:'Final standings',tFinalHdr:'Leaderboard',tAgain:'Play again',
+    wlBadge:'Early access',wlTitle:'The app is coming.<br>Be the first.',
+    wlSub:"We're building Mind Fight Club — a global platform for intellectual battles.",
+    wlSubmit:'Get early access →',wlThanksTitle:"You're on the list!",wlThanksSub:"We'll email you when Mind Fight Club launches.",
+    wlCount:'Joined:',wlCountSuffix:'people from 38 countries',
+    scLabel:'Round complete',scSub:'neurons earned',scCorrectLabel:'Correct',scStreakLabel:'Best streak',scAccLabel:'Accuracy',
+    scAgain:'⚡ Play again',scDuel:'⚔️ Live Duel',scTourn:'🏆 Tournament',scJoin:'📧 Join waitlist',
+    next:'Next →',navHome:'Home',navPlay:'Play',navDuel:'Duel',navCup:'Cup',navJoin:'Join',
+    badgeEarned:'🏆 Badge earned:',
+    oppAnswered:'✓ Opponent answered',
+  },
+  ru:{
+    authSub:'Войдите чтобы сохранить нейроны и соревноваться глобально',
+    authGoogle:'Войти через Google',authOr:'или',
+    authGuest:'Продолжить как гость',authNote:'Прогресс гостя не сохраняется',
+    hLabel:'Бета · Запуск',hTitle:'Бой за мозг',
+    hSub:'Бесконечная лента вопросов, дуэли в реальном времени и турниры — всё в одном месте.',
+    hPlay:'⚡ Играть',hMode:'Режим',hTopic:'Тема',hBadges:'Достижения',
+    mFeedName:'Бесконечная лента',mFeedDesc:'Случайные вопросы, зарабатывай нейроны',
+    mDuelName:'Дуэль',mDuelDesc:'Бой в реальном времени с другом',
+    chipAll:'Все темы',
+    categories:{SCIENCE:'Наука',HISTORY:'История',GEOGRAPHY:'География',CINEMA:'Кино',SPORTS:'Спорт',MUSIC:'Музыка',ART:'Искусство',GAMING:'Игры'},
+    bFirst:'Первая игра',bStreak3:'Серия x3',bStreak5:'Серия x5',bPerfect:'Идеально',bDuel:'Первая дуэль',bTourn:'Турнир',bNeurons:'100 нейронов',
+    dTitle:'Дуэль',dSub:'Вызов другу в режиме реального времени. Одни вопросы, один таймер — кто быстрее отвечает, тот побеждает.',
+    dCreate:'⚡ Создать комнату дуэли',dOr:'или войти по коду',dCodePlaceholder:'Введите 6-буквенный код',dJoin:'Войти →',
+    dCodeLabel:'Поделитесь кодом с другом',dCopy:'Копировать',dCopied:'Скопировано!',dReady:'✓ Готов',dWaiting:'Ждём...',dShareCode:'Поделитесь кодом',
+    dStart:'⚔️ Начать бой!',dWaitOpp:'Ждём соперника...',
+    dWin:'Вы победили!',dLose:'Вы проиграли!',dTie:'Ничья!',dWinSub:'Вы обошли соперника.',dLoseSub:'В следующий раз повезёт!',dTieSub:'Одинаково сильные умы.',
+    dPlayAgain:'Играть снова',
+    tTitle:'Чемпионат умов',tMeta:'10 вопросов · Все темы · До 50 игроков',
+    tCreate:'⚡ Создать комнату турнира',tJoin:'Войти →',tCodeLabel:'Код комнаты — поделитесь с игроками',
+    tCopy:'Копировать',tCopied:'Скопировано!',tPlayersLabel:'Игроков вошло',tStart:'🏆 Старт!',tWait:'Ждём начала от хоста...',
+    tScoreLabel:'Очки:',tOverTitle:'Турнир завершён!',tFinalLabel:'Финальные результаты',tFinalHdr:'Таблица',tAgain:'Играть снова',
+    wlBadge:'Ранний доступ',wlTitle:'Приложение скоро.<br>Будь первым.',
+    wlSub:'Мы строим Mind Fight Club — глобальную платформу для интеллектуальных боёв.',
+    wlSubmit:'Получить ранний доступ →',wlThanksTitle:'Вы в списке!',wlThanksSub:'Напишем когда Mind Fight Club запустится.',
+    wlCount:'Присоединились:',wlCountSuffix:'человек из 38 стран',
+    scLabel:'Раунд завершён',scSub:'нейронов заработано',scCorrectLabel:'Верных',scStreakLabel:'Лучшая серия',scAccLabel:'Точность',
+    scAgain:'⚡ Играть снова',scDuel:'⚔️ Дуэль',scTourn:'🏆 Турнир',scJoin:'📧 Присоединиться',
+    next:'Далее →',navHome:'Главная',navPlay:'Играть',navDuel:'Дуэль',navCup:'Кубок',navJoin:'Войти',
+    badgeEarned:'🏆 Достижение:',
+    oppAnswered:'✓ Соперник ответил',
+  }
+};
+
+let lang='en';
+function setLang(l){
+  lang=l;
+  document.querySelectorAll('.lang-btn').forEach(b=>b.classList.toggle('active',b.textContent===l.toUpperCase()));
+  applyLang();
+}
+function t(key){return T[lang][key]||T.en[key]||key;}
+function applyLang(){
+  const L=T[lang];
+  // Auth
+  document.getElementById('auth-sub').textContent=L.authSub;
+  document.getElementById('auth-google-btn').textContent=L.authGoogle;
+  document.getElementById('auth-or').textContent=L.authOr;
+  document.getElementById('auth-guest-btn').textContent=L.authGuest;
+  document.getElementById('auth-note').textContent=L.authNote;
+  // Email auth buttons
+  const emailToggleTxt=document.getElementById('auth-email-toggle-txt');
+  if(emailToggleTxt&&document.getElementById('auth-email-form').style.display==='none')
+    emailToggleTxt.textContent=lang==='ru'?'Войти через Email':'Sign in with Email';
+  const signinBtn=document.getElementById('auth-signin-btn');
+  if(signinBtn) signinBtn.textContent=lang==='ru'?'Войти':'Sign In';
+  const signupBtn=document.getElementById('auth-signup-btn');
+  if(signupBtn) signupBtn.textContent=lang==='ru'?'Регистрация':'Register';
+  const emailIn=document.getElementById('auth-email-input');
+  if(emailIn) emailIn.placeholder='Email';
+  const passIn=document.getElementById('auth-pass-input');
+  if(passIn) passIn.placeholder=lang==='ru'?'Пароль (мин. 6 символов)':'Password (min 6 chars)';
+  // Home
+  document.getElementById('h-label').textContent=L.hLabel;
+  document.getElementById('h-title').textContent=L.hTitle;
+  document.getElementById('h-sub').textContent=L.hSub;
+  document.getElementById('h-play').textContent=L.hPlay;
+  document.getElementById('h-mode-title').textContent=L.hMode;
+  document.getElementById('h-topic-title').textContent=L.hTopic;
+  document.getElementById('h-badges-title').textContent=L.hBadges;
+  document.getElementById('m-feed-name').textContent=L.mFeedName;
+  document.getElementById('m-feed-desc').textContent=L.mFeedDesc;
+  document.getElementById('m-duel-name').textContent=L.mDuelName;
+  document.getElementById('m-duel-desc').textContent=L.mDuelDesc;
+  document.getElementById('chip-all').textContent=L.chipAll;
+  document.querySelectorAll('.chip-label').forEach(el=>{
+    const cat=el.closest('[data-cat]')?.dataset.cat;
+    if(cat&&L.categories[cat])el.textContent=L.categories[cat];
+  });
+  // Badges
+  document.getElementById('b-first').textContent=L.bFirst;
+  document.getElementById('b-streak3').textContent=L.bStreak3;
+  document.getElementById('b-streak5').textContent=L.bStreak5;
+  document.getElementById('b-perfect').textContent=L.bPerfect;
+  document.getElementById('b-duel').textContent=L.bDuel;
+  document.getElementById('b-tourn').textContent=L.bTourn;
+  document.getElementById('b-neurons100').textContent=L.bNeurons;
+  // Duel
+  document.getElementById('d-title').textContent=L.dTitle;
+  document.getElementById('d-sub').textContent=L.dSub;
+  document.getElementById('d-create-btn').textContent=L.dCreate;
+  document.getElementById('d-or').textContent=L.dOr;
+  document.getElementById('join-code-input').placeholder=L.dCodePlaceholder;
+  document.getElementById('d-join-btn').textContent=L.dJoin;
+  document.getElementById('d-code-label').textContent=L.dCodeLabel;
+  document.getElementById('d-copy-btn').textContent=L.dCopy;
+  document.getElementById('d-slot-ready-txt').textContent=L.dReady;
+  document.getElementById('opp-name-wait').textContent=L.dWaiting;
+  document.getElementById('opp-status-wait').textContent=L.dShareCode;
+  if(document.getElementById('d-start-btn')) document.getElementById('d-start-btn').textContent=L.dStart;
+  document.getElementById('d-wait-txt').querySelector('span').textContent=L.dWaitOpp;
+  document.getElementById('d-play-again-btn').textContent=L.dPlayAgain;
+  // Tournament
+  document.getElementById('t-title').textContent=L.tTitle;
+  document.getElementById('t-meta').textContent=L.tMeta;
+  document.getElementById('t-create-btn').textContent=L.tCreate;
+  document.getElementById('t-join-btn').textContent=L.tJoin;
+  document.getElementById('t-code-label').textContent=L.tCodeLabel;
+  document.getElementById('t-copy-btn').textContent=L.tCopy;
+  document.getElementById('t-players-label').textContent=L.tPlayersLabel;
+  document.getElementById('t-start-btn').textContent=L.tStart;
+  document.getElementById('t-wait-txt').querySelector('span').textContent=L.tWait;
+  document.getElementById('t-wait-label')&&(document.getElementById('t-wait-label').textContent=L.tWait);
+  document.getElementById('t-score-label').textContent=L.tScoreLabel;
+  document.getElementById('t-over-title').textContent=L.tOverTitle;
+  document.getElementById('t-final-label').textContent=L.tFinalLabel;
+  document.getElementById('t-final-hdr').textContent=L.tFinalHdr;
+  document.getElementById('t-again-btn').textContent=L.tAgain;
+  // Waitlist
+  document.getElementById('wl-badge').textContent=L.wlBadge;
+  document.getElementById('wl-title').innerHTML=L.wlTitle;
+  document.getElementById('wl-sub').textContent=L.wlSub;
+  document.getElementById('wl-submit-btn').textContent=L.wlSubmit;
+  document.getElementById('wl-thanks-title').textContent=L.wlThanksTitle;
+  document.getElementById('wl-thanks-sub').textContent=L.wlThanksSub;
+  // Score
+  document.getElementById('sc-label').textContent=L.scLabel;
+  document.getElementById('sc-sub').textContent=L.scSub;
+  document.getElementById('sc-correct-label').textContent=L.scCorrectLabel;
+  document.getElementById('sc-streak-label').textContent=L.scStreakLabel;
+  document.getElementById('sc-acc-label').textContent=L.scAccLabel;
+  document.getElementById('sc-again-btn').textContent=L.scAgain;
+  document.getElementById('sc-duel-btn').textContent=L.scDuel;
+  document.getElementById('sc-tourn-btn').textContent=L.scTourn;
+  document.getElementById('sc-join-btn').textContent=L.scJoin;
+  // Nav
+  document.getElementById('nav-home-label').textContent=L.navHome;
+  document.getElementById('nav-play-label').textContent=L.navPlay;
+  document.getElementById('nav-duel-label').textContent=L.navDuel;
+  document.getElementById('nav-cup-label').textContent=L.navCup;
+  document.getElementById('nav-profile-label').textContent=lang==='ru'?'Профиль':'Profile';
+  const shopNav=document.getElementById('nav-shop-label');if(shopNav)shopNav.textContent=lang==='ru'?'Магазин':'Shop';
+  // Next buttons
+  document.querySelectorAll('.next-btn').forEach(b=>b.textContent=L.next);
+}
+
+// ═══════════════════════════════════════════
+// QUESTIONS (bilingual)
+// ═══════════════════════════════════════════
+const ALL_Q=[
+  {cat:'SCIENCE',q:{en:'What is the powerhouse of the cell?',ru:'Что является энергетической станцией клетки?'},a:{en:['Mitochondria','Nucleus','Ribosome','Golgi body'],ru:['Митохондрия','Ядро','Рибосома','Аппарат Гольджи']},c:0,t:20},
+  {cat:'SCIENCE',q:{en:'How many bones in the adult human body?',ru:'Сколько костей в теле взрослого человека?'},a:{en:['196','206','216','226'],ru:['196','206','216','226']},c:1,t:20},
+  {cat:'SCIENCE',q:{en:'What planet is the Red Planet?',ru:'Какая планета называется Красной?'},a:{en:['Venus','Mars','Jupiter','Saturn'],ru:['Венера','Марс','Юпитер','Сатурн']},c:1,t:15},
+  {cat:'SCIENCE',q:{en:'Chemical symbol for gold?',ru:'Химический символ золота?'},a:{en:['Go','Gd','Au','Ag'],ru:['Go','Gd','Au','Ag']},c:2,t:15},
+  {cat:'SCIENCE',q:{en:'At what temperature does water boil at sea level (°C)?',ru:'При какой температуре кипит вода (°C)?'},a:{en:['90','95','100','105'],ru:['90','95','100','105']},c:2,t:15},
+  {cat:'HISTORY',q:{en:'In which year did World War II end?',ru:'В каком году закончилась Вторая мировая война?'},a:{en:['1943','1944','1945','1946'],ru:['1943','1944','1945','1946']},c:2,t:25},
+  {cat:'HISTORY',q:{en:'Who painted the Mona Lisa?',ru:'Кто написал Мону Лизу?'},a:{en:['Michelangelo','Raphael','Leonardo da Vinci','Donatello'],ru:['Микеланджело','Рафаэль','Леонардо да Винчи','Донателло']},c:2,t:20},
+  {cat:'HISTORY',q:{en:'In which year did the Berlin Wall fall?',ru:'В каком году пала Берлинская стена?'},a:{en:['1987','1988','1989','1990'],ru:['1987','1988','1989','1990']},c:2,t:25},
+  {cat:'GEOGRAPHY',q:{en:'Capital of Australia?',ru:'Столица Австралии?'},a:{en:['Sydney','Melbourne','Brisbane','Canberra'],ru:['Сидней','Мельбурн','Брисбен','Канберра']},c:3,t:20},
+  {cat:'GEOGRAPHY',q:{en:'Which country has the most natural lakes?',ru:'В какой стране больше всего природных озёр?'},a:{en:['Russia','USA','Canada','Finland'],ru:['Россия','США','Канада','Финляндия']},c:2,t:25},
+  {cat:'GEOGRAPHY',q:{en:'Longest river in the world?',ru:'Самая длинная река в мире?'},a:{en:['Amazon','Yangtze','Mississippi','Nile'],ru:['Амазонка','Янцзы','Миссисипи','Нил']},c:3,t:25},
+  {cat:'GEOGRAPHY',q:{en:'Country with the largest land area?',ru:'Страна с наибольшей площадью суши?'},a:{en:['USA','Canada','China','Russia'],ru:['США','Канада','Китай','Россия']},c:3,t:20},
+  {cat:'CINEMA',q:{en:'Who directed Pulp Fiction?',ru:'Кто снял "Криминальное чтиво"?'},a:{en:['Scorsese','Tarantino','Fincher','Kubrick'],ru:['Скорсезе','Тарантино','Финчер','Кубрик']},c:1,t:20},
+  {cat:'CINEMA',q:{en:'Founder of the Corleone family is named…',ru:'Основателя семьи Корлеоне зовут…'},a:{en:['Johnny','Carlo','Emilio','Vito'],ru:['Джонни','Карло','Эмилио','Вито']},c:3,t:20},
+  {cat:'CINEMA',q:{en:'Which word appears twice in Indiana Jones film titles?',ru:'Какое слово дважды встречается в названиях фильмов об Индиане Джонсе?'},a:{en:['Ark','Raiders','Lost','Kingdom'],ru:['Ковчег','Налётчики','Потерянный','Королевство']},c:2,t:25},
+  {cat:'SPORTS',q:{en:'How many players on a basketball team on the court?',ru:'Сколько игроков баскетбольной команды на площадке?'},a:{en:['4','5','6','7'],ru:['4','5','6','7']},c:1,t:15},
+  {cat:'SPORTS',q:{en:'Where were the 2016 Summer Olympics held?',ru:'Где прошли летние Олимпийские игры 2016 года?'},a:{en:['Tokyo','London','Rio de Janeiro','Beijing'],ru:['Токио','Лондон','Рио-де-Жанейро','Пекин']},c:2,t:20},
+  {cat:'SPORTS',q:{en:'What sport is played at Wimbledon?',ru:'Какой вид спорта на Уимблдоне?'},a:{en:['Golf','Cricket','Tennis','Polo'],ru:['Гольф','Крикет','Теннис','Поло']},c:2,t:10},
+  {cat:'MUSIC',q:{en:"Which band released 'Abbey Road'?",ru:'Какая группа выпустила "Abbey Road"?'},a:{en:['Rolling Stones','The Beatles','Led Zeppelin','Pink Floyd'],ru:['Rolling Stones','The Beatles','Led Zeppelin','Pink Floyd']},c:1,t:20},
+  {cat:'MUSIC',q:{en:"How many strings on a standard guitar?",ru:'Сколько струн у стандартной гитары?'},a:{en:['4','5','6','7'],ru:['4','5','6','7']},c:2,t:15},
+  {cat:'MUSIC',q:{en:"Which singer's real name is Stefani Germanotta?",ru:'Настоящее имя какой певицы — Стефани Джерманотта?'},a:{en:['Katy Perry','Adele','Lady Gaga','Rihanna'],ru:['Кэти Перри','Адель','Леди Гага','Рианна']},c:2,t:20},
+  {cat:'DISNEY',q:{en:"Snow White's villain appears in a film whose title contains which number?",ru:'В названии фильма со злодеем Белоснежки есть какое число?'},a:{en:['3','5','7','9'],ru:['3','5','7','9']},c:2,t:25},
+  {cat:'DISNEY',q:{en:'Which Disney princess is known as the most silent one?',ru:'Какая принцесса Disney известна как самая молчаливая?'},a:{en:['Ariel','Aurora','Cinderella','Belle'],ru:['Ариэль','Аврора','Золушка','Белль']},c:1,t:20},
+  {cat:'DISNEY',q:{en:'What animal is Disney\'s Sebastian?',ru:'Кем является диснеевский Себастьян?'},a:{en:['Crab','Dragon','Mouse','Fish'],ru:['Краб','Дракон','Мышь','Рыба']},c:0,t:25},
+  {cat:'ART',q:{en:"Did Aivazovsky paint 'The Ninth Wave'?",ru:'Айвазовский написал "Девятый вал"?'},a:{en:['Yes','No'],ru:['Да','Нет']},c:0,t:20},
+  {cat:'ART',q:{en:"How many figures in Matisse's 'The Dance'?",ru:'Сколько фигур в "Танце" Матисса?'},a:{en:['4','5','6','7'],ru:['4','5','6','7']},c:1,t:25},
+  {cat:'ART',q:{en:"Which flag is hidden in Delacroix's 'Liberty Leading the People'?",ru:'Какой флаг спрятан в картине Делакруа "Свобода на баррикадах"?'},a:{en:['Italian','Spanish','French','German'],ru:['Итальянский','Испанский','Французский','Немецкий']},c:2,t:25},
+  {cat:'GAMING',q:{en:'In Super Contra, which letter marked the most powerful weapon?',ru:'В Super Contra какая буква обозначала самое мощное оружие?'},a:{en:['M','R','S','B'],ru:['M','R','S','B']},c:3,t:25},
+  {cat:'GAMING',q:{en:'The NES racing game where you watched engine temperature was called…',ru:'Гоночная игра на Dendy с контролем температуры двигателя называлась…'},a:{en:['Mad Max','Zippy Race','ExciteBike','Formula 1'],ru:['Mad Max','Zippy Race','ExciteBike','Formula 1']},c:2,t:25},
+  {cat:'GAMING',q:{en:'First word in the NES game with teenage mutant heroes?',ru:'Первое слово в игре на Dendy про мутантов-подростков?'},a:{en:['Prince','Ninja','Captain','Teenage'],ru:['Принц','Ниндзя','Капитан','Teenage']},c:3,t:20},
+
+  // 2 OPTIONS
+  {cat:'SCIENCE',q:{en:'True or False: The Great Wall of China is visible from space?',ru:'Правда или ложь: Великая китайская стена видна из космоса?'},a:{en:['True','False'],ru:['Правда','Ложь']},c:1,t:20},
+  {cat:'HISTORY',q:{en:'Did the Titanic sink in the Atlantic Ocean?',ru:'Титаник затонул в Атлантическом океане?'},a:{en:['Yes','No'],ru:['Да','Нет']},c:0,t:15},
+  // 3 OPTIONS
+  {cat:'GEOGRAPHY',q:{en:'Which ocean is the largest?',ru:'Какой океан самый большой?'},a:{en:['Atlantic','Pacific','Indian'],ru:['Атлантический','Тихий','Индийский']},c:1,t:20},
+  {cat:'SCIENCE',q:{en:'How many states of matter are most commonly known?',ru:'Сколько агрегатных состояний вещества общеизвестны?'},a:{en:['2','3','4'],ru:['2','3','4']},c:1,t:15},
+  // 5 OPTIONS
+  {cat:'HISTORY',q:{en:'In which decade did the Cold War end?',ru:'В каком десятилетии закончилась холодная война?'},a:{en:['1960s','1970s','1980s','1990s','2000s'],ru:['1960-е','1970-е','1980-е','1990-е','2000-е']},c:3,t:25},
+  {cat:'CINEMA',q:{en:'Which of these is NOT a Christopher Nolan film?',ru:'Что из этого НЕ фильм Кристофера Нолана?'},a:{en:['Inception','Interstellar','The Dark Knight','Avatar','Memento'],ru:['Начало','Интерстеллар','Тёмный рыцарь','Аватар','Помни']},c:3,t:30},
+  // 6 OPTIONS
+  {cat:'GEOGRAPHY',q:{en:'Which continent has no permanent human settlement?',ru:'На каком континенте нет постоянного населения?'},a:{en:['Africa','Asia','Europe','Antarctica','Australia','South America'],ru:['Африка','Азия','Европа','Антарктида','Австралия','Южная Америка']},c:3,t:30},
+  {cat:'SPORTS',q:{en:'Which country has won the most FIFA World Cups?',ru:'Какая страна выиграла больше всего чемпионатов мира по футболу?'},a:{en:['Germany','Italy','Argentina','France','Brazil','Spain'],ru:['Германия','Италия','Аргентина','Франция','Бразилия','Испания']},c:4,t:30},
+
+  // MEDIA QUESTIONS (image)
+  {cat:'ART', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6a/Mona_Lisa.jpg/402px-Mona_Lisa.jpg',
+    q:{en:'Who painted this famous portrait?', ru:'Кто написал этот знаменитый портрет?'},
+    a:{en:['Michelangelo','Leonardo da Vinci','Raphael','Botticelli'], ru:['Микеланджело','Леонардо да Винчи','Рафаэль','Боттичелли']},c:1,t:25},
+  {cat:'GEOGRAPHY', img:null,
+    q:{en:'What continent has the most ant species?', ru:'На каком континенте больше всего видов муравьёв?'},
+    a:{en:['Africa','South America','Asia','Australia'], ru:['Африка','Южная Америка','Азия','Австралия']},c:1,t:25},
+  {cat:'SCIENCE', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Culinary_fruits_front_view.jpg/640px-Culinary_fruits_front_view.jpg',
+    q:{en:'Which of these is botanically a fruit?', ru:'Что из этого является ботанически плодом?'},
+    a:{en:['Carrot','Potato','Tomato','Lettuce'], ru:['Морковь','Картофель','Томат','Салат']},c:2,t:20},
+
+];
+
+function getQ(q){return{cat:q.cat,q:q.q[lang]||q.q.en,a:q.a[lang]||q.a.en,c:q.c,t:q.t,img:q.img||null,audio:q.audio||null};}
+
+const LETTERS=['A','B','C','D','E','F'];
+
+// Fixed points by number of answer options
+function getFixedPoints(numOptions){
+  const pts={2:10,3:15,4:20,5:30,6:40};
+  return pts[numOptions]||20;
+}
+
+// ═══════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════
+let neurons=0,streak=0,bestStreak=0,correctCount=0;
+let curQ=[],qIdx=0,timeLeft=0,maxT=0,timerInt=null,answered=false;
+let selectedCat='ALL',selectedMode='feed',wlCount=247;
+let currentUser=null;
+// Achievements
+let earnedBadges=new Set(JSON.parse(localStorage.getItem('mfc_badges')||'[]'));
+
+// ═══════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════
+function showScreen(name){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(name).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  const ni=document.getElementById('nav-'+name);
+  if(ni)ni.classList.add('active');
+  window.scrollTo(0,0);
+  setTimeout(()=>{
+    try{
+      if(name==='shop') renderShop();
+      if(name==='teams') renderTeamsScreen();  // renamed, no longer calls showScreen
+      if(name==='profile') showProfile();
+    }catch(e){console.error('Screen render error:',e);}
+  },50);
+}
+function toast(msg,dur=2500){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),dur);
+}
+function showFb(id,txt,ok){
+  const fb=document.getElementById(id);
+  fb.textContent=txt;fb.className='fb '+(ok?'ok':'no')+' show';
+}
+function buildDots(id,count){
+  const el=document.getElementById(id);el.innerHTML='';
+  for(let i=0;i<count;i++){
+    const d=document.createElement('div');
+    d.className='dot'+(i===0?' active':'');d.id=id+'-dot-'+i;el.appendChild(d);
+  }
+}
+function setDot(id,i,cls){const d=document.getElementById(id+'-dot-'+i);if(d)d.className='dot '+cls;}
+function updNeurons(){
+  ['n-home','n-quiz','n-duel','n-tourn'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=neurons;});
+}
+function randCode(){return Math.random().toString(36).slice(2,8).toUpperCase();}
+
+// ═══════════════════════════════════════════
+// ACHIEVEMENTS
+// ═══════════════════════════════════════════
+function checkBadges(newBadge){
+  if(!earnedBadges.has(newBadge)){
+    earnedBadges.add(newBadge);
+    localStorage.setItem('mfc_badges',JSON.stringify([...earnedBadges]));
+    renderBadges();
+    return true;
+  }
+  return false;
+}
+function renderBadges(){
+  const map={first:'badge-first',streak3:'badge-streak3',streak5:'badge-streak5',perfect:'badge-perfect',duel:'badge-duel',tourn:'badge-tourn',neurons100:'badge-neurons100'};
+  Object.entries(map).forEach(([key,id])=>{
+    const el=document.getElementById(id);
+    if(el)el.classList.toggle('earned',earnedBadges.has(key));
+  });
+}
+function showBadgeEarned(key){
+  const names={first:t('bFirst'),streak3:t('bStreak3'),streak5:t('bStreak5'),perfect:t('bPerfect'),duel:t('bDuel'),tourn:t('bTourn'),neurons100:t('bNeurons')};
+  const el=document.getElementById('badge-earned-popup');
+  el.textContent=t('badgeEarned')+' '+names[key];
+  el.classList.add('show');
+}
+
+
+// ═══════════════════════════════════════════
+// PROFILE
+// ═══════════════════════════════════════════
+const BADGE_DEFS = [
+  {key:'first',    icon:'⚡', name:{en:'First game',   ru:'Первая игра'}},
+  {key:'streak3',  icon:'🔥', name:{en:'Streak x3',    ru:'Серия x3'}},
+  {key:'streak5',  icon:'💥', name:{en:'Streak x5',    ru:'Серия x5'}},
+  {key:'perfect',  icon:'🎯', name:{en:'Perfect',      ru:'Идеально'}},
+  {key:'duel',     icon:'⚔️', name:{en:'First duel',   ru:'Первая дуэль'}},
+  {key:'tourn',    icon:'🏆', name:{en:'Tournament',   ru:'Турнир'}},
+  {key:'neurons100',icon:'🧠',name:{en:'100 neurons',  ru:'100 нейронов'}},
+  {key:'speed',    icon:'⚡', name:{en:'Speed demon',  ru:'Молния'}},
+];
+
+function showProfile(){
+  try{
+  renderProfileBadges();
+  if(!currentUser){
+    document.getElementById('profile-guest').style.display='flex';
+    const heroEl=document.getElementById('profile-hero-div');
+    if(heroEl)heroEl.style.display='none';
+    const statsEl=document.querySelector('.profile-stats-grid');
+    if(statsEl)statsEl.style.display='none';
+    const badgesEl=document.getElementById('profile-badges-grid');
+    if(badgesEl)badgesEl.style.display='none';
+    // translate guest screen
+    document.getElementById('pg-title').textContent=lang==='ru'?'Вы играете как гость':"You're playing as guest";
+    document.getElementById('pg-sub').textContent=lang==='ru'?'Войдите чтобы сохранить прогресс и соревноваться глобально':'Sign in to save your progress and compete globally';
+    document.getElementById('pg-google-btn').textContent=lang==='ru'?'Войти через Google':'Sign in with Google';
+    return;
+  }
+  document.getElementById('profile-guest').style.display='none';
+  const ph=document.getElementById('profile-hero-div');if(ph)ph.style.display='block';
+  const ps=document.querySelector('.profile-stats-grid');if(ps)ps.style.display='grid';
+  const pb=document.getElementById('profile-badges-grid');if(pb)pb.style.display='grid';
+  // Fill user info
+  const name=currentUser.user_metadata?.full_name||currentUser.email?.split('@')[0]||'Player';
+  const initial=name[0].toUpperCase();
+  document.getElementById('profile-av').textContent=initial;
+  document.getElementById('profile-name').textContent=name;
+  document.getElementById('profile-email').textContent=currentUser.email||'';
+  // Show level
+  const level = getPlayerLevel(neurons);
+  const existingBadge = document.querySelector('.level-badge');
+  if(!existingBadge){
+    const badge = document.createElement('div');
+    badge.className='level-badge';
+    badge.textContent=level.icon+' '+level.name[lang];
+    document.getElementById('profile-email').insertAdjacentElement('afterend',badge);
+  } else {
+    existingBadge.textContent=level.icon+' '+level.name[lang];
+  }
+  document.getElementById('n-profile').textContent=neurons;
+  // Load stats from DB
+  loadProfileStats();
+  renderProfileCity();
+  // Translate labels
+  const L=T[lang];
+  document.getElementById('profile-stats-title').textContent=lang==='ru'?'Статистика':'Statistics';
+  document.getElementById('profile-badges-title').textContent=lang==='ru'?'Достижения':'Achievements';
+  document.getElementById('ps-neurons-lbl').textContent=lang==='ru'?'Нейроны':'Neurons';
+  document.getElementById('ps-games-lbl').textContent=lang==='ru'?'Игры':'Games';
+  document.getElementById('ps-streak-lbl').textContent=lang==='ru'?'Лучшая серия':'Best streak';
+  document.getElementById('ps-acc-lbl').textContent=lang==='ru'?'Точность':'Accuracy';
+  document.getElementById('ps-duels-lbl').textContent=lang==='ru'?'Дуэли выиграны':'Duels won';
+  document.getElementById('ps-correct-lbl').textContent=lang==='ru'?'Верных ответов':'Correct answers';
+  document.getElementById('profile-signout-btn').textContent=lang==='ru'?'Выйти':'Sign out';
+  }catch(e){console.error('Profile error:',e);}
+}
+
+async function loadProfileStats(){
+  if(!currentUser)return;
+  const {data}=await sb.from('user_profiles').select('*').eq('id',currentUser.id).single();
+  if(data){
+    document.getElementById('ps-neurons').textContent=data.neurons||0;
+    document.getElementById('ps-games').textContent=data.games_played||0;
+    document.getElementById('ps-streak').textContent=data.best_streak||0;
+    const acc=data.games_played>0?Math.round((data.correct_answers||0)/Math.max(data.games_played*5,1)*100):0;
+    document.getElementById('ps-acc').textContent=Math.min(acc,100)+'%';
+    document.getElementById('ps-duels').textContent=data.duels_won||0;
+    document.getElementById('ps-correct').textContent=data.correct_answers||0;
+  }
+}
+
+function renderProfileBadges(){
+  const grid=document.getElementById('profile-badges-grid');
+  if(!grid)return;
+  grid.innerHTML=BADGE_DEFS.map(b=>{
+    const earned=earnedBadges.has(b.key);
+    return '<div class="profile-badge'+(earned?' earned':'')+'"><div class="pb-icon">'+b.icon+'</div><div class="pb-name">'+(b.name[lang]||b.name.en)+'</div></div>';
+  }).join('');
+}
+
+async function signOut(){
+  await sb.auth.signOut();
+  currentUser=null;neurons=0;updNeurons();
+  showScreen('auth');
+}
+
+async function saveGameStats(correct,total,bStreak){
+  if(!currentUser)return;
+  const {data}=await sb.from('user_profiles').select('*').eq('id',currentUser.id).single();
+  const prev=data||{};
+  await sb.from('user_profiles').upsert({
+    id:currentUser.id,
+    neurons:neurons,
+    games_played:(prev.games_played||0)+1,
+    best_streak:Math.max(prev.best_streak||0,bStreak),
+    correct_answers:(prev.correct_answers||0)+correct,
+    updated_at:new Date().toISOString()
+  });
+}
+
+async function saveDuelWin(){
+  if(!currentUser)return;
+  const {data}=await sb.from('user_profiles').select('duels_won').eq('id',currentUser.id).single();
+  await sb.from('user_profiles').upsert({
+    id:currentUser.id,
+    duels_won:(data?.duels_won||0)+1,
+    updated_at:new Date().toISOString()
+  });
+}
+
+
+
+// ═══════════════════════════════════════════
+// MEDIA QUESTIONS
+// ═══════════════════════════════════════════
+let currentAudio = null;
+
+function renderQMedia(containerId, q) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  
+  if (q.img) {
+    const hintTxt2=lang==='ru'?'Посмотри на картинку':'Look at the image'; container.innerHTML='<div class="q-media" style="margin-bottom:14px;border-radius:12px;overflow:hidden"><img src="'+q.img+'" alt="" style="width:100%;max-height:200px;object-fit:cover;display:block"><div style="font-size:11px;color:var(--muted);text-align:center;padding:6px;background:var(--bg2)">'+hintTxt2+'</div></div>';
+  } else if (q.audio) {
+    stopAudio();
+    currentAudio = new Audio(q.audio);
+    /* audio rendered via DOM above */
+  } else {
+    container.innerHTML = '';
+  }
+}
+
+function toggleAudio(containerId) {
+  if (!currentAudio) return;
+  const btn = document.getElementById('audio-btn-'+containerId);
+  if (currentAudio.paused) {
+    currentAudio.play();
+    if (btn) btn.textContent = '⏸️';
+  } else {
+    currentAudio.pause();
+    if (btn) btn.textContent = '▶️';
+  }
+}
+
+function stopAudio() {
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio.currentTime = 0;
+    currentAudio = null;
+  }
+}
+
+// Stop audio when moving to next question
+
+
+// ═══════════════════════════════════════════
+// ONBOARDING
+// ═══════════════════════════════════════════
+function checkOnboarding(){
+  // Onboarding toasts disabled — they cause layout jumps on mobile
+  localStorage.setItem('mfc_onboarded','1');
+}
+// ═══════════════════════════════════════════
+// TEAMS
+// ═══════════════════════════════════════════
+let myTeam = JSON.parse(localStorage.getItem('mfc_team')||'null');
+let cityTabMode = 'teams'; // 'teams' or 'players'
+
+function showCreateTeam(){
+  ['team-none','team-mine'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.style.display='none';
+  });
+  const createEl=document.getElementById('team-create');
+  createEl.style.display='flex';
+  document.getElementById('team-name-input').value='';
+  document.getElementById('team-city-input').value=localStorage.getItem('mfc_city')||'';
+}
+
+function cancelCreateTeam(){
+  document.getElementById('team-create').style.display='none';
+  if(myTeam){
+    document.getElementById('team-mine').style.display='flex';
+  } else {
+    document.getElementById('team-none').style.display='flex';
+  }
+}
+
+async function createTeam(){
+  const name = document.getElementById('team-name-input').value.trim();
+  if(!name){toast(lang==='ru'?'Введите название команды':'Enter team name');return;}
+  if(!currentUser){toast(lang==='ru'?'Войдите чтобы создать команду':'Sign in to create a team');return;}
+
+  const city = document.getElementById('team-city-input').value.trim();
+  const emoji = document.getElementById('team-emoji-select').value;
+  const code = Math.random().toString(36).slice(2,8).toUpperCase();
+
+  const btn = document.getElementById('tc-confirm-btn');
+  btn.textContent = lang==='ru'?'Создаём...':'Creating...';
+  btn.disabled = true;
+
+  // Insert into teams_v2 (new clean schema)
+  const {data: teamData, error: teamErr} = await sb.from('teams_v2').insert({
+    name, code, city, avatar_emoji: emoji,
+    created_by: currentUser.id, total_score: 0,
+    created_at: new Date().toISOString()
+  }).select().single();
+
+  if(teamErr){
+    btn.disabled = false; btn.textContent = lang==='ru'?'Создать →':'Create →';
+    toast((lang==='ru'?'Ошибка: ':'Error: ')+(teamErr.message||'try again'));
+    console.error('Team create error:', teamErr);
+    return;
+  }
+
+  // Add creator as captain in team_members
+  await sb.from('team_members').insert({
+    team_id: teamData.id, user_id: currentUser.id,
+    team_code: code,
+    display_name: currentUser.user_metadata?.full_name?.split(' ')[0] || currentUser.email?.split('@')[0] || 'Player',
+    role: 'captain', score: neurons, joined_at: new Date().toISOString()
+  });
+
+  myTeam = {...teamData, _v2: true};
+  btn.disabled = false; btn.textContent = lang==='ru'?'Создать →':'Create →';
+  if(city) localStorage.setItem('mfc_city', city);
+  localStorage.setItem('mfc_team', JSON.stringify(myTeam));
+  track('team_created', {team_code: code, city});
+  renderMyTeam();
+  toast(lang==='ru'?'🎉 Команда создана!':'🎉 Team created!');
+}
+
+async function joinTeam(){
+  const code = document.getElementById('team-join-input').value.trim().toUpperCase();
+  if(code.length < 4){toast(lang==='ru'?'Введите код команды':'Enter team code');return;}
+
+  // Try teams_v2 first
+  const {data: v2data} = await sb.from('teams_v2').select('*').eq('code', code).single();
+  if(v2data){
+    if(currentUser){
+      await sb.from('team_members').upsert({
+        team_id: v2data.id, user_id: currentUser.id,
+        team_code: code,
+        display_name: currentUser.user_metadata?.full_name?.split(' ')[0] || currentUser.email?.split('@')[0] || 'Player',
+        role: 'member', score: neurons, joined_at: new Date().toISOString()
+      }, {onConflict: 'team_id,user_id'});
+    }
+    track('team_joined', {team_code: code});
+    myTeam = {...v2data, _v2: true};
+    localStorage.setItem('mfc_team', JSON.stringify(myTeam));
+    renderMyTeam();
+    toast(lang==='ru'?'Вы вступили в команду '+v2data.name+'!':'Joined '+v2data.name+'!');
+    return;
+  }
+
+  // Fallback: old teams table
+  const {data, error} = await sb.from('teams').select('*').eq('code', code).single();
+  if(error||!data){toast(lang==='ru'?'Команда не найдена':'Team not found');return;}
+  const memberName = currentUser?.user_metadata?.full_name?.split(' ')[0] || 'Player';
+  const members = data.members||{};
+  members[memberName] = {neurons, joined: new Date().toISOString()};
+  await sb.from('teams').update({members}).eq('code', code);
+  myTeam = {...data, members};
+  localStorage.setItem('mfc_team', JSON.stringify(myTeam));
+  renderMyTeam();
+  toast(lang==='ru'?'Вы вступили в команду '+data.name+'!':'Joined '+data.name+'!');
+}
+
+function renderMyTeam(){
+  ['team-none','team-mine','team-create'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.style.display='none';
+  });
+  if(!myTeam){
+    document.getElementById('team-none').style.display='flex';
+    loadGlobalTeams();
+    return;
+  }
+  document.getElementById('team-mine').style.display='flex';
+  document.getElementById('my-team-emoji').textContent = myTeam.emoji||'⚡';
+  document.getElementById('my-team-name').textContent = myTeam.name;
+  document.getElementById('my-team-code').textContent = 'Code: '+myTeam.code;
+  const cityEl = document.getElementById('my-team-city');
+  if(cityEl) cityEl.textContent = myTeam.city ? '📍 '+myTeam.city : '';
+  
+  const members = myTeam.members||{};
+  const totalNeurons = Object.values(members).reduce((s,m)=>s+(m.neurons||0),0);
+  document.getElementById('my-team-score').textContent = totalNeurons;
+  document.getElementById('my-team-count').textContent = Object.keys(members).length;
+  
+  const list = document.getElementById('team-members-list');
+  const sorted = Object.entries(members).sort((a,b)=>(b[1].neurons||0)-(a[1].neurons||0));
+  list.innerHTML = sorted.map(([name,d],i)=>{
+    const isMe = name===(currentUser?.user_metadata?.full_name?.split(' ')[0]||'Player');
+    return '<div class="lb-row'+(isMe?' me':'')+'"><div class="lb-rank">'+(i+1)+'</div><div class="lb-av" style="background:rgba(108,99,255,.15);color:var(--accent2)">'+name[0].toUpperCase()+'</div><div class="lb-name">'+name+'</div><div class="lb-score">'+(d.neurons||0)+'</div></div>';
+  }).join('');
+  
+  loadGlobalTeams();
+}
+
+async function updateTeamNeurons(){
+  if(!myTeam||!currentUser) return;
+  if(myTeam._v2){
+    // New schema: update score in team_members
+    await sb.from('team_members')
+      .update({score: neurons})
+      .eq('team_id', myTeam.id)
+      .eq('user_id', currentUser.id);
+    // team total_score updates automatically via trigger
+  } else {
+    // Old schema fallback
+    const memberName = currentUser?.user_metadata?.full_name?.split(' ')[0]||'Player';
+    const {data} = await sb.from('teams').select('members').eq('code',myTeam.code).single();
+    if(!data) return;
+    const members = data.members||{};
+    members[memberName] = {neurons, joined: members[memberName]?.joined||new Date().toISOString()};
+    await sb.from('teams').update({members}).eq('code',myTeam.code);
+    myTeam.members = members;
+    localStorage.setItem('mfc_team', JSON.stringify(myTeam));
+  }
+}
+
+function switchCityTab(mode){
+  cityTabMode = mode;
+  document.getElementById('city-tab-teams').classList.toggle('active', mode==='teams');
+  document.getElementById('city-tab-players').classList.toggle('active', mode==='players');
+  loadGlobalTeams();
+}
+
+async function loadGlobalTeams(){
+  const el = document.getElementById('global-teams-lb');
+  if(!el) return;
+  el.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:12px">Loading...</div>';
+
+  if(cityTabMode === 'teams'){
+    // Try teams_v2 (new schema)
+    const {data, error} = await sb.from('teams_v2')
+      .select('id,name,avatar_emoji,code,city,total_score')
+      .order('total_score', {ascending:false})
+      .limit(20);
+
+    if(error || !data || !data.length){
+      // Fallback: old schema with members json
+      const {data: old} = await sb.from('teams').select('name,emoji,members,code,city').limit(20);
+      if(!old || !old.length){
+        el.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">'+(lang==='ru'?'Пока нет команд — создайте первую!':'No teams yet — create the first!')+'</div>';
+        return;
+      }
+      const sorted = old.map(t=>({
+        ...t, avatar_emoji: t.emoji,
+        total: Object.values(t.members||{}).reduce((s,m)=>s+(m.neurons||0),0),
+        count: Object.keys(t.members||{}).length
+      })).sort((a,b)=>b.total-a.total);
+      const medals=['🥇','🥈','🥉'];
+      el.innerHTML = sorted.map((t,i)=>{
+        const isMyTeam = myTeam&&t.code===myTeam.code;
+        const cityTag = t.city?'<span class="lb-city-tag">'+t.city+'</span>':'';
+        return '<div class="lb-row'+(isMyTeam?' me':'')+'"><div class="lb-rank">'+(medals[i]||i+1)+'</div><div style="font-size:18px;flex-shrink:0">'+(t.avatar_emoji||'⚡')+'</div><div class="lb-name">'+t.name+cityTag+'<div style="font-size:10px;color:var(--muted)">'+t.count+' members</div></div><div class="lb-score">'+t.total+'</div></div>';
+      }).join('');
+      return;
+    }
+
+    // New schema with team_members count
+    const medals=['🥇','🥈','🥉'];
+    el.innerHTML = data.map((t,i)=>{
+      const isMyTeam = myTeam&&t.code===myTeam.code;
+      const cityTag = t.city?'<span class="lb-city-tag">'+t.city+'</span>':'';
+      return '<div class="lb-row'+(isMyTeam?' me':'')+'"><div class="lb-rank">'+(medals[i]||i+1)+'</div><div style="font-size:18px;flex-shrink:0">'+(t.avatar_emoji||'⚡')+'</div><div class="lb-name">'+t.name+cityTag+'</div><div class="lb-score">'+(t.total_score||0)+'</div></div>';
+    }).join('');
+
+  } else {
+    // Players leaderboard — try new profiles table first
+    const {data, error} = await sb.from('profiles')
+      .select('id,display_name,city,total_score')
+      .order('total_score', {ascending:false})
+      .limit(20);
+
+    const rows = (!error && data && data.length) ? data : null;
+
+    if(!rows){
+      // Fallback to user_profiles
+      const {data: old} = await sb.from('user_profiles')
+        .select('id,display_name,city,neurons')
+        .order('neurons', {ascending:false})
+        .limit(20);
+      if(!old||!old.length){
+        el.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">'+(lang==='ru'?'Нет данных':'No data yet')+'</div>';
+        return;
+      }
+      const medals=['🥇','🥈','🥉'];
+      el.innerHTML = old.map((p,i)=>{
+        const isMe = currentUser&&p.id===currentUser.id;
+        const cityTag = p.city?'<span class="lb-city-tag">'+p.city+'</span>':'';
+        const name = p.display_name||'Player';
+        return '<div class="lb-row'+(isMe?' me':'')+'"><div class="lb-rank">'+(medals[i]||i+1)+'</div><div class="lb-av" style="background:rgba(108,99,255,.15);color:var(--accent2)">'+name[0].toUpperCase()+'</div><div class="lb-name">'+name+cityTag+'</div><div class="lb-score'+(isMe?' me':'')+'">'+p.neurons+'</div></div>';
+      }).join('');
+      return;
+    }
+
+    const medals=['🥇','🥈','🥉'];
+    el.innerHTML = rows.map((p,i)=>{
+      const isMe = currentUser&&p.id===currentUser.id;
+      const cityTag = p.city?'<span class="lb-city-tag">'+p.city+'</span>':'';
+      const name = p.display_name||'Player';
+      return '<div class="lb-row'+(isMe?' me':'')+'"><div class="lb-rank">'+(medals[i]||i+1)+'</div><div class="lb-av" style="background:rgba(108,99,255,.15);color:var(--accent2)">'+name[0].toUpperCase()+'</div><div class="lb-name">'+name+cityTag+'</div><div class="lb-score'+(isMe?' me':'')+'">'+p.total_score+'</div></div>';
+    }).join('');
+  }
+}
+
+function copyTeamCode(){
+  if(!myTeam) return;
+  const link = location.origin+location.pathname+'?team='+myTeam.code;
+  navigator.clipboard.writeText(link).catch(()=>{});
+  track('invite_clicked', {type: 'team', code: myTeam.code});
+  toast(lang==='ru'?'Ссылка скопирована! 🔗':'Link copied! 🔗');
+}
+
+function leaveTeam(){
+  myTeam = null;
+  localStorage.removeItem('mfc_team');
+  renderMyTeam();
+  toast(lang==='ru'?'Вы покинули команду':'You left the team');
+}
+
+// showTeamsScreen is called from nav - goes to screen then renders
+function showTeamsScreen(){
+  showScreen('teams');
+}
+
+function renderTeamsScreen(){
+  renderMyTeam();
+  document.getElementById('th-title').textContent = lang==='ru'?'Команды':'Teams';
+  document.getElementById('th-sub').textContent = lang==='ru'?'Создай команду с городом и соревнуйтесь в городской лиге.':'Create a city team and compete in the city league.';
+  document.getElementById('t-create-team-btn').textContent = lang==='ru'?'⚡ Создать команду':'⚡ Create a team';
+  document.getElementById('t-team-or').textContent = lang==='ru'?'или вступить в существующую':'or join existing';
+  document.getElementById('t-join-team-btn').textContent = lang==='ru'?'Войти →':'Join →';
+  document.getElementById('team-join-input').placeholder = lang==='ru'?'Код команды':'Team code';
+  document.getElementById('tc-title').textContent = lang==='ru'?'Создать команду':'Create Team';
+  const tcSub = document.getElementById('tc-sub');
+  if(tcSub) tcSub.textContent = lang==='ru'?'Команда появится в городском рейтинге':'Team will appear in city leaderboard';
+  document.getElementById('team-name-input').placeholder = lang==='ru'?'Название (напр. Питерские Нейроны)':'Team name (e.g. Miami Sharks)';
+  document.getElementById('team-city-input').placeholder = lang==='ru'?'Город (напр. Санкт-Петербург)':'City (e.g. Miami)';
+  document.getElementById('tc-confirm-btn').textContent = lang==='ru'?'Создать →':'Create →';
+  document.getElementById('tc-cancel-btn').textContent = lang==='ru'?'← Отмена':'← Cancel';
+  document.getElementById('tm-invite-btn').textContent = lang==='ru'?'🔗 Пригласить друзей':'🔗 Invite friends';
+  document.getElementById('tm-leave-btn').textContent = lang==='ru'?'Покинуть команду':'Leave team';
+  document.getElementById('tm-members-label').textContent = lang==='ru'?'Участники':'Members';
+  document.getElementById('t-global-title').textContent = lang==='ru'?'🌆 Городской рейтинг':'🌆 City Leaderboard';
+  document.getElementById('nav-teams-label').textContent = lang==='ru'?'Команды':'Teams';
+  document.getElementById('n-teams').textContent = neurons;
+  document.getElementById('city-tab-teams').textContent = lang==='ru'?'Команды':'Teams';
+  document.getElementById('city-tab-players').textContent = lang==='ru'?'Игроки':'Players';
+}
+
+// ═══════════════════════════════════════════
+// SHOP & DAILY CHALLENGE
+// ═══════════════════════════════════════════
+const PACKS = [
+  {
+    id:'disney_extra', icon:'🏰', 
+    name:{en:'Disney Extended',ru:'Дисней Extended'},
+    desc:{en:'20 extra Disney questions',ru:'20 доп. вопросов Disney'},
+    price:100, color:'rgba(108,99,255,.2)',
+    questions:[
+      {cat:'DISNEY',q:{en:'Which Disney film features the song "Let It Go"?',ru:'В каком фильме Disney звучит "Let It Go"?'},a:{en:['Frozen','Tangled','Brave','Moana'],ru:['Холодное сердце','Рапунцель','Храбрая сердцем','Моана']},c:0,t:20},
+      {cat:'DISNEY',q:{en:"What is the name of Simba's evil uncle in The Lion King?",ru:'Как зовут злого дядю Симбы в Короле Льве?'},a:{en:['Mufasa','Scar','Rafiki','Zazu'],ru:['Муфаса','Шрам','Рафики','Зазу']},c:1,t:15},
+      {cat:'DISNEY',q:{en:"In Finding Nemo, what type of fish is Dory?",ru:'В "В поисках Немо" кем является Дори?'},a:{en:['Clownfish','Blue Tang','Shark','Starfish'],ru:['Рыба-клоун','Синий хирург','Акула','Морская звезда']},c:1,t:20},
+      {cat:'DISNEY',q:{en:"What is the name of the toy cowboy in Toy Story?",ru:'Как зовут игрушечного ковбоя в "Истории игрушек"?'},a:{en:['Buzz','Woody','Rex','Hamm'],ru:['Базз','Вуди','Рекс','Хэм']},c:1,t:15},
+      {cat:'DISNEY',q:{en:'Which princess has the ability to heal with her hair?',ru:'Какая принцесса исцеляет своими волосами?'},a:{en:['Elsa','Rapunzel','Merida','Moana'],ru:['Эльза','Рапунцель','Мерида','Моана']},c:1,t:20},
+    ]
+  },
+  {
+    id:'football', icon:'⚽',
+    name:{en:'Football Legends',ru:'Легенды футбола'},
+    desc:{en:'15 football history questions',ru:'15 вопросов по истории футбола'},
+    price:80, color:'rgba(68,204,136,.15)',
+    questions:[
+      {cat:'SPORTS',q:{en:'Which country won the 2022 FIFA World Cup?',ru:'Какая страна выиграла ЧМ 2022?'},a:{en:['France','Brazil','Argentina','Germany'],ru:['Франция','Бразилия','Аргентина','Германия']},c:2,t:20},
+      {cat:'SPORTS',q:{en:'Who holds the record for most goals in a single World Cup tournament?',ru:'Кто держит рекорд по голам на одном ЧМ?'},a:{en:['Ronaldo','Messi','Just Fontaine','Gerd Müller'],ru:['Роналду','Месси','Жюст Фонтен','Герд Мюллер']},c:2,t:25},
+      {cat:'SPORTS',q:{en:'Which club has won the most UEFA Champions League titles?',ru:'Какой клуб выиграл больше всего Лиг чемпионов?'},a:{en:['Barcelona','Bayern Munich','Real Madrid','Liverpool'],ru:['Барселона','Бавария','Реал Мадрид','Ливерпуль']},c:2,t:20},
+      {cat:'SPORTS',q:{en:'In which year was the first FIFA World Cup held?',ru:'В каком году прошёл первый ЧМ по футболу?'},a:{en:['1926','1930','1934','1938'],ru:['1926','1930','1934','1938']},c:1,t:25},
+      {cat:'SPORTS',q:{en:'How many players are on the field per team in football?',ru:'Сколько игроков в футбольной команде на поле?'},a:{en:['9','10','11','12'],ru:['9','10','11','12']},c:2,t:10},
+    ]
+  },
+  {
+    id:'science_pro', icon:'🔬',
+    name:{en:'Science Pro',ru:'Наука Pro'},
+    desc:{en:'Advanced science questions',ru:'Сложные вопросы по науке'},
+    price:120, color:'rgba(108,99,255,.15)',
+    questions:[
+      {cat:'SCIENCE',q:{en:'What is the speed of light in a vacuum (km/s)?',ru:'Скорость света в вакууме (км/с)?'},a:{en:['200,000','250,000','300,000','350,000'],ru:['200 000','250 000','300 000','350 000']},c:2,t:25},
+      {cat:'SCIENCE',q:{en:"What is the most abundant gas in Earth's atmosphere?",ru:'Самый распространённый газ в атмосфере Земли?'},a:{en:['Oxygen','Carbon dioxide','Nitrogen','Argon'],ru:['Кислород','Углекислый газ','Азот','Аргон']},c:2,t:20},
+      {cat:'SCIENCE',q:{en:'How many chromosomes does a human cell contain?',ru:'Сколько хромосом в клетке человека?'},a:{en:['23','44','46','48'],ru:['23','44','46','48']},c:2,t:25},
+      {cat:'SCIENCE',q:{en:'What particle has no charge in an atom?',ru:'Какая частица атома не имеет заряда?'},a:{en:['Proton','Electron','Neutron','Quark'],ru:['Протон','Электрон','Нейтрон','Кварк']},c:2,t:20},
+      {cat:'SCIENCE',q:{en:"DNA stands for?",ru:'ДНК расшифровывается как?'},a:{en:['Deoxyribonucleic Acid','Dinucleic Acid','Deoxyribose Nucleotide','Double Nucleic Acid'],ru:['Дезоксирибонуклеиновая кислота','Динуклеиновая кислота','Дезоксирибозный нуклеотид','Двойная нуклеиновая кислота']},c:0,t:25},
+    ]
+  },
+  {
+    id:'cinema_pro', icon:'🎬',
+    name:{en:'Cinema Classics',ru:'Киноклассика'},
+    desc:{en:'Classic films & directors',ru:'Классическое кино и режиссёры'},
+    price:90, color:'rgba(240,192,64,.1)',
+    questions:[
+      {cat:'CINEMA',q:{en:'Which film won the first-ever Academy Award for Best Picture?',ru:'Какой фильм получил первый Оскар за лучший фильм?'},a:{en:['Wings','Sunrise','The Jazz Singer','Chicago'],ru:['Крылья','Восход','Певец джаза','Чикаго']},c:0,t:30},
+      {cat:'CINEMA',q:{en:'Who directed 2001: A Space Odyssey?',ru:'Кто снял "2001: Космическая одиссея"?'},a:{en:['Spielberg','Kubrick','Nolan','Scott'],ru:['Спилберг','Кубрик','Нолан','Скотт']},c:1,t:20},
+      {cat:'CINEMA',q:{en:'In which year was the first sound film released commercially?',ru:'В каком году вышел первый коммерческий звуковой фильм?'},a:{en:['1921','1924','1927','1930'],ru:['1921','1924','1927','1930']},c:2,t:25},
+      {cat:'CINEMA',q:{en:'What nationality was Charlie Chaplin?',ru:'Какой национальности был Чарли Чаплин?'},a:{en:['American','French','British','Australian'],ru:['Американец','Француз','Британец','Австралиец']},c:2,t:20},
+      {cat:'CINEMA',q:{en:'Which film features I ll be back?',ru:'В каком фильме I ll be back?'},a:{en:['RoboCop','Total Recall','The Terminator','Predator'],ru:['РобоКоп','Вспомнить всё','Терминатор','Хищник']},c:2,t:20},
+    ]
+  },
+];
+
+let ownedPacks = new Set(JSON.parse(localStorage.getItem('mfc_packs')||'[]'));
+let dailyState = JSON.parse(localStorage.getItem('mfc_daily')||'{}');
+let refCode = localStorage.getItem('mfc_refcode')||null;
+
+// ── DAILY CHALLENGE ──────────────────────────────────────────────────────
+const DAILY_CHALLENGES = [
+  {id:'q5',    title:{en:'Answer 5 questions correctly',ru:'Ответь правильно на 5 вопросов'},    cat:'ALL',   count:5,  reward:50},
+  {id:'q5sci', title:{en:'5 Science questions correct', ru:'5 правильных по науке'},             cat:'SCIENCE',count:5, reward:60},
+  {id:'q5hist',title:{en:'5 History questions correct',  ru:'5 правильных по истории'},           cat:'HISTORY',count:5, reward:60},
+  {id:'q5geo', title:{en:'5 Geography questions',        ru:'5 вопросов по географии'},           cat:'GEOGRAPHY',count:5,reward:60},
+  {id:'perfect',title:{en:'Get a perfect round',         ru:'Идеальный раунд без ошибок'},        cat:'ALL',   count:1,  reward:100, perfect:true},
+  {id:'duel',  title:{en:'Win a duel',                   ru:'Выиграй дуэль'},                     cat:'DUEL',  count:1,  reward:80},
+  {id:'q10',   title:{en:'Answer 10 questions correctly',ru:'Ответь правильно на 10 вопросов'},   cat:'ALL',   count:10, reward:80},
+];
+
+function getTodayKey(){ return new Date().toISOString().slice(0,10); }
+
+function getDailyChallenge(){
+  const today = getTodayKey();
+  // Pick challenge based on day of year
+  const dayOfYear = Math.floor((new Date()-new Date(new Date().getFullYear(),0,0))/86400000);
+  return DAILY_CHALLENGES[dayOfYear % DAILY_CHALLENGES.length];
+}
+
+function loadDailyState(){
+  const today = getTodayKey();
+  if(dailyState.date !== today){
+    dailyState = {date:today, progress:0, done:false, streak: (dailyState.date === getPrevDay() ? (dailyState.streak||0) : 0)};
+    localStorage.setItem('mfc_daily', JSON.stringify(dailyState));
+  }
+  renderDailyChallenge();
+}
+
+function getPrevDay(){
+  const d = new Date(); d.setDate(d.getDate()-1);
+  return d.toISOString().slice(0,10);
+}
+
+function renderDailyChallenge(){
+  const ch = getDailyChallenge();
+  const L = T[lang];
+  // Update home teaser too
+  const homeLabel = document.getElementById('home-daily-label');
+  const homeTitle = document.getElementById('home-daily-title');
+  const homeReward = document.getElementById('home-daily-reward');
+  if(homeLabel) homeLabel.textContent = lang==='ru'?'Задание дня':'Daily Challenge';
+  if(homeTitle) homeTitle.textContent = (dailyState.done ? (lang==='ru'?'✓ Выполнено сегодня':'✓ Done today') : (ch.title[lang]||ch.title.en));
+  if(homeReward) homeReward.textContent = dailyState.done ? '✓' : '+'+ch.reward+' ⚡';
+  document.getElementById('daily-label').textContent = lang==='ru'?'Задание дня':'Daily Challenge';
+  document.getElementById('daily-title').textContent = ch.title[lang]||ch.title.en;
+  document.getElementById('daily-reward').textContent = '+'+ch.reward+' ⚡';
+  const prog = dailyState.progress||0;
+  const total = ch.count;
+  const pct = Math.min(prog/total*100, 100);
+  document.getElementById('daily-fill').style.width = pct+'%';
+  document.getElementById('daily-prog-txt').textContent = prog+' / '+total;
+  document.getElementById('daily-streak').textContent = '🔥 '+(dailyState.streak||0)+' '+(lang==='ru'?'дней подряд':'day streak');
+  const btn = document.getElementById('daily-play-btn');
+  const card = document.getElementById('daily-card');
+  if(dailyState.done){
+    btn.textContent = lang==='ru'?'✓ Выполнено!':'✓ Completed!';
+    btn.disabled = true; btn.style.opacity = '.6';
+    card.classList.add('daily-done');
+  } else {
+    btn.textContent = lang==='ru'?'Играть →':'Play now →';
+    btn.disabled = false; btn.style.opacity = '1';
+    card.classList.remove('daily-done');
+  }
+}
+
+function playDailyChallenge(){
+  const ch = getDailyChallenge();
+  track('daily_started', {challenge_id: ch.id, cat: ch.cat});
+  if(ch.cat === 'DUEL'){ showScreen('duel'); return; }
+  selectedCat = ch.cat === 'ALL' ? 'ALL' : ch.cat;
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('sel'));
+  if(ch.cat==='ALL') document.getElementById('chip-all').classList.add('sel');
+  showScreen('home');
+  setTimeout(startQuiz, 100);
+}
+
+function updateDailyProgress(correctAnswers, isPerfect){
+  if(dailyState.done) return;
+  const ch = getDailyChallenge();
+  if(ch.perfect && isPerfect){
+    dailyState.progress = ch.count;
+  } else if(ch.cat==='ALL'||ch.cat===curQ[0]?.cat){
+    dailyState.progress = (dailyState.progress||0) + correctAnswers;
+  }
+  if(dailyState.progress >= ch.count){
+    dailyState.done = true;
+    dailyState.streak = (dailyState.streak||0)+1;
+    neurons += ch.reward;
+    updNeurons(); saveNeurons();
+    track('daily_completed', {challenge_id: ch.id, streak: dailyState.streak, reward: ch.reward});
+    toast('🎯 '+(lang==='ru'?'Задание дня выполнено! +':'Daily challenge done! +')+ch.reward+' neurons', 3000);
+  }
+  localStorage.setItem('mfc_daily', JSON.stringify(dailyState));
+}
+
+// ── REFERRAL ─────────────────────────────────────────────────────────────
+
+function getPlayerLevel(n){
+  if(n>=1000) return {icon:'🧠',name:{en:'Genius',ru:'Гений'}};
+  if(n>=500)  return {icon:'🎓',name:{en:'Master',ru:'Мастер'}};
+  if(n>=200)  return {icon:'📚',name:{en:'Expert',ru:'Знаток'}};
+  if(n>=50)   return {icon:'⚡',name:{en:'Rising',ru:'Восходящий'}};
+  return {icon:'🌱',name:{en:'Beginner',ru:'Новичок'}};
+}
+
+function getOrCreateRefCode(){
+  if(!currentUser) return null;
+  if(!refCode){
+    refCode = currentUser.id.slice(0,8).toUpperCase();
+    localStorage.setItem('mfc_refcode', refCode);
+  }
+  return refCode;
+}
+
+function renderRefCard(){
+  const code = getOrCreateRefCode();
+  const L = T[lang];
+  document.getElementById('ref-title').textContent = lang==='ru'?'Пригласи друзей':'Invite friends';
+  document.getElementById('ref-sub').textContent = lang==='ru'?'Оба получат +50 нейронов при регистрации':'Both of you get +50 neurons when they sign up';
+  if(code){
+    const link = location.origin+location.pathname+'?ref='+code;
+    document.getElementById('ref-link').textContent = link;
+    document.getElementById('ref-copy-btn').textContent = lang==='ru'?'Копировать':'Copy';
+  } else {
+    document.getElementById('ref-link').textContent = lang==='ru'?'Войдите чтобы получить ссылку':'Sign in to get your link';
+  }
+  document.getElementById('ref-count-lbl').textContent = lang==='ru'?' друзей приглашено':' friends invited';
+  document.getElementById('ref-earned-lbl').textContent = lang==='ru'?' нейронов заработано':' neurons earned';
+}
+
+function copyRefLink(){
+  const code = getOrCreateRefCode();
+  if(!code){ toast(lang==='ru'?'Сначала войдите':'Sign in first'); return; }
+  const link = location.origin+location.pathname+'?ref='+code;
+  navigator.clipboard.writeText(link).catch(()=>{});
+  document.getElementById('ref-copy-btn').textContent = lang==='ru'?'Скопировано!':'Copied!';
+  setTimeout(()=>document.getElementById('ref-copy-btn').textContent=lang==='ru'?'Копировать':'Copy', 2000);
+}
+
+async function checkRefParam(){
+  const ref = new URLSearchParams(location.search).get('ref');
+  if(!ref||!currentUser) return;
+  const myRef = getOrCreateRefCode();
+  if(ref===myRef) return; // own link
+  const alreadyUsed = localStorage.getItem('mfc_ref_used');
+  if(alreadyUsed) return;
+  // Give bonus neurons
+  neurons += 50; updNeurons(); saveNeurons();
+  localStorage.setItem('mfc_ref_used','1');
+  toast('🎁 '+(lang==='ru'?'+50 нейронов за приглашение!':'+50 neurons referral bonus!'), 3000);
+}
+
+// ── PACKS SHOP ────────────────────────────────────────────────────────────
+function renderShop(){
+  loadDailyState();
+  renderRefCard();
+  document.getElementById('n-shop').textContent = neurons;
+  document.getElementById('shop-section-title').textContent = lang==='ru'?'Паки вопросов':'Question Packs';
+  const grid = document.getElementById('packs-grid');
+  grid.innerHTML = '';
+  PACKS.forEach(p=>{
+    const owned = ownedPacks.has(p.id);
+    const name = p.name[lang]||p.name.en;
+    const desc = p.desc[lang]||p.desc.en;
+    const freeTxt = lang==='ru'?'Бесплатно':'Free';
+    const card = document.createElement('div');
+    card.className = 'pack-card' + (owned?' owned':'');
+    card.innerHTML = '<div class="pack-icon">'+p.icon+'</div>'
+      +'<div class="pack-name">'+name+'</div>'
+      +'<div class="pack-desc">'+desc+'</div>'
+      +(owned
+        ? '<div class="pack-play-btn">'+(lang==='ru'?'▶ Играть':'▶ Play')+'</div>'
+        : '<div class="pack-price'+(p.price===0?' free':'')+'">'+(p.price===0?freeTxt:p.price+' ⚡')+'</div>'
+      );
+    if(owned){
+      card.addEventListener('click', ()=>startQuiz(p.id));
+    } else {
+      card.addEventListener('click', ()=>buyPack(p.id));
+    }
+    grid.appendChild(card);
+  });
+}
+
+function buyPack(id){
+  if(ownedPacks.has(id)){
+    toast(lang==='ru'?'Уже куплено!':'Already owned!');
+    return;
+  }
+  const pack = PACKS.find(p=>p.id===id);
+  if(!pack) return;
+  if(neurons < pack.price){
+    toast(lang==='ru'?'Недостаточно нейронов!':'Not enough neurons!');
+    return;
+  }
+  neurons -= pack.price;
+  ownedPacks.add(id);
+  localStorage.setItem('mfc_packs', JSON.stringify([...ownedPacks]));
+  updNeurons(); saveNeurons();
+  renderShop();
+  const playMsg = lang==='ru'
+    ? '🎉 Пак куплен! Играй в разделе ⚡ Играть — новые вопросы добавлены'
+    : '🎉 Pack unlocked! Play in ⚡ Play section — new questions added';
+  toast(playMsg, 4000);
+}
+
+function getAvailableQuestions(cat){
+  let pool = [...ALL_Q];
+  // Add owned pack questions
+  PACKS.forEach(p=>{
+    if(ownedPacks.has(p.id)) pool = pool.concat(p.questions);
+  });
+  if(cat==='ALL') return pool;
+  return pool.filter(q=>Array.isArray(cat)?cat.includes(q.cat):q.cat===cat);
+}
+
+// ═══════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════
+let _authed = false; // prevent double redirect
+
+async function initAuth(){
+  showScreen('auth');
+  const {data:{session}} = await sb.auth.getSession();
+  if(session && !_authed){
+    _authed = true;
+    currentUser = session.user;
+    onUserLoaded();
+    redirectAfterAuth();
+  }
+  sb.auth.onAuthStateChange((event, session)=>{
+    if(event === 'SIGNED_OUT'){ currentUser = null; _authed = false; return; }
+    if(session && (event === 'SIGNED_IN') && !_authed){
+      _authed = true;
+      currentUser = session.user;
+      onUserLoaded();
+      if(document.getElementById('auth').classList.contains('active')) redirectAfterAuth();
+    }
+  });
+}
+
+function redirectAfterAuth(){
+  checkRefParam();
+  // Only show onboarding once ever
+  if(!localStorage.getItem('mfc_onboarded')) checkOnboarding();
+  const p = new URLSearchParams(window.location.search);
+  if(p.get('duel')){ showScreen('duel'); document.getElementById('join-code-input').value=p.get('duel'); }
+  else if(p.get('tourn')){ showScreen('tournament'); document.getElementById('t-join-code').value=p.get('tourn'); }
+  else showScreen('home');
+}
+function onUserLoaded(){
+  if(!currentUser)return;
+  loadUserNeurons();
+}
+async function loadUserNeurons(){
+  if(!currentUser)return;
+  // Try new profiles table first, fallback to user_profiles
+  let data = null;
+  const {data: newData} = await sb.from('profiles').select('total_score,city,display_name').eq('id',currentUser.id).single();
+  if(newData){ data = {neurons: newData.total_score, city: newData.city}; }
+  else {
+    const {data: oldData} = await sb.from('user_profiles').select('neurons,city').eq('id',currentUser.id).single();
+    if(oldData) data = oldData;
+  }
+  if(data){
+    neurons=data.neurons||0; updNeurons();
+    if(data.city&&!localStorage.getItem('mfc_city'))localStorage.setItem('mfc_city',data.city);
+  }
+}
+async function saveNeurons(){
+  if(!currentUser)return;
+  const city=localStorage.getItem('mfc_city')||null;
+  const display_name=currentUser.user_metadata?.full_name||currentUser.email?.split('@')[0]||'Player';
+  // Save to new profiles table
+  sb.from('profiles').upsert({
+    id:currentUser.id, display_name, city, total_score:neurons, updated_at:new Date().toISOString()
+  }).then(()=>{});
+  // Also save to old user_profiles for backwards compat
+  sb.from('user_profiles').upsert({
+    id:currentUser.id, neurons, city, display_name, updated_at:new Date().toISOString()
+  }).then(()=>{});
+  if(myTeam) updateTeamNeurons();
+}
+async function signInGoogle(){
+  const btn = document.getElementById('google-sign-in-btn');
+  const errEl = document.getElementById('auth-error');
+  if(errEl) errEl.style.display='none';
+  if(btn){ btn.style.opacity='0.6'; btn.style.pointerEvents='none'; btn.querySelector('span').textContent=lang==='ru'?'Открываем Google...':'Opening Google...'; }
+  track('signup_started', {method:'google'});
+  try {
+    const redirectTo = window.location.origin + window.location.pathname;
+    const {error} = await sb.auth.signInWithOAuth({
+      provider:'google',
+      options:{ redirectTo, skipBrowserRedirect:false }
+    });
+    if(error){
+      // Show specific error so we know what's wrong
+      const errMsg = error.message||'Unknown error';
+      if(errEl){ errEl.textContent='Google error: '+errMsg+' | redirectTo: '+redirectTo; errEl.style.display='block'; }
+      if(btn){ btn.style.opacity=''; btn.style.pointerEvents=''; btn.querySelector('span').textContent=lang==='ru'?'Войти через Google':'Continue with Google'; }
+    }
+    // On success: browser redirects to Google — no further code runs here
+  } catch(e){
+    if(errEl){ errEl.textContent='Exception: '+(e.message||e)+' | Try Email auth instead.'; errEl.style.display='block'; }
+    if(btn){ btn.style.opacity=''; btn.style.pointerEvents=''; btn.querySelector('span').textContent=lang==='ru'?'Войти через Google':'Continue with Google'; }
+  }
+}
+function toggleEmailAuth(){
+  const form = document.getElementById('auth-email-form');
+  const btn = document.getElementById('auth-email-toggle-btn');
+  const txt = document.getElementById('auth-email-toggle-txt');
+  const isOpen = form.style.display !== 'none';
+  form.style.display = isOpen ? 'none' : 'block';
+  if(txt) txt.textContent = isOpen ? (lang==='ru'?'Войти через Email':'Sign in with Email') : (lang==='ru'?'Скрыть':'Hide');
+  if(!isOpen) document.getElementById('auth-email-input').focus();
+}
+
+function showAuthError(msg){
+  const el = document.getElementById('auth-error');
+  if(el){ el.textContent = msg; el.style.display = 'block'; }
+}
+function clearAuthError(){
+  const el = document.getElementById('auth-error');
+  if(el) el.style.display = 'none';
+}
+
+async function signInEmail(){
+  const email = document.getElementById('auth-email-input').value.trim();
+  const pass = document.getElementById('auth-pass-input').value;
+  if(!email || !pass){ showAuthError(lang==='ru'?'Введите email и пароль':'Enter email and password'); return; }
+  clearAuthError();
+  const btn = document.getElementById('auth-signin-btn');
+  if(btn){ btn.textContent = '...'; btn.disabled = true; }
+  const {data, error} = await sb.auth.signInWithPassword({email, password: pass});
+  if(btn){ btn.textContent = 'Sign In'; btn.disabled = false; }
+  if(error){
+    showAuthError(error.message === 'Invalid login credentials'
+      ? (lang==='ru'?'Неверный email или пароль':'Wrong email or password')
+      : error.message);
+  } else if(data.user){
+    _authed = true;
+    currentUser = data.user; onUserLoaded(); redirectAfterAuth();
+  }
+}
+
+async function signUpEmail(){
+  const email = document.getElementById('auth-email-input').value.trim();
+  const pass = document.getElementById('auth-pass-input').value;
+  if(!email){ showAuthError(lang==='ru'?'Введите email':'Enter email'); return; }
+  if(pass.length < 6){ showAuthError(lang==='ru'?'Пароль минимум 6 символов':'Password must be at least 6 chars'); return; }
+  clearAuthError();
+  const btn = document.getElementById('auth-signup-btn');
+  if(btn){ btn.textContent = '...'; btn.disabled = true; }
+  const {data, error} = await sb.auth.signUp({email, password: pass});
+  if(btn){ btn.textContent = lang==='ru'?'Регистрация':'Register'; btn.disabled = false; }
+  if(error){
+    showAuthError(error.message);
+  } else if(data.user && !data.user.identities?.length){
+    showAuthError(lang==='ru'?'Этот email уже зарегистрирован. Нажмите Sign In.':'This email is already registered. Use Sign In.');
+  } else if(data.session){
+    // Email confirmation disabled — logged in immediately
+    _authed = true;
+    track('signup_completed', {method: 'email'});
+    currentUser = data.user; onUserLoaded(); redirectAfterAuth();
+  } else {
+    // Email confirmation required
+    const hint = document.getElementById('auth-email-hint');
+    if(hint){ hint.style.color='var(--green)'; hint.textContent=lang==='ru'?'✓ Письмо отправлено — проверьте почту и подтвердите':'✓ Confirmation sent — check your email'; }
+  }
+}
+
+function continueAsGuest(){
+  const p=new URLSearchParams(window.location.search);
+  if(p.get('duel')){showScreen('duel');document.getElementById('join-code-input').value=p.get('duel');}
+  else if(p.get('tourn')){showScreen('tournament');document.getElementById('t-join-code').value=p.get('tourn');}
+  else showScreen('home');
+}
+
+// ═══════════════════════════════════════════
+// HOME
+// ═══════════════════════════════════════════
+function selectMode(m){
+  selectedMode=m;
+  document.getElementById('mode-feed').classList.toggle('active-mode',m==='feed');
+  document.getElementById('mode-duel').classList.toggle('active-mode',m==='duel');
+}
+function toggleCat(el){
+  const cat=el.dataset.cat;
+  if(cat==='ALL'){
+    document.querySelectorAll('.chip').forEach(c=>c.classList.remove('sel'));
+    el.classList.add('sel');selectedCat='ALL';
+  } else {
+    document.getElementById('chip-all').classList.remove('sel');
+    el.classList.toggle('sel');
+    const sels=[...document.querySelectorAll('.chip.sel')].map(c=>c.dataset.cat).filter(c=>c!=='ALL');
+    selectedCat=sels.length===0?'ALL':sels;
+  }
+}
+function startQuiz(packId){
+  if(selectedMode==='duel'){showScreen('duel');return;}
+  
+  // If specific pack selected, play ONLY that pack
+  if(packId){
+    const pack = PACKS.find(p=>p.id===packId);
+    if(pack && ownedPacks.has(packId)){
+      const packQs = pack.questions.map(getQ);
+      curQ = packQs.sort(()=>Math.random()-.5).slice(0,Math.min(10,packQs.length));
+      qIdx=0;correctCount=0;streak=0;bestStreak=0;
+      buildDots('prog-dots',curQ.length);
+      showScreen('quiz');loadQ();
+      return;
+    }
+  }
+  
+  // Progressive mode: group by answer count 2→3→4→5→6, 2 questions each
+  let pool = getAvailableQuestions(selectedCat);
+  if(pool.length<4) pool=ALL_Q;
+  
+  const byCount = {2:[],3:[],4:[],5:[],6:[]};
+  pool.forEach(q=>{
+    const n=q.a?.[lang]?.length||q.a?.en?.length||4;
+    if(byCount[n]) byCount[n].push(q);
+  });
+  
+  let progressive = [];
+  [2,3,4,5,6].forEach(n=>{
+    const qs = byCount[n].sort(()=>Math.random()-.5).slice(0,2);
+    progressive = progressive.concat(qs);
+  });
+  
+  // Fill remaining slots with random 4-option questions
+  if(progressive.length < 10){
+    const used = new Set(progressive.map(q=>q.q?.en||q.q));
+    const extra = pool.filter(q=>{
+      const key = q.q?.en||q.q;
+      return !used.has(key) && (q.a?.en?.length||q.a?.length||4)===4;
+    }).sort(()=>Math.random()-.5).slice(0, 10-progressive.length);
+    progressive = progressive.concat(extra);
+  }
+  
+  curQ = progressive.slice(0,10).map(getQ);
+  qIdx=0;correctCount=0;streak=0;bestStreak=0;
+  buildDots('prog-dots',curQ.length);
+  track('quiz_started', {cat: String(selectedCat), mode: selectedMode});
+  showScreen('quiz');loadQ();
+}
+
+// ═══════════════════════════════════════════
+// QUIZ
+// ═══════════════════════════════════════════
+function loadQ(){
+  answered=false;clearInterval(timerInt);
+  const q=curQ[qIdx];maxT=q.t;timeLeft=q.t;
+  document.getElementById('cat-pill').textContent=q.cat;
+  document.getElementById('q-counter').textContent=(qIdx+1)+'/'+curQ.length;
+  document.getElementById('q-text').textContent=q.q;
+  document.getElementById('fb').className='fb';
+  document.getElementById('next-btn').className='next-btn';
+  document.getElementById('next-btn').textContent=t('next');
+  // Render media if present
+  renderQMedia('q-media-container', q);
+  const ans=document.getElementById('answers');ans.innerHTML='';
+  q.a.forEach((a,i)=>{
+    const b=document.createElement('button');b.className='ans';
+    b.innerHTML='<span class="ans-l">'+LETTERS[i]+'</span><span>'+a+'</span>';
+    b.onclick=()=>pick(i);ans.appendChild(b);
+  });
+  setDot('prog-dots',qIdx,'active');renderTimer();
+  timerInt=setInterval(tick,1000);
+}
+function renderTimer(){
+  const pct=(timeLeft/maxT)*100;
+  const fill=document.getElementById('timer-fill');
+  fill.style.width=pct+'%';fill.style.background=pct<35?'#e05555':pct<60?'#f0a050':'#6c63ff';
+  const tv=document.getElementById('t-val');
+  tv.textContent=timeLeft+'s';tv.style.color=timeLeft<=5?'#e05555':timeLeft<=10?'#f0a050':'#8b83ff';
+  document.getElementById('p-val').textContent='+'+(curQ[qIdx]?getFixedPoints(curQ[qIdx].a.length):20);
+}
+function tick(){if(timeLeft<=0){clearInterval(timerInt);expire();return;}timeLeft--;renderTimer();}
+function expire(){
+  if(answered)return;answered=true;streak=0;updStreak();
+  document.querySelectorAll('#answers .ans').forEach((b,i)=>{b.disabled=true;if(i===curQ[qIdx].c)b.className='ans correct';});
+  showFb('fb',"⏱ "+curQ[qIdx].a[curQ[qIdx].c],false);
+  setDot('prog-dots',qIdx,'miss');document.getElementById('next-btn').className='next-btn show';
+}
+function pick(i){
+  if(answered)return;answered=true;clearInterval(timerInt);
+  const q=curQ[qIdx];
+  document.querySelectorAll('#answers .ans').forEach(b=>b.disabled=true);
+  const pts=getFixedPoints(q.a.length);
+  const timeSpent = maxT - timeLeft;
+  track('question_answered', {correct: i===q.c, cat: q.cat, q_idx: qIdx, time_ms: timeSpent*1000});
+  if(i===q.c){
+    document.querySelectorAll('#answers .ans')[i].className='ans correct';
+    neurons+=pts;correctCount++;streak++;
+    if(streak>bestStreak)bestStreak=streak;
+    updNeurons();
+    const pillEl=document.getElementById('n-quiz').closest('.neurons-pill');
+    if(pillEl){pillEl.classList.add('pop');setTimeout(()=>pillEl.classList.remove('pop'),220);}
+    showFb('fb',(streak>1?'🔥 '+streak+'x! ':'✓ ')+'+'+pts,true);
+    setDot('prog-dots',qIdx,'done');
+  } else {
+    document.querySelectorAll('#answers .ans')[i].className='ans wrong';
+    document.querySelectorAll('#answers .ans')[q.c].className='ans correct';
+    streak=0;
+    showFb('fb','✗ '+q.a[q.c],false);
+    setDot('prog-dots',qIdx,'miss');
+  }
+  updStreak();
+  document.getElementById('next-btn').className='next-btn show';
+}
+function updStreak(){
+  const el=document.getElementById('streak-pill');
+  if(streak>=2){el.style.display='flex';document.getElementById('streak-num').textContent=streak;}
+  else el.style.display='none';
+}
+function nextQ(){stopAudio();qIdx++;if(qIdx>=curQ.length)showScore();else loadQ();}
+function showScore(){
+  clearInterval(timerInt);
+  document.getElementById('sc-neurons').textContent=neurons;
+  document.getElementById('sc-correct').textContent=correctCount+'/'+curQ.length;
+  document.getElementById('sc-streak').textContent=bestStreak;
+  document.getElementById('sc-acc').textContent=Math.round(correctCount/curQ.length*100)+'%';
+  // Check badges
+  const earned=[];
+  if(checkBadges('first'))earned.push('first');
+  if(bestStreak>=3&&checkBadges('streak3'))earned.push('streak3');
+  if(bestStreak>=5&&checkBadges('streak5'))earned.push('streak5');
+  if(correctCount===curQ.length&&checkBadges('perfect'))earned.push('perfect');
+  if(neurons>=100&&checkBadges('neurons100'))earned.push('neurons100');
+  const popup=document.getElementById('badge-earned-popup');
+  if(earned.length>0){showBadgeEarned(earned[0]);popup.classList.add('show');}
+  else popup.classList.remove('show');
+  // Translate score screen buttons
+  const scShareBtn=document.getElementById('sc-share-btn');
+  if(scShareBtn)scShareBtn.textContent=lang==='ru'?'📤 Поделиться результатом':'📤 Share result';
+  const scAgainBtn=document.getElementById('sc-again-btn');
+  if(scAgainBtn)scAgainBtn.textContent=lang==='ru'?'⚡ Играть снова':'⚡ Play again';
+  const scDuelBtn=document.getElementById('sc-duel-btn');
+  if(scDuelBtn)scDuelBtn.textContent=lang==='ru'?'⚔️ Дуэль':'⚔️ Live Duel';
+  saveNeurons();
+  saveGameStats(correctCount,curQ.length,bestStreak);
+  updateDailyProgress(correctCount, correctCount===curQ.length);
+  track('quiz_completed', {correct: correctCount, total: curQ.length, score: neurons, streak: bestStreak});
+  showScreen('score');
+}
+function restartQuiz(){showScreen('home');setTimeout(startQuiz,50);}
+
+// ─── SHARE ─────────────────────────────────────────────────────────────────
+function showShareScreen(){
+  track('share_clicked', {score: neurons, correct: correctCount});
+  const city = localStorage.getItem('mfc_city')||'';
+  document.getElementById('share-score').textContent = neurons;
+  document.getElementById('share-label').textContent = lang==='ru'?'нейронов заработано':'neurons earned';
+  const accuracy = curQ.length>0?Math.round(correctCount/curQ.length*100):0;
+  document.getElementById('share-rank').textContent = accuracy+'% accuracy · '+correctCount+'/'+curQ.length+' correct';
+  const cityEl=document.getElementById('share-city');
+  cityEl.textContent = city ? '📍 '+city : (lang==='ru'?'Добавь город в профиль':'Add city in profile');
+  document.getElementById('n-share').textContent = neurons;
+  // Translate share buttons
+  document.getElementById('sh-tg').textContent = lang==='ru'?'Поделиться в Telegram':'Share to Telegram';
+  document.getElementById('sh-wa').textContent = lang==='ru'?'Поделиться в WhatsApp':'Share to WhatsApp';
+  document.getElementById('sh-copy').textContent = lang==='ru'?'Скопировать ссылку':'Copy link';
+  document.getElementById('sh-duel').textContent = lang==='ru'?'Вызвать друга на дуэль':'Challenge a friend';
+  document.getElementById('sh-team').textContent = lang==='ru'?'Вступить в команду':'Join / create team';
+  document.getElementById('sh-home').textContent = lang==='ru'?'← На главную':'← Back to home';
+  showScreen('share');
+}
+
+function getShareText(){
+  const city = localStorage.getItem('mfc_city');
+  const cityPart = city ? ' from '+city : '';
+  const acc = curQ.length>0?Math.round(correctCount/curQ.length*100):0;
+  if(lang==='ru'){
+    return `Я набрал ${neurons} нейронов в Mind Fight Club${city?' ('+city+')':''}!\n${correctCount}/${curQ.length} правильных (${acc}% точность)\nСможешь лучше? 🧠\n${location.origin+location.pathname}`;
+  }
+  return `I scored ${neurons} neurons in Mind Fight Club${city?' ('+city+')':''}!\n${correctCount}/${curQ.length} correct (${acc}% accuracy)\nCan you beat me? 🧠\n${location.origin+location.pathname}`;
+}
+
+function shareToTelegram(){
+  const text = encodeURIComponent(getShareText());
+  window.open('https://t.me/share/url?url='+encodeURIComponent(location.origin+location.pathname)+'&text='+text,'_blank');
+}
+function shareToWhatsApp(){
+  const text = encodeURIComponent(getShareText());
+  window.open('https://wa.me/?text='+text,'_blank');
+}
+function copyShareLink(){
+  const text = getShareText();
+  navigator.clipboard.writeText(text).then(()=>{
+    const btn=document.getElementById('sh-copy');
+    if(btn){btn.textContent='✓ '+(lang==='ru'?'Скопировано!':'Copied!');setTimeout(()=>btn.textContent=lang==='ru'?'🔗 Скопировать ссылку':'🔗 Copy link',2000);}
+  }).catch(()=>{});
+}
+
+// ─── PROFILE CITY ──────────────────────────────────────────────────────────
+function toggleCityEdit(){
+  const edit=document.getElementById('profile-city-edit');
+  const btn=document.getElementById('profile-city-btn');
+  if(!edit)return;
+  const isOpen=edit.style.display!=='none';
+  edit.style.display=isOpen?'none':'block';
+  btn.style.display=isOpen?'':'none';
+  if(!isOpen){
+    const input=document.getElementById('profile-city-input');
+    input.value=localStorage.getItem('mfc_city')||'';
+    input.focus();
+  }
+}
+async function saveProfileCity(){
+  const city=document.getElementById('profile-city-input').value.trim();
+  if(city){
+    localStorage.setItem('mfc_city',city);
+    const cityDisplay=document.getElementById('profile-city-display');
+    const cityTag=document.getElementById('profile-city-tag');
+    const cityBtn=document.getElementById('profile-city-btn');
+    if(cityDisplay)cityDisplay.textContent=city;
+    if(cityTag)cityTag.style.display='inline-flex';
+    if(cityBtn)cityBtn.style.display='none';
+    document.getElementById('profile-city-edit').style.display='none';
+    // Save to Supabase too
+    if(currentUser){
+      await sb.from('user_profiles').upsert({id:currentUser.id,city,display_name:currentUser.user_metadata?.full_name||currentUser.email?.split('@')[0]||'Player',neurons,updated_at:new Date().toISOString()});
+    }
+    toast(lang==='ru'?'📍 Город сохранён':'📍 City saved');
+  }
+}
+function renderProfileCity(){
+  const city=localStorage.getItem('mfc_city')||'';
+  const cityDisplay=document.getElementById('profile-city-display');
+  const cityTag=document.getElementById('profile-city-tag');
+  const cityBtn=document.getElementById('profile-city-btn');
+  if(cityDisplay)cityDisplay.textContent=city;
+  if(cityTag)cityTag.style.display=city?'inline-flex':'none';
+  if(cityBtn){
+    cityBtn.style.display=city?'none':'';
+    cityBtn.textContent=lang==='ru'?'+ Добавить город':'+ Add city';
+  }
+}
+
+// ═══════════════════════════════════════════
+// DUEL — clean rewrite
+// ═══════════════════════════════════════════
+let duelCode=null,duelRole=null,duelPoll=null;
+let duelQs=[],duelIdx=0,duelMyScore=0,duelOppScore=0;
+let duelAnswered=false,duelTimer=null,duelTimeLeft=0,duelMaxT=0;
+let duelMyName='You',duelOppNameStr='Opponent';
+
+function showDuelSection(id){
+  document.querySelectorAll('.duel-section').forEach(s=>s.classList.toggle('active',s.id===id));
+}
+
+async function createDuel(){
+  duelCode=randCode();duelRole='host';
+  duelMyName=currentUser?.user_metadata?.full_name?.split(' ')[0]||'Host';
+  duelMyScore=0;duelOppScore=0;duelQs=[];duelIdx=0;
+
+  await sb.from('duel_rooms').upsert({code:duelCode,host_score:0,guest_score:0,status:'waiting',questions:null,created_at:new Date().toISOString()});
+  track('duel_created', {code: duelCode});
+
+  document.getElementById('d-code-display').textContent=duelCode;
+  const link=location.origin+location.pathname+'?duel='+duelCode;
+  document.getElementById('d-link-txt').textContent=link;
+  document.getElementById('d-me-name').textContent=duelMyName;
+  document.getElementById('d-start-btn').style.display='none';
+  document.getElementById('d-wait-txt').style.display='flex';
+
+  showDuelSection('d-waiting');
+  startDuelPoll();
+  checkBadges('duel');renderBadges();
+}
+
+async function joinDuel(){
+  const code=document.getElementById('join-code-input').value.trim().toUpperCase();
+  if(code.length!==6){toast('Enter 6-letter code');return;}
+  const {data,error}=await sb.from('duel_rooms').select('*').eq('code',code).single();
+  if(error||!data){toast('Room not found');return;}
+  if(data.status==='started'){toast('Game already started');return;}
+
+  duelCode=code;duelRole='guest';
+  duelMyName=currentUser?.user_metadata?.full_name?.split(' ')[0]||'Guest'+(Math.floor(Math.random()*99)+1);
+  duelMyScore=0;duelOppScore=0;duelQs=[];duelIdx=0;
+
+  await sb.from('duel_rooms').update({status:'ready'}).eq('code',code);
+  track('duel_joined', {code});
+
+  document.getElementById('d-code-display').textContent=code;
+  const link=location.origin+location.pathname+'?duel='+code;
+  document.getElementById('d-link-txt').textContent=link;
+  document.getElementById('d-me-name').textContent=duelMyName;
+  document.getElementById('opp-name-wait').textContent='Host';
+  document.getElementById('opp-status-wait').textContent=t('dReady');
+  document.getElementById('opp-status-wait').className='p-st ok';
+  document.getElementById('opp-pulse').style.display='none';
+  document.getElementById('d-start-btn').style.display='none';
+  document.getElementById('d-wait-txt').style.display='flex';
+
+  showDuelSection('d-waiting');
+  startDuelPoll();
+}
+
+function startDuelPoll(){
+  if(duelPoll)clearInterval(duelPoll);
+  duelPoll=setInterval(async()=>{
+    const {data}=await sb.from('duel_rooms').select('*').eq('code',duelCode).single();
+    if(!data)return;
+    // Host sees guest joined
+    if(duelRole==='host'&&data.status==='ready'){
+      document.getElementById('opp-name-wait').textContent='Opponent';
+      document.getElementById('opp-status-wait').textContent=t('dReady');
+      document.getElementById('opp-status-wait').className='p-st ok';
+      document.getElementById('opp-pulse').style.display='none';
+      document.getElementById('d-start-btn').style.display='block';
+      document.getElementById('d-wait-txt').style.display='none';
+    }
+    // Guest sees game started — load questions from DB
+    if(duelRole==='guest'&&data.status==='started'&&duelQs.length===0){
+      const qs=data.questions;
+      if(qs&&qs.length>0){
+        // Map stored questions to current language
+        duelQs=qs.map(q=>({...q,q:q.q[lang]||q.q.en||q.q,a:q.a[lang]||q.a.en||q.a}));
+        clearInterval(duelPoll);
+        startDuelBattle();
+      }
+    }
+    // Update opponent score
+    if(data.status==='started'||data.status==='done'){
+      const oppScore=duelRole==='host'?data.guest_score:data.host_score;
+      if(oppScore!==undefined){duelOppScore=oppScore;updateDuelScores();}
+    }
+    if(data.status==='done'&&duelQs.length>0){
+      clearInterval(duelPoll);
+      setTimeout(()=>endDuel(data),500);
+    }
+  },2000);
+}
+
+async function startDuelGame(){
+  // Pick 7 bilingual questions
+  const raw=[...ALL_Q].sort(()=>Math.random()-.5).slice(0,7);
+  // Store both languages
+  const questions=raw.map(q=>({cat:q.cat,q:q.q,a:q.a,c:q.c,t:q.t}));
+  await sb.from('duel_rooms').update({status:'started',questions}).eq('code',duelCode);
+  duelQs=questions.map(q=>({...q,q:q.q[lang]||q.q.en,a:q.a[lang]||q.a.en}));
+  clearInterval(duelPoll);
+  startDuelBattle();
+}
+
+function startDuelBattle(){
+  duelIdx=0;duelMyScore=0;duelOppScore=0;
+  // Reset scores in DB to 0 for clean start
+  if(duelRole==='guest'){
+    sb.from('duel_rooms').update({guest_score:0}).eq('code',duelCode);
+  }
+  document.getElementById('ds-me-name').textContent=duelMyName;
+  document.getElementById('ds-opp-name').textContent=duelRole==='host'?'Opponent':'Host';
+  document.getElementById('d-res-opp-name').textContent=duelRole==='host'?'Opponent':'Host';
+  document.getElementById('d-res-me-name').textContent=duelMyName;
+  updateDuelScores();
+  buildDots('d-prog-dots',duelQs.length);
+  showDuelSection('d-battle');
+  loadDuelQ();
+}
+
+function loadDuelQ(){
+  duelAnswered=false;clearInterval(duelTimer);
+  const q=duelQs[duelIdx];duelMaxT=q.t;duelTimeLeft=q.t;
+  document.getElementById('d-cat-pill').textContent=q.cat;
+  document.getElementById('d-q-counter').textContent=(duelIdx+1)+'/'+duelQs.length;
+  document.getElementById('d-q-text').textContent=q.q;
+  renderQMedia('d-media-container', q);
+  document.getElementById('d-fb').className='fb';
+  document.getElementById('d-next-btn').className='next-btn';
+  document.getElementById('d-next-btn').textContent=t('next');
+  document.getElementById('opp-hint').textContent='';
+  document.getElementById('opp-hint').className='opp-hint';
+  const ans=document.getElementById('d-answers');ans.innerHTML='';
+  q.a.forEach((a,i)=>{
+    const b=document.createElement('button');b.className='ans';
+    b.innerHTML='<span class="ans-l">'+LETTERS[i]+'</span><span>'+a+'</span>';
+    b.onclick=()=>pickDuel(i);ans.appendChild(b);
+  });
+  setDot('d-prog-dots',duelIdx,'active');
+  renderDuelTimer();
+  duelTimer=setInterval(duelTick,1000);
+}
+
+function renderDuelTimer(){
+  const pct=(duelTimeLeft/duelMaxT)*100;
+  const fill=document.getElementById('d-timer-fill');
+  fill.style.width=pct+'%';fill.style.background=pct<35?'#e05555':pct<60?'#f0a050':'#6c63ff';
+  const tv=document.getElementById('d-t-val');
+  tv.textContent=duelTimeLeft+'s';tv.style.color=duelTimeLeft<=5?'#e05555':duelTimeLeft<=10?'#f0a050':'#8b83ff';
+  document.getElementById('d-p-val').textContent='+'+(duelQs[duelIdx]?getFixedPoints(duelQs[duelIdx].a.length):20);
+}
+function duelTick(){if(duelTimeLeft<=0){clearInterval(duelTimer);duelExpire();return;}duelTimeLeft--;renderDuelTimer();}
+function duelExpire(){
+  if(duelAnswered)return;duelAnswered=true;
+  document.querySelectorAll('#d-answers .ans').forEach((b,i)=>{b.disabled=true;if(i===duelQs[duelIdx].c)b.className='ans correct';});
+  showFb('d-fb','⏱ '+duelQs[duelIdx].a[duelQs[duelIdx].c],false);
+  setDot('d-prog-dots',duelIdx,'miss');
+  saveDuelScore();
+  document.getElementById('d-next-btn').className='next-btn show';
+}
+async function pickDuel(i){
+  if(duelAnswered)return;duelAnswered=true;clearInterval(duelTimer);
+  const q=duelQs[duelIdx];
+  document.querySelectorAll('#d-answers .ans').forEach(b=>b.disabled=true);
+  const pts=getFixedPoints(q.a.length);
+  if(i===q.c){
+    document.querySelectorAll('#d-answers .ans')[i].className='ans correct';
+    duelMyScore+=pts;updateDuelScores();
+    showFb('d-fb','✓ +'+pts,true);setDot('d-prog-dots',duelIdx,'done');
+  } else {
+    document.querySelectorAll('#d-answers .ans')[i].className='ans wrong';
+    document.querySelectorAll('#d-answers .ans')[q.c].className='ans correct';
+    showFb('d-fb','✗ '+q.a[q.c],false);setDot('d-prog-dots',duelIdx,'miss');
+  }
+  saveDuelScore();
+  document.getElementById('d-next-btn').className='next-btn show';
+}
+async function saveDuelScore(){
+  const field=duelRole==='host'?'host_score':'guest_score';
+  const isLast=duelIdx>=duelQs.length-1;
+  const update={[field]:duelMyScore};
+  if(isLast)update.status='done';
+  await sb.from('duel_rooms').update(update).eq('code',duelCode);
+  // Poll for opponent answered hint
+  const {data}=await sb.from('duel_rooms').select('host_score,guest_score').eq('code',duelCode).single();
+  if(data){
+    const oppF=duelRole==='host'?'guest_score':'host_score';
+    if(data[oppF]>duelOppScore){
+      document.getElementById('opp-hint').textContent=t('oppAnswered');
+      document.getElementById('opp-hint').className='opp-hint answered';
+    }
+    duelOppScore=data[oppF]||0;updateDuelScores();
+  }
+}
+function updateDuelScores(){
+  document.getElementById('ds-me-score').textContent=duelMyScore;
+  document.getElementById('ds-opp-score').textContent=duelOppScore;
+}
+async function duelNextQ(){
+  stopAudio();
+  duelIdx++;
+  if(duelIdx>=duelQs.length){
+    clearInterval(duelTimer);
+    // Mark my side as finished
+    const myField=duelRole==='host'?'host_done':'guest_done';
+    await sb.from('duel_rooms').update({[myField]:true}).eq('code',duelCode);
+    // Show "waiting for opponent" if they haven't finished
+    document.getElementById('d-next-btn').className='next-btn';
+    document.getElementById('d-fb').textContent='';
+    document.getElementById('d-fb').className='fb';
+    document.getElementById('d-q-text').textContent='⏳ Waiting for opponent to finish...';
+    document.querySelectorAll('#d-answers .ans').forEach(b=>{b.disabled=true;b.style.opacity='.3';});
+    // Poll for both done
+    const waitPoll=setInterval(async()=>{
+      const {data}=await sb.from('duel_rooms').select('*').eq('code',duelCode).single();
+      if(!data)return;
+      const bothDone=data.host_done&&data.guest_done;
+      if(bothDone||(Date.now()-new Date(data.created_at).getTime()>300000)){
+        clearInterval(waitPoll);
+        endDuel(data);
+      }
+    },1500);
+  } else {
+    loadDuelQ();
+  }
+}
+function endDuel(data){
+  clearInterval(duelPoll);clearInterval(duelTimer);
+  // Use local score for me, DB score for opponent
+  const myS=duelMyScore;
+  const hostS=data?.host_score||0;
+  const guestS=data?.guest_score||0;
+  const oppS=duelRole==='host'?guestS:hostS;
+  const win=myS>oppS,tie=myS===oppS;
+  if(win)saveDuelWin();
+  track('duel_completed', {result: win?'win':tie?'tie':'lose', my_score: myS, opp_score: oppS});
+  document.getElementById('d-result-icon').textContent=win?'🏆':tie?'🤝':'😤';
+  document.getElementById('d-result-title').textContent=win?t('dWin'):tie?t('dTie'):t('dLose');
+  document.getElementById('d-result-sub').textContent=win?t('dWinSub'):tie?t('dTieSub'):t('dLoseSub');
+  document.getElementById('d-res-me-score').textContent=myS;
+  document.getElementById('d-res-opp-score').textContent=oppS;
+  document.getElementById('d-res-me-box').className='result-box'+(win?' winner':'');
+  document.getElementById('d-res-opp-box').className='result-box'+(oppS>myS?' winner':'');
+  showDuelSection('d-result');
+}
+function resetDuel(){
+  clearInterval(duelPoll);clearInterval(duelTimer);
+  duelCode=null;duelRole=null;duelQs=[];
+  document.getElementById('join-code-input').value='';
+  showDuelSection('d-lobby');
+}
+function copyDuelLink(){
+  const link=document.getElementById('d-link-txt').textContent;
+  navigator.clipboard.writeText(link).catch(()=>{});
+  document.getElementById('d-copy-btn').textContent=t('dCopied');
+  setTimeout(()=>document.getElementById('d-copy-btn').textContent=t('dCopy'),2000);
+}
+
+// ═══════════════════════════════════════════
+// TOURNAMENT
+// ═══════════════════════════════════════════
+let tCode=null,tRole=null,tPoll=null,tTimer=null;
+let tQs=[],tIdx=0,tMyScore=0,tPlayers={},tMyName='Player';
+let tAnswered=false,tTimeLeft=0,tMaxT=0;
+
+function showTournSection(id){
+  document.querySelectorAll('.tourn-section').forEach(s=>s.classList.toggle('active',s.id===id));
+}
+
+async function createTournament(){
+  tCode=randCode();tRole='host';
+  tMyName=currentUser?.user_metadata?.full_name?.split(' ')[0]||'Host';
+  tMyScore=0;tQs=[];tIdx=0;tPlayers={};
+
+  const players={};players[tMyName]={score:0,done:false,isHost:true};
+  await sb.from('tournaments').upsert({code:tCode,status:'waiting',questions:null,players});
+
+  document.getElementById('t-code-display').textContent=tCode;
+  const link=location.origin+location.pathname+'?tourn='+tCode;
+  document.getElementById('t-link-txt').textContent=link;
+  document.getElementById('t-start-btn').style.display='block';
+  document.getElementById('t-wait-txt').style.display='none';
+
+  showTournSection('t-waiting');
+  startTournPoll();
+  checkBadges('tourn');renderBadges();
+}
+
+async function joinTournament(){
+  const code=document.getElementById('t-join-code').value.trim().toUpperCase();
+  if(code.length!==6){toast('Enter 6-letter code');return;}
+  const {data,error}=await sb.from('tournaments').select('*').eq('code',code).single();
+  if(error||!data){toast('Room not found');return;}
+  if(data.status==='started'){toast('Tournament already started');return;}
+
+  tCode=code;tRole='guest';
+  tMyName=currentUser?.user_metadata?.full_name?.split(' ')[0]||'Guest'+(Math.floor(Math.random()*99)+1);
+  tMyScore=0;tQs=[];tIdx=0;
+
+  const players=data.players||{};
+  players[tMyName]={score:0,done:false};
+  await sb.from('tournaments').update({players}).eq('code',tCode);
+
+  document.getElementById('t-code-display').textContent=tCode;
+  const link=location.origin+location.pathname+'?tourn='+tCode;
+  document.getElementById('t-link-txt').textContent=link;
+  document.getElementById('t-start-btn').style.display='none';
+  document.getElementById('t-wait-txt').style.display='flex';
+
+  showTournSection('t-waiting');
+  startTournPoll();
+}
+
+function startTournPoll(){
+  if(tPoll)clearInterval(tPoll);
+  tPoll=setInterval(async()=>{
+    const {data}=await sb.from('tournaments').select('*').eq('code',tCode).single();
+    if(!data)return;
+    tPlayers=data.players||{};
+    renderTPlayerList();
+    if(data.status==='started'&&tQs.length===0){
+      const qs=data.questions;
+      if(qs&&qs.length>0){
+        tQs=qs.map(q=>({...q,q:q.q[lang]||q.q.en||q.q,a:q.a[lang]||q.a.en||q.a}));
+        clearInterval(tPoll);
+        buildTGame();
+        // Resume polling for live scores only
+        tPoll=setInterval(async()=>{
+          const {data:d}=await sb.from('tournaments').select('players,status').eq('code',tCode).single();
+          if(d){tPlayers=d.players||{};renderTLiveLeaderboard();if(d.status==='done'){clearInterval(tPoll);showTResults(d.players);}}
+        },3000);
+      }
+    }
+    if(data.status==='done'&&tQs.length>0){clearInterval(tPoll);showTResults(data.players);}
+  },2000);
+}
+
+function renderTPlayerList(){
+  const el=document.getElementById('t-players-list');if(!el)return;
+  const names=Object.keys(tPlayers);
+  document.getElementById('t-player-count').textContent=names.length+'/50';
+  el.innerHTML=names.map(name=>{
+    const isMe=name===tMyName;
+    const isHost=tPlayers[name].isHost;
+    const score=tPlayers[name].score||0;
+    return '<div class="lb-row'+(isMe?' me':'')+'"><div class="lb-av" style="background:rgba(108,99,255,.15);color:var(--accent2)">'+name[0].toUpperCase()+'</div><div class="lb-name">'+name+(isHost?' 👑':'')+'</div><div class="lb-score">'+score+'</div></div>';
+  }).join('');
+}
+
+function renderTLiveLeaderboard(){
+  const el=document.getElementById('t-live-lb');if(!el)return;
+  const sorted=Object.entries(tPlayers).sort((a,b)=>b[1].score-a[1].score);
+  const medals=['🥇','🥈','🥉'];
+  el.innerHTML=sorted.map(([name,d],i)=>`<div class="lb-row${name===tMyName?' me':''}">
+    <div class="lb-rank">${medals[i]||i+1}</div>
+    <div class="lb-av" style="background:rgba(108,99,255,.15);color:var(--accent2)">${name[0].toUpperCase()}</div>
+    <div class="lb-name">${name}</div>
+    <div class="lb-score${name===tMyName?' me':''}">${d.score||0}</div>
+  </div>`).join('');
+}
+
+async function startTournament(){
+  const raw=[...ALL_Q].sort(()=>Math.random()-.5).slice(0,10);
+  const questions=raw.map(q=>({cat:q.cat,q:q.q,a:q.a,c:q.c,t:q.t}));
+  await sb.from('tournaments').update({status:'started',questions}).eq('code',tCode);
+  tQs=questions.map(q=>({...q,q:q.q[lang]||q.q.en,a:q.a[lang]||q.a.en}));
+  clearInterval(tPoll);
+  buildTGame();
+  tPoll=setInterval(async()=>{
+    const {data}=await sb.from('tournaments').select('players,status').eq('code',tCode).single();
+    if(data){tPlayers=data.players||{};renderTLiveLeaderboard();if(data.status==='done'){clearInterval(tPoll);showTResults(data.players);}}
+  },3000);
+}
+
+function buildTGame(){
+  tIdx=0;tMyScore=0;
+  buildDots('t-prog-dots',tQs.length);
+  showTournSection('t-game');
+  loadTQ();
+}
+
+function loadTQ(){
+  tAnswered=false;clearInterval(tTimer);
+  const q=tQs[tIdx];tMaxT=q.t;tTimeLeft=q.t;
+  document.getElementById('t-cat-pill').textContent=q.cat;
+  document.getElementById('t-q-counter').textContent=(tIdx+1)+'/'+tQs.length;
+  document.getElementById('t-q-text').textContent=q.q;
+  renderQMedia('t-media-container', q);
+  document.getElementById('t-fb').className='fb';
+  document.getElementById('t-next-btn').className='next-btn';
+  document.getElementById('t-next-btn').textContent=t('next');
+  const ans=document.getElementById('t-answers');ans.innerHTML='';
+  q.a.forEach((a,i)=>{
+    const b=document.createElement('button');b.className='ans';
+    b.innerHTML='<span class="ans-l">'+LETTERS[i]+'</span><span>'+a+'</span>';
+    b.onclick=()=>pickT(i);ans.appendChild(b);
+  });
+  setDot('t-prog-dots',tIdx,'active');renderTTimer();
+  tTimer=setInterval(tTick,1000);
+}
+function renderTTimer(){
+  const pct=(tTimeLeft/tMaxT)*100;
+  const fill=document.getElementById('t-timer-fill');
+  fill.style.width=pct+'%';fill.style.background=pct<35?'#e05555':pct<60?'#f0a050':'#6c63ff';
+  const tv=document.getElementById('t-t-val');
+  tv.textContent=tTimeLeft+'s';tv.style.color=tTimeLeft<=5?'#e05555':tTimeLeft<=10?'#f0a050':'#8b83ff';
+  document.getElementById('t-p-val').textContent='+'+(tQs[tIdx]?getFixedPoints(tQs[tIdx].a.length):20);
+}
+function tTick(){if(tTimeLeft<=0){clearInterval(tTimer);tExpire();return;}tTimeLeft--;renderTTimer();}
+function tExpire(){
+  if(tAnswered)return;tAnswered=true;
+  document.querySelectorAll('#t-answers .ans').forEach((b,i)=>{b.disabled=true;if(i===tQs[tIdx].c)b.className='ans correct';});
+  showFb('t-fb','⏱ '+tQs[tIdx].a[tQs[tIdx].c],false);
+  setDot('t-prog-dots',tIdx,'miss');
+  saveTScore();
+  document.getElementById('t-next-btn').className='next-btn show';
+}
+async function pickT(i){
+  if(tAnswered)return;tAnswered=true;clearInterval(tTimer);
+  const q=tQs[tIdx];
+  document.querySelectorAll('#t-answers .ans').forEach(b=>b.disabled=true);
+  const pts=getFixedPoints(q.a.length);
+  if(i===q.c){
+    document.querySelectorAll('#t-answers .ans')[i].className='ans correct';
+    tMyScore+=pts;document.getElementById('t-my-score-display').textContent=tMyScore;
+    showFb('t-fb','✓ +'+pts,true);setDot('t-prog-dots',tIdx,'done');
+  } else {
+    document.querySelectorAll('#t-answers .ans')[i].className='ans wrong';
+    document.querySelectorAll('#t-answers .ans')[q.c].className='ans correct';
+    showFb('t-fb','✗ '+q.a[q.c],false);setDot('t-prog-dots',tIdx,'miss');
+  }
+  saveTScore();
+  document.getElementById('t-next-btn').className='next-btn show';
+}
+async function saveTScore(){
+  const {data}=await sb.from('tournaments').select('players').eq('code',tCode).single();
+  const players=data?.players||{};
+  const isLast=tIdx>=tQs.length-1;
+  players[tMyName]={score:tMyScore,done:isLast,isHost:tRole==='host'};
+  const update={players};
+  if(isLast&&Object.values(players).every(p=>p.done))update.status='done';
+  await sb.from('tournaments').update(update).eq('code',tCode);
+  renderTLiveLeaderboard();
+}
+async function tNextQ(){
+  tIdx++;
+  if(tIdx>=tQs.length){
+    await saveTScore();
+    const {data}=await sb.from('tournaments').select('players').eq('code',tCode).single();
+    showTResults(data?.players||{});
+    await sb.from('tournaments').update({status:'done'}).eq('code',tCode);
+  } else {
+    loadTQ();
+  }
+}
+function showTResults(players){
+  clearInterval(tPoll);clearInterval(tTimer);
+  const sorted=Object.entries(players).sort((a,b)=>b[1].score-a[1].score);
+  const medals=['🥇','🥈','🥉'];
+  document.getElementById('t-final-lb').innerHTML=sorted.map(([name,d],i)=>{
+    const isMe=name===tMyName;
+    return '<div class="lb-row'+(isMe?' me':'')+'"><div class="lb-rank">'+(medals[i]||i+1)+'</div><div class="lb-av" style="background:rgba(108,99,255,.15);color:var(--accent2)">'+name[0].toUpperCase()+'</div><div class="lb-name">'+name+'</div><div class="lb-score'+(isMe?' me':'')+'">'+(d.score||0)+'</div></div>';
+  }).join('');
+  showTournSection('t-results');
+}
+function resetTournament(){
+  clearInterval(tPoll);clearInterval(tTimer);
+  tCode=null;tRole=null;tQs=[];tPlayers={};
+  document.getElementById('t-join-code').value='';
+  showTournSection('t-lobby');
+}
+function copyTournLink(){
+  navigator.clipboard.writeText(document.getElementById('t-link-txt').textContent).catch(()=>{});
+  document.getElementById('t-copy-btn').textContent=t('tCopied');
+  setTimeout(()=>document.getElementById('t-copy-btn').textContent=t('tCopy'),2000);
+}
+
+// ═══════════════════════════════════════════
+// WAITLIST
+// ═══════════════════════════════════════════
+function submitWL(){
+  const name=document.getElementById('wl-name').value.trim();
+  const email=document.getElementById('wl-email').value.trim();
+  if(!name||!email){toast('Please enter name and email');return;}
+  document.getElementById('wl-form').style.display='none';
+  document.getElementById('wl-thanks').style.display='flex';
+  wlCount++;document.getElementById('wl-num').textContent=wlCount;
+}
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+renderBadges();
+applyLang();
+// Detect language from browser
+if(navigator.language&&navigator.language.startsWith('ru'))setLang('ru');
+
+// PWA
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('/sw.js').catch(()=>{});
+}
+
+// Check URL params
+const urlP=new URLSearchParams(window.location.search);
+if(urlP.get('duel'))document.getElementById('join-code-input').value=urlP.get('duel');
+if(urlP.get('tourn'))document.getElementById('t-join-code').value=urlP.get('tourn');
+
+loadDailyState();
+initAuth();
+</script>
+</body>
+</html>
