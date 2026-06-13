@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Mind Fight Club</title>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, addDoc, getDocs, query, orderBy, limit, increment, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// ===== FIREBASE CONFIG =====
+const firebaseConfig = {
+  apiKey: "AIzaSyC3zDIsIJHKLcLOjazV6CJ_0_Sk9CzaF1A",
+  authDomain: "mind-fight-club-29159.firebaseapp.com",
+  projectId: "mind-fight-club-29159",
+  storageBucket: "mind-fight-club-29159.firebasestorage.app",
+  messagingSenderId: "240425133465",
+  appId: "1:240425133465:web:a1919d212bf640132cdf08"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// ===== ВОПРОСЫ МЫСЛИБОЯ =====
+// 15 вопросов: 3×2вар + 3×3вар + 3×4вар + 3×5вар + 3×6вар
+const QUESTIONS = [
+  // 2 варианта (20 сек, макс 20 очков)
+  { q: "Столица Австралии?", a: ["Канберра","Сидней"], correct: 0, variants: 2 },
+  { q: "Кто написал «Гарри Поттера»?", a: ["Дж. Роулинг","Стивен Кинг"], correct: 0, variants: 2 },
+  { q: "Планета ближайшая к Солнцу?", a: ["Меркурий","Венера"], correct: 0, variants: 2 },
+  // 3 варианта (30 сек, макс 30 очков)
+  { q: "В каком году первый полёт в космос?", a: ["1961","1957","1969"], correct: 0, variants: 3 },
+  { q: "Кто написал «Войну и мир»?", a: ["Толстой","Достоевский","Чехов"], correct: 0, variants: 3 },
+  { q: "Химический символ золота?", a: ["Au","Ag","Fe"], correct: 0, variants: 3 },
+  // 4 варианта (40 сек, макс 40 очков)
+  { q: "Самая длинная река мира?", a: ["Нил","Амазонка","Янцзы","Миссисипи"], correct: 0, variants: 4 },
+  { q: "Кто написал «1984»?", a: ["Оруэлл","Хаксли","Кафка","Камю"], correct: 0, variants: 4 },
+  { q: "Сколько хромосом у человека?", a: ["46","44","48","42"], correct: 0, variants: 4 },
+  // 5 вариантов (50 сек, макс 50 очков)
+  { q: "Год основания Москвы?", a: ["1147","1237","1380","1480","1054"], correct: 0, variants: 5 },
+  { q: "Автор «Мастера и Маргариты»?", a: ["Булгаков","Пастернак","Ахматова","Цветаева","Есенин"], correct: 0, variants: 5 },
+  { q: "Скорость света (км/с)?", a: ["300 000","200 000","150 000","250 000","350 000"], correct: 0, variants: 5 },
+  // 6 вариантов (60 сек, макс 60 очков)
+  { q: "Столица Казахстана?", a: ["Астана","Алматы","Шымкент","Актобе","Павлодар","Тараз"], correct: 0, variants: 6 },
+  { q: "Кто написал «Преступление и наказание»?", a: ["Достоевский","Толстой","Тургенев","Гоголь","Чехов","Куприн"], correct: 0, variants: 6 },
+  { q: "Самая высокая гора мира?", a: ["Эверест","К2","Канченджанга","Лхоцзе","Макалу","Cho Oyu"], correct: 0, variants: 6 },
+];
+
+// ===== STATE =====
+let currentUser = null;
+let userProfile = null;
+let myClub = null;
+let gameState = null;
+let gameTimer = null;
+
+// ===== UTILS =====
+function $(id) { return document.getElementById(id); }
+
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  $(name).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const ni = $('nav-' + name);
+  if (ni) ni.classList.add('active');
+  window.scrollTo(0, 0);
+  if (name === 'club') renderClubScreen();
+  if (name === 'home') renderHome();
+}
+
+function toast(msg, dur = 2500) {
+  const el = $('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), dur);
+}
+
+function randCode() {
+  return Math.random().toString(36).slice(2, 8).toUpperCase();
+}
+
+// ===== AUTH =====
+onAuthStateChanged(auth, async (user) => {
+  if (user) {
+    currentUser = user;
+    await loadUserProfile();
+    await loadMyClub();
+    renderHome();
+    renderClubScreen();
+    $('loading').style.display = 'none';
+    $('app').style.display = 'block';
+  } else {
+    signInAnonymously(auth);
+  }
+});
+
+async function loadUserProfile() {
+  const ref = doc(db, 'users', currentUser.uid);
+  const snap = await getDoc(ref);
+  if (snap.exists()) {
+    userProfile = snap.data();
+  } else {
+    userProfile = {
+      uid: currentUser.uid,
+      neurons: 0,
+      total_score: 0,
+      games_played: 0,
+      best_score: 0,
+      daily_games: 0,
+      last_game_date: null,
+      display_name: 'Игрок ' + currentUser.uid.slice(0, 4).toUpperCase(),
+      club_id: null,
+      created_at: serverTimestamp()
+    };
+    await setDoc(ref, userProfile);
+  }
+  updateNeuronsDisplay();
+}
+
+async function loadMyClub() {
+  if (!userProfile?.club_id) { myClub = null; return; }
+  const snap = await getDoc(doc(db, 'clubs', userProfile.club_id));
+  if (snap.exists()) myClub = { id: snap.id, ...snap.data() };
+  else myClub = null;
+}
+
+function updateNeuronsDisplay() {
+  const n = userProfile?.neurons || 0;
+  document.querySelectorAll('.neurons-val').forEach(el => el.textContent = n);
+}
+
+// ===== HOME =====
+function renderHome() {
+  if (!userProfile) return;
+  $('home-name').textContent = userProfile.display_name;
+  $('home-games').textContent = userProfile.games_played || 0;
+  $('home-best').textContent = userProfile.best_score || 0;
+
+  // Дневной лимит
+  const today = new Date().toDateString();
+  const dailyUsed = userProfile.last_game_date === today ? (userProfile.daily_games || 0) : 0;
+  const FREE_LIMIT = 10;
+  const remaining = Math.max(0, FREE_LIMIT - dailyUsed);
+  $('home-daily').textContent = remaining + ' / ' + FREE_LIMIT;
+
+  if (myClub) {
+    $('home-club-teaser').style.display = '';
+    $('home-club-emoji').textContent = myClub.emoji || '⚡';
+    $('home-club-name').textContent = myClub.name;
+    $('home-club-score').textContent = myClub.total_score || 0;
+  } else {
+    $('home-club-teaser').style.display = 'none';
+  }
+}
+
+// ===== МЫСЛИБОЙ =====
+function startMysliboy() {
+  const today = new Date().toDateString();
+  const dailyUsed = userProfile.last_game_date === today ? (userProfile.daily_games || 0) : 0;
+
+  if (dailyUsed >= 10) {
+    toast('На сегодня лимит — 10 игр. Возвращайся завтра! 🌙');
+    return;
+  }
+
+  // Shuffle questions
+  const shuffled = [...QUESTIONS].sort(() => Math.random() - 0.5);
+  gameState = {
+    questions: shuffled,
+    current: 0,
+    score: 0,
+    answers: [],
+    startTime: Date.now()
+  };
+
+  showScreen('game');
+  renderQuestion();
+}
+
+function renderQuestion() {
+  const q = gameState.questions[gameState.current];
+  const maxTime = q.variants * 10;
+  const maxScore = q.variants * 10;
+
+  $('game-progress').textContent = `${gameState.current + 1} / 15`;
+  $('game-score-live').textContent = gameState.score;
+  $('game-question').textContent = q.q;
+
+  // Timer bar
+  let timeLeft = maxTime;
+  $('game-timer').textContent = timeLeft;
+  $('game-timer-bar').style.width = '100%';
+
+  clearInterval(gameTimer);
+  gameTimer = setInterval(() => {
+    timeLeft--;
+    $('game-timer').textContent = timeLeft;
+    $('game-timer-bar').style.width = (timeLeft / maxTime * 100) + '%';
+    if (timeLeft <= 5) $('game-timer-bar').style.background = '#e05555';
+    if (timeLeft <= 0) {
+      clearInterval(gameTimer);
+      handleAnswer(-1, 0); // timeout
+    }
+  }, 1000);
+
+  // Answers
+  const answersEl = $('game-answers');
+  answersEl.innerHTML = '';
+  answersEl.className = 'answers-grid variants-' + q.variants;
+
+  q.a.forEach((ans, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'answer-btn';
+    btn.textContent = ans;
+    btn.onclick = () => {
+      clearInterval(gameTimer);
+      const elapsed = maxTime - timeLeft;
+      const pts = Math.max(1, maxScore - elapsed);
+      handleAnswer(i, i === q.correct ? pts : 0);
+    };
+    answersEl.appendChild(btn);
+  });
+}
+
+function handleAnswer(chosen, pts) {
+  const q = gameState.questions[gameState.current];
+  gameState.score += pts;
+  gameState.answers.push({ chosen, correct: q.correct, pts });
+
+  // Show feedback
+  const btns = document.querySelectorAll('.answer-btn');
+  btns.forEach((btn, i) => {
+    btn.disabled = true;
+    if (i === q.correct) btn.classList.add('correct');
+    else if (i === chosen) btn.classList.add('wrong');
+  });
+
+  if (pts > 0) {
+    $('game-score-live').textContent = gameState.score;
+    showPointsPopup('+' + pts);
+  }
+
+  setTimeout(() => {
+    gameState.current++;
+    if (gameState.current >= 15) finishGame();
+    else renderQuestion();
+  }, 800);
+}
+
+function showPointsPopup(text) {
+  const el = $('points-popup');
+  el.textContent = text;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 700);
+}
+
+async function finishGame() {
+  clearInterval(gameTimer);
+  const score = gameState.score;
+  const correct = gameState.answers.filter(a => a.pts > 0).length;
+
+  // Update user stats
+  const today = new Date().toDateString();
+  const dailyUsed = userProfile.last_game_date === today ? (userProfile.daily_games || 0) : 0;
+
+  const updates = {
+    neurons: (userProfile.neurons || 0) + score,
+    total_score: (userProfile.total_score || 0) + score,
+    games_played: (userProfile.games_played || 0) + 1,
+    best_score: Math.max(userProfile.best_score || 0, score),
+    daily_games: userProfile.last_game_date === today ? dailyUsed + 1 : 1,
+    last_game_date: today,
+  };
+
+  await updateDoc(doc(db, 'users', currentUser.uid), updates);
+  userProfile = { ...userProfile, ...updates };
+  updateNeuronsDisplay();
+
+  // Update club score
+  if (myClub) {
+    await updateDoc(doc(db, 'clubs', myClub.id), {
+      total_score: increment(score)
+    });
+    myClub.total_score = (myClub.total_score || 0) + score;
+
+    // Update member score in club
+    await setDoc(doc(db, 'clubs', myClub.id, 'members', currentUser.uid), {
+      display_name: userProfile.display_name,
+      score: userProfile.neurons,
+      updated_at: serverTimestamp()
+    }, { merge: true });
+  }
+
+  // Show result
+  showScreen('result');
+  $('result-score').textContent = score;
+  $('result-correct').textContent = correct + ' / 15';
+  $('result-neurons').textContent = '+' + score + ' ⚡';
+
+  if (myClub) {
+    $('result-club-row').style.display = '';
+    $('result-club-name').textContent = myClub.name;
+    $('result-club-score').textContent = myClub.total_score;
+  } else {
+    $('result-club-row').style.display = 'none';
+  }
+
+  // Grade
+  let grade = '';
+  if (score >= 200) grade = '🔥 Огонь!';
+  else if (score >= 150) grade = '💪 Хорошо!';
+  else if (score >= 100) grade = '👍 Неплохо';
+  else grade = '📚 Учись!';
+  $('result-grade').textContent = grade;
+}
+
+// ===== CLUB =====
+const CLUB_EMOJIS = ['⚡','🧠','🔥','🏆','🚀','💥','🎯','🦁','🐺','🦊','⚔️','🌟','🎭','🏟️','🌍','🎮'];
+let selectedEmoji = '⚡';
+
+function renderEmojiGrid() {
+  const grid = $('emoji-grid');
+  if (!grid) return;
+  grid.innerHTML = CLUB_EMOJIS.map(e =>
+    `<div class="emoji-option ${e === selectedEmoji ? 'selected' : ''}" onclick="window.selectEmoji('${e}')">${e}</div>`
+  ).join('');
+}
+
+window.selectEmoji = function(e) {
+  selectedEmoji = e;
+  renderEmojiGrid();
+};
+
+async function renderClubScreen() {
+  renderEmojiGrid();
+  if (!myClub) {
+    $('club-none').style.display = '';
+    $('club-mine').style.display = 'none';
+    return;
+  }
+  $('club-none').style.display = 'none';
+  $('club-mine').style.display = '';
+
+  $('my-club-emoji').textContent = myClub.emoji || '⚡';
+  $('my-club-name').textContent = myClub.name;
+  $('my-club-city').textContent = myClub.city ? '📍 ' + myClub.city : '';
+  $('my-club-code').textContent = 'Код: ' + myClub.code;
+  $('my-club-score').textContent = myClub.total_score || 0;
+  $('my-club-link').textContent = location.origin + location.pathname + '?club=' + myClub.code;
+
+  await loadMembers();
+  await loadGlobalRanking();
+}
+
+async function loadMembers() {
+  const membersSnap = await getDocs(collection(db, 'clubs', myClub.id, 'members'));
+  const members = [];
+  membersSnap.forEach(d => members.push({ id: d.id, ...d.data() }));
+  members.sort((a, b) => (b.score || 0) - (a.score || 0));
+
+  $('my-club-members').textContent = members.length;
+
+  $('members-list').innerHTML = members.map(m => {
+    const isMe = m.id === currentUser.uid;
+    return `<div class="member-row ${isMe ? 'me' : ''}">
+      <div class="member-av">${(m.display_name || '?')[0]}</div>
+      <div class="member-info">
+        <div class="member-name">${isMe ? '👤 ' : ''}${m.display_name || 'Игрок'}</div>
+        <div class="member-role">${m.role === 'captain' ? '👑 Капитан' : 'Участник'}</div>
+      </div>
+      <div class="member-score">${m.score || 0} ⚡</div>
+    </div>`;
+  }).join('') || '<div style="padding:16px;text-align:center;color:var(--muted);font-size:13px">Пока только ты</div>';
+}
+
+async function loadGlobalRanking() {
+  const q = query(collection(db, 'clubs'), orderBy('total_score', 'desc'), limit(20));
+  const snap = await getDocs(q);
+  const clubs = [];
+  snap.forEach(d => clubs.push({ id: d.id, ...d.data() }));
+
+  const medals = ['🥇','🥈','🥉'];
+  $('global-clubs-list').innerHTML = clubs.length ? clubs.map((c, i) => {
+    const isMe = myClub && c.id === myClub.id;
+    return `<div class="club-rank-row ${isMe ? 'my-club' : ''}">
+      <div class="club-rank-num">${medals[i] || i + 1}</div>
+      <div class="club-rank-emoji">${c.emoji || '⚡'}</div>
+      <div class="club-rank-info">
+        <div class="club-rank-name">${c.name}</div>
+        <div class="club-rank-city">${c.city ? '📍 ' + c.city : ''}</div>
+      </div>
+      <div class="club-rank-score">${c.total_score || 0} ⚡</div>
+    </div>`;
+  }).join('') : '<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">Создай первый клуб!</div>';
+}
+
+window.createClub = async function() {
+  const name = $('club-name-input').value.trim();
+  if (!name) { toast('Введи название клуба'); return; }
+  const city = $('club-city-input').value.trim();
+  const code = randCode();
+
+  try {
+    const clubRef = await addDoc(collection(db, 'clubs'), {
+      name, code, city: city || null,
+      emoji: selectedEmoji,
+      total_score: userProfile.neurons || 0,
+      created_by: currentUser.uid,
+      created_at: serverTimestamp()
+    });
+
+    await setDoc(doc(db, 'clubs', clubRef.id, 'members', currentUser.uid), {
+      display_name: userProfile.display_name,
+      score: userProfile.neurons || 0,
+      role: 'captain',
+      joined_at: serverTimestamp()
+    });
+
+    await updateDoc(doc(db, 'users', currentUser.uid), { club_id: clubRef.id });
+    userProfile.club_id = clubRef.id;
+    myClub = { id: clubRef.id, name, code, city, emoji: selectedEmoji, total_score: userProfile.neurons || 0 };
+
+    toast('🎉 Клуб создан!');
+    renderClubScreen();
+    renderHome();
+  } catch (e) { toast('Ошибка: ' + e.message); }
+};
+
+window.joinClub = async function() {
+  const code = $('club-join-input').value.trim().toUpperCase();
+  if (code.length < 4) { toast('Введи код клуба'); return; }
+
+  const q = query(collection(db, 'clubs'));
+  const snap = await getDocs(q);
+  let found = null;
+  snap.forEach(d => { if (d.data().code === code) found = { id: d.id, ...d.data() }; });
+
+  if (!found) { toast('Клуб не найден'); return; }
+
+  await setDoc(doc(db, 'clubs', found.id, 'members', currentUser.uid), {
+    display_name: userProfile.display_name,
+    score: userProfile.neurons || 0,
+    role: 'member',
+    joined_at: serverTimestamp()
+  });
+
+  await updateDoc(doc(db, 'users', currentUser.uid), { club_id: found.id });
+  userProfile.club_id = found.id;
+  myClub = found;
+
+  toast('✅ Вступил в ' + found.name + '!');
+  renderClubScreen();
+  renderHome();
+};
+
+window.leaveClub = async function() {
+  if (!confirm('Покинуть клуб?')) return;
+  await updateDoc(doc(db, 'users', currentUser.uid), { club_id: null });
+  userProfile.club_id = null;
+  myClub = null;
+  toast('Вы покинули клуб');
+  renderClubScreen();
+  renderHome();
+};
+
+window.copyClubLink = function() {
+  if (!myClub) return;
+  navigator.clipboard.writeText(location.origin + location.pathname + '?club=' + myClub.code);
+  toast('🔗 Ссылка скопирована!');
+};
+
+window.startMysliboy = startMysliboy;
+window.showScreen = showScreen;
+
+// URL params
+const urlParams = new URLSearchParams(location.search);
+if (urlParams.get('club')) {
+  $('club-join-input') && ($('club-join-input').value = urlParams.get('club').toUpperCase());
+}
+</script>
+<style>
+:root {
+  --bg:#0d0d1a;--bg2:#13132a;--bg3:#1a1a35;
+  --accent:#6c63ff;--accent2:#8b83ff;
+  --gold:#f0c040;--red:#e05555;--green:#44cc88;
+  --text:#f0f0ff;--muted:rgba(200,200,255,0.45);--border:rgba(108,99,255,0.2);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100vh;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow-x:hidden}
+
+#loading{display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:16px}
+.loading-brain{font-size:52px;animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+.loading-text{font-size:14px;color:var(--muted)}
+
+#app{display:none}
+.screen{display:none;flex-direction:column;align-items:center;min-height:100vh}
+.screen.active{display:flex}
+
+/* HEADER */
+.hdr{width:100%;max-width:560px;display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:0.5px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:10}
+.logo{font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--accent2)}
+.neurons-pill{display:flex;align-items:center;gap:5px;background:rgba(108,99,255,.15);border:0.5px solid rgba(108,99,255,.35);padding:4px 10px;border-radius:20px;font-size:12px;font-weight:800;color:var(--accent2)}
+
+/* NAV */
+.nav{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:center;background:var(--bg);border-top:0.5px solid var(--border);padding:6px 0 10px;z-index:20}
+.nav-inner{display:flex;max-width:560px;width:100%}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px;cursor:pointer;border:none;background:transparent;font-family:inherit}
+.nav-icon{font-size:18px;line-height:1}
+.nav-label{font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted)}
+.nav-item.active .nav-label{color:var(--accent2)}
+
+/* TOAST */
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--bg3);border:0.5px solid var(--border);border-radius:12px;padding:10px 18px;font-size:13px;font-weight:700;color:var(--text);z-index:1000;opacity:0;transition:opacity .3s;pointer-events:none;max-width:calc(100vw - 40px);text-align:center}
+.toast.show{opacity:1}
+
+/* HOME */
+.home-inner{width:100%;max-width:560px;padding:16px 16px 90px;display:flex;flex-direction:column;gap:14px}
+.home-hero{background:linear-gradient(135deg,var(--bg3),var(--bg2));border:0.5px solid rgba(108,99,255,.4);border-radius:20px;padding:24px 20px;text-align:center}
+.home-hero-emoji{font-size:52px;margin-bottom:12px}
+.home-hero-name{font-size:13px;color:var(--muted);margin-bottom:4px}
+.home-stats{display:flex;justify-content:center;gap:24px;margin:14px 0}
+.stat-item{text-align:center}
+.stat-val{font-size:22px;font-weight:800;color:var(--accent2)}
+.stat-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px}
+.btn-play{width:100%;background:var(--accent);border:none;border-radius:14px;padding:16px;font-size:17px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit;transition:opacity .15s;margin-top:4px}
+.btn-play:hover{opacity:.88}
+.daily-info{font-size:12px;color:var(--muted);margin-top:8px}
+.club-teaser{background:rgba(108,99,255,.1);border:0.5px solid rgba(108,99,255,.3);border-radius:14px;padding:14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between}
+.section-label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+
+/* GAME SCREEN */
+.game-inner{width:100%;max-width:560px;padding:16px;display:flex;flex-direction:column;gap:14px;min-height:100vh}
+.game-top{display:flex;justify-content:space-between;align-items:center}
+.game-progress{font-size:12px;color:var(--muted);font-weight:700}
+.game-score-live{font-size:22px;font-weight:800;color:var(--accent2)}
+.timer-row{display:flex;align-items:center;gap:10px}
+.timer-num{font-size:28px;font-weight:800;color:var(--text);width:44px;text-align:center}
+.timer-bar-bg{flex:1;height:6px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden}
+.timer-bar{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:3px;transition:width .9s linear,background .3s}
+.question-box{background:var(--bg2);border:0.5px solid var(--border);border-radius:18px;padding:22px 18px;text-align:center;min-height:100px;display:flex;align-items:center;justify-content:center}
+.question-text{font-size:18px;font-weight:700;line-height:1.4}
+.answers-grid{display:grid;gap:10px}
+.answers-grid.variants-2{grid-template-columns:1fr 1fr}
+.answers-grid.variants-3{grid-template-columns:1fr 1fr 1fr}
+.answers-grid.variants-4{grid-template-columns:1fr 1fr}
+.answers-grid.variants-5{grid-template-columns:1fr 1fr}
+.answers-grid.variants-6{grid-template-columns:1fr 1fr 1fr}
+.answer-btn{background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:14px 10px;font-size:14px;font-weight:700;color:var(--text);cursor:pointer;font-family:inherit;transition:all .15s;text-align:center}
+.answer-btn:hover:not(:disabled){background:var(--bg3);border-color:rgba(108,99,255,.5)}
+.answer-btn.correct{background:rgba(68,204,136,.15);border-color:var(--green);color:var(--green)}
+.answer-btn.wrong{background:rgba(224,85,85,.15);border-color:var(--red);color:var(--red)}
+.answer-btn:disabled{opacity:.7;cursor:default}
+.points-popup{position:fixed;top:30%;left:50%;transform:translateX(-50%);font-size:32px;font-weight:800;color:var(--gold);opacity:0;transition:opacity .2s;pointer-events:none;z-index:100}
+.points-popup.show{opacity:1}
+
+/* RESULT SCREEN */
+.result-inner{width:100%;max-width:560px;padding:24px 16px 90px;display:flex;flex-direction:column;gap:16px;align-items:center;text-align:center}
+.result-score-big{font-size:72px;font-weight:800;color:var(--accent2);line-height:1}
+.result-grade{font-size:22px;font-weight:800;margin-top:4px}
+.result-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%}
+.result-card{background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;padding:14px;text-align:center}
+.result-card-val{font-size:22px;font-weight:800;color:var(--accent2)}
+.result-card-lbl{font-size:11px;color:var(--muted);margin-top:4px}
+.result-club-banner{width:100%;background:rgba(108,99,255,.1);border:0.5px solid rgba(108,99,255,.3);border-radius:14px;padding:14px;display:flex;justify-content:space-between;align-items:center}
+.btn-primary{width:100%;background:var(--accent);border:none;border-radius:14px;padding:14px;font-size:15px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit}
+.btn-secondary{width:100%;background:transparent;border:0.5px solid var(--border);border-radius:14px;padding:13px;font-size:14px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit}
+
+/* CLUB SCREEN */
+.club-inner{width:100%;max-width:560px;padding:16px 16px 100px;display:flex;flex-direction:column;gap:14px}
+.club-hero{background:linear-gradient(135deg,var(--bg3),var(--bg2));border:0.5px solid rgba(108,99,255,.4);border-radius:20px;padding:20px;text-align:center}
+.club-hero-emoji{font-size:48px;margin-bottom:8px}
+.club-hero-name{font-size:20px;font-weight:800;margin-bottom:4px}
+.club-hero-city{font-size:12px;color:var(--muted);margin-bottom:6px}
+.club-code{font-size:11px;color:var(--accent2);background:rgba(108,99,255,.1);border:0.5px solid rgba(108,99,255,.3);border-radius:8px;padding:3px 10px;display:inline-block;margin-bottom:12px;letter-spacing:1px}
+.club-score-row{display:flex;justify-content:center;gap:28px;margin-bottom:14px}
+.club-score-item{text-align:center}
+.club-score-val{font-size:26px;font-weight:800;color:var(--accent2)}
+.club-score-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px}
+.invite-row{background:var(--bg3);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:8px}
+.invite-link{flex:1;font-size:11px;color:var(--accent2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.copy-btn{padding:5px 12px;background:rgba(108,99,255,.2);border:0.5px solid rgba(108,99,255,.4);border-radius:8px;font-size:12px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit;white-space:nowrap}
+.club-form{background:var(--bg2);border:0.5px solid var(--border);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.club-form-title{font-size:15px;font-weight:800}
+.club-form-sub{font-size:12px;color:var(--muted)}
+.club-input{width:100%;background:var(--bg3);border:0.5px solid var(--border);border-radius:12px;padding:12px 14px;font-size:14px;color:var(--text);font-family:inherit;outline:none}
+.club-input::placeholder{color:var(--muted)}
+.emoji-grid{display:flex;flex-wrap:wrap;gap:8px}
+.emoji-option{width:42px;height:42px;border-radius:10px;background:var(--bg3);border:0.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:20px;cursor:pointer}
+.emoji-option.selected{border-color:var(--accent);background:rgba(108,99,255,.15)}
+.join-row{display:flex;gap:8px}
+.join-input{flex:1;background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:12px 14px;font-size:14px;color:var(--text);font-family:inherit;outline:none;text-transform:uppercase;letter-spacing:2px}
+.join-input::placeholder{text-transform:none;letter-spacing:0;color:var(--muted)}
+.join-btn{background:var(--bg3);border:0.5px solid var(--border);border-radius:12px;padding:12px 16px;font-size:13px;font-weight:800;color:var(--accent2);cursor:pointer;font-family:inherit;white-space:nowrap}
+.divider{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12px}
+.divider::before,.divider::after{content:'';flex:1;height:0.5px;background:var(--border)}
+.members-box,.global-clubs-box{background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;overflow:hidden}
+.members-hdr{padding:10px 14px;border-bottom:0.5px solid var(--border);font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--muted)}
+.member-row{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:0.5px solid rgba(108,99,255,.06)}
+.member-row:last-child{border-bottom:none}
+.member-row.me{background:rgba(108,99,255,.08)}
+.member-av{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;background:rgba(108,99,255,.2);color:var(--accent2);flex-shrink:0}
+.member-info{flex:1}
+.member-name{font-size:13px;font-weight:600}
+.member-role{font-size:10px;color:var(--muted)}
+.member-score{font-size:13px;font-weight:800;color:var(--accent2)}
+.club-rank-row{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:0.5px solid rgba(108,99,255,.06)}
+.club-rank-row:last-child{border-bottom:none}
+.club-rank-row.my-club{background:rgba(108,99,255,.08)}
+.club-rank-num{font-size:13px;font-weight:800;color:var(--muted);width:24px;text-align:center;flex-shrink:0}
+.club-rank-emoji{font-size:20px;flex-shrink:0}
+.club-rank-info{flex:1}
+.club-rank-name{font-size:13px;font-weight:700}
+.club-rank-city{font-size:11px;color:var(--muted)}
+.club-rank-score{font-size:15px;font-weight:800;color:var(--accent2)}
+.btn-danger{border-color:rgba(224,85,85,.3);color:var(--red)}
+.season-banner{background:linear-gradient(135deg,rgba(240,192,64,.1),rgba(108,99,255,.08));border:0.5px solid rgba(240,192,64,.3);border-radius:14px;padding:12px 14px}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loading">
+  <div class="loading-brain">🧠</div>
+  <div class="loading-text">Загрузка Mind Fight Club...</div>
+</div>
+
+<div id="app">
+
+<!-- ===== HOME ===== -->
+<div class="screen active" id="home">
+  <div class="hdr">
+    <div class="logo">MFC</div>
+    <div class="neurons-pill">⚡ <span class="neurons-val">0</span></div>
+  </div>
+  <div class="home-inner">
+    <div class="home-hero">
+      <div class="home-hero-emoji">🧠</div>
+      <div class="home-hero-name" id="home-name">Игрок</div>
+      <div class="home-stats">
+        <div class="stat-item">
+          <div class="stat-val" id="home-games">0</div>
+          <div class="stat-lbl">Игр</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-val" id="home-best">0</div>
+          <div class="stat-lbl">Рекорд</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-val neurons-val">0</div>
+          <div class="stat-lbl">Нейронов</div>
+        </div>
+      </div>
+      <button class="btn-play" onclick="startMysliboy()">⚔️ Мыслибой</button>
+      <div class="daily-info">Осталось игр сегодня: <span id="home-daily">10 / 10</span></div>
+    </div>
+
+    <!-- Клуб тизер -->
+    <div id="home-club-teaser" style="display:none" onclick="showScreen('club')">
+      <div class="section-label">Мой клуб</div>
+      <div class="club-teaser">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div id="home-club-emoji" style="font-size:28px">⚡</div>
+          <div>
+            <div id="home-club-name" style="font-size:15px;font-weight:800"></div>
+            <div style="font-size:11px;color:var(--muted)">нажми чтобы открыть</div>
+          </div>
+        </div>
+        <div>
+          <div id="home-club-score" style="font-size:22px;font-weight:800;color:var(--accent2)"></div>
+          <div style="font-size:10px;color:var(--muted)">нейронов</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Нет клуба -->
+    <div id="home-no-club" style="display:none">
+      <div style="background:rgba(108,99,255,.08);border:0.5px solid rgba(108,99,255,.2);border-radius:14px;padding:14px;text-align:center;cursor:pointer" onclick="showScreen('club')">
+        <div style="font-size:24px;margin-bottom:6px">🏟️</div>
+        <div style="font-size:13px;font-weight:700;margin-bottom:4px">Вступи в клуб</div>
+        <div style="font-size:11px;color:var(--muted)">Очки идут в клубный зачёт сезона</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== GAME ===== -->
+<div class="screen" id="game">
+  <div class="game-inner">
+    <div class="game-top">
+      <div class="game-progress" id="game-progress">1 / 15</div>
+      <div class="game-score-live" id="game-score-live">0</div>
+    </div>
+    <div class="timer-row">
+      <div class="timer-num" id="game-timer">30</div>
+      <div class="timer-bar-bg">
+        <div class="timer-bar" id="game-timer-bar" style="width:100%"></div>
+      </div>
+    </div>
+    <div class="question-box">
+      <div class="question-text" id="game-question">...</div>
+    </div>
+    <div id="game-answers" class="answers-grid"></div>
+    <div class="points-popup" id="points-popup">+30</div>
+  </div>
+</div>
+
+<!-- ===== RESULT ===== -->
+<div class="screen" id="result">
+  <div class="hdr">
+    <div class="logo">MFC</div>
+    <div class="neurons-pill">⚡ <span class="neurons-val">0</span></div>
+  </div>
+  <div class="result-inner">
+    <div style="font-size:14px;color:var(--muted);font-weight:700;letter-spacing:1px;text-transform:uppercase">Результат</div>
+    <div class="result-score-big" id="result-score">0</div>
+    <div class="result-grade" id="result-grade">💪</div>
+    <div class="result-cards" style="width:100%">
+      <div class="result-card">
+        <div class="result-card-val" id="result-correct">0/15</div>
+        <div class="result-card-lbl">Верных ответов</div>
+      </div>
+      <div class="result-card">
+        <div class="result-card-val" id="result-neurons">+0</div>
+        <div class="result-card-lbl">Нейронов</div>
+      </div>
+    </div>
+    <div id="result-club-row" class="result-club-banner" style="display:none">
+      <div>
+        <div style="font-size:11px;color:var(--muted)">Клуб получил</div>
+        <div id="result-club-name" style="font-size:14px;font-weight:800"></div>
+      </div>
+      <div>
+        <div id="result-club-score" style="font-size:22px;font-weight:800;color:var(--gold)"></div>
+        <div style="font-size:10px;color:var(--muted)">всего ⚡</div>
+      </div>
+    </div>
+    <button class="btn-play" onclick="startMysliboy()" style="width:100%">⚔️ Ещё раз</button>
+    <button class="btn-secondary" onclick="showScreen('home')">На главную</button>
+  </div>
+</div>
+
+<!-- ===== CLUB ===== -->
+<div class="screen" id="club">
+  <div class="hdr">
+    <div class="logo">MFC</div>
+    <div class="neurons-pill">⚡ <span class="neurons-val">0</span></div>
+  </div>
+  <div class="club-inner">
+
+    <!-- Нет клуба -->
+    <div id="club-none">
+      <div style="text-align:center;padding:16px 0 8px">
+        <div style="font-size:48px;margin-bottom:10px">🏟️</div>
+        <div style="font-size:19px;font-weight:800;margin-bottom:6px">Клубы</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:20px">Создай клуб или вступи по коду.<br>Очки идут в клубный зачёт сезона.</div>
+      </div>
+
+      <div class="club-form">
+        <div class="club-form-title">⚡ Создать клуб</div>
+        <div class="club-form-sub">Выбери эмодзи и название</div>
+        <div class="emoji-grid" id="emoji-grid"></div>
+        <input class="club-input" id="club-name-input" type="text" maxlength="24" placeholder="Название клуба"/>
+        <input class="club-input" id="club-city-input" type="text" maxlength="32" placeholder="Город (необязательно)"/>
+        <button class="btn-primary" onclick="createClub()">Создать →</button>
+      </div>
+
+      <div class="divider" style="margin:6px 0">или</div>
+
+      <div class="join-row">
+        <input class="join-input" id="club-join-input" type="text" maxlength="6" placeholder="Код клуба" oninput="this.value=this.value.toUpperCase()"/>
+        <button class="join-btn" onclick="joinClub()">Войти →</button>
+      </div>
+    </div>
+
+    <!-- Мой клуб -->
+    <div id="club-mine" style="display:none">
+      <div class="season-banner">
+        <div style="font-size:13px;font-weight:800;margin-bottom:2px">🏆 Сезон 1 · Июль — Сентябрь 2026</div>
+        <div style="font-size:11px;color:var(--muted)">Очки = сумма нейронов всех участников</div>
+      </div>
+
+      <div class="club-hero">
+        <div class="club-hero-emoji" id="my-club-emoji">⚡</div>
+        <div class="club-hero-name" id="my-club-name">—</div>
+        <div class="club-hero-city" id="my-club-city"></div>
+        <div class="club-code" id="my-club-code">——</div>
+        <div class="club-score-row">
+          <div class="club-score-item">
+            <div class="club-score-val" id="my-club-score">0</div>
+            <div class="club-score-lbl">Нейронов</div>
+          </div>
+          <div class="club-score-item">
+            <div class="club-score-val" id="my-club-members">0</div>
+            <div class="club-score-lbl">Участников</div>
+          </div>
+        </div>
+        <div class="invite-row">
+          <div class="invite-link" id="my-club-link">—</div>
+          <button class="copy-btn" onclick="copyClubLink()">Копировать</button>
+        </div>
+      </div>
+
+      <div>
+        <div class="section-label">Участники</div>
+        <div class="members-box">
+          <div class="members-hdr">Игроки <span id="my-club-members"></span></div>
+          <div id="members-list"></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="section-label">🌍 Рейтинг клубов</div>
+        <div class="global-clubs-box" id="global-clubs-list">
+          <div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">Загрузка...</div>
+        </div>
+      </div>
+
+      <button class="btn-secondary btn-danger" onclick="leaveClub()">Покинуть клуб</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- /app -->
+
+<!-- NAV -->
+<nav class="nav" id="main-nav" style="display:none">
+  <div class="nav-inner">
+    <button class="nav-item active" id="nav-home" onclick="showScreen('home')">
+      <div class="nav-icon">🏠</div>
+      <div class="nav-label">Главная</div>
+    </button>
+    <button class="nav-item" id="nav-club" onclick="showScreen('club')">
+      <div class="nav-icon">🏟️</div>
+      <div class="nav-label">Клуб</div>
+    </button>
+  </div>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// Show nav when app loads
+document.addEventListener('DOMContentLoaded', () => {
+  const observer = new MutationObserver(() => {
+    if (document.getElementById('app').style.display === 'block') {
+      document.getElementById('main-nav').style.display = 'flex';
+    }
+  });
+  observer.observe(document.getElementById('app'), { attributes: true, attributeFilter: ['style'] });
+});
+</script>
+</body>
+</html>
