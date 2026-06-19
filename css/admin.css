@@ -1,0 +1,45 @@
+.ot-admin-form input,.ot-admin-form select,.ot-admin-form textarea{width:100%;background:var(--bg3);border:0.5px solid var(--border);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--text);font-family:inherit;outline:none;margin-bottom:8px}
+.ot-admin-form textarea{min-height:60px;resize:vertical}
+.admin-kpi{background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:12px;text-align:center}
+.admin-kpi-val{font-size:22px;font-weight:800;color:var(--accent2)}
+.admin-kpi-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+.admin-event-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:0.5px solid var(--border);font-size:12px}
+.admin-event-row:last-child{border:none}
+.admin-event-name{color:var(--muted)}
+.admin-event-count{font-weight:800;color:var(--accent2)}
+.admin-q-row{padding:5px 0;border-bottom:0.5px solid var(--border);line-height:1.4}
+.admin-q-row:last-child{border:none}
+.admin-q-text{color:var(--text);font-size:11px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.admin-q-meta{color:var(--muted);font-size:10px}
+.admin-q-pct{font-weight:800;color:var(--red)}
+.admin-q-pct.ok{color:var(--green)}
+.city-input{width:100%;background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:11px 14px;font-size:14px;color:var(--text);font-family:inherit;outline:none;transition:border-color .15s;margin-bottom:10px}
+.city-input:focus{border-color:rgba(108,99,255,.6)}
+.city-input::placeholder{color:var(--muted)}
+.city-tag{display:inline-flex;align-items:center;gap:5px;background:rgba(108,99,255,.15);border:0.5px solid rgba(108,99,255,.3);border-radius:20px;padding:4px 10px;font-size:11px;font-weight:700;color:var(--accent2)}
+
+/* SHARE SCREEN */
+#share{justify-content:center;align-items:center;padding:20px 16px 100px}
+.share-inner{width:100%;max-width:400px;display:flex;flex-direction:column;align-items:center;gap:16px}
+.share-card{width:100%;background:linear-gradient(135deg,var(--bg3),var(--bg2));border:0.5px solid var(--border);border-radius:20px;padding:24px 20px;text-align:center}
+.share-score{font-size:64px;font-weight:800;color:var(--accent2);line-height:1}
+.share-label{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-top:4px;margin-bottom:12px}
+.share-rank{font-size:15px;font-weight:800;color:var(--gold);margin-bottom:4px}
+.share-city{font-size:12px;color:var(--muted)}
+.share-btns{width:100%;display:flex;flex-direction:column;gap:8px}
+.share-btn{width:100%;border:none;border-radius:13px;padding:14px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px}
+.share-btn.tg{background:#2CA5E0;color:#fff}
+.share-btn.wa{background:#25D366;color:#fff}
+.share-btn.copy{background:var(--bg3);border:0.5px solid var(--border);color:var(--accent2)}
+.share-btn.duel{background:var(--accent);color:#fff}
+.share-btn.team{background:rgba(240,192,64,.15);border:0.5px solid rgba(240,192,64,.3);color:var(--gold)}
+
+/* CITY LEADERBOARD */
+.city-lb-wrap{width:100%;max-width:560px;padding:16px 16px 100px;display:flex;flex-direction:column;gap:14px}
+.city-tabs{display:flex;gap:6px;margin-bottom:4px}
+.city-tab{flex:1;padding:9px;border-radius:10px;font-size:12px;font-weight:800;cursor:pointer;border:0.5px solid var(--border);background:var(--bg2);color:var(--muted);font-family:inherit;transition:all .15s;text-align:center}
+.city-tab.active{background:rgba(108,99,255,.2);border-color:var(--accent);color:var(--accent2)}
+.my-city-row{background:rgba(108,99,255,.08);border:0.5px solid rgba(108,99,255,.2);border-radius:12px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;font-size:13px}
+.my-city-name{font-weight:700;color:var(--accent2)}
+.my-city-rank{font-size:11px;color:var(--muted)}
+.lb-city-tag{font-size:10px;color:var(--muted);background:var(--bg3);border-radius:4px;padding:2px 6px;margin-left:6px}

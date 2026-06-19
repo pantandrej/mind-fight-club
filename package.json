@@ -1,0 +1,15 @@
+{
+  "name": "mind-fight-club",
+  "version": "0.1.0",
+  "description": "MFC — club league for the mind",
+  "type": "module",
+  "scripts": {
+    "check:syntax":     "find js -name '*.js' ! -name 'legacy.js' | sort | xargs -I{} node --check {}",
+    "check:legacy":     "node --check js/legacy.js",
+    "check:duplicates": "node scripts/check-duplicate-functions.mjs",
+    "check:all":        "npm run check:syntax && npm run check:legacy && npm run check:duplicates"
+  },
+  "notes": {
+    "legacy.js": "Passes node --check because it uses var/function declarations compatible with CJS checker. ES module syntax (import/export) is absent — it relies on window.* globals set by ES modules loaded first. Checked separately via check:legacy."
+  }
+}
