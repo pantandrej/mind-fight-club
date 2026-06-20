@@ -388,9 +388,9 @@ function buildShareText(){
     : '';
 
   if(lang==='ru'){
-    return `Я набрал ${roundPts} нейронов в Mind Fight Club 🧠${streakTxt}\n🏅 Уровень: ${levelName}\n🎯 ${correctCount}/${curQ.length} правильных${rankLine}\nСможешь побить мой результат?\n${link}`;
+    return `Я набрал ${roundPts} нейронов в Brain Fight Club 🧠${streakTxt}\n🏅 Уровень: ${levelName}\n🎯 ${correctCount}/${curQ.length} правильных${rankLine}\nСможешь побить мой результат?\n${link}`;
   }
-  return `I scored ${roundPts} neurons in Mind Fight Club 🧠${streakTxt}\n🏅 Level: ${levelName}\n🎯 ${correctCount}/${curQ.length} correct${rankLine}\nCan you beat me?\n${link}`;
+  return `I scored ${roundPts} neurons in Brain Fight Club 🧠${streakTxt}\n🏅 Level: ${levelName}\n🎯 ${correctCount}/${curQ.length} correct${rankLine}\nCan you beat me?\n${link}`;
 }
 
 // Override showShareScreen to add streak/level to card

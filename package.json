@@ -4,12 +4,12 @@
   "description": "MFC — club league for the mind",
   "type": "module",
   "scripts": {
-    "check:syntax":     "find js -name '*.js' ! -name 'legacy.js' | sort | xargs -I{} node --check {}",
-    "check:legacy":     "node --check js/legacy.js",
+    "check:syntax": "find js -name '*.js' ! -name 'legacy.js' | sort | xargs -I{} node --check {}",
+    "check:legacy": "node --check js/legacy.js",
     "check:duplicates": "node scripts/check-duplicate-functions.mjs",
-    "check:all":        "npm run check:syntax && npm run check:legacy && npm run check:duplicates"
+    "check:all": "npm run check:syntax && npm run check:legacy && npm run check:duplicates"
   },
   "notes": {
-    "legacy.js": "Passes node --check because it uses var/function declarations compatible with CJS checker. ES module syntax (import/export) is absent — it relies on window.* globals set by ES modules loaded first. Checked separately via check:legacy."
+    "legacy.js": "legacy.js loads synchronously BEFORE the ES modules (app.js). It declares bare variables (sb, track, etc.) as local shims. The real implementations (from services/supabase.js, services/analytics.js, etc.) are set on window.* by ES modules after DOMContentLoaded. legacy.js defers actual use of these globals until after page load via window._sbReady setter and _syncStateToLegacy(). Do NOT swap the order — legacy.js must load first so its variables are declared before inline onclick handlers fire."
   }
 }

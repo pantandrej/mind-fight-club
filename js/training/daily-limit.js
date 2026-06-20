@@ -169,8 +169,8 @@ async function _showReferralInviteCard(code, link){
 
 function shareToTelegramRef(link){
   const text = lang==='ru'
-    ? `Играю в Mind Fight Club — интеллектуальные дуэли! Присоединяйся: ${link}`
-    : `Playing Mind Fight Club — quiz battles! Join me: ${link}`;
+    ? `Играю в Brain Fight Club — интеллектуальные дуэли! Присоединяйся: ${link}`
+    : `Playing Brain Fight Club — quiz battles! Join me: ${link}`;
   window.open('https://t.me/share/url?url='+encodeURIComponent(link)+'&text='+encodeURIComponent(text), '_blank');
 }
 

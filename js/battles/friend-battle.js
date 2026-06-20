@@ -413,7 +413,7 @@ function _duelShareText(){
   const result = d.win ? 'Победил' : d.tie ? 'Ничья' : 'Проиграл';
   const club = d.club ? ' за ' + d.club : '';
   const link = location.origin + location.pathname + '?duel=' + (d.code||'');
-  return `⚔️ Mind Fight Club${club}
+  return `⚔️ Brain Fight Club${club}
 ${result}: ${d.myS||0} : ${d.oppS||0}
 Сыграй против меня → ${link}`;
 }
@@ -640,7 +640,7 @@ function copyDuelLink(){
 function _tournShareText(){
   const d = window._lastTournShare || {};
   const club = d.club ? ' — ' + d.club : '';
-  return `🏆 Mind Fight Club${club}
+  return `🏆 Brain Fight Club${club}
 ${d.placeStr||'Участник'}: ${d.pts||0} очков
 Сыграй в следующем турнире → ${location.origin+location.pathname}`;
 }
@@ -837,7 +837,7 @@ function maybeAskPushAfterGame(){
 function notifyDuelChallenge(challengerName){
   showLocalNotification(
     `⚔️ ${challengerName} ${lang==='ru'?'бросает вызов!':'challenges you!'}`,
-    lang==='ru'?'Открой Mind Fight Club и прими дуэль 🔥':'Open Mind Fight Club and accept the duel 🔥'
+    lang==='ru'?'Открой Brain Fight Club и прими дуэль 🔥':'Open Brain Fight Club and accept the duel 🔥'
   );
 }
 

@@ -6,9 +6,9 @@
 <meta name="theme-color" content="#6c63ff">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Mind Fight Club">
+<meta name="apple-mobile-web-app-title" content="Brain Fight Club">
 <link rel="manifest" href="/manifest.json">
-<title>Mind Fight Club</title>
+<title>Brain Fight Club</title>
 
 <!-- CDN dependencies (must load before ES modules) -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -28,7 +28,7 @@
 <div class="screen active" id="auth">
   <div class="auth-inner">
     <div class="auth-logo">⚡</div>
-    <div class="auth-title">Mind Fight Club</div>
+    <div class="auth-title">Brain Fight Club</div>
     <div class="auth-sub" id="auth-sub">Войдите, чтобы сохранить нейроны и соревноваться глобально</div>
     <div id="auth-error" style="display:none;background:rgba(224,85,85,.1);border:0.5px solid rgba(224,85,85,.3);border-radius:10px;padding:10px 14px;font-size:12px;color:#e06666;margin-bottom:12px;line-height:1.4;word-break:break-word"></div>
     <button class="google-btn" id="google-sign-in-btn" onclick="signInGoogle()">
@@ -64,7 +64,7 @@
 <!-- HOME -->
 <div class="screen" id="home">
   <div class="hdr">
-    <div class="logo">MFC</div>
+    <div class="logo">BFC</div>
     <div class="hdr-right">
       <div class="lang-toggle">
         <button class="lang-btn" onclick="setLang('en')">EN</button>
@@ -147,7 +147,7 @@
 <!-- QUIZ -->
 <div class="screen" id="quiz">
   <div class="hdr">
-    <div class="logo">MFC</div>
+    <div class="logo">BFC</div>
     <div class="hdr-right">
       <div class="streak-pill" id="streak-pill"><span>🔥</span><span id="streak-num">0</span></div>
       <div class="neurons-pill"><div class="n-orb"></div><span id="n-quiz">0</span></div>
@@ -181,7 +181,7 @@
 <!-- DUEL -->
 <div class="screen" id="duel">
   <div class="hdr">
-    <div class="logo">MFC</div>
+    <div class="logo">BFC</div>
     <div class="hdr-right">
       <div class="neurons-pill"><div class="n-orb"></div><span id="n-duel">0</span></div>
     </div>
@@ -238,7 +238,7 @@
       </div>
       <div class="opp-hint" id="opp-hint"></div>
       <div class="prog-dots" id="d-prog-dots"></div>
-      <div class="meta"><span class="cat-pill" id="d-cat-pill">—</span><span class="q-counter" id="d-q-counter">1/7</span></div>
+      <div class="meta"><span class="cat-pill" id="d-cat-pill">—</span><span class="q-counter" id="d-q-counter">1/5</span></div>
       <div class="timer-wrap">
         <div class="timer-bg"><div class="timer-fill" id="d-timer-fill"></div></div>
         <div class="timer-row"><span class="t-val" id="d-t-val">20s</span><span class="p-val" id="d-p-val">+20</span></div>
@@ -262,7 +262,7 @@
       </div>
       <!-- SHARE CARD ДУЭЛЬ -->
       <div id="d-share-card" style="display:none;background:linear-gradient(135deg,var(--bg3),var(--bg2));border:0.5px solid rgba(108,99,255,.4);border-radius:16px;padding:16px;margin-top:12px;text-align:center">
-        <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--accent2);margin-bottom:8px;font-weight:800">MIND FIGHT CLUB</div>
+        <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--accent2);margin-bottom:8px;font-weight:800">BRAIN FIGHT CLUB</div>
         <div id="d-sc-result" style="font-size:20px;font-weight:800;margin-bottom:4px">🏆 Победа!</div>
         <div id="d-sc-score" style="font-size:28px;font-weight:800;color:var(--accent2);margin-bottom:4px">0 : 0</div>
         <div id="d-sc-club" style="font-size:12px;color:var(--gold);margin-bottom:12px"></div>
@@ -283,7 +283,7 @@
 <!-- TOURNAMENT -->
 <div class="screen" id="tournament">
   <div class="hdr">
-    <div class="logo">MFC</div>
+    <div class="logo">BFC</div>
     <div class="hdr-right"><div class="neurons-pill"><div class="n-orb"></div><span id="n-tourn">0</span></div></div>
   </div>
   <div class="tourn-inner">
@@ -351,7 +351,7 @@
       <div class="lb-box"><div class="lb-hdr" id="t-final-hdr">Таблица лидеров</div><div id="t-final-lb"></div></div>
       <!-- SHARE CARD ТУРНИР -->
       <div id="t-share-card" style="background:linear-gradient(135deg,var(--bg3),var(--bg2));border:0.5px solid rgba(240,192,64,.4);border-radius:16px;padding:16px;margin-top:4px;text-align:center">
-        <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:8px;font-weight:800">🏆 MIND FIGHT CLUB — ТУРНИР</div>
+        <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:8px;font-weight:800">🏆 BRAIN FIGHT CLUB — ТУРНИР</div>
         <div id="t-sc-place" style="font-size:22px;font-weight:800;margin-bottom:4px">🥇 1 место</div>
         <div id="t-sc-score" style="font-size:26px;font-weight:800;color:var(--accent2);margin-bottom:4px">0 очков</div>
         <div id="t-sc-club" style="font-size:12px;color:var(--gold);margin-bottom:12px"></div>
@@ -371,7 +371,7 @@
   <div class="wl-inner">
     <div class="wl-badge" id="wl-badge">Ранний доступ</div>
     <div class="wl-title" id="wl-title">Скоро запуск.<br>Будь первым.</div>
-    <div class="wl-sub" id="wl-sub">Мы строим Mind Fight Club — глобальную платформу для интеллектуальных боёв.</div>
+    <div class="wl-sub" id="wl-sub">Мы строим Brain Fight Club — глобальную платформу для интеллектуальных боёв.</div>
     <div class="wl-form" id="wl-form">
       <input class="wl-input" id="wl-name" type="text" placeholder="Ваше имя"/>
       <input class="wl-input" id="wl-email" type="email" placeholder="Email"/>
@@ -386,7 +386,7 @@
     <div class="wl-thanks" id="wl-thanks">
       <div class="check">✅</div>
       <h2 id="wl-thanks-title">Вы в списке!</h2>
-      <p id="wl-thanks-sub">Мы напишем вам, когда Mind Fight Club запустится.</p>
+      <p id="wl-thanks-sub">Мы напишем вам, когда Brain Fight Club запустится.</p>
     </div>
     <div class="wl-count" id="wl-count">Зарегистрировались: <span id="wl-num">247</span> человек из 38 стран</div>
   </div>
@@ -430,12 +430,12 @@
 <!-- SHARE -->
 <div class="screen" id="share">
   <div class="hdr">
-    <div class="logo">MFC</div>
+    <div class="logo">BFC</div>
     <div class="hdr-right"><div class="neurons-pill"><div class="n-orb"></div><span id="n-share">0</span></div></div>
   </div>
   <div class="share-inner">
     <div class="share-card">
-      <div style="font-size:13px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">MIND FIGHT CLUB</div>
+      <div style="font-size:13px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">BRAIN FIGHT CLUB</div>
       <div class="share-score" id="share-score">0</div>
       <div class="share-label" id="share-label">нейронов заработано</div>
       <div class="share-streak-row" id="share-streak-row" style="display:none"></div>
@@ -460,7 +460,7 @@
 <!-- TEAMS -->
 <div class="screen" id="teams">
   <div class="hdr">
-    <div class="logo">MFC</div>
+    <div class="logo">BFC</div>
     <div class="hdr-right">
       <div class="neurons-pill"><div class="n-orb"></div><span id="n-teams">0</span></div>
     </div>
@@ -533,7 +533,7 @@
 <!-- SHOP -->
 <div class="screen" id="shop">
   <div class="hdr">
-    <div class="logo">MFC</div>
+    <div class="logo">BFC</div>
     <div class="hdr-right">
       <div class="lang-toggle">
         <button class="lang-btn" onclick="setLang('en')">EN</button>
@@ -580,27 +580,45 @@
       <div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch">
 
         <!-- Слово пацана -->
-        <div onclick="startHypePack('slovo')" style="flex-shrink:0;width:140px;background:linear-gradient(135deg,#1a0a0a,#2a1010);border:0.5px solid rgba(224,85,85,.4);border-radius:14px;padding:14px;cursor:pointer;text-align:center">
-          <div style="font-size:32px;margin-bottom:6px">🗡️</div>
-          <div style="font-size:13px;font-weight:800;color:#f0f0ff;margin-bottom:3px">Слово пацана</div>
-          <div style="font-size:10px;color:var(--muted);margin-bottom:8px">10 вопросов</div>
-          <div style="background:rgba(224,85,85,.2);border:0.5px solid rgba(224,85,85,.4);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:800;color:#e05555">БЕСПЛАТНО</div>
+        <div style="flex-shrink:0;width:160px;background:linear-gradient(135deg,#1a0a0a,#2a1010);border:0.5px solid rgba(224,85,85,.4);border-radius:14px;padding:14px;text-align:center">
+          <div onclick="startHypePack('slovo')" style="cursor:pointer">
+            <div style="font-size:32px;margin-bottom:6px">🗡️</div>
+            <div style="font-size:13px;font-weight:800;color:#f0f0ff;margin-bottom:3px">Слово пацана</div>
+            <div style="font-size:10px;color:var(--muted);margin-bottom:8px">10 вопросов</div>
+            <div style="background:rgba(224,85,85,.2);border:0.5px solid rgba(224,85,85,.4);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:800;color:#e05555;margin-bottom:8px">▶ ИГРАТЬ</div>
+          </div>
+          <div style="display:flex;gap:4px">
+            <button onclick="shareHypeToTG('slovo')" style="flex:1;background:rgba(44,165,224,.15);border:0.5px solid rgba(44,165,224,.4);border-radius:6px;padding:5px;font-size:10px;font-weight:700;color:#2CA5E0;cursor:pointer;font-family:inherit">TG</button>
+            <button onclick="shareHypePack('slovo')" style="flex:1;background:rgba(108,99,255,.15);border:0.5px solid var(--accent);border-radius:6px;padding:5px;font-size:10px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit">🔗</button>
+          </div>
         </div>
 
         <!-- Игра в кальмара -->
-        <div onclick="startHypePack('squid')" style="flex-shrink:0;width:140px;background:linear-gradient(135deg,#0a001a,#1a0030);border:0.5px solid rgba(108,99,255,.5);border-radius:14px;padding:14px;cursor:pointer;text-align:center">
-          <div style="font-size:32px;margin-bottom:6px">🦑</div>
-          <div style="font-size:13px;font-weight:800;color:#f0f0ff;margin-bottom:3px">Игра в кальмара</div>
-          <div style="font-size:10px;color:var(--muted);margin-bottom:8px">10 вопросов</div>
-          <div style="background:rgba(108,99,255,.2);border:0.5px solid rgba(108,99,255,.4);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:800;color:var(--accent2)">БЕСПЛАТНО</div>
+        <div style="flex-shrink:0;width:160px;background:linear-gradient(135deg,#0a001a,#1a0030);border:0.5px solid rgba(108,99,255,.5);border-radius:14px;padding:14px;text-align:center">
+          <div onclick="startHypePack('squid')" style="cursor:pointer">
+            <div style="font-size:32px;margin-bottom:6px">🦑</div>
+            <div style="font-size:13px;font-weight:800;color:#f0f0ff;margin-bottom:3px">Игра в кальмара</div>
+            <div style="font-size:10px;color:var(--muted);margin-bottom:8px">10 вопросов</div>
+            <div style="background:rgba(108,99,255,.2);border:0.5px solid rgba(108,99,255,.4);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:800;color:var(--accent2);margin-bottom:8px">▶ ИГРАТЬ</div>
+          </div>
+          <div style="display:flex;gap:4px">
+            <button onclick="shareHypeToTG('squid')" style="flex:1;background:rgba(44,165,224,.15);border:0.5px solid rgba(44,165,224,.4);border-radius:6px;padding:5px;font-size:10px;font-weight:700;color:#2CA5E0;cursor:pointer;font-family:inherit">TG</button>
+            <button onclick="shareHypePack('squid')" style="flex:1;background:rgba(108,99,255,.15);border:0.5px solid var(--accent);border-radius:6px;padding:5px;font-size:10px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit">🔗</button>
+          </div>
         </div>
 
         <!-- Чемпионат мира -->
-        <div onclick="startHypePack('worldcup')" style="flex-shrink:0;width:140px;background:linear-gradient(135deg,#001a05,#003010);border:0.5px solid rgba(68,204,136,.4);border-radius:14px;padding:14px;cursor:pointer;text-align:center">
-          <div style="font-size:32px;margin-bottom:6px">⚽</div>
-          <div style="font-size:13px;font-weight:800;color:#f0f0ff;margin-bottom:3px">ЧМ по футболу</div>
-          <div style="font-size:10px;color:var(--muted);margin-bottom:8px">10 вопросов</div>
-          <div style="background:rgba(68,204,136,.2);border:0.5px solid rgba(68,204,136,.4);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:800;color:#44cc88">БЕСПЛАТНО</div>
+        <div style="flex-shrink:0;width:160px;background:linear-gradient(135deg,#001a05,#003010);border:0.5px solid rgba(68,204,136,.4);border-radius:14px;padding:14px;text-align:center">
+          <div onclick="startHypePack('worldcup')" style="cursor:pointer">
+            <div style="font-size:32px;margin-bottom:6px">⚽</div>
+            <div style="font-size:13px;font-weight:800;color:#f0f0ff;margin-bottom:3px">ЧМ по футболу</div>
+            <div style="font-size:10px;color:var(--muted);margin-bottom:8px">10 вопросов</div>
+            <div style="background:rgba(68,204,136,.2);border:0.5px solid rgba(68,204,136,.4);border-radius:8px;padding:4px 8px;font-size:11px;font-weight:800;color:#44cc88;margin-bottom:8px">▶ ИГРАТЬ</div>
+          </div>
+          <div style="display:flex;gap:4px">
+            <button onclick="shareHypeToTG('worldcup')" style="flex:1;background:rgba(44,165,224,.15);border:0.5px solid rgba(44,165,224,.4);border-radius:6px;padding:5px;font-size:10px;font-weight:700;color:#2CA5E0;cursor:pointer;font-family:inherit">TG</button>
+            <button onclick="shareHypePack('worldcup')" style="flex:1;background:rgba(108,99,255,.15);border:0.5px solid var(--accent);border-radius:6px;padding:5px;font-size:10px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit">🔗</button>
+          </div>
         </div>
 
         <!-- Скоро -->
@@ -647,6 +665,12 @@
           </div>
         </div>
       </div>
+    </div>
+
+        <!-- 🤝 ПАРТНЁРСКИЕ ПРЕДЛОЖЕНИЯ -->
+    <div style="margin-bottom:16px">
+      <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent2);font-weight:800;margin-bottom:10px">🤝 От партнёров</div>
+      <div id="partner-offers-list" style="display:flex;flex-direction:column;gap:8px"></div>
     </div>
 
     <!-- 🎟️ ПРОХОДКИ НА КВИЗЫ — от организаторов -->
@@ -797,7 +821,7 @@
 <!-- PROFILE -->
 <div class="screen" id="profile">
   <div class="hdr">
-    <div class="logo">MFC</div>
+    <div class="logo">BFC</div>
     <div class="hdr-right">
       <div class="neurons-pill"><div class="n-orb"></div><span id="n-profile">0</span></div>
     </div>
@@ -1303,7 +1327,7 @@
 <!-- PLAY MENU -->
 <div class="screen" id="play-menu">
   <div class="hdr">
-    <div class="logo">MFC</div>
+    <div class="logo">BFC</div>
     <div class="hdr-right"><div class="neurons-pill"><div class="n-orb"></div><span id="n-play-menu">0</span></div></div>
   </div>
   <div class="play-menu-grid" style="padding-top:16px">
@@ -1378,16 +1402,16 @@
 <div class="screen" id="rules">
   <div class="hdr">
     <button onclick="showScreen('home')" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 4px">←</button>
-    <div class="logo">MFC</div>
+    <div class="logo">BFC</div>
     <div class="hdr-right"></div>
   </div>
   <div class="rules-inner">
     <div style="font-size:22px;font-weight:800;padding:4px 0 4px" id="rules-title">Как это работает</div>
 
     <div class="rules-section" onclick="toggleRulesSection('r-what')">
-      <div class="rules-hdr"><div class="rules-hdr-icon">🧠</div><div class="rules-hdr-title" id="r-what-title">Что такое Mind Fight Club?</div><div class="rules-arrow" id="r-what-arr">▼</div></div>
+      <div class="rules-hdr"><div class="rules-hdr-icon">🧠</div><div class="rules-hdr-title" id="r-what-title">Что такое Brain Fight Club?</div><div class="rules-arrow" id="r-what-arr">▼</div></div>
       <div class="rules-body" id="r-what">
-        <b>Mind Fight Club</b> — это платформа интеллектуальных соревнований. Отвечай на вопросы, сражайся с друзьями в дуэлях, вступай в команды и участвуй в городских лигах.<br><br>
+        <b>Brain Fight Club</b> — это платформа интеллектуальных соревнований. Отвечай на вопросы, сражайся с друзьями в дуэлях, вступай в команды и участвуй в городских лигах.<br><br>
         Вопросы приходят блоками: <span class="rules-hl">2, 3, 4, 5 или 6 вариантов ответа</span> — чем больше вариантов, тем сложнее и больше очков.
       </div>
     </div>
@@ -1403,7 +1427,7 @@
           <tr><td>Турнир (победа)</td><td>+200 ⚡</td></tr>
           <tr><td>Приглашение друга</td><td>+50 ⚡</td></tr>
         </table><br>
-        Нейроны <span class="rules-hl">не теряются</span> — они только копятся и повышают твой рейтинг.
+        <b>⭐ XP</b> — рейтинговые очки, никогда не уменьшаются. <b>⚡ Нейроны</b> — <span class="rules-hl">расходуемая валюта</span> магазина.
       </div>
     </div>
 
@@ -1422,8 +1446,9 @@
         <div class="rules-paid-item">Премиум-паки с медиа</div>
         <div class="rules-paid-item">Косметика и предметы персонажа</div>
         <div class="rules-paid-item">Больше способов тренировать мозг</div>
-        <br><b>Premium (скоро):</b><br>
-        <div class="rules-paid-item">Безлимитный режим</div>
+        <br><b>Premium:</b><br>
+        <div class="rules-paid-item">50 тренировочных вопросов в день (5 × 10)</div>
+        <div class="rules-paid-item">10 баттлов в день (вместо 3)</div>
         <div class="rules-paid-item">Закрытые турниры</div>
         <div class="rules-paid-item">Расширенная статистика</div>
         <div class="rules-paid-item">Эксклюзивные события</div>
@@ -1472,6 +1497,7 @@
     <div class="limit-title" id="dl-title">Бесплатные вопросы закончились!</div>
     <div class="limit-sub" id="dl-sub">Сегодня вы уже сыграли 10 бесплатных вопросов. Возвращайтесь завтра или продолжайте в паках/вопросах участников.</div>
     <div class="limit-actions">
+      <button onclick="openPremiumScreen()" style="width:100%;background:var(--gold);border:none;border-radius:14px;padding:14px;font-size:15px;font-weight:800;color:#1a1a00;cursor:pointer;font-family:inherit;margin-bottom:10px">⭐ Получить Premium — 299 ₽/мес</button>
       <button class="big-btn" onclick="startCommunityFeed()" id="dl-community-btn"
         style="background:rgba(108,99,255,.15);border:1px solid var(--accent2)">
         🌐 Вопросы участников
@@ -1608,7 +1634,7 @@
 <div class="screen" id="matchmaking">
   <div class="hdr">
     <button onclick="cancelMatchmaking()" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 4px">←</button>
-    <div class="logo">MFC</div>
+    <div class="logo">BFC</div>
     <div class="hdr-right"><div class="neurons-pill"><div class="n-orb"></div><span id="n-mm">0</span></div></div>
   </div>
   <div class="mm-inner">
@@ -1638,7 +1664,7 @@
 <div class="screen" id="official-tournament">
   <div class="hdr">
     <button onclick="showScreen('home')" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 4px">←</button>
-    <div class="logo">MFC</div>
+    <div class="logo">BFC</div>
     <div class="hdr-right"><div class="neurons-pill"><div class="n-orb"></div><span id="n-ot">0</span></div></div>
   </div>
   <div style="width:100%;max-width:560px;padding:16px;display:flex;flex-direction:column;gap:14px;padding-bottom:80px">
@@ -1829,7 +1855,7 @@
         <div class="ob-dot" id="ob-dot-2"></div>
       </div>
       <div class="ob-icon">🧠</div>
-      <div class="ob-title" style="font-size:24px;font-weight:800;margin-bottom:10px">Mind Fight Club</div>
+      <div class="ob-title" style="font-size:24px;font-weight:800;margin-bottom:10px">Brain Fight Club</div>
       <div class="ob-sub" style="margin-bottom:24px">Интеллектуальные дуэли, быстрые раунды и соревнования — всё в одном месте.<br><br>Попробуй прямо сейчас — ответь на 3 вопроса.</div>
       <button class="ob-next-btn" style="background:linear-gradient(135deg,#6c63ff,#8b83ff)" onclick="startObDemo()">⚡ Ответить на 3 вопроса</button>
       <button class="ob-skip-btn" onclick="skipOnboarding()">Пропустить →</button>
@@ -1863,7 +1889,7 @@
 <div class="screen" id="character">
   <div class="hdr">
     <button onclick="showScreen('profile')" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 4px">←</button>
-    <div class="logo">MFC</div>
+    <div class="logo">BFC</div>
     <div class="hdr-right">
       <div class="neurons-pill"><div class="n-orb"></div><span id="n-character">0</span></div>
     </div>
@@ -1955,7 +1981,7 @@ const $ = id => document.getElementById(id);
 
 // ─── Emoji grid ───
 function renderEmoji() {
-  const g = $('cv-emoji-grid');
+  const g = $('cv-emoji-grid') || document.getElementById('team-emoji-select');
   if (!g) return;
   g.innerHTML = EMOJIS.map(e =>
     `<div onclick="window._cvEmoji('${e}')" style="width:40px;height:40px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:20px;background:${e===selEmoji?'rgba(108,99,255,.15)':'var(--bg3)'};border:0.5px solid ${e===selEmoji?'var(--accent)':'var(--border)'}">${e}</div>`
@@ -1965,27 +1991,35 @@ window._cvEmoji = e => { selEmoji = e; renderEmoji(); };
 
 // ─── Show screen ───
 window.showClubScreen = function() {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  $('club-screen').classList.add('active');
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  $('nav-teams')?.classList.add('active');
-  window.scrollTo(0, 0);
+  // Use existing 'teams' screen instead of legacy club-screen
+  if (typeof window.showScreen === 'function') window.showScreen('teams');
+  else {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    const t = document.getElementById('teams'); if (t) t.classList.add('active');
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('nav-teams')?.classList.add('active');
+    window.scrollTo(0, 0);
+  }
   // sync neurons display
   const n = getNeurons();
-  $('n-club-hdr') && ($('n-club-hdr').textContent = n);
-  renderEmoji();
+  const nh = document.getElementById('n-teams');
+  if (nh) nh.textContent = n;
   renderView();
 };
 
 // ─── Render view ───
 async function renderView() {
   if (!myClub) {
-    $('cv-none').style.display = '';
-    $('cv-mine').style.display = 'none';
+    const cvNone = document.getElementById('cv-none') || document.getElementById('team-none');
+    const cvMine = document.getElementById('cv-mine') || document.getElementById('team-mine');
+    if (cvNone) cvNone.style.display = '';
+    if (cvMine) cvMine.style.display = 'none';
     return;
   }
-  $('cv-none').style.display = 'none';
-  $('cv-mine').style.display = '';
+  const cvNone2 = document.getElementById('cv-none') || document.getElementById('team-none');
+  const cvMine2 = document.getElementById('cv-mine') || document.getElementById('team-mine');
+  if (cvNone2) cvNone2.style.display = 'none';
+  if (cvMine2) cvMine2.style.display = '';
   $('cv-emoji').textContent  = myClub.emoji || '⚡';
   $('cv-cname').textContent  = myClub.name  || '—';
   $('cv-ccity').textContent  = myClub.city  ? '📍 ' + myClub.city : '';
@@ -2077,7 +2111,7 @@ window.cvCreate = async function() {
 };
 
 window.cvJoin = async function() {
-  const code = $('cv-code')?.value.trim().toUpperCase();
+  const code = ($('cv-code') || document.getElementById('team-join-input'))?.value?.trim().toUpperCase();
   if (!code || code.length < 4) { window.toast && window.toast('Введи код клуба'); return; }
   try {
     const snap = await getDocs(query(collection(db, 'clubs'), limit(200)));
@@ -2122,7 +2156,7 @@ window._syncClubScore = async function(pts) {
 
 // ─── URL param — auto-fill join code ───
 const urlClub = new URLSearchParams(location.search).get('club');
-if (urlClub && $('cv-code')) $('cv-code').value = urlClub.toUpperCase();
+if (urlClub) { const inp = $('cv-code') || document.getElementById('team-join-input'); if (inp) inp.value = urlClub.toUpperCase(); }
 
 // ── Квиз-партнёры ──
 let myQuizData = JSON.parse(localStorage.getItem('mfc_quiz_fb') || 'null');
@@ -2249,6 +2283,7 @@ window.fbTournGet = async function(code) {
 };
 
 // ── Обновить комнату ──
+// NOTE: fbTournUpdate is for initial tournament write only — NOT for question advance (requires fbTournAdvance CF)
 window.fbTournUpdate = async function(code, data) {
   await fbUpdateDoc(fbDoc(db, 'rooms', code), data);
 };
@@ -2280,6 +2315,71 @@ console.log('✅ Firebase Tournaments module loaded');
 </script>
 <!-- ES module entry point (iteration 1) -->
 <script type="module" src="/js/app.js"></script>
+
+
+<!-- ═══════════════ PREMIUM SCREEN ═══════════════ -->
+<div class="screen" id="premium">
+  <div class="hdr">
+    <button onclick="showScreen('profile')" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 4px">←</button>
+    <div style="font-size:13px;font-weight:800;color:var(--gold)">⭐ BFC Premium</div>
+    <div></div>
+  </div>
+  <div style="width:100%;max-width:560px;padding:16px 16px 100px;display:flex;flex-direction:column;gap:14px" id="premium-inner">
+
+    <!-- Status (hidden for free users) -->
+    <div id="premium-status-block" style="display:none;background:rgba(240,192,64,.1);border:0.5px solid rgba(240,192,64,.4);border-radius:14px;padding:14px 16px">
+      <div id="premium-status-text" style="font-size:14px;font-weight:800;color:var(--gold)"></div>
+      <button id="premium-cancel-btn" onclick="cancelPremium()" style="margin-top:8px;background:transparent;border:0.5px solid var(--border);border-radius:8px;padding:6px 12px;font-size:11px;color:var(--muted);cursor:pointer;font-family:inherit">Отменить автопродление</button>
+    </div>
+
+    <!-- Offer hero -->
+    <div style="background:linear-gradient(135deg,#1a1235,#0d0d1a);border:0.5px solid rgba(240,192,64,.4);border-radius:20px;padding:24px 20px;text-align:center">
+      <div style="font-size:40px;margin-bottom:10px">⭐</div>
+      <div style="font-size:22px;font-weight:800;margin-bottom:6px">BFC Premium</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:18px">Больше тренировок. Больше баттлов. Больше турниров.</div>
+      <div style="display:flex;flex-direction:column;gap:8px;text-align:left">
+        <div style="display:flex;align-items:center;gap:10px;font-size:13px">🧠 <span>50 тренировочных вопросов в день</span></div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:13px">⚔️ <span>10 баттлов в день</span></div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:13px">📊 <span>Расширенная статистика</span></div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:13px">🏆 <span>Закрытые турниры</span></div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:13px">📦 <span>Ранний доступ к новым пакам</span></div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:13px">🎭 <span>Premium-бейдж и косметика</span></div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:13px">🧩 <span>Ежедневная мозговая практика ИНТОП</span></div>
+      </div>
+    </div>
+
+    <!-- Checkout buttons -->
+    <div id="premium-checkout-block" style="display:flex;flex-direction:column;gap:8px">
+      <button onclick="startPremiumCheckout('monthly')" id="btn-premium-monthly"
+        style="width:100%;background:var(--gold);border:none;border-radius:14px;padding:16px;font-size:16px;font-weight:800;color:#1a1a00;cursor:pointer;font-family:inherit">
+        Оформить за 299 ₽ / месяц
+      </button>
+      <button onclick="startPremiumCheckout('yearly')" id="btn-premium-yearly"
+        style="width:100%;background:rgba(240,192,64,.15);border:0.5px solid rgba(240,192,64,.4);border-radius:14px;padding:14px;font-size:14px;font-weight:800;color:var(--gold);cursor:pointer;font-family:inherit">
+        Купить год за 1490 ₽ <span style="font-size:11px;font-weight:600;opacity:.7">(−58%)</span>
+      </button>
+      <button onclick="applyPremiumPromoCode()"
+        style="width:100%;background:transparent;border:0.5px solid var(--border);border-radius:14px;padding:12px;font-size:13px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit">
+        🎁 Активировать промокод
+      </button>
+      <button onclick="showScreen('home')"
+        style="width:100%;background:transparent;border:none;border-radius:14px;padding:10px;font-size:13px;color:var(--muted);cursor:pointer;font-family:inherit">
+        Позже
+      </button>
+    </div>
+
+    <!-- Payment processing state -->
+    <div id="premium-processing" style="display:none;text-align:center;padding:20px">
+      <div style="font-size:32px;margin-bottom:12px">⏳</div>
+      <div style="font-size:16px;font-weight:800;margin-bottom:6px">Проверяем оплату...</div>
+      <div style="font-size:13px;color:var(--muted)">Это займёт несколько секунд</div>
+    </div>
+
+    <div style="font-size:11px;color:var(--muted);text-align:center;line-height:1.6">
+      Оплата через ЮKassa. Подписка продлевается автоматически. Можно отменить в любой момент.
+    </div>
+  </div>
+</div>
 
 </body>
 </html>

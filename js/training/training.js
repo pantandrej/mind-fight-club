@@ -1357,9 +1357,9 @@ function getShareText(){
   const rankLine = _cityRank && city ? (lang==='ru'?`\n🏙️ #${_cityRank} в ${city}`:`\n🏙️ #${_cityRank} in ${city}`) : '';
 
   if(lang==='ru'){
-    return `⚡ Я набрал ${roundPts} очков в Mind Fight Club!\n🎯 ${correctCount}/${curQ.length} правильных (${acc}%)${rankLine}\nСможешь лучше? 🧠\n${link}`;
+    return `⚡ Я набрал ${roundPts} очков в Brain Fight Club!\n🎯 ${correctCount}/${curQ.length} правильных (${acc}%)${rankLine}\nСможешь лучше? 🧠\n${link}`;
   }
-  return `⚡ I scored ${roundPts} points in Mind Fight Club!\n🎯 ${correctCount}/${curQ.length} correct (${acc}%)${rankLine}\nCan you beat me? 🧠\n${link}`;
+  return `⚡ I scored ${roundPts} points in Brain Fight Club!\n🎯 ${correctCount}/${curQ.length} correct (${acc}%)${rankLine}\nCan you beat me? 🧠\n${link}`;
 }
 
 function shareToTelegram(){
