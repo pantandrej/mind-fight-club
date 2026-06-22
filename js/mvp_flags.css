@@ -1,0 +1,52 @@
+/* ═══════════════════════════════════════════
+   BFC MVP MODE — скрываем недоделанные разделы
+   Не удаляем код, просто прячем UI
+   ═══════════════════════════════════════════ */
+
+/* 1. ТАЙМЕР — скрыть только секунды, оставить бонусные очки +N */
+.timer-row .t-val { display: none !important; }
+.timer-row { justify-content: flex-end !important; }
+/* Прогресс-бар таймера оставляем (он показывает прогресс вопроса) */
+
+/* 2. ПЕРСОНАЖ / АВАТАР / ИНВЕНТАРЬ / КОСМЕТИКА */
+#character { display: none !important; }
+
+/* Кнопка "Мой персонаж" в профиле */
+button[onclick="showCharacterScreen()"] { display: none !important; }
+
+/* 3. АЧИВКИ — скрыть блок на главной */
+.achievements-row,
+.section-title + .achievements-row,
+#home-achievements-section { display: none !important; }
+
+/* 4. Скрыть устаревший экран магазина персонажа
+   (оставляем основной магазин #shop) */
+#char-tab-appearance,
+#char-tab-inventory,
+#char-tab-shop,
+.char-nav-btns { display: none !important; }
+
+/* 5. Стрик-пилюля в хедере — скрыть до починки */
+.streak-pill { display: none !important; }
+
+/* 6. Powerup-кнопки в игре (если есть) */
+#powerup-bar,
+.powerup-row { display: none !important; }
+
+/* 7. АЧИВКИ — скрыть блок "Следующая цель" на главной */
+#home-next-goal-widget,
+#h-badges-title,
+#h-badges-title + button,
+#h-badges-title ~ button { display: none !important; }
+
+/* 8. АЧИВКИ — скрыть в профиле */
+#profile-badges-title,
+#profile-badges-grid { display: none !important; }
+
+/* 9. ПЕРСОНАЖ — скрыть кнопку в профиле */
+button[onclick="showCharacterScreen()"],
+.profile-char-btn { display: none !important; }
+
+/* 10. АЧИВКИ — скрыть всплывашку на экране результата */
+#badge-earned-popup,
+.badge-earned { display: none !important; }
