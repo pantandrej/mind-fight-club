@@ -393,55 +393,63 @@ function buildShareText(){
   return `I scored ${roundPts} neurons in Brain Fight Club 🧠${streakTxt}\n🏅 Level: ${levelName}\n🎯 ${correctCount}/${curQ.length} correct${rankLine}\nCan you beat me?\n${link}`;
 }
 
-// Override showShareScreen to add streak/level to card
-const _origShowShareScreen = showShareScreen;
-showShareScreen = async function(){
-  // Call original first
-  await _origShowShareScreen.apply(this, arguments);
-
-  // Add streak row
-  const streakRow = document.getElementById('share-streak-row');
-  const levelRow  = document.getElementById('share-level-row');
-  if(streakRow){
-    if(_dailyStreak > 0){
-      streakRow.textContent  = lang==='ru' ? `🔥 Серия: ${_dailyStreak} дней` : `🔥 Streak: ${_dailyStreak} days`;
-      streakRow.style.display = '';
-    } else {
-      streakRow.style.display = 'none';
-    }
+// Override showShareScreen — deferred to after all modules load
+// (training.js sets window.showShareScreen; streak.js must wait for it)
+document.addEventListener('DOMContentLoaded', () => {
+  const _origShowShareScreen = window.showShareScreen;
+  if (_origShowShareScreen) {
+    window.showShareScreen = async function(){
+      await _origShowShareScreen.apply(this, arguments);
+      const streakRow = document.getElementById('share-streak-row');
+      const levelRow  = document.getElementById('share-level-row');
+      if(streakRow){
+        if(_dailyStreak > 0){
+          streakRow.textContent  = lang==='ru' ? `🔥 Серия: ${_dailyStreak} дней` : `🔥 Streak: ${_dailyStreak} days`;
+          streakRow.style.display = '';
+        } else {
+          streakRow.style.display = 'none';
+        }
+      }
+      if(levelRow){
+        const level = getPlayerLevel(neurons);
+        const levelName = level.name[lang] || level.name.en;
+        levelRow.textContent  = `${level.icon} ${lang==='ru'?'Уровень':'Level'}: ${levelName}`;
+        levelRow.style.display = '';
+      }
+    };
   }
-  if(levelRow){
-    const level = getPlayerLevel(neurons);
-    const levelName = level.name[lang] || level.name.en;
-    levelRow.textContent  = `${level.icon} ${lang==='ru'?'Уровень':'Level'}: ${levelName}`;
-    levelRow.style.display = '';
+
+  // Override share functions to use buildShareText
+  const _origShareToTelegram = window.shareToTelegram;
+  if (_origShareToTelegram) {
+    window.shareToTelegram = function(){
+      track('share_to_telegram_clicked', {score: _roundScore, correct: correctCount});
+      const text = encodeURIComponent(buildShareText());
+      window.open('https://t.me/share/url?url='+encodeURIComponent(location.origin+location.pathname)+'&text='+text,'_blank');
+    };
   }
-};
 
-// Override share functions to use buildShareText
-const _origShareToTelegram = shareToTelegram;
-shareToTelegram = function(){
-  track('share_to_telegram_clicked', {score: _roundScore, correct: correctCount});
-  const text = encodeURIComponent(buildShareText());
-  window.open('https://t.me/share/url?url='+encodeURIComponent(location.origin+location.pathname)+'&text='+text,'_blank');
-};
+  const _origShareToWhatsApp = window.shareToWhatsApp;
+  if (_origShareToWhatsApp) {
+    window.shareToWhatsApp = function(){
+      track('share_to_whatsapp_clicked', {score: _roundScore, correct: correctCount});
+      const text = encodeURIComponent(buildShareText());
+      window.open('https://wa.me/?text='+text,'_blank');
+    };
+  }
 
-const _origShareToWhatsApp = shareToWhatsApp;
-shareToWhatsApp = function(){
-  track('share_to_whatsapp_clicked', {score: _roundScore, correct: correctCount});
-  const text = encodeURIComponent(buildShareText());
-  window.open('https://wa.me/?text='+text,'_blank');
-};
-
-const _origCopyShareLink = copyShareLink;
-copyShareLink = function(){
-  track('copy_share_clicked', {score: _roundScore, correct: correctCount});
-  const text = buildShareText();
-  navigator.clipboard.writeText(text).then(()=>{
-    const btn = document.getElementById('sh-copy');
-    if(btn){ btn.textContent='✓ '+(lang==='ru'?'Скопировано!':'Copied!'); setTimeout(()=>btn.textContent=lang==='ru'?'🔗 Скопировать':'🔗 Copy',2000); }
-  }).catch(()=>{ toast(lang==='ru'?'Не удалось скопировать':'Copy failed'); });
-};
+  const _origCopyShareLink = window.copyShareLink;
+  if (_origCopyShareLink) {
+    window.copyShareLink = function(){
+      track('copy_share_clicked', {score: _roundScore, correct: correctCount});
+      const text = buildShareText();
+      navigator.clipboard.writeText(text).then(()=>{
+        const btn = document.getElementById('sh-copy');
+        if(btn){ btn.textContent='✓ '+(lang==='ru'?'Скопировано!':'Copied!'); setTimeout(()=>btn.textContent=lang==='ru'?'🔗 Скопировать':'🔗 Copy',2000); }
+      }).catch(()=>{ toast(lang==='ru'?'Не удалось скопировать':'Copy failed'); });
+    };
+  }
+});
 
 function challengeFriendFromShare(){
   track('challenge_from_share', {});

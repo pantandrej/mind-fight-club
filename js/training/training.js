@@ -1460,3 +1460,20 @@ if (typeof getFixedPoints  !== 'undefined') window.getFixedPoints  = getFixedPoi
 if (typeof claimDailyGoalBonus !== 'undefined') window.claimDailyGoalBonus = claimDailyGoalBonus;
 if (typeof isDailyGoalClaimed  !== 'undefined') window.isDailyGoalClaimed  = isDailyGoalClaimed;
 if (typeof getTodayKey         !== 'undefined') window.getTodayKey         = getTodayKey;
+
+// ── Additional window exports (legacy.js depends on these) ────────
+window.isQuickPlayLocked        = isQuickPlayLocked;
+window.blockQuickPlayIfLocked   = blockQuickPlayIfLocked;
+window.getQuickPlayLock         = getQuickPlayLock;
+window.showShareScreen          = showShareScreen;
+window.showScore                = showScore;
+window.restartQuiz              = restartQuiz;
+window.showPlayTopics           = showPlayTopics;
+window.showMyPacks              = showMyPacks;
+window.renderDBGamePacks        = renderDBGamePacks;
+window.loadUserPackPurchases    = loadUserPackPurchases;
+window.playDBPack               = playDBPack;
+window.startExtractedPack       = startExtractedPack;
+window.showOfficialFromMenu     = showOfficialFromMenu;
+window.shareToTelegram          = shareToTelegram;
+window.copyShareLink            = copyShareLink;

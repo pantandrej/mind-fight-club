@@ -176,3 +176,16 @@ function shareToTelegramRef(link){
 
 // ═══════════════════════════════════════════
 
+
+// ── Window exports — required because this file is loaded as ES module ──
+window.getRemainingFreeQuestions = getRemainingFreeQuestions;
+window.getDailyQuestionsUsed     = getDailyQuestionsUsed;
+window.incrementDailyQuestion    = incrementDailyQuestion;
+window.checkQuestionLimit        = checkQuestionLimit;
+window.checkDailyLimit           = checkDailyLimit;
+window.incrementDailyRounds      = incrementDailyRounds;
+window.getDailyRoundsPlayed      = getDailyRoundsPlayed;
+window.showDailyLimitScreen      = showDailyLimitScreen;
+window.copyRefLinkAndToast       = copyRefLinkAndToast;
+window.shareToTelegramRef        = shareToTelegramRef;
+window.getDailyLimitDisplayUsed  = getDailyLimitDisplayUsed;
