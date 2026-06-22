@@ -82,3 +82,31 @@ export const NON_GAME_SCREENS = new Set([
   'auth', 'matchmaking', 'tournament', 'duel', 'organizer-cabinet',
   'organizer-apply', 'premium',
 ]);
+
+// ── MVP Feature Flags ─────────────────────────────────────────────
+// Set to false to hide unfinished features from UI.
+// Does NOT delete code — only controls visibility.
+// Flip to true when feature is ready.
+export const MVP_FLAGS = {
+  // ✅ VISIBLE in MVP
+  training:     true,
+  battles:      true,
+  tournaments:  true,
+  ratings:      true,
+  organizer:    true,
+  store:        true,
+  premium:      true,
+  hypeGames:    true,
+  b2b:          true,
+
+  // ❌ HIDDEN in MVP (not ready)
+  avatars:      false,
+  achievements: false,
+  inventory:    false,
+  cosmetics:    false,
+  character:    false,
+  streakPill:   false,
+  speedTimer:   false,  // hides the countdown seconds display
+};
+
+window.MVP_FLAGS = MVP_FLAGS;
