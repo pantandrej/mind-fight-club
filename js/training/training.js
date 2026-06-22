@@ -1038,6 +1038,19 @@ function expire(){
   track('question_answered', {correct: false, cat: q.cat, q_idx: qIdx, timeout: true});
   showExplanation(q, false);
 }
+
+// ── State sync helper ─────────────────────────────────────────────
+// Keeps state.js in sync with legacy globals so _syncStateToLegacy()
+// never overwrites active quiz state with stale data.
+function _syncQuizStateToStore() {
+  if (window._appState && window._appState.setState) {
+    window._appState.setState({
+      curQ, qIdx, correctCount, streak, bestStreak,
+      roundScore: _roundScore, answered,
+    });
+  }
+}
+
 function pick(i){
   if(answered)return;answered=true;clearInterval(timerInt);
   incrementDailyQuestion(); // count this question toward daily limit
@@ -1049,9 +1062,11 @@ function pick(i){
   track('question_answered', {correct: isCorrect, cat: q.cat, q_idx: qIdx, time_ms: responseMs});
   if(isCorrect){
     document.querySelectorAll('#answers .ans')[i].className='ans correct';
-    setState({ correctCount: getState().correctCount + 1, streak: getState().streak + 1 });
-    _roundScore += pts; // ← accumulate actual earned points
+    correctCount += 1;
+    streak += 1;
+    _roundScore += pts;
     if(streak>bestStreak)bestStreak=streak;
+    _syncQuizStateToStore();
     updNeurons();
     const pillEl=document.getElementById('n-quiz').closest('.neurons-pill');
     if(pillEl){pillEl.classList.add('pop');setTimeout(()=>pillEl.classList.remove('pop'),220);}
@@ -1061,6 +1076,7 @@ function pick(i){
     document.querySelectorAll('#answers .ans')[i].className='ans wrong';
     document.querySelectorAll('#answers .ans')[q.c].className='ans correct';
     streak=0;
+    _syncQuizStateToStore();
     showFb('fb','✗ '+q.a[q.c],false);
     setDot('prog-dots',qIdx,'miss');
   }
@@ -1085,6 +1101,7 @@ function _updateNextBtnLabel(){
 function nextQ(){
   stopAudio();
   qIdx++;
+  _syncQuizStateToStore();
   if(qIdx >= curQ.length){
     try{ showScore(); }
     catch(e){
@@ -1169,9 +1186,13 @@ function showScore(){
   scNeuronsEl.style.transition = 'transform .15s';
   scNeuronsEl.style.transform = 'scale(1.18)';
   setTimeout(()=>{ scNeuronsEl.style.transform = 'scale(1)'; }, 200);
-  { const s=getState(); document.getElementById('sc-correct').textContent=s.correctCount+'/'+s.curQ.length; }
+  // Use globals (curQ/correctCount) as source of truth — they're set by legacy startQuiz
+  // state.js curQ may be empty if setState was never called with curQ
+  const _totalQs = (Array.isArray(curQ) && curQ.length > 0) ? curQ.length : Math.max(qIdx, correctCount, 1);
+  const _acc = _totalQs > 0 ? Math.round(correctCount / _totalQs * 100) : 0;
+  document.getElementById('sc-correct').textContent = correctCount + '/' + _totalQs;
   document.getElementById('sc-streak').textContent=bestStreak;
-  document.getElementById('sc-acc').textContent=Math.round(correctCount/curQ.length*100)+'%';
+  document.getElementById('sc-acc').textContent= _acc + '%';
 
   // Confetti when player got ≥ 50% correct
   if(correctCount >= Math.ceil(curQ.length * 0.5)) setTimeout(spawnConfetti, 150);
@@ -1207,7 +1228,7 @@ function showScore(){
     });
   } else if(_roundScore > 0) {
     // Guest or no gameId: local only
-    setState({ neurons: getState().neurons + getState().roundScore, xp: getState().xp + getState().roundScore });
+    setState({ neurons: getState().neurons + _roundScore, xp: getState().xp + _roundScore, roundScore: _roundScore });
     updNeurons();
   }
   saveGameStats(correctCount,curQ.length,bestStreak);
@@ -1452,10 +1473,10 @@ function _trackPremiumPaywallViewed(trigger) {
 
 
 // ── window exports (inline onclick compatibility) ─────────────────
-if (typeof startQuickPlay !== 'undefined') window.startQuickPlay = startQuickPlay;
-if (typeof pick            !== 'undefined') window.pick            = pick;
-if (typeof showScore       !== 'undefined') window.showScore       = showScore;
-if (typeof loadQ           !== 'undefined') window.loadQ           = loadQ;
+if (typeof startQuickPlay !== 'undefined') // DISABLED (legacy.js owns this): window.startQuickPlay = startQuickPlay;
+if (typeof pick            !== 'undefined') // DISABLED (legacy.js owns this): window.pick            = pick;
+if (typeof showScore       !== 'undefined') // DISABLED (legacy.js owns this): window.showScore       = showScore;
+if (typeof loadQ           !== 'undefined') // DISABLED (legacy.js owns this): window.loadQ           = loadQ;
 if (typeof getFixedPoints  !== 'undefined') window.getFixedPoints  = getFixedPoints;
 if (typeof claimDailyGoalBonus !== 'undefined') window.claimDailyGoalBonus = claimDailyGoalBonus;
 if (typeof isDailyGoalClaimed  !== 'undefined') window.isDailyGoalClaimed  = isDailyGoalClaimed;
@@ -1466,8 +1487,8 @@ window.isQuickPlayLocked        = isQuickPlayLocked;
 window.blockQuickPlayIfLocked   = blockQuickPlayIfLocked;
 window.getQuickPlayLock         = getQuickPlayLock;
 window.showShareScreen          = showShareScreen;
-window.showScore                = showScore;
-window.restartQuiz              = restartQuiz;
+// DISABLED (legacy.js owns this): window.showScore                = showScore;
+// DISABLED (legacy.js owns this): window.restartQuiz              = restartQuiz;
 window.showPlayTopics           = showPlayTopics;
 window.showMyPacks              = showMyPacks;
 window.renderDBGamePacks        = renderDBGamePacks;
@@ -1494,13 +1515,13 @@ window.isPackOwned                       = isPackOwned;
 window.buyDBPack                         = buyDBPack;
 window.showExplanation                   = showExplanation;
 window.hideExplanation                   = hideExplanation;
-window.loadQ                             = loadQ;
+// DISABLED (legacy.js owns this): window.loadQ                             = loadQ;
 window.renderTimer                       = renderTimer;
 window.tick                              = tick;
 window.expire                            = expire;
 window.updStreak                         = updStreak;
 window._updateNextBtnLabel               = _updateNextBtnLabel;
-window.nextQ                             = nextQ;
+// DISABLED (legacy.js owns this): window.nextQ                             = nextQ;
 window.loadScoreCityRank                 = loadScoreCityRank;
 window.spawnConfetti                     = spawnConfetti;
 window.updateScoreScreenButtons          = updateScoreScreenButtons;
