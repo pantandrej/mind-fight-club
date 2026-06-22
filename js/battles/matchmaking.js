@@ -399,3 +399,12 @@ const _origShowProfile = typeof showProfile === 'function' ? showProfile : null;
 // ── window exports ────────────────────────────────────────────────
 if (typeof startMatchmaking !== 'undefined') window.startMatchmaking = startMatchmaking;
 if (typeof stopMatchmaking  !== 'undefined') window.stopMatchmaking  = stopMatchmaking;
+
+// ── Window exports ────────────────────────────────────────────────
+window.pickRandomBot      = pickRandomBot;
+window.startMatchmaking   = startMatchmaking;
+window.matchFound         = matchFound;
+window.playWithBot        = playWithBot;
+window.startBotDuel       = startBotDuel;
+window.cancelMatchmaking  = cancelMatchmaking;
+window.toggleRulesSection = toggleRulesSection;

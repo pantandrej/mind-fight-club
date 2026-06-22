@@ -953,3 +953,42 @@ async function openInviteLink(inviteId) {
   }
 }
 
+
+// ── Window exports ────────────────────────────────────────────────
+window.simulateBotAnswer     = simulateBotAnswer;
+window.showDuelSection       = showDuelSection;
+window.createDuel            = createDuel;
+window.joinDuel              = joinDuel;
+window.startDuelPoll         = startDuelPoll;
+window.startDuelGame         = startDuelGame;
+window.startDuelBattle       = startDuelBattle;
+window.loadDuelQ             = loadDuelQ;
+window.renderDuelTimer       = renderDuelTimer;
+window.duelTick              = duelTick;
+window.duelExpire            = duelExpire;
+window.pickDuel              = pickDuel;
+window.saveDuelScore         = saveDuelScore;
+window.updateDuelScores      = updateDuelScores;
+window.duelNextQ             = duelNextQ;
+window.endDuel               = endDuel;
+window.duelShareTG           = duelShareTG;
+window.duelShareWA           = duelShareWA;
+window.duelCopyLink          = duelCopyLink;
+window.duelChallengeFriend   = duelChallengeFriend;
+window.resetDuel             = resetDuel;
+window.copyDuelLink          = copyDuelLink;
+window.tournShareTG          = tournShareTG;
+window.tournShareWA          = tournShareWA;
+window.tournCopyLink         = tournCopyLink;
+window.copyTournLink         = copyTournLink;
+window.submitWL              = submitWL;
+window.validateQuestion      = validateQuestion;
+window.loadRemoteQuestions   = loadRemoteQuestions;
+window.requestPushPermission = requestPushPermission;
+window.showLocalNotification = showLocalNotification;
+window.maybeAskPushAfterGame = maybeAskPushAfterGame;
+window.notifyDuelChallenge   = notifyDuelChallenge;
+window.scheduleDailyStreakReminder = scheduleDailyStreakReminder;
+window.createBattleInvite    = createBattleInvite;
+window.acceptBattleInvite    = acceptBattleInvite;
+window.openInviteLink        = openInviteLink;
