@@ -95,3 +95,10 @@ window.buildDots  = buildDots;
 window.setDot     = setDot;
 window._esc       = _esc;
 window.answerLetter = answerLetter;
+
+// ── Additional exports for legacy.js compatibility ────────────────
+window.safeEl          = safeEl;
+window.setText         = setText;
+window.setHTML         = setHTML;
+window.setPlaceholder  = setPlaceholder;
+window.setDisplay      = setDisplay;
