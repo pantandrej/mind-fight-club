@@ -5973,12 +5973,15 @@ let _remoteQsPromise = null; // so startQuiz can await it
 
 
 // ═══════════════════════════════════════════
-// INIT
+// INIT — deferred until ES modules are ready
 // ═══════════════════════════════════════════
-renderBadges();
-applyLang();
-// Default to Russian for all users
-setLang('ru');
+// applyLang() uses setText() from router.js (ES module).
+// ES modules load async after legacy.js, so we defer to DOMContentLoaded.
+document.addEventListener('DOMContentLoaded', () => {
+  if (typeof renderBadges === 'function') renderBadges();
+  if (typeof applyLang   === 'function') applyLang();
+  setLang('ru');
+});
 
 // PWA
 // ═══════════════════════════════════════════
