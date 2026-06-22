@@ -6155,109 +6155,90 @@ let _obAnswered = false;
 // [buildShareText] → deleted from legacy.js (now in ES module)
 
 
-// Override showShareScreen to add streak/level to card
-const _origShowShareScreen = showShareScreen;
-showShareScreen = async function(){
-  // Call original first
-  await _origShowShareScreen.apply(this, arguments);
-
-  // Add streak row
-  const streakRow = document.getElementById('share-streak-row');
-  const levelRow  = document.getElementById('share-level-row');
-  if(streakRow){
-    if(_dailyStreak > 0){
-      streakRow.textContent  = lang==='ru' ? `🔥 Серия: ${_dailyStreak} дней` : `🔥 Streak: ${_dailyStreak} days`;
-      streakRow.style.display = '';
-    } else {
-      streakRow.style.display = 'none';
+// Override showShareScreen — deferred until ES modules expose window.showShareScreen
+document.addEventListener('DOMContentLoaded', () => {
+  const _origShowShareScreen = window.showShareScreen;
+  if (!_origShowShareScreen) return;
+  window.showShareScreen = async function(){
+    await _origShowShareScreen.apply(this, arguments);
+    const streakRow = document.getElementById('share-streak-row');
+    const levelRow  = document.getElementById('share-level-row');
+    if(streakRow){
+      if(_dailyStreak > 0){
+        streakRow.textContent  = lang==='ru' ? `🔥 Серия: ${_dailyStreak} дней` : `🔥 Streak: ${_dailyStreak} days`;
+        streakRow.style.display = '';
+      } else {
+        streakRow.style.display = 'none';
+      }
     }
+    if(levelRow){
+      const level = getPlayerLevel(neurons);
+      const levelName = level.name[lang] || level.name.en;
+      levelRow.textContent  = `${level.icon} ${lang==='ru'?'Уровень':'Level'}: ${levelName}`;
+      levelRow.style.display = '';
+    }
+  };
+});
+
+// ── All ES-module-dependent overrides deferred to DOMContentLoaded ──
+document.addEventListener('DOMContentLoaded', () => {
+
+  // Override share functions to use buildShareText
+  if (typeof window.shareToTelegram === 'function') {
+    window.shareToTelegram = function(){
+      track('share_to_telegram_clicked', {score: _roundScore, correct: correctCount});
+      const text = encodeURIComponent(window.buildShareText ? window.buildShareText() : '');
+      window.open('https://t.me/share/url?url='+encodeURIComponent(location.origin+location.pathname)+'&text='+text,'_blank');
+    };
   }
-  if(levelRow){
-    const level = getPlayerLevel(neurons);
-    const levelName = level.name[lang] || level.name.en;
-    levelRow.textContent  = `${level.icon} ${lang==='ru'?'Уровень':'Level'}: ${levelName}`;
-    levelRow.style.display = '';
+  if (typeof window.shareToWhatsApp === 'function') {
+    window.shareToWhatsApp = function(){
+      track('share_to_whatsapp_clicked', {score: _roundScore, correct: correctCount});
+      const text = encodeURIComponent(window.buildShareText ? window.buildShareText() : '');
+      window.open('https://wa.me/?text='+text,'_blank');
+    };
   }
-};
+  if (typeof window.copyShareLink === 'function') {
+    window.copyShareLink = function(){
+      track('copy_share_clicked', {score: _roundScore, correct: correctCount});
+      const text = window.buildShareText ? window.buildShareText() : '';
+      navigator.clipboard.writeText(text).then(()=>{
+        const btn = document.getElementById('sh-copy');
+        if(btn){ btn.textContent='✓ '+(lang==='ru'?'Скопировано!':'Copied!'); setTimeout(()=>btn.textContent=lang==='ru'?'🔗 Скопировать':'🔗 Copy',2000); }
+      }).catch(()=>{ toast(lang==='ru'?'Не удалось скопировать':'Copy failed'); });
+    };
+  }
 
-// Override share functions to use buildShareText
-const _origShareToTelegram = shareToTelegram;
-shareToTelegram = function(){
-  track('share_to_telegram_clicked', {score: _roundScore, correct: correctCount});
-  const text = encodeURIComponent(buildShareText());
-  window.open('https://t.me/share/url?url='+encodeURIComponent(location.origin+location.pathname)+'&text='+text,'_blank');
-};
+  // HOOK showScore TO TRIGGER STREAK UPDATE
+  if (typeof window.showScore === 'function') {
+    const _origShowScore_v68 = window.showScore;
+    window.showScore = function(){
+      _origShowScore_v68.apply(this, arguments);
+      setTimeout(()=> { if(typeof updateDailyStreakOnQuickPlayComplete==='function') updateDailyStreakOnQuickPlayComplete(); }, 800);
+    };
+  }
 
-const _origShareToWhatsApp = shareToWhatsApp;
-shareToWhatsApp = function(){
-  track('share_to_whatsapp_clicked', {score: _roundScore, correct: correctCount});
-  const text = encodeURIComponent(buildShareText());
-  window.open('https://wa.me/?text='+text,'_blank');
-};
+  // Hook showScreen home to load streak
+  if (typeof window.showScreen === 'function') {
+    const _origShowScreenV67 = window.showScreen;
+    window.showScreen = function(id){
+      _origShowScreenV67.apply(this, arguments);
+      if(id==='home') {
+        if(typeof renderDailyStreakUI==='function') renderDailyStreakUI();
+        if(currentUser && !playerInventory.length) _loadCharacterDataIfNeeded();
+        if(currentUser) renderCharacter();
+      }
+      if(id==='profile'){
+        if(currentUser && !playerInventory.length) _loadCharacterDataIfNeeded();
+        renderCharacter();
+      }
+    };
+  }
 
-const _origCopyShareLink = copyShareLink;
-copyShareLink = function(){
-  track('copy_share_clicked', {score: _roundScore, correct: correctCount});
-  const text = buildShareText();
-  navigator.clipboard.writeText(text).then(()=>{
-    const btn = document.getElementById('sh-copy');
-    if(btn){ btn.textContent='✓ '+(lang==='ru'?'Скопировано!':'Copied!'); setTimeout(()=>btn.textContent=lang==='ru'?'🔗 Скопировать':'🔗 Copy',2000); }
-  }).catch(()=>{ toast(lang==='ru'?'Не удалось скопировать':'Copy failed'); });
-};
-
+}); // end DOMContentLoaded
 
 // [challengeFriendFromShare] → deleted from legacy.js (now in ES module)
-
-
-// ═══════════════════════════════════════════
-// HOOK showScore TO TRIGGER STREAK UPDATE
-// ═══════════════════════════════════════════
-const _origShowScore_v68 = showScore;
-showScore = function(){
-  _origShowScore_v68.apply(this, arguments);
-  // Trigger streak update after score is shown (non-blocking)
-  setTimeout(()=> updateDailyStreakOnQuickPlayComplete(), 800);
-};
-
-// ═══════════════════════════════════════════
-// HOOK redirectAfterAuth TO USE NEW ONBOARDING
-// ═══════════════════════════════════════════
-const _origRedirectAfterAuth = redirectAfterAuth;
-redirectAfterAuth = function(){
-  savePendingRef();
-  checkRefParam();
-  if(shouldShowOnboarding()){
-    showOnboarding();
-    return;
-  }
-  const p = new URLSearchParams(window.location.search);
-  if(p.get('official')){ openOfficialTournament(p.get('official')); return; }
-  // Хайп-игра по ссылке
-  if(p.get('hype')){ checkHypeParam(); return; }
-  // Корпоративный турнир по ссылке
-  if(p.get('corp')){ setTimeout(()=>openCorporateTournament(p.get('corp')), 800); return; }
-  if(p.get('duel')){ showScreen('duel'); document.getElementById('join-code-input').value=p.get('duel'); return; }
-  if(p.get('tourn')){ showScreen('tournament'); document.getElementById('t-join-code').value=p.get('tourn'); return; }
-  showScreen('home');
-};
-
-// Load streak data after auth
-const _origOnUserLoaded_v68 = typeof onUserLoaded === 'function' ? onUserLoaded : null;
-
-// Hook showScreen home to load streak
-const _origShowScreenV67 = showScreen;
-showScreen = function(id){
-  _origShowScreenV67.apply(this, arguments);
-  if(id==='home') {
-    renderDailyStreakUI();
-    if(currentUser && !playerInventory.length) _loadCharacterDataIfNeeded();
-    if(currentUser) renderCharacter();
-  }
-  if(id==='profile'){
-    if(currentUser && !playerInventory.length) _loadCharacterDataIfNeeded();
-    renderCharacter();
-  }
-};
+// _origOnUserLoaded_v68 — removed (onUserLoaded no longer exists as global)
 
 // Load streak on first auth
 setTimeout(async ()=>{
@@ -6844,21 +6825,24 @@ function _resetSwordForNewGame(){
   }
 }
 
-// Patch loadQ to update powerup UI and reset sword tracker
-const _origLoadQ = loadQ;
-loadQ = function(){
-  _origLoadQ.apply(this, arguments);
-  _resetSwordForNewGame();
-  // Small delay to ensure answered=false is set first
-  setTimeout(updatePowerupUI, 30);
-};
-
-// After pick() blocks the sword too
-const _origPick = pick;
-pick = function(i){
-  _origPick.apply(this, arguments);
-  setTimeout(updatePowerupUI, 30);
-};
+// Patch loadQ and pick — deferred: these come from ES modules
+document.addEventListener('DOMContentLoaded', () => {
+  if (typeof window.loadQ === 'function') {
+    const _origLoadQ = window.loadQ;
+    window.loadQ = function(){
+      _origLoadQ.apply(this, arguments);
+      _resetSwordForNewGame();
+      setTimeout(updatePowerupUI, 30);
+    };
+  }
+  if (typeof window.pick === 'function') {
+    const _origPick = window.pick;
+    window.pick = function(i){
+      _origPick.apply(this, arguments);
+      setTimeout(updatePowerupUI, 30);
+    };
+  }
+});
 
 // ─────────────────────────────────────────
 // LOAD INVENTORY ON LOGIN (non-blocking)
@@ -6875,22 +6859,26 @@ async function _loadCharacterDataIfNeeded(){
   }catch(e){}
 }
 
-// Override updNeurons to also refresh character screen counters
-const _origUpdNeurons = updNeurons;
-updNeurons = function(){
-  _origUpdNeurons.apply(this, arguments);
-  const charN = document.getElementById('char-neurons-display');
-  if(charN) charN.textContent = neurons;
-  const charNH = document.getElementById('n-character');
-  if(charNH) charNH.textContent = neurons;
-};
+// Override updNeurons — deferred: comes from ES module wallet.js
+document.addEventListener('DOMContentLoaded', () => {
+  if (typeof window.updNeurons === 'function') {
+    const _origUpdNeurons = window.updNeurons;
+    window.updNeurons = function(){
+      _origUpdNeurons.apply(this, arguments);
+      const charN = document.getElementById('char-neurons-display');
+      if(charN) charN.textContent = neurons;
+      const charNH = document.getElementById('n-character');
+      if(charNH) charNH.textContent = neurons;
+    };
+  }
+});
 
 // ─────────────────────────────────────────
 // HEALTH CHECK: add shop_items and player_inventory tables
 // ─────────────────────────────────────────
-const _origRunHealthCheck = runHealthCheck;
+const _origRunHealthCheck = typeof runHealthCheck === 'function' ? runHealthCheck : null;
 runHealthCheck = async function(){
-  await _origRunHealthCheck.apply(this, arguments);
+  if(_origRunHealthCheck) await _origRunHealthCheck.apply(this, arguments);
   // Additional checks for character system tables
   const el = document.getElementById('admin-health-list');
   if(!el) return;
@@ -9103,12 +9091,16 @@ function renderHomeNextGoal(){
     </div>`;
 }
 
-// Hook renderHomeNextGoal into showScreen('home')
-const _origShowScreen_goals = showScreen;
-showScreen = function(name){
-  _origShowScreen_goals.apply(this, arguments);
-  if(name === 'home') setTimeout(renderHomeNextGoal, 60);
-};
+// Hook renderHomeNextGoal into showScreen('home') — deferred
+document.addEventListener('DOMContentLoaded', () => {
+  if (typeof window.showScreen === 'function') {
+    const _origShowScreen_goals = window.showScreen;
+    window.showScreen = function(name){
+      _origShowScreen_goals.apply(this, arguments);
+      if(name === 'home') setTimeout(renderHomeNextGoal, 60);
+    };
+  }
+});
 
 
 // ═══════════════════════════════════════════
