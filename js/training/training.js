@@ -1473,10 +1473,10 @@ function _trackPremiumPaywallViewed(trigger) {
 
 
 // ── window exports (inline onclick compatibility) ─────────────────
-if (typeof startQuickPlay !== 'undefined') // DISABLED (legacy.js owns this): window.startQuickPlay = startQuickPlay;
-if (typeof pick            !== 'undefined') // DISABLED (legacy.js owns this): window.pick            = pick;
-if (typeof showScore       !== 'undefined') // DISABLED (legacy.js owns this): window.showScore       = showScore;
-if (typeof loadQ           !== 'undefined') // DISABLED (legacy.js owns this): window.loadQ           = loadQ;
+window.startQuickPlay = startQuickPlay; // training.js is the only owner
+if (typeof pick            !== 'undefined') window.pick = pick; // training.js is the only owner
+if (typeof showScore       !== 'undefined') window.showScore = showScore; // training.js is the only owner
+if (typeof loadQ           !== 'undefined') window.loadQ = loadQ; // training.js is the only owner
 if (typeof getFixedPoints  !== 'undefined') window.getFixedPoints  = getFixedPoints;
 if (typeof claimDailyGoalBonus !== 'undefined') window.claimDailyGoalBonus = claimDailyGoalBonus;
 if (typeof isDailyGoalClaimed  !== 'undefined') window.isDailyGoalClaimed  = isDailyGoalClaimed;
@@ -1487,8 +1487,8 @@ window.isQuickPlayLocked        = isQuickPlayLocked;
 window.blockQuickPlayIfLocked   = blockQuickPlayIfLocked;
 window.getQuickPlayLock         = getQuickPlayLock;
 window.showShareScreen          = showShareScreen;
-// DISABLED (legacy.js owns this): window.showScore                = showScore;
-// DISABLED (legacy.js owns this): window.restartQuiz              = restartQuiz;
+// showScore already exported above
+window.restartQuiz = restartQuiz; // training.js is the only owner
 window.showPlayTopics           = showPlayTopics;
 window.showMyPacks              = showMyPacks;
 window.renderDBGamePacks        = renderDBGamePacks;
@@ -1515,13 +1515,13 @@ window.isPackOwned                       = isPackOwned;
 window.buyDBPack                         = buyDBPack;
 window.showExplanation                   = showExplanation;
 window.hideExplanation                   = hideExplanation;
-// DISABLED (legacy.js owns this): window.loadQ                             = loadQ;
+// loadQ already exported above
 window.renderTimer                       = renderTimer;
 window.tick                              = tick;
 window.expire                            = expire;
 window.updStreak                         = updStreak;
 window._updateNextBtnLabel               = _updateNextBtnLabel;
-// DISABLED (legacy.js owns this): window.nextQ                             = nextQ;
+window.nextQ = nextQ; // training.js is the only owner
 window.loadScoreCityRank                 = loadScoreCityRank;
 window.spawnConfetti                     = spawnConfetti;
 window.updateScoreScreenButtons          = updateScoreScreenButtons;
