@@ -5573,6 +5573,16 @@ async function startQuiz(packId, skipLimitCheck){
   // Note: _quickPlayRemaining limit is not applied here — DB always provides exactly 10.
   qIdx=0;correctCount=0;streak=0;bestStreak=0;_roundScore=0;
   _scoreShownForGame = false; // reset guard for new round
+
+  // CRITICAL: sync globals → state.js so training.js pick()/nextQ() never
+  // overwrites curQ/qIdx via _syncStateToLegacy() with stale state.js values
+  if (window._appState && window._appState.setState) {
+    window._appState.setState({
+      curQ: curQ, qIdx: 0, correctCount: 0,
+      streak: 0, bestStreak: 0, roundScore: 0, answered: false,
+    });
+  }
+
   buildDots('prog-dots',curQ.length);
   track('quiz_started', {cat: String(selectedCat), mode: selectedMode});
   _gameStartTime = Date.now();
