@@ -1,5 +1,6 @@
 import { getState, setState, setQuizState, incrementCorrectCount, addToRoundScore } from '../state.js';
 import { updNeurons, awardNeurons, awardCurrency, spendNeurons } from '../economy/wallet.js';
+import { sb } from '../services/supabase.js';
 import { track } from '../services/analytics.js';
 
 // ── State accessors (replaces bare global reads) ──────────────────
