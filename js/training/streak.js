@@ -467,3 +467,24 @@ function challengeFriendFromShare(){
 // ── window exports ────────────────────────────────────────────────
 if (typeof hasStreakFreeze   !== 'undefined') window.hasStreakFreeze   = hasStreakFreeze;
 if (typeof buyStreakFreeze   !== 'undefined') window.buyStreakFreeze   = buyStreakFreeze;
+
+// ── Additional window exports ─────────────────────────────────────
+window.getTodayDateKey                    = getTodayDateKey;
+window.getYesterdayDateKey                = getYesterdayDateKey;
+window.getStreakFreeze                    = getStreakFreeze;
+window.consumeStreakFreezeIfNeeded        = consumeStreakFreezeIfNeeded;
+window.loadDailyStreakData                = loadDailyStreakData;
+window.updateDailyStreakOnQuickPlayComplete = updateDailyStreakOnQuickPlayComplete;
+window.renderDailyStreakUI                = renderDailyStreakUI;
+window.showStreakCelebration              = showStreakCelebration;
+window.startObDemo                        = startObDemo;
+window.renderObQuestion                   = renderObQuestion;
+window.obPickAnswer                       = obPickAnswer;
+window.obNextQuestion                     = obNextQuestion;
+window.showObResult                       = showObResult;
+window.shouldShowOnboarding               = shouldShowOnboarding;
+window.showOnboarding                     = showOnboarding;
+window.skipOnboarding                     = skipOnboarding;
+window.finishOnboarding                   = finishOnboarding;
+window.buildShareText                     = buildShareText;
+window.challengeFriendFromShare           = challengeFriendFromShare;
