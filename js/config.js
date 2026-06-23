@@ -100,13 +100,16 @@ export const MVP_FLAGS = {
   b2b:          true,
 
   // ❌ HIDDEN in MVP (not ready)
-  avatars:      false,
-  achievements: false,
-  inventory:    false,
-  cosmetics:    false,
-  character:    false,
-  streakPill:   false,
-  speedTimer:   false,  // hides the countdown seconds display
+  avatars:       false,
+  achievements:  false,
+  inventory:     false,
+  cosmetics:     false,
+  character:     false,
+  streakPill:    false,
+  speedTimer:    false,   // hides the countdown seconds display
+  userQuestions: false,   // "Предложить вопрос", "Вопросы участников"
+  dailyTasks:    false,   // "Задание дня"
+  topicFilter:   false,   // "Выбрать тему" (filter not working yet)
 };
 
 window.MVP_FLAGS = MVP_FLAGS;
