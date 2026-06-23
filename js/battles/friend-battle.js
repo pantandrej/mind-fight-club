@@ -140,24 +140,83 @@ function startDuelPoll(){
 }
 
 async function startDuelGame(){
-  // Pick 7 bilingual questions
-  // Build 5-question battle with progression: Q1=2opts, Q2=3, Q3=4, Q4=5, Q5=6
-  const PROGRESSION = [2, 3, 4, 5, 6]; // answer counts per question
+  // Build 5-question battle: Q1=2opts, Q2=3, Q3=4, Q4=5, Q5=6
+  // Adapts answer count from pool (ALL_Q_BASE has 4-answer questions)
+  const PROGRESSION = [2, 3, 4, 5, 6];
   const raw = [];
+  const usedIdx = new Set();
+
+  // Normalize source pool — supports bilingual {ru,en} and plain string formats
+  const sourcePool = (typeof ALL_Q !== 'undefined' ? ALL_Q : []).filter(q => {
+    if (!q) return false;
+    const answers = Array.isArray(q.a?.ru) ? q.a.ru : (Array.isArray(q.a) ? q.a : null);
+    return answers && answers.length >= 2 && (q.q?.ru || q.q?.en || typeof q.q === 'string');
+  });
+
+  if (sourcePool.length < 5) {
+    window.toast?.(lang === 'ru' ? '⚠️ Недостаточно вопросов для дуэли' : '⚠️ Not enough questions for duel');
+    return;
+  }
+
+  // Helper: slice answers to optCount, keeping correct answer at random position
+  function adaptAnswers(answers, correctIdx, optCount) {
+    const correct = answers[correctIdx ?? 0];
+    const others = answers.filter((_, i) => i !== (correctIdx ?? 0))
+      .sort(() => Math.random() - 0.5)
+      .slice(0, optCount - 1);
+    const pos = Math.floor(Math.random() * (others.length + 1));
+    others.splice(pos, 0, correct);
+    return { answers: others, correctPos: pos };
+  }
+
   for (const optCount of PROGRESSION) {
-    const pool = ALL_Q.filter(q => Array.isArray(q.a) && q.a.length === optCount);
-    if (!pool.length) {
-      if (window.track) window.track('battle_question_shortage', { needed_option_count: optCount });
-      window.toast?.('Недостаточно вопросов для баттла');
+    const notUsed = sourcePool.filter((_, i) => !usedIdx.has(i));
+    if (!notUsed.length) {
+      window.toast?.(lang === 'ru' ? '⚠️ Не хватает вопросов' : '⚠️ Not enough questions');
       return;
     }
-    // Pick one random question with the right option count
-    raw.push(pool[Math.floor(Math.random() * pool.length)]);
+    const picked = notUsed[Math.floor(Math.random() * notUsed.length)];
+    usedIdx.add(sourcePool.indexOf(picked));
+
+    const ruAns = Array.isArray(picked.a?.ru) ? picked.a.ru : (Array.isArray(picked.a) ? picked.a : []);
+    const { answers: adaptedRu, correctPos } = adaptAnswers(ruAns, picked.c, optCount);
+
+    raw.push({
+      cat: picked.cat,
+      q: picked.q,         // bilingual object for DB storage
+      a: picked.a,         // bilingual object for DB storage
+      c: picked.c,
+      t: picked.t || 20,
+      _optCount: optCount,
+      _adaptedC: correctPos,
+      _adaptedRu: adaptedRu,
+    });
   }
-  // Store both languages
-  const questions=raw.map(q=>({cat:q.cat,q:q.q,a:q.a,c:q.c,t:q.t}));
-  await sb.from('duel_rooms').update({status:'started',questions}).eq('code',duelCode);
-  duelQs=questions.map(q=>({...q,q:q.q[lang]||q.q.en,a:q.a[lang]||q.a.en}));
+
+  console.log('[BFC friend battle questions]', {
+    sourceTotal: sourcePool.length,
+    selected: raw.length,
+    first: raw[0]
+  });
+
+  if (raw.length < 5) {
+    window.toast?.(lang === 'ru' ? '⚠️ Недостаточно вопросов' : '⚠️ Not enough questions');
+    return;
+  }
+
+  // Save to DB (bilingual, full format)
+  const questions = raw.map(q => ({ cat: q.cat, q: q.q, a: q.a, c: q.c, t: q.t }));
+  await sb.from('duel_rooms').update({ status: 'started', questions }).eq('code', duelCode);
+
+  // Build local duelQs with adapted answer counts for gameplay
+  duelQs = raw.map(q => ({
+    cat: q.cat,
+    q: (typeof q.q === 'object') ? (q.q[lang] || q.q.ru || q.q.en || '') : (q.q || ''),
+    a: q._adaptedRu,
+    c: q._adaptedC,
+    t: q.t || 20,
+  }));
+
   clearInterval(duelPoll);
   startDuelBattle();
 }

@@ -328,20 +328,53 @@ async function startBotDuel(botName){
 
   // Shuffle and take 7
   // Build 5-question battle with progression: Q1=2opts, Q2=3, Q3=4, Q4=5, Q5=6
+  // If exact match not found, adapt by slicing answers from longer questions
   const PROGRESSION = [2, 3, 4, 5, 6];
   const shuffled = [];
+  const usedIdx = new Set();
+
   for (const optCount of PROGRESSION) {
-    const pool = playable.filter(q => Array.isArray(q.a) && q.a.length === optCount);
+    // Try exact match first
+    let pool = playable.filter((q,i) => !usedIdx.has(i) && Array.isArray(q.a) && q.a.length === optCount);
+    // Fallback: take any question with >= optCount answers and slice
     if (!pool.length) {
-      if (window.track) window.track('battle_question_shortage', { needed_option_count: optCount });
-      window.toast?.('Недостаточно вопросов для баттла');
+      pool = playable.filter((q,i) => !usedIdx.has(i) && Array.isArray(q.a) && q.a.length >= optCount);
+    }
+    // Last resort: take any valid question
+    if (!pool.length) {
+      pool = playable.filter((q,i) => !usedIdx.has(i) && Array.isArray(q.a) && q.a.length >= 2);
+    }
+    if (!pool.length) {
+      window.toast?.(lang==='ru' ? '⚠️ Не хватает вопросов для баттла' : '⚠️ Not enough questions for battle');
+      window.showScreen?.('home');
       return;
     }
-    shuffled.push(pool[Math.floor(Math.random() * pool.length)]);
+    const picked = pool[Math.floor(Math.random() * pool.length)];
+    const pickedIdx = playable.indexOf(picked);
+    usedIdx.add(pickedIdx);
+    // Adapt answer count: keep correct answer, slice/pad as needed
+    let answers = [...picked.a];
+    const correctAns = answers[picked.c ?? 0];
+    // Shuffle answers keeping correct
+    const others = answers.filter((_,i) => i !== (picked.c ?? 0)).sort(() => Math.random() - 0.5);
+    const needed = optCount - 1;
+    const finalOthers = others.slice(0, needed);
+    // Insert correct at random position
+    const pos = Math.floor(Math.random() * (finalOthers.length + 1));
+    finalOthers.splice(pos, 0, correctAns);
+    shuffled.push({ ...picked, a: finalOthers, c: pos });
   }
+
+  console.log('[BFC battle questions]', {
+    sourceTotal: pool?.length,
+    validTotal: playable.length,
+    selected: shuffled.length,
+    first: shuffled[0]
+  });
+
   if(shuffled.length < 5){
     toast(lang==='ru' ? '⚠️ Недостаточно вопросов для дуэли — попробуйте позже' : '⚠️ Not enough questions — try later');
-    showScreen('home');
+    showScreen?.('home');
     return;
   }
   duelQs = shuffled.map(q => ({
