@@ -339,8 +339,9 @@ async function startBotDuel(botName){
     }
     shuffled.push(pool[Math.floor(Math.random() * pool.length)]);
   }
-  if(shuffled.length < 3){
-    toast(lang==='ru' ? '⚠️ Недостаточно вопросов для дуэли' : '⚠️ Not enough questions for duel');
+  if(shuffled.length < 5){
+    toast(lang==='ru' ? '⚠️ Недостаточно вопросов для дуэли — попробуйте позже' : '⚠️ Not enough questions — try later');
+    showScreen('home');
     return;
   }
   duelQs = shuffled.map(q => ({
