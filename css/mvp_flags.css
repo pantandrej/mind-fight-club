@@ -1,3 +1,10 @@
+:root {
+  --bg:     #101026;
+  --bg2:    #15142f;
+  --bg3:    #1d1b3d;
+  --border: rgba(139, 131, 255, 0.22);
+}
+
 /* ═══════════════════════════════════════════
    BFC MVP MODE — скрываем недоделанные разделы
    Не удаляем код, просто прячем UI
@@ -50,3 +57,15 @@ button[onclick="showCharacterScreen()"],
 /* 10. АЧИВКИ — скрыть всплывашку на экране результата */
 #badge-earned-popup,
 .badge-earned { display: none !important; }
+
+/* 11. Скрыть "Выбор темы" в play-menu */
+.play-menu-item[onclick="showPlayTopics()"] { display: none !important; }
+
+/* 12. Скрыть блок тем на главной */
+#cat-chips,
+#h-topic-title { display: none !important; }
+
+/* 13. Скрыть "Создать/предложить вопрос" из пользовательского MVP */
+button[onclick="showScreen('create-question')"],
+button[onclick="showScreen('author-builder')"],
+#profile-suggest-btn { display: none !important; }
