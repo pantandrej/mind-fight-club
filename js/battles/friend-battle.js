@@ -123,6 +123,7 @@ function startDuelPoll(){
       if(qs&&qs.length>0){
         // Map stored questions to current language
         duelQs = qs.map(q => ({ ...q })); // canonical from host, no remapping
+        console.log('[BFC friend battle loaded]', { count: duelQs.length, first: duelQs[0] });
         clearInterval(duelPoll);
         startDuelBattle();
       }
@@ -147,7 +148,7 @@ async function startDuelGame(){
     questions = await window.loadBattleQuestions(lang);
   }
 
-  console.log('[BFC friend battle questions]', {
+  console.log('[BFC friend battle canonical]', {
     selected: questions?.length,
     optCounts: questions?.map(q => q.a.length),
     first: questions?.[0],
@@ -238,7 +239,13 @@ async function startDuelBattle({ chargeSession = true, mode = 'friend_battle' } 
 
 function loadDuelQ(){
   duelAnswered=false;clearInterval(duelTimer);
-  const q=duelQs[duelIdx];duelMaxT=q.t;duelTimeLeft=q.t;
+  const q=duelQs[duelIdx];
+  if(!q || typeof q.t === 'undefined'){
+    console.error('[loadDuelQ] question undefined at idx', duelIdx, 'duelQs.length=', duelQs.length, duelQs);
+    endDuel({host_score: duelMyScore, guest_score: duelOppScore});
+    return;
+  }
+  duelMaxT=q.t;duelTimeLeft=q.t;
   document.getElementById('d-cat-pill').textContent=q.cat;
   document.getElementById('d-q-counter').textContent=(duelIdx+1)+'/'+duelQs.length;
   document.getElementById('d-q-text').textContent=q.q;
