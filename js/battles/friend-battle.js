@@ -170,7 +170,7 @@ async function startDuelGame(){
 }
 
 
-async function startDuelBattle({ chargeSession = true, mode = 'friend_battle', questions = null } = {}){
+async function startDuelBattle({ chargeSession = true, mode = 'friend_battle' } = {}){
   // ── Server-side limit check ────────────────────────────────────
   // Only run if this path is responsible for creating the session.
   // random_battle / virtual_battle paths set chargeSession=false
@@ -213,15 +213,6 @@ async function startDuelBattle({ chargeSession = true, mode = 'friend_battle', q
   }
 
   duelIdx=0;duelMyScore=0;duelOppScore=0;
-  // Accept questions passed directly (from matchmaking.js bot battle)
-  if(Array.isArray(questions) && questions.length > 0){
-    duelQs = questions;
-    console.log('[startDuelBattle] questions injected:', duelQs.length);
-  } else if(window._pendingDuelQs && window._pendingDuelQs.length > 0){
-    duelQs = window._pendingDuelQs;
-    window._pendingDuelQs = null;
-    console.log('[startDuelBattle] questions from window._pendingDuelQs:', duelQs.length);
-  }
   startIntegrity('duel'); // start ONLY when battle begins, not in lobby
   if(duelRole==='guest' && !window._isBotDuel){
     sb.from('duel_rooms').update({guest_score:0}).eq('code',duelCode);
@@ -283,7 +274,7 @@ function renderDuelTimer(){
   fill.style.width=pct+'%';fill.style.background=pct<35?'#e05555':pct<60?'#f0a050':'#6c63ff';
   const tv=document.getElementById('d-t-val');
   tv.textContent=duelTimeLeft+'s';tv.style.color=duelTimeLeft<=5?'#e05555':duelTimeLeft<=10?'#f0a050':'#8b83ff';
-  document.getElementById('d-p-val').textContent='+'+(duelQs[duelIdx]?getFixedPoints(duelQs[duelIdx].a.length):20);
+  document.getElementById('d-p-val').textContent='+'+(duelTimeLeft>0?duelTimeLeft:1);
 }
 function duelTick(){if(duelTimeLeft<=0){clearInterval(duelTimer);duelExpire();return;}duelTimeLeft--;renderDuelTimer();}
 function duelExpire(){
@@ -298,7 +289,7 @@ async function pickDuel(i){
   if(duelAnswered)return;duelAnswered=true;clearInterval(duelTimer);
   const q=duelQs[duelIdx];
   document.querySelectorAll('#d-answers .ans').forEach(b=>b.disabled=true);
-  const pts=getFixedPoints(q.a.length);
+  const pts=Math.max(1, duelTimeLeft); // score = seconds remaining (max 20, min 1)
   if(i===q.c){
     document.querySelectorAll('#d-answers .ans')[i].className='ans correct';
     duelMyScore+=pts;updateDuelScores();
