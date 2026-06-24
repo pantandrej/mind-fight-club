@@ -378,41 +378,12 @@ async function startBotDuel(botName){
   if(duelPoll)  { clearInterval(duelPoll);  duelPoll  = null; }
   if(duelTimer) { clearInterval(duelTimer); duelTimer = null; }
 
-  // Load battle questions inline — no dependency on window.loadBattleQuestions timing
+  // Load canonical 5-question battle [2,3,4,5,6] from DB via loadBattleQuestions
+  // This is the SAME source as friend battle — ensures consistent q/a/c format
   let botBattleQs = null;
-  try {
-    const _sb = window.sb || sb;
-    const { data: _rows } = await _sb.from('questions').select('*').eq('status','published').limit(2000);
-    if (_rows && _rows.length > 0) {
-      // Normalize rows using the same logic as training.js
-      const _norm = _rows.map(r => {
-        const q = (r.question_ru||r.question_text||r.question||'').trim();
-        let a = Array.isArray(r.answers_ru)?r.answers_ru:Array.isArray(r.answers_json)?r.answers_json:Array.isArray(r.answers)?r.answers:[];
-        if(typeof a==='string'){try{a=JSON.parse(a);}catch(e){a=[];}}
-        a = a.map(String).filter(x=>x.trim());
-        const c = Number.isInteger(r.correct_index)?r.correct_index:0;
-        return q&&a.length>=2&&c>=0&&c<a.length?{id:r.id,cat:r.category||r.cat||'GENERAL',q,a,c,t:20}:null;
-      }).filter(Boolean);
-      console.log('[BFC bot battle] pool:', _norm.length);
-      // Build 5 questions with progression [2,3,4,5,6]
-      const PROG=[2,3,4,5,6]; const used=new Set(); const result=[];
-      for(const n of PROG){
-        let cands=_norm.filter(q=>!used.has(q.id)&&q.a.length===n);
-        if(!cands.length) cands=_norm.filter(q=>!used.has(q.id)&&q.a.length>n);
-        if(!cands.length) cands=_norm.filter(q=>!used.has(q.id));
-        if(!cands.length) break;
-        let p=cands[Math.floor(Math.random()*cands.length)];
-        if(p.a.length!==n){
-          const cor=p.a[p.c]; const wr=p.a.filter((_,i)=>i!==p.c).sort(()=>Math.random()-.5).slice(0,n-1);
-          const pos=Math.floor(Math.random()*n); wr.splice(pos,0,cor);
-          p={...p,a:wr,c:pos};
-        }
-        used.add(p.id); result.push({cat:p.cat,q:p.q,a:p.a,c:p.c,t:p.t||20});
-      }
-      if(result.length===5) botBattleQs=result;
-      console.log('[BFC bot battle questions]',{selected:botBattleQs?.length,opts:botBattleQs?.map(q=>q.a.length)});
-    }
-  } catch(e){ console.error('[bot] questions load failed:',e.message); }
+  if (typeof window.loadBattleQuestions === 'function') {
+    botBattleQs = await window.loadBattleQuestions(lang);
+  }
 
   console.log('[BFC bot battle questions]', {
     selected: botBattleQs?.length,
@@ -427,7 +398,8 @@ async function startBotDuel(botName){
     showScreen('home');
     return;
   }
-  duelQs = botBattleQs; // canonical plain {cat,q,a,c,t} — no remapping needed
+  // Set via window so friend-battle.js (separate ES module) can read it
+  window.duelQs = botBattleQs;
 
   showScreen('duel');
   showDuelSection('d-battle');

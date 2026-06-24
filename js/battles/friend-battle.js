@@ -141,38 +141,12 @@ function startDuelPoll(){
 }
 
 async function startDuelGame(){
-  // Build canonical 5-question battle inline — no external module dependency
+  // HOST builds canonical 5-question battle [2,3,4,5,6] options
+  // loadBattleQuestions queries DB by answer count — returns plain {cat,q,a,c,t}
   let questions = null;
-  try {
-    const _sb = window.sb || sb;
-    const { data: _rows } = await _sb.from('questions').select('*').eq('status','published').limit(2000);
-    if (_rows && _rows.length > 0) {
-      const _norm = _rows.map(r => {
-        const q = (r.question_ru||r.question_text||r.question||'').trim();
-        let a = Array.isArray(r.answers_ru)?r.answers_ru:Array.isArray(r.answers_json)?r.answers_json:Array.isArray(r.answers)?r.answers:[];
-        if(typeof a==='string'){try{a=JSON.parse(a);}catch(e){a=[];}}
-        a = a.map(String).filter(x=>x.trim());
-        const c = Number.isInteger(r.correct_index)?r.correct_index:0;
-        return q&&a.length>=2&&c>=0&&c<a.length?{id:r.id,cat:r.category||r.cat||'GENERAL',q,a,c,t:20}:null;
-      }).filter(Boolean);
-      const PROG=[2,3,4,5,6]; const used=new Set(); const result=[];
-      for(const n of PROG){
-        let cands=_norm.filter(q=>!used.has(q.id)&&q.a.length===n);
-        if(!cands.length) cands=_norm.filter(q=>!used.has(q.id)&&q.a.length>n);
-        if(!cands.length) cands=_norm.filter(q=>!used.has(q.id));
-        if(!cands.length) break;
-        let p=cands[Math.floor(Math.random()*cands.length)];
-        if(p.a.length!==n){
-          const cor=p.a[p.c]; const wr=p.a.filter((_,i)=>i!==p.c).sort(()=>Math.random()-.5).slice(0,n-1);
-          const pos=Math.floor(Math.random()*n); wr.splice(pos,0,cor);
-          p={...p,a:wr,c:pos};
-        }
-        used.add(p.id); result.push({cat:p.cat,q:p.q,a:p.a,c:p.c,t:p.t||20});
-      }
-      if(result.length===5) questions=result;
-      console.log('[BFC friend battle canonical]',{selected:questions?.length,opts:questions?.map(q=>q.a.length)});
-    }
-  } catch(e){ console.error('[friend] questions load failed:',e.message); }
+  if (typeof window.loadBattleQuestions === 'function') {
+    questions = await window.loadBattleQuestions(lang);
+  }
 
   console.log('[BFC friend battle canonical]', {
     selected: questions?.length,
@@ -258,6 +232,15 @@ async function startDuelBattle({ chargeSession = true, mode = 'friend_battle' } 
   document.getElementById('d-res-opp-name').textContent = oppLabel;
   document.getElementById('d-res-me-name').textContent=duelMyName;
   updateDuelScores();
+  // Sync from window.duelQs if set by matchmaking.js (separate ES module)
+  if(window.duelQs && window.duelQs.length > 0 && (!duelQs || duelQs.length === 0)){
+    duelQs = window.duelQs;
+    window.duelQs = null;
+  }
+  if(!duelQs || duelQs.length < 1){
+    window.toast?.(lang==='ru'?'⚠️ Вопросы не загружены':'⚠️ Questions not loaded');
+    showScreen('home'); return;
+  }
   buildDots('d-prog-dots',duelQs.length);
   showDuelSection('d-battle');
   loadDuelQ();
