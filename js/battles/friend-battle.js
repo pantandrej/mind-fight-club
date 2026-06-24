@@ -1,5 +1,4 @@
 import { getState, setState } from '../state.js';
-import { loadBattleQuestions } from '../training/training.js';
 import { awardCurrency, spendNeurons, updNeurons } from '../economy/wallet.js';
 import { track } from '../services/analytics.js';
 
@@ -142,10 +141,38 @@ function startDuelPoll(){
 }
 
 async function startDuelGame(){
-  // HOST builds canonical 5-question battle [2,3,4,5,6] options
-  // loadBattleQuestions queries DB by answer count — returns plain {cat,q,a,c,t}
+  // Build canonical 5-question battle inline — no external module dependency
   let questions = null;
-  try { questions = await loadBattleQuestions(lang); } catch(e) { console.error('[friend] loadBQ:', e); }
+  try {
+    const _sb = window.sb || sb;
+    const { data: _rows } = await _sb.from('questions').select('*').eq('status','published').limit(2000);
+    if (_rows && _rows.length > 0) {
+      const _norm = _rows.map(r => {
+        const q = (r.question_ru||r.question_text||r.question||'').trim();
+        let a = Array.isArray(r.answers_ru)?r.answers_ru:Array.isArray(r.answers_json)?r.answers_json:Array.isArray(r.answers)?r.answers:[];
+        if(typeof a==='string'){try{a=JSON.parse(a);}catch(e){a=[];}}
+        a = a.map(String).filter(x=>x.trim());
+        const c = Number.isInteger(r.correct_index)?r.correct_index:0;
+        return q&&a.length>=2&&c>=0&&c<a.length?{id:r.id,cat:r.category||r.cat||'GENERAL',q,a,c,t:20}:null;
+      }).filter(Boolean);
+      const PROG=[2,3,4,5,6]; const used=new Set(); const result=[];
+      for(const n of PROG){
+        let cands=_norm.filter(q=>!used.has(q.id)&&q.a.length===n);
+        if(!cands.length) cands=_norm.filter(q=>!used.has(q.id)&&q.a.length>n);
+        if(!cands.length) cands=_norm.filter(q=>!used.has(q.id));
+        if(!cands.length) break;
+        let p=cands[Math.floor(Math.random()*cands.length)];
+        if(p.a.length!==n){
+          const cor=p.a[p.c]; const wr=p.a.filter((_,i)=>i!==p.c).sort(()=>Math.random()-.5).slice(0,n-1);
+          const pos=Math.floor(Math.random()*n); wr.splice(pos,0,cor);
+          p={...p,a:wr,c:pos};
+        }
+        used.add(p.id); result.push({cat:p.cat,q:p.q,a:p.a,c:p.c,t:p.t||20});
+      }
+      if(result.length===5) questions=result;
+      console.log('[BFC friend battle canonical]',{selected:questions?.length,opts:questions?.map(q=>q.a.length)});
+    }
+  } catch(e){ console.error('[friend] questions load failed:',e.message); }
 
   console.log('[BFC friend battle canonical]', {
     selected: questions?.length,
@@ -273,13 +300,7 @@ function renderDuelTimer(){
   fill.style.width=pct+'%';fill.style.background=pct<35?'#e05555':pct<60?'#f0a050':'#6c63ff';
   const tv=document.getElementById('d-t-val');
   tv.textContent=duelTimeLeft+'s';tv.style.color=duelTimeLeft<=5?'#e05555':duelTimeLeft<=10?'#f0a050':'#8b83ff';
-  if(duelQs[duelIdx]){
-    const _tq=duelQs[duelIdx];
-    const _pts=(typeof getTimedPoints==='function')
-      ?getTimedPoints(_tq.a.length,duelTimeLeft,duelMaxT)
-      :getFixedPoints(_tq.a.length);
-    document.getElementById('d-p-val').textContent='+'+_pts;
-  }
+  document.getElementById('d-p-val').textContent='+'+(duelQs[duelIdx]?getFixedPoints(duelQs[duelIdx].a.length):20);
 }
 function duelTick(){if(duelTimeLeft<=0){clearInterval(duelTimer);duelExpire();return;}duelTimeLeft--;renderDuelTimer();}
 function duelExpire(){
@@ -294,10 +315,7 @@ async function pickDuel(i){
   if(duelAnswered)return;duelAnswered=true;clearInterval(duelTimer);
   const q=duelQs[duelIdx];
   document.querySelectorAll('#d-answers .ans').forEach(b=>b.disabled=true);
-  // Time-based scoring: max points at full time, decreasing each second
-  const pts=(typeof getTimedPoints==='function')
-    ?getTimedPoints(q.a.length,duelTimeLeft,duelMaxT)
-    :getFixedPoints(q.a.length);
+  const pts=getFixedPoints(q.a.length);
   if(i===q.c){
     document.querySelectorAll('#d-answers .ans')[i].className='ans correct';
     duelMyScore+=pts;updateDuelScores();
