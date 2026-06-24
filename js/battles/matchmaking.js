@@ -398,13 +398,10 @@ async function startBotDuel(botName){
     showScreen('home');
     return;
   }
-  // Set via window so friend-battle.js (separate ES module) can read it
-  window.duelQs = botBattleQs;
-
+  window._pendingDuelQs = botBattleQs;
   showScreen('duel');
   showDuelSection('d-battle');
-  // Session already charged in startBotDuel's RPC call — do not double-charge
-  startDuelBattle({ chargeSession: false });
+  window.startDuelBattle({ chargeSession: false, questions: botBattleQs });
 }
 
 function cancelMatchmaking(){

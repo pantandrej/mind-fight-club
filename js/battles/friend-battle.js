@@ -170,7 +170,7 @@ async function startDuelGame(){
 }
 
 
-async function startDuelBattle({ chargeSession = true, mode = 'friend_battle' } = {}){
+async function startDuelBattle({ chargeSession = true, mode = 'friend_battle', questions = null } = {}){
   // ── Server-side limit check ────────────────────────────────────
   // Only run if this path is responsible for creating the session.
   // random_battle / virtual_battle paths set chargeSession=false
@@ -213,6 +213,15 @@ async function startDuelBattle({ chargeSession = true, mode = 'friend_battle' } 
   }
 
   duelIdx=0;duelMyScore=0;duelOppScore=0;
+  // Accept questions passed directly (from matchmaking.js bot battle)
+  if(Array.isArray(questions) && questions.length > 0){
+    duelQs = questions;
+    console.log('[startDuelBattle] questions injected:', duelQs.length);
+  } else if(window._pendingDuelQs && window._pendingDuelQs.length > 0){
+    duelQs = window._pendingDuelQs;
+    window._pendingDuelQs = null;
+    console.log('[startDuelBattle] questions from window._pendingDuelQs:', duelQs.length);
+  }
   startIntegrity('duel'); // start ONLY when battle begins, not in lobby
   if(duelRole==='guest' && !window._isBotDuel){
     sb.from('duel_rooms').update({guest_score:0}).eq('code',duelCode);
@@ -232,15 +241,6 @@ async function startDuelBattle({ chargeSession = true, mode = 'friend_battle' } 
   document.getElementById('d-res-opp-name').textContent = oppLabel;
   document.getElementById('d-res-me-name').textContent=duelMyName;
   updateDuelScores();
-  // Sync from window.duelQs if set by matchmaking.js (separate ES module)
-  if(window.duelQs && window.duelQs.length > 0 && (!duelQs || duelQs.length === 0)){
-    duelQs = window.duelQs;
-    window.duelQs = null;
-  }
-  if(!duelQs || duelQs.length < 1){
-    window.toast?.(lang==='ru'?'⚠️ Вопросы не загружены':'⚠️ Questions not loaded');
-    showScreen('home'); return;
-  }
   buildDots('d-prog-dots',duelQs.length);
   showDuelSection('d-battle');
   loadDuelQ();
