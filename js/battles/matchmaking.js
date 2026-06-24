@@ -78,9 +78,64 @@ function pickRandomBot(){
 // Legacy: keep BOT_NAMES for any old references
 const BOT_NAMES = BOT_PLAYERS.map(b => `${b.flag} ${b.name} (${b.city})`);
 
+
+// ── checkBattleLimitBeforeQueue ───────────────────────────────────
+// Reads today's battle count from game_sessions + checks subscription.
+// Does NOT create any session record — safe to call before queue insert.
+// Returns { allowed, used, limit, plan }
+async function checkBattleLimitBeforeQueue() {
+  if (!window.sb || !currentUser) return { allowed: true, used: 0, limit: 3, plan: 'free' };
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+
+    // Count today's non-social battles
+    const { count: used, error: cErr } = await window.sb
+      .from('game_sessions')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', currentUser.id)
+      .eq('day_utc', today)
+      .in('mode', ['friend_battle', 'random_battle', 'virtual_battle'])
+      .eq('social_bonus', false);
+
+    if (cErr) throw cErr;
+
+    // Check active premium
+    const { data: subRows } = await window.sb
+      .from('subscriptions')
+      .select('plan')
+      .eq('user_id', currentUser.id)
+      .eq('plan', 'premium')
+      .gt('current_period_end', new Date().toISOString())
+      .limit(1);
+
+    const isPremium = Array.isArray(subRows) && subRows.length > 0;
+    const plan      = isPremium ? 'premium' : 'free';
+    // Use PLAN_LIMITS from config.js if available; fallback to safe defaults
+    const planLimits = typeof PLAN_LIMITS !== 'undefined'
+      ? PLAN_LIMITS
+      : { free: { battlesPerDay: 3 }, premium: { battlesPerDay: 10 } };
+    const limit = planLimits[plan]?.battlesPerDay ?? (isPremium ? 10 : 3);
+
+    return { allowed: (used ?? 0) < limit, used: used ?? 0, limit, plan };
+  } catch (e) {
+    console.warn('[matchmaking] battle limit pre-check failed:', e.message);
+    return { allowed: true, used: 0, limit: 3, plan: 'free' }; // fail-open; server enforces
+  }
+}
+
 async function startMatchmaking(){
 
   if(!currentUser){ toast(lang==='ru'?'Войдите для поиска соперника':'Sign in to find opponents'); return; }
+
+  // ── Pre-check: limit BEFORE opening matchmaking screen or inserting to queue ──
+  const _preLC = await checkBattleLimitBeforeQueue();
+  if (!_preLC.allowed) {
+    track('battle_limit_reached', { used: _preLC.used, limit: _preLC.limit, plan: _preLC.plan, trigger: 'matchmaking_pre' });
+    toast(lang === 'ru' ? 'Дневной лимит баттлов исчерпан' : 'Daily battle limit reached', 3500);
+    showScreen('premium');
+    return;
+  }
+
   showScreen('matchmaking');
   document.getElementById('n-mm').textContent = neurons;
   const myName = currentUser.user_metadata?.full_name?.split(' ')[0]||currentUser.email?.split('@')[0]||'You';
@@ -252,6 +307,15 @@ async function playWithBot(){
     mmQueueId = null;
   }
 
+  // ── Pre-check: limit BEFORE showing "bot accepted" and before startBotDuel ──
+  const _botLC = await checkBattleLimitBeforeQueue();
+  if (!_botLC.allowed) {
+    track('battle_limit_reached', { used: _botLC.used, limit: _botLC.limit, plan: _botLC.plan, trigger: 'bot_pre' });
+    toast(lang === 'ru' ? 'Дневной лимит баттлов исчерпан' : 'Daily battle limit reached', 3500);
+    showScreen('premium');
+    return;
+  }
+
   document.getElementById('mm-av-opp').textContent = bot.avatar;
   document.getElementById('mm-av-opp').className = 'mm-av found';
   document.getElementById('mm-name-opp').textContent = `${bot.flag} ${bot.name}`;
@@ -328,53 +392,20 @@ async function startBotDuel(botName){
 
   // Shuffle and take 7
   // Build 5-question battle with progression: Q1=2opts, Q2=3, Q3=4, Q4=5, Q5=6
-  // If exact match not found, adapt by slicing answers from longer questions
   const PROGRESSION = [2, 3, 4, 5, 6];
   const shuffled = [];
-  const usedIdx = new Set();
-
   for (const optCount of PROGRESSION) {
-    // Try exact match first
-    let pool = playable.filter((q,i) => !usedIdx.has(i) && Array.isArray(q.a) && q.a.length === optCount);
-    // Fallback: take any question with >= optCount answers and slice
+    const pool = playable.filter(q => Array.isArray(q.a) && q.a.length === optCount);
     if (!pool.length) {
-      pool = playable.filter((q,i) => !usedIdx.has(i) && Array.isArray(q.a) && q.a.length >= optCount);
-    }
-    // Last resort: take any valid question
-    if (!pool.length) {
-      pool = playable.filter((q,i) => !usedIdx.has(i) && Array.isArray(q.a) && q.a.length >= 2);
-    }
-    if (!pool.length) {
-      window.toast?.(lang==='ru' ? '⚠️ Не хватает вопросов для баттла' : '⚠️ Not enough questions for battle');
-      window.showScreen?.('home');
+      if (window.track) window.track('battle_question_shortage', { needed_option_count: optCount });
+      window.toast?.('Недостаточно вопросов для баттла');
       return;
     }
-    const picked = pool[Math.floor(Math.random() * pool.length)];
-    const pickedIdx = playable.indexOf(picked);
-    usedIdx.add(pickedIdx);
-    // Adapt answer count: keep correct answer, slice/pad as needed
-    let answers = [...picked.a];
-    const correctAns = answers[picked.c ?? 0];
-    // Shuffle answers keeping correct
-    const others = answers.filter((_,i) => i !== (picked.c ?? 0)).sort(() => Math.random() - 0.5);
-    const needed = optCount - 1;
-    const finalOthers = others.slice(0, needed);
-    // Insert correct at random position
-    const pos = Math.floor(Math.random() * (finalOthers.length + 1));
-    finalOthers.splice(pos, 0, correctAns);
-    shuffled.push({ ...picked, a: finalOthers, c: pos });
+    shuffled.push(pool[Math.floor(Math.random() * pool.length)]);
   }
-
-  console.log('[BFC battle questions]', {
-    sourceTotal: pool?.length,
-    validTotal: playable.length,
-    selected: shuffled.length,
-    first: shuffled[0]
-  });
-
   if(shuffled.length < 5){
     toast(lang==='ru' ? '⚠️ Недостаточно вопросов для дуэли — попробуйте позже' : '⚠️ Not enough questions — try later');
-    showScreen?.('home');
+    showScreen('home');
     return;
   }
   duelQs = shuffled.map(q => ({
