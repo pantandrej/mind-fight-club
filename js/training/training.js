@@ -1505,96 +1505,120 @@ if (typeof getTodayKey         !== 'undefined') window.getTodayKey         = get
 
 
 // ── loadBattleQuestions ───────────────────────────────────────────
-// Loads exactly 5 questions from DB with strict answer counts per
-// BATTLE_QUESTION_PROGRESSION = [2, 3, 4, 5, 6].
-// Uses jsonb_array_length(answers_ru) filter so each slot is correct.
-// Falls back to ALL_Q_BASE only if DB returns nothing for that slot.
-// Returns array of 5 normalised {cat,q,a,c,t} or null if not enough.
+// Loads 5 battle questions with progression [2,3,4,5,6] answer counts.
+// Strategy:
+//   1. Load ALL published questions from DB once (one request).
+//   2. For each slot, pick a question with EXACTLY that many answers.
+//   3. If exact count not found, ADAPT by slicing from a longer question
+//      (keep correct answer, trim distractors — valid because the question
+//      itself is still testing the same fact).
+//   4. If still not enough valid questions, return null → toast shown.
+// This works even if DB has only 4-answer questions.
 export async function loadBattleQuestions(lang = 'ru') {
   const PROGRESSION = [2, 3, 4, 5, 6];
+
+  // ── 1. Load all published questions in ONE request ──────────────
+  let allRows = [];
+  try {
+    const { data, error } = await sb
+      .from('questions')
+      .select('id,question_ru,question_en,answers_ru,answers_en,answers_json,answers,correct_index,correct_answer,category,cat,media_type,image_url')
+      .eq('status', 'published')
+      .limit(2000);
+    if (!error && data) allRows = data;
+  } catch (e) {
+    console.warn('[loadBattleQuestions] DB fetch failed:', e.message);
+  }
+
+  // ── 2. Normalize all rows ───────────────────────────────────────
+  const pool = allRows
+    .map(row => normalizeDBQuestionForQuickPlay(row))
+    .filter(q => q && q.q && q.q.trim().length > 3 && Array.isArray(q.a) && q.a.length >= 2 && q.c >= 0 && q.c < q.a.length);
+
+  console.log('[loadBattleQuestions] pool size after normalize:', pool.length);
+
+  if (pool.length < 5) {
+    console.warn('[loadBattleQuestions] Not enough valid questions in DB:', pool.length);
+    return null;
+  }
+
+  // ── 3. Build 5 questions with progression ──────────────────────
   const result = [];
   const usedIds = new Set();
 
+  // Helper: adapt a question to have exactly `count` answers
+  // Keeps correct answer, randomly selects distractors, inserts correct at random pos
+  function adaptToCount(q, count) {
+    if (q.a.length === count) return q; // already correct
+    const correct = q.a[q.c];
+    // Pool of wrong answers
+    const wrong = q.a.filter((_, i) => i !== q.c);
+    // Need (count - 1) wrong answers
+    const needed = count - 1;
+    if (wrong.length < needed) return null; // can't build — not enough distractors
+
+    // Shuffle wrong answers and take needed
+    const shuffledWrong = wrong.sort(() => Math.random() - 0.5).slice(0, needed);
+    // Insert correct at random position
+    const pos = Math.floor(Math.random() * (shuffledWrong.length + 1));
+    shuffledWrong.splice(pos, 0, correct);
+    return { ...q, a: shuffledWrong, c: pos };
+  }
+
   for (const optCount of PROGRESSION) {
-    let question = null;
+    // Try exact match first
+    let candidates = pool.filter(q => !usedIds.has(q.id || q.q) && q.a.length === optCount);
 
-    // 1. Try DB — filter by jsonb_array_length(answers_ru) = optCount
-    try {
-      const { data, error } = await sb
-        .from('questions')
-        .select('*')
-        .eq('status', 'published')
-        .filter('answers_ru', 'not.is', null);
-        // Note: Supabase REST doesn't support jsonb_array_length directly.
-        // We fetch candidates and filter in JS.
-
-      if (!error && data && data.length > 0) {
-        const candidates = data
-          .map(row => normalizeDBQuestionForQuickPlay(row))
-          .filter(q => {
-            if (!q || usedIds.has(q.id)) return false;
-            if (!Array.isArray(q.a) || q.a.length !== optCount) return false;
-            if (!q.q || q.q.trim().length < 3) return false;
-            if (q.c < 0 || q.c >= q.a.length) return false;
-            return true;
-          });
-        if (candidates.length > 0) {
-          question = candidates[Math.floor(Math.random() * candidates.length)];
-          usedIds.add(question.id);
-        }
-      }
-    } catch (e) {
-      console.warn('[battle] DB fetch failed for optCount=' + optCount, e.message);
+    // If not found, try adapting questions with MORE answers (trim distractors)
+    if (candidates.length === 0) {
+      candidates = pool.filter(q => !usedIds.has(q.id || q.q) && q.a.length > optCount);
     }
 
-    // 2. Fallback: ALL_Q / ALL_Q_BASE — but ONLY if it has exactly optCount answers
-    if (!question) {
-      const localPool = (typeof ALL_Q !== 'undefined' ? ALL_Q : [])
-        .filter(q => {
-          if (!q || usedIds.has(q.id || q.q)) return false;
-          const answers = Array.isArray(q.a) ? q.a
-            : (Array.isArray(q.a?.ru) ? q.a.ru : null);
-          if (!answers || answers.length !== optCount) return false;
-          const text = (typeof q.q === 'string') ? q.q : (q.q?.ru || q.q?.en || '');
-          return text.trim().length > 2;
+    // Last resort: any unused question (adapt up or down)
+    if (candidates.length === 0) {
+      candidates = pool.filter(q => !usedIds.has(q.id || q.q));
+    }
+
+    if (candidates.length === 0) {
+      console.warn('[loadBattleQuestions] No question available for optCount=' + optCount);
+      return null;
+    }
+
+    // Pick random candidate
+    let picked = candidates[Math.floor(Math.random() * candidates.length)];
+
+    // Adapt answer count if needed
+    if (picked.a.length !== optCount) {
+      const adapted = adaptToCount(picked, optCount);
+      if (!adapted) {
+        // Try another candidate
+        const alt = candidates.find(q => {
+          const a = adaptToCount(q, optCount);
+          return a !== null;
         });
-
-      if (localPool.length > 0) {
-        const picked = localPool[Math.floor(Math.random() * localPool.length)];
-        const answers = Array.isArray(picked.a) ? picked.a : picked.a.ru;
-        const text = (typeof picked.q === 'string') ? picked.q : (picked.q?.ru || picked.q?.en || '');
-        question = {
-          id:  picked.id || picked.q,
-          cat: picked.cat || 'GENERAL',
-          q:   text,
-          a:   answers,
-          c:   picked.c ?? 0,
-          t:   picked.t || 20,
-        };
-        usedIds.add(question.id);
+        if (!alt) {
+          console.warn('[loadBattleQuestions] Cannot adapt any question to optCount=' + optCount);
+          return null;
+        }
+        picked = adaptToCount(alt, optCount);
+      } else {
+        picked = adapted;
       }
     }
 
-    if (!question) {
-      console.warn('[battle] No question found for optCount=' + optCount);
-      return null; // can't build a valid battle
-    }
-
-    // Canonical format — plain text, pre-adapted, same for both players
+    usedIds.add(picked.id || picked.q);
     result.push({
-      cat: question.cat || 'GENERAL',
-      q:   question.q,
-      a:   question.a,   // exactly optCount answers
-      c:   question.c,   // correct index
-      t:   question.t || 20,
+      cat: picked.cat || 'GENERAL',
+      q:   picked.q,
+      a:   picked.a,
+      c:   picked.c,
+      t:   picked.t || 20,
     });
   }
 
-  console.log('[BFC] loadBattleQuestions:', result.length, 'questions', result.map(q => q.a.length + ' opts'));
+  console.log('[loadBattleQuestions] built', result.length, 'questions, optCounts:', result.map(q => q.a.length));
   return result;
 }
-
-// Export to window for use in friend-battle.js and matchmaking.js
 window.loadBattleQuestions = loadBattleQuestions;
 
 // ── Additional window exports (legacy.js depends on these) ────────
