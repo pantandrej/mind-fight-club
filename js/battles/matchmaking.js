@@ -382,9 +382,9 @@ async function startBotDuel(botName){
   // Load canonical 5-question battle [2,3,4,5,6] from DB via loadBattleQuestions
   // This is the SAME source as friend battle — ensures consistent q/a/c format
   let botBattleQs = null;
-  try {
-    botBattleQs = await loadBattleQuestions(lang);
-  } catch(e) { console.error('[startBotDuel] loadBattleQuestions:', e.message); }
+  if (typeof window.loadBattleQuestions === 'function') {
+    botBattleQs = await window.loadBattleQuestions(lang);
+  }
 
   console.log('[BFC bot battle questions]', {
     selected: botBattleQs?.length,
@@ -399,12 +399,12 @@ async function startBotDuel(botName){
     showScreen('home');
     return;
   }
-  duelQs = botBattleQs; // canonical plain {cat,q,a,c,t} — no remapping needed
+  duelQs = botBattleQs;
 
   showScreen('duel');
   showDuelSection('d-battle');
-  // Session already charged in startBotDuel's RPC call — do not double-charge
-  startDuelBattle({ chargeSession: false });
+  // Pass questions directly to startDuelBattle to avoid window.duelQs race
+  startDuelBattle({ chargeSession: false, questions: botBattleQs });
 }
 
 function cancelMatchmaking(){

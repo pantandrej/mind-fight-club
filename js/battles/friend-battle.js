@@ -170,7 +170,7 @@ async function startDuelGame(){
 }
 
 
-async function startDuelBattle({ chargeSession = true, mode = 'friend_battle' } = {}){
+async function startDuelBattle({ chargeSession = true, mode = 'friend_battle', questions = null } = {}){
   // ── Server-side limit check ────────────────────────────────────
   // Only run if this path is responsible for creating the session.
   // random_battle / virtual_battle paths set chargeSession=false
@@ -232,6 +232,16 @@ async function startDuelBattle({ chargeSession = true, mode = 'friend_battle' } 
   document.getElementById('d-res-opp-name').textContent = oppLabel;
   document.getElementById('d-res-me-name').textContent=duelMyName;
   updateDuelScores();
+  // If questions passed directly, use them (avoids race condition with window.duelQs)
+  if (Array.isArray(questions) && questions.length > 0) {
+    duelQs = questions;
+  }
+  if (!duelQs || duelQs.length === 0) {
+    console.error('[startDuelBattle] duelQs is empty!');
+    window.toast?.(lang === 'ru' ? '⚠️ Ошибка загрузки вопросов' : '⚠️ Failed to load questions');
+    showScreen('home');
+    return;
+  }
   buildDots('d-prog-dots',duelQs.length);
   showDuelSection('d-battle');
   loadDuelQ();
@@ -239,13 +249,7 @@ async function startDuelBattle({ chargeSession = true, mode = 'friend_battle' } 
 
 function loadDuelQ(){
   duelAnswered=false;clearInterval(duelTimer);
-  const q=duelQs[duelIdx];
-  if(!q || typeof q.t === 'undefined'){
-    console.error('[loadDuelQ] question undefined at idx', duelIdx, 'duelQs.length=', duelQs.length, duelQs);
-    endDuel({host_score: duelMyScore, guest_score: duelOppScore});
-    return;
-  }
-  duelMaxT=q.t;duelTimeLeft=q.t;
+  const q=duelQs[duelIdx];duelMaxT=q.t;duelTimeLeft=q.t;
   document.getElementById('d-cat-pill').textContent=q.cat;
   document.getElementById('d-q-counter').textContent=(duelIdx+1)+'/'+duelQs.length;
   document.getElementById('d-q-text').textContent=q.q;
