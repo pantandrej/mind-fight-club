@@ -1,3 +1,4 @@
+import { loadBattleQuestions } from '../training/training.js';
 // ── Matchmaking / Random Battle ───────────────────────────────────
 // Pairs players for random duels. Shares battle limit with friend duels.
 
@@ -381,8 +382,10 @@ async function startBotDuel(botName){
   // Load canonical 5-question battle [2,3,4,5,6] from DB via loadBattleQuestions
   // This is the SAME source as friend battle — ensures consistent q/a/c format
   let botBattleQs = null;
-  if (typeof window.loadBattleQuestions === 'function') {
-    botBattleQs = await window.loadBattleQuestions(lang);
+  try {
+    botBattleQs = await loadBattleQuestions(lang);
+  } catch(e) {
+    console.error('[startBotDuel] loadBattleQuestions failed:', e.message);
   }
 
   console.log('[BFC bot battle questions]', {
