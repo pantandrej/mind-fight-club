@@ -1,4 +1,5 @@
 import { getState, setState } from '../state.js';
+import { loadBattleQuestions } from '../training/training.js';
 import { awardCurrency, spendNeurons, updNeurons } from '../economy/wallet.js';
 import { track } from '../services/analytics.js';
 
@@ -144,9 +145,7 @@ async function startDuelGame(){
   // HOST builds canonical 5-question battle [2,3,4,5,6] options
   // loadBattleQuestions queries DB by answer count — returns plain {cat,q,a,c,t}
   let questions = null;
-  if (typeof window.loadBattleQuestions === 'function') {
-    questions = await window.loadBattleQuestions(lang);
-  }
+  try { questions = await loadBattleQuestions(lang); } catch(e) { console.error('[friend] loadBQ:', e); }
 
   console.log('[BFC friend battle canonical]', {
     selected: questions?.length,
