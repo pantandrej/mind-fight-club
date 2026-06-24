@@ -700,7 +700,7 @@
     </div>
 
     <!-- Question packs shop -->
-    <div class="shop-title" id="shop-section-title">Паки вопросов</div>
+    <div class="shop-title" id="shop-section-title">Активности</div>
     <div class="packs-grid" id="packs-grid"></div>
   </div>
 </div>
@@ -899,11 +899,11 @@
       <span id="profile-rules-btn">Как это работает / Правила</span>
       <span style="margin-left:auto;opacity:.5">→</span>
     </button>
-    <div id="profile-neurons-explain" style="background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;padding:14px;margin-bottom:8px">
+    <div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;padding:14px;margin-bottom:8px">
       <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--muted);margin-bottom:10px" id="neurons-explain-title">ЧТО ТАКОЕ НЕЙРОНЫ?</div>
       <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:0.5px solid var(--border);font-size:12px"><span style="color:var(--muted)" id="neurons-score-rank-lbl">Твой счёт и место</span><span>🧠</span></div>
       <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:0.5px solid var(--border);font-size:12px"><span style="color:var(--muted)" id="neurons-correct-lbl">Правильный ответ</span><span style="color:var(--gold)">+10–60 ⚡</span></div>
-      <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:0.5px solid var(--border);font-size:12px"><span style="color:var(--muted)">Победа в дуэли</span><span style="color:var(--gold)">+30 ⚡</span></div>
+      <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px"><span style="color:var(--muted)">Победа в дуэли</span><span style="color:var(--gold)">+30 ⚡</span></div>
     </div>
     <div class="section-title" id="profile-badges-title">Достижения</div>
     <div class="profile-badges-grid" id="profile-badges-grid"></div>
@@ -1380,7 +1380,7 @@
     <div class="play-menu-item" onclick="showMyPacks()">
       <div class="play-menu-icon">📦</div>
       <div class="play-menu-info">
-        <div class="play-menu-title" id="pm-packs">Паки вопросов</div>
+        <div class="play-menu-title" id="pm-packs">Активности</div>
         <div class="play-menu-sub" id="pm-packs-sub">Тематические паки по 10 вопросов</div>
       </div>
       <div class="play-menu-badge" id="pm-packs-count" style="display:none;background:var(--accent)">0</div>
@@ -1478,7 +1478,7 @@
     </div>
 
     <div class="rules-section" onclick="toggleRulesSection('r-packs')">
-      <div class="rules-hdr"><div class="rules-hdr-icon">📦</div><div class="rules-hdr-title" id="r-packs-title">Паки вопросов</div><div class="rules-arrow" id="r-packs-arr">▼</div></div>
+      <div class="rules-hdr"><div class="rules-hdr-icon">📦</div><div class="rules-hdr-title" id="r-packs-title">Активности</div><div class="rules-arrow" id="r-packs-arr">▼</div></div>
       <div class="rules-body" id="r-packs">
         Паки — это тематические наборы вопросов: кино, спорт, музыка и т.д. Некоторые с картинками, аудио и видео.<br><br>
         После покупки пак появляется в разделе <span class="rules-hl">Мои паки</span> в меню игры. Нажми «Играть» прямо на карточке пака.
@@ -1493,18 +1493,18 @@
   <div class="limit-inner">
     <div class="limit-icon">🧠</div>
     <div class="limit-title" id="dl-title">Бесплатные вопросы закончились!</div>
-    <div class="limit-sub" id="dl-sub">Сегодня вы уже сыграли 10 бесплатных вопросов. Возвращайтесь завтра или продолжайте в паках/вопросах участников.</div>
+    <div class="limit-sub" id="dl-sub">Сегодня вы уже сыграли 10 бесплатных вопросов. Возвращайтесь завтра или откройте Premium для расширенного лимита.</div>
     <div class="limit-actions">
       <button onclick="openPremiumScreen()" style="width:100%;background:var(--gold);border:none;border-radius:14px;padding:14px;font-size:15px;font-weight:800;color:#1a1a00;cursor:pointer;font-family:inherit;margin-bottom:10px">⭐ Получить Premium — 299 ₽/мес</button>
       <button class="big-btn" onclick="startCommunityFeed()" id="dl-community-btn"
-        style="background:rgba(108,99,255,.15);border:1px solid var(--accent2)">
+        style="display:none;background:rgba(108,99,255,.15);border:1px solid var(--accent2)">
         🌐 Вопросы участников
       </button>
-      <button class="big-btn" onclick="showScreen('shop')" id="dl-packs-btn"
+      <button class="big-btn" onclick="showMyPacks()" id="dl-packs-btn"
         style="background:rgba(240,192,64,.15);border:1px solid var(--gold);color:var(--gold)">
-        📦 Открыть паки
+        📦 Открыть активности
       </button>
-      <button class="big-btn" onclick="showCreateQuestion()" id="dl-create-btn">
+      <button class="big-btn" onclick="showCreateQuestion()" id="dl-create-btn" style="display:none">
         ✏️ Создать свой вопрос
       </button>
       <button class="score-sec-btn" onclick="copyRefLinkAndToast()" id="dl-invite-btn">🔗 Пригласить друга</button>
