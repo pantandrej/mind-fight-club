@@ -127,8 +127,8 @@ const T={
     authSub:'Войдите чтобы сохранить нейроны и соревноваться глобально',
     authGoogle:'Войти через Google',authOr:'или',
     authGuest:'Продолжить как гость',authNote:'Прогресс гостя не сохраняется',
-    hLabel:'Бета-версия',hTitle:'Прокачай мозг в квиз-битвах',
-    hSub:'Играй. Думай. Побеждай.',
+    hLabel:'Бета · Запуск',hTitle:'Бой за мозг',
+    hSub:'Быстрая игра, дуэли, паки и турниры — всё в одном месте.',
     hPlay:'⚡ Играть',hMode:'Режим',hTopic:'Тема',hBadges:'Достижения',
     mFeedName:'Быстрая игра',mFeedDesc:'10 вопросов в день — бесплатно',
     mDuelName:'Дуэль',mDuelDesc:'Бой в реальном времени с другом',
@@ -155,7 +155,7 @@ const T={
     badgeEarned:'🏆 Достижение:',oppAnswered:'✓ Соперник ответил',
     statsTitle:'Статистика',statsGames:'Игры',statsCorrect:'Верных',statsAcc:'Точность',statsStreak:'Лучшая серия',
     achievTitle:'Достижения',rulesTitle:'Как это работает',freeVsPrem:'Бесплатно и Premium',
-    neuronsExplTitle:'Что такое нейроны?',tracksTitle:'Треки',packsTitle:'Паки вопросов',
+    neuronsExplTitle:'Что такое нейроны?',tracksTitle:'Треки',packsTitle:'Активности',
     playMenu:'Играть',quickPlay:'Быстрая игра',chooseTopic:'Выбрать тему',myPacks:'Мои паки',
     dailyChallenge:'Задание дня',randomBattle:'Случайный бой',duelFriend:'Дуэль с другом',
     scAgain:'⚡ Играть снова',scDuel:'⚔️ Дуэль',scTourn:'🏆 Турнир',scJoin:'📧 Присоединиться',
@@ -293,7 +293,7 @@ function applyLang(){
   setText('pm-quick-sub',lang==='ru'?'10 бесплатных вопросов в день':'10 free questions per day');
   setText('pm-topics',L.chooseTopic||'Выбор темы');
   setText('pm-topics-sub',lang==='ru'?'Наука, кино, спорт и другие':'Science, Cinema, Sports and more');
-  setText('pm-packs',L.myPacks||'Паки вопросов');
+  setText('pm-packs',L.myPacks||'Активности');
   setText('pm-packs-sub',lang==='ru'?'Тематические паки по 10 вопросов':'Themed packs of 20 questions');
   setText('pm-daily',L.dailyChallenge||'Задание дня');
   setText('pm-daily-sub',lang==='ru'?'Выполни задание и получи бонусные нейроны':"Complete today's task for bonus neurons");
@@ -332,7 +332,7 @@ function applyLang(){
   setText('daily-label',lang==='ru'?'Задание дня':'Daily Challenge');
   setText('ref-title',lang==='ru'?'Пригласить друзей':'Invite friends');
   setText('ref-sub',lang==='ru'?'Оба получите +50 нейронов при регистрации':'Both of you get +50 neurons when they sign up');
-  setText('shop-section-title',lang==='ru'?'Паки вопросов':'Question Packs');
+  setText('shop-section-title',lang==='ru'?'Активности':'Activities');
   // Profile
   setText('profile-stats-title',lang==='ru'?'Статистика':'Statistics');
   setText('profile-badges-title',lang==='ru'?'Достижения':'Achievements');
@@ -2744,7 +2744,7 @@ function showPlayMenu(){
 
   document.getElementById('pm-topics').textContent = L ? 'Выбрать тему' : 'Choose Topic';
   document.getElementById('pm-topics-sub').textContent = L ? 'Наука, кино, спорт и другое' : 'Science, Cinema, Sports and more';
-  document.getElementById('pm-packs').textContent = L ? 'Паки вопросов' : 'Question Packs';
+  document.getElementById('pm-packs').textContent = L ? 'Активности' : 'Activities';
   document.getElementById('pm-packs-sub').textContent = L ? 'Тематические паки по 10 вопросов' : 'Themed packs of 10 questions';
   document.getElementById('pm-daily').textContent = L ? 'Дневное задание' : 'Daily Challenge';
   document.getElementById('pm-daily-sub').textContent = L ? 'Бонусные нейроны за задание' : 'Bonus neurons for today\'s task';
@@ -5234,7 +5234,7 @@ function renderShop(){
   loadDailyState();
   renderRefCard();
   document.getElementById('n-shop').textContent = neurons;
-  document.getElementById('shop-section-title').textContent = lang==='ru'?'Паки вопросов':'Question Packs';
+  document.getElementById('shop-section-title').textContent = lang==='ru'?'Активности':'Activities';
   const grid = document.getElementById('packs-grid');
   grid.innerHTML = '';
 
