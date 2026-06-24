@@ -378,46 +378,27 @@ async function startBotDuel(botName){
   if(duelPoll)  { clearInterval(duelPoll);  duelPoll  = null; }
   if(duelTimer) { clearInterval(duelTimer); duelTimer = null; }
 
-  // Build 7 playable questions from local pool
-  let pool = (typeof ALL_Q !== 'undefined' ? ALL_Q : [])
-    .concat(typeof ALL_Q_BASE !== 'undefined' ? ALL_Q_BASE : []);
-  if(pool.length === 0 && typeof getAvailableQuestions === 'function'){
-    pool = getAvailableQuestions('ALL');
+  // Load canonical 5-question battle [2,3,4,5,6] from DB via loadBattleQuestions
+  // This is the SAME source as friend battle — ensures consistent q/a/c format
+  let botBattleQs = null;
+  if (typeof window.loadBattleQuestions === 'function') {
+    botBattleQs = await window.loadBattleQuestions(lang);
   }
-  // Normalise and filter
-  const playable = (typeof filterPlayableQuestions === 'function'
-    ? filterPlayableQuestions(pool.map(q => typeof toPlayableQuestion==='function' ? toPlayableQuestion(q) : q))
-    : pool
-  ).filter(q => q && q.q && Array.isArray(q.a) && q.a.length >= 2);
 
-  // Shuffle and take 7
-  // Build 5-question battle with progression: Q1=2opts, Q2=3, Q3=4, Q4=5, Q5=6
-  const PROGRESSION = [2, 3, 4, 5, 6];
-  const shuffled = [];
-  for (const optCount of PROGRESSION) {
-    const pool = playable.filter(q => Array.isArray(q.a) && q.a.length === optCount);
-    if (!pool.length) {
-      if (window.track) window.track('battle_question_shortage', { needed_option_count: optCount });
-      window.toast?.('Недостаточно вопросов для баттла');
-      return;
-    }
-    shuffled.push(pool[Math.floor(Math.random() * pool.length)]);
-  }
-  if(shuffled.length < 5){
-    toast(lang==='ru' ? '⚠️ Недостаточно вопросов для дуэли — попробуйте позже' : '⚠️ Not enough questions — try later');
+  console.log('[BFC bot battle questions]', {
+    selected: botBattleQs?.length,
+    optCounts: botBattleQs?.map(q => q.a?.length),
+    first: botBattleQs?.[0],
+  });
+
+  if (!botBattleQs || botBattleQs.length < 5) {
+    window.toast?.(lang === 'ru'
+      ? '⚠️ Недостаточно вопросов для баттла. Попробуйте позже.'
+      : '⚠️ Not enough questions. Try again later.');
     showScreen('home');
     return;
   }
-  duelQs = shuffled.map(q => ({
-    ...q,
-    q:  typeof q.q === 'object' ? (q.q[lang] || q.q.ru || q.q.en || '') : (q.q || ''),
-    a:  Array.isArray(q.a)
-          ? (typeof q.a[0] === 'object' ? (q.a.map(o => o[lang] || o.ru || o.en || String(o))) : q.a)
-          : [],
-    t:  q.t || 25,
-    c:  q.c ?? q.correct_index ?? 0,
-    cat: q.cat || q.category || 'GENERAL',
-  }));
+  duelQs = botBattleQs; // canonical plain {cat,q,a,c,t} — no remapping needed
 
   showScreen('duel');
   showDuelSection('d-battle');

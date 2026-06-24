@@ -123,6 +123,7 @@ function startDuelPoll(){
       if(qs&&qs.length>0){
         // Map stored questions to current language
         duelQs = qs.map(q => ({ ...q })); // canonical from host, no remapping
+        console.log('[BFC friend battle loaded]', { count: duelQs.length, first: duelQs[0] });
         clearInterval(duelPoll);
         startDuelBattle();
       }
@@ -147,7 +148,7 @@ async function startDuelGame(){
     questions = await window.loadBattleQuestions(lang);
   }
 
-  console.log('[BFC friend battle questions]', {
+  console.log('[BFC friend battle canonical]', {
     selected: questions?.length,
     optCounts: questions?.map(q => q.a.length),
     first: questions?.[0],
