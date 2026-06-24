@@ -1252,7 +1252,7 @@ function showScore(){
     setState({ neurons: getState().neurons + _roundScore, xp: getState().xp + _roundScore, roundScore: _roundScore });
     updNeurons();
   }
-  saveGameStats(correctCount,curQ.length,bestStreak);
+  if(typeof saveGameStats === 'function') saveGameStats(correctCount,curQ.length,bestStreak);
   completeGameRow(correctCount, curQ.length); // no addSeasonPoints inside
   updateDailyProgress(correctCount, correctCount===curQ.length);
   incrementDailyRounds(); // track daily usage
@@ -1505,124 +1505,88 @@ if (typeof getTodayKey         !== 'undefined') window.getTodayKey         = get
 
 
 // ── loadBattleQuestions ───────────────────────────────────────────
-// Loads 5 battle questions with progression [2,3,4,5,6] answer counts.
-// Strategy:
-//   1. Load ALL published questions from DB once (one request).
-//   2. For each slot, pick a question with EXACTLY that many answers.
-//   3. If exact count not found, ADAPT by slicing from a longer question
-//      (keep correct answer, trim distractors — valid because the question
-//      itself is still testing the same fact).
-//   4. If still not enough valid questions, return null → toast shown.
-// This works even if DB has only 4-answer questions.
+// Loads 5 battle questions [2,3,4,5,6] in ONE DB request.
+// Adapts answer count when exact match not available.
 export async function loadBattleQuestions(lang = 'ru') {
   const PROGRESSION = [2, 3, 4, 5, 6];
 
-  // ── 1. Load all published questions in ONE request ──────────────
+  // ONE request for all published questions
   let allRows = [];
   try {
-    const _sbClient = sb || window.sb;
-    if (!_sbClient) throw new Error('Supabase client not available');
+    const _sbClient = (typeof sb !== 'undefined' && sb) ? sb : window.sb;
+    if (!_sbClient) throw new Error('No supabase client');
     const { data, error } = await _sbClient
       .from('questions')
-      .select('id,question_ru,question_en,answers_ru,answers_en,answers_json,answers,correct_index,correct_answer,category,cat,media_type,image_url')
+      .select('*')
       .eq('status', 'published')
       .limit(2000);
     if (error) console.warn('[loadBattleQuestions] DB error:', error.message);
     if (data) allRows = data;
-    console.log('[loadBattleQuestions] raw DB rows:', allRows.length);
+    console.log('[loadBattleQuestions] raw rows from DB:', allRows.length);
   } catch (e) {
-    console.warn('[loadBattleQuestions] DB fetch failed:', e.message);
+    console.warn('[loadBattleQuestions] fetch failed:', e.message);
   }
 
-  // ── 2. Normalize all rows ───────────────────────────────────────
+  // Normalize all rows
   const pool = allRows
     .map(row => normalizeDBQuestionForQuickPlay(row))
     .filter(q => q && q.q && q.q.trim().length > 3 && Array.isArray(q.a) && q.a.length >= 2 && q.c >= 0 && q.c < q.a.length);
 
-  console.log('[loadBattleQuestions] pool size after normalize:', pool.length);
+  console.log('[loadBattleQuestions] valid pool size:', pool.length);
 
   if (pool.length < 5) {
-    console.warn('[loadBattleQuestions] Not enough valid questions in DB:', pool.length);
+    console.warn('[loadBattleQuestions] pool too small:', pool.length);
     return null;
   }
 
-  // ── 3. Build 5 questions with progression ──────────────────────
+  // Helper: adapt question to have exactly `count` answers
+  function adaptToCount(q, count) {
+    if (q.a.length === count) return q;
+    const correct = q.a[q.c];
+    const wrong = q.a.filter((_, i) => i !== q.c).sort(() => Math.random() - 0.5);
+    if (wrong.length < count - 1) return null;
+    const distractors = wrong.slice(0, count - 1);
+    const pos = Math.floor(Math.random() * count);
+    distractors.splice(pos, 0, correct);
+    return { ...q, a: distractors, c: pos };
+  }
+
   const result = [];
   const usedIds = new Set();
 
-  // Helper: adapt a question to have exactly `count` answers
-  // Keeps correct answer, randomly selects distractors, inserts correct at random pos
-  function adaptToCount(q, count) {
-    if (q.a.length === count) return q; // already correct
-    const correct = q.a[q.c];
-    // Pool of wrong answers
-    const wrong = q.a.filter((_, i) => i !== q.c);
-    // Need (count - 1) wrong answers
-    const needed = count - 1;
-    if (wrong.length < needed) return null; // can't build — not enough distractors
-
-    // Shuffle wrong answers and take needed
-    const shuffledWrong = wrong.sort(() => Math.random() - 0.5).slice(0, needed);
-    // Insert correct at random position
-    const pos = Math.floor(Math.random() * (shuffledWrong.length + 1));
-    shuffledWrong.splice(pos, 0, correct);
-    return { ...q, a: shuffledWrong, c: pos };
-  }
-
   for (const optCount of PROGRESSION) {
-    // Try exact match first
-    let candidates = pool.filter(q => !usedIds.has(q.id || q.q) && q.a.length === optCount);
+    // Prefer exact match
+    let candidates = pool.filter(q => !usedIds.has(q.id) && q.a.length === optCount);
+    // Fallback: adapt from longer questions
+    if (!candidates.length) candidates = pool.filter(q => !usedIds.has(q.id) && q.a.length > optCount);
+    // Last resort: any unused
+    if (!candidates.length) candidates = pool.filter(q => !usedIds.has(q.id));
 
-    // If not found, try adapting questions with MORE answers (trim distractors)
-    if (candidates.length === 0) {
-      candidates = pool.filter(q => !usedIds.has(q.id || q.q) && q.a.length > optCount);
-    }
-
-    // Last resort: any unused question (adapt up or down)
-    if (candidates.length === 0) {
-      candidates = pool.filter(q => !usedIds.has(q.id || q.q));
-    }
-
-    if (candidates.length === 0) {
-      console.warn('[loadBattleQuestions] No question available for optCount=' + optCount);
+    if (!candidates.length) {
+      console.warn('[loadBattleQuestions] no candidate for optCount=' + optCount);
       return null;
     }
 
-    // Pick random candidate
     let picked = candidates[Math.floor(Math.random() * candidates.length)];
-
-    // Adapt answer count if needed
     if (picked.a.length !== optCount) {
       const adapted = adaptToCount(picked, optCount);
       if (!adapted) {
-        // Try another candidate
-        const alt = candidates.find(q => {
-          const a = adaptToCount(q, optCount);
-          return a !== null;
-        });
-        if (!alt) {
-          console.warn('[loadBattleQuestions] Cannot adapt any question to optCount=' + optCount);
-          return null;
-        }
+        const alt = candidates.find(q => adaptToCount(q, optCount) !== null);
+        if (!alt) return null;
         picked = adaptToCount(alt, optCount);
       } else {
         picked = adapted;
       }
     }
 
-    usedIds.add(picked.id || picked.q);
-    result.push({
-      cat: picked.cat || 'GENERAL',
-      q:   picked.q,
-      a:   picked.a,
-      c:   picked.c,
-      t:   picked.t || 20,
-    });
+    usedIds.add(picked.id);
+    result.push({ cat: picked.cat || 'GENERAL', q: picked.q, a: picked.a, c: picked.c, t: picked.t || 20 });
   }
 
-  console.log('[loadBattleQuestions] built', result.length, 'questions, optCounts:', result.map(q => q.a.length));
+  console.log('[loadBattleQuestions] built:', result.length, 'optCounts:', result.map(q => q.a.length));
   return result;
 }
+window.loadBattleQuestions = loadBattleQuestions;
 window.loadBattleQuestions = loadBattleQuestions;
 
 // ── Additional window exports (legacy.js depends on these) ────────
