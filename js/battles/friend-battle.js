@@ -274,7 +274,14 @@ function renderDuelTimer(){
   fill.style.width=pct+'%';fill.style.background=pct<35?'#e05555':pct<60?'#f0a050':'#6c63ff';
   const tv=document.getElementById('d-t-val');
   tv.textContent=duelTimeLeft+'s';tv.style.color=duelTimeLeft<=5?'#e05555':duelTimeLeft<=10?'#f0a050':'#8b83ff';
-  document.getElementById('d-p-val').textContent='+'+(duelQs[duelIdx]?getFixedPoints(duelQs[duelIdx].a.length):20);
+  // Show current time-based potential score (decreases as time passes)
+  if(duelQs[duelIdx]){
+    const _q = duelQs[duelIdx];
+    const _pts = (typeof getTimedPoints === 'function')
+      ? getTimedPoints(_q.a.length, duelTimeLeft, duelMaxT)
+      : getFixedPoints(_q.a.length);
+    document.getElementById('d-p-val').textContent = '+' + _pts;
+  }
 }
 function duelTick(){if(duelTimeLeft<=0){clearInterval(duelTimer);duelExpire();return;}duelTimeLeft--;renderDuelTimer();}
 function duelExpire(){
@@ -289,7 +296,11 @@ async function pickDuel(i){
   if(duelAnswered)return;duelAnswered=true;clearInterval(duelTimer);
   const q=duelQs[duelIdx];
   document.querySelectorAll('#d-answers .ans').forEach(b=>b.disabled=true);
-  const pts=getFixedPoints(q.a.length);
+  // Time-based scoring: more points for faster answers
+  const maxPts = getFixedPoints(q.a.length);
+  const pts = (typeof getTimedPoints === 'function')
+    ? getTimedPoints(q.a.length, duelTimeLeft, duelMaxT)
+    : maxPts;
   if(i===q.c){
     document.querySelectorAll('#d-answers .ans')[i].className='ans correct';
     duelMyScore+=pts;updateDuelScores();
@@ -345,11 +356,15 @@ async function duelNextQ(){
       await sb.from('duel_rooms').update({[myField]:true}).eq('code',duelCode);
       document.getElementById('d-q-text').textContent='⏳ Waiting for opponent to finish...';
       document.querySelectorAll('#d-answers .ans').forEach(b=>{b.disabled=true;b.style.opacity='.3';});
+      const _waitStart = Date.now();
       const waitPoll=setInterval(async()=>{
         const {data}=await sb.from('duel_rooms').select('*').eq('code',duelCode).single();
         if(!data)return;
-        const bothDone=data.host_done&&data.guest_done;
-        if(bothDone||(Date.now()-new Date(data.created_at).getTime()>300000)){
+        // End if: both done, OR opponent finished (status=done), OR 60s timeout
+        const bothDone = data.host_done && data.guest_done;
+        const oppDone  = data.status === 'done';
+        const timeout  = (Date.now() - _waitStart) > 60000;
+        if(bothDone || oppDone || timeout){
           clearInterval(waitPoll);
           endDuel(data);
         }
