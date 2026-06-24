@@ -942,11 +942,33 @@ function hideExplanation(){
   if(textEl) textEl.style.display = 'none';
 }
 
+
+// ── normalizeAndShuffleQuestion ───────────────────────────────────
+// Shuffles answer array, recalculates correct index.
+// Works for both DB questions (question_ru/answers_ru) and ALL_Q format.
+// Does NOT mutate the original — returns a new object.
+function normalizeAndShuffleQuestion(q) {
+  if (!q || !Array.isArray(q.a) || q.a.length < 2) return q;
+  const original = q.a;
+  const correctAns = original[q.c ?? 0];
+  // Fisher-Yates shuffle on a copy
+  const shuffled = [...original];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  const newCorrectIdx = shuffled.indexOf(correctAns);
+  return { ...q, a: shuffled, c: newCorrectIdx };
+}
+window.normalizeAndShuffleQuestion = normalizeAndShuffleQuestion;
+
 function loadQ(){
   answered=false;clearInterval(timerInt);
   hideExplanation();
   // Normalize before rendering
-  const q=toPlayableQuestion(curQ[qIdx]);curQ[qIdx]=q;
+  let q=toPlayableQuestion(curQ[qIdx]);
+  q=normalizeAndShuffleQuestion(q); // shuffle answers so correct isn't always A
+  curQ[qIdx]=q;
 
   // Record question as seen immediately (before answer) so page-refresh can't repeat it
   if(currentGameType === 'quick' && q._id){
@@ -972,9 +994,8 @@ function loadQ(){
   renderQMedia('q-media-container', q);
   // Report button
   setTimeout(()=>renderReportBtn('quiz-inner', curQ[qIdx]), 50);
-  // Normalize question through toPlayableQuestion
-  const qNorm = toPlayableQuestion(curQ[qIdx]);
-  curQ[qIdx] = qNorm;
+  // Use already-shuffled question (shuffled above)
+  const qNorm = curQ[qIdx];
 
   const ans=document.getElementById('answers');ans.innerHTML='';
 
