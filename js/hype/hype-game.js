@@ -72,20 +72,38 @@ function _renderQuestion() {
   document.getElementById('hg-q-num').textContent = `Вопрос ${_idx + 1} / ${_qs.length}`;
   _setProgress((_idx / _qs.length) * 100);
 
-  // Media — show left column only if there's something to show
+  const isImg   = !!q.img;
+  const isAudio = !!q.audio;
+  const isVideo = !!q.video;
+
   const mediaEl = document.getElementById('hg-media');
+  const avEl    = document.getElementById('hg-av-media');
+  const rightEl = document.getElementById('hg-right');
+  const nextBtn = document.getElementById('hg-next-btn');
+  const ansImgWrap = document.getElementById('hg-answer-img');
+
+  // Reset
   mediaEl.innerHTML = '';
-  const mediaQ = { img: q.img || null, audio: q.audio || null, video: q.video || null };
-  const hasMedia = !!(mediaQ.img || mediaQ.audio || mediaQ.video);
-  if (hasMedia) {
-    window.renderQMedia?.('hg-media', mediaQ);
-    mediaEl.style.display = '';
+  avEl.innerHTML = '';
+  avEl.style.display = 'none';
+  ansImgWrap.style.display = 'none';
+  nextBtn.style.display = 'none';
+
+  if (isImg) {
+    // Two-column: image fills left, answers on right
+    mediaEl.style.cssText = 'display:flex;flex:1;min-width:0;overflow:hidden;background:#000';
+    mediaEl.innerHTML = `<img src="${q.img}" alt="" style="width:100%;height:100%;object-fit:cover;display:block"
+      onerror="this.style.display='none'">`;
+    rightEl.style.flex = '1';
   } else {
+    // Single column: no left panel
     mediaEl.style.display = 'none';
+    rightEl.style.flex = '1';
+    if (isAudio || isVideo) {
+      avEl.style.display = 'block';
+      window.renderQMedia?.('hg-av-media', { img: null, audio: q.audio || null, video: q.video || null });
+    }
   }
-  // Right column: full width if no media
-  const rightCol = mediaEl.nextElementSibling;
-  if (rightCol) rightCol.style.flex = hasMedia ? '1' : '2';
 
   // Question text
   document.getElementById('hg-q-text').textContent = q.q || '';
@@ -97,11 +115,9 @@ function _renderQuestion() {
     const btn = document.createElement('button');
     btn.textContent = ans;
     btn.dataset.idx = i;
-    btn.style.cssText = `
-      width:100%;background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;
+    btn.style.cssText = `width:100%;background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;
       padding:13px 16px;font-size:14px;font-weight:600;color:var(--fg);cursor:pointer;
-      font-family:inherit;text-align:left;transition:background .15s,border-color .15s
-    `;
+      font-family:inherit;text-align:left;transition:background .15s,border-color .15s`;
     btn.onclick = () => _answer(i);
     answersEl.appendChild(btn);
   });
@@ -128,8 +144,7 @@ function _answer(chosen) {
   _score += pts;
 
   // Color buttons
-  const btns = document.querySelectorAll('#hg-answers button');
-  btns.forEach(btn => {
+  document.querySelectorAll('#hg-answers button').forEach(btn => {
     const bi = Number(btn.dataset.idx);
     btn.style.pointerEvents = 'none';
     if (bi === correct) {
@@ -145,34 +160,45 @@ function _answer(chosen) {
     }
   });
 
-  // Show reveal after 800ms
-  setTimeout(() => _showReveal(isRight, pts, q), 800);
+  // Show answer image inline after short delay
+  setTimeout(() => _revealInline(isRight, pts, q), 500);
 }
 
-function _showReveal(isRight, pts, q) {
-  _show('hg-reveal');
-
-  document.getElementById('hg-reveal-verdict').innerHTML = isRight
-    ? `✅ Правильно! <span style="color:var(--accent)">+${pts} очков</span>`
-    : `❌ Неверно`;
-
-  // Answer image
-  const revMedia = document.getElementById('hg-reveal-media');
-  revMedia.innerHTML = '';
+function _revealInline(isRight, pts, q) {
+  // Replace left-column image with answer image (if image question)
+  // OR show answer image below answers (if audio/text question)
   if (q.answer_img) {
-    revMedia.innerHTML = `<img src="${q.answer_img}" alt=""
-      style="width:100%;max-height:300px;object-fit:contain;border-radius:12px;display:block;background:#0a0a0f"
-      onerror="this.style.display='none'">`;
+    const isImg = !!q.img;
+    if (isImg) {
+      // Swap left column image → answer image with smooth transition
+      const mediaEl = document.getElementById('hg-media');
+      const img = mediaEl.querySelector('img');
+      if (img) {
+        img.style.transition = 'opacity .4s';
+        img.style.opacity = '0';
+        setTimeout(() => { img.src = q.answer_img; img.style.opacity = '1'; }, 400);
+      }
+    } else {
+      // Show below answers
+      const wrap = document.getElementById('hg-answer-img');
+      const imgEl = document.getElementById('hg-answer-img-el');
+      imgEl.src = q.answer_img;
+      wrap.style.display = 'block';
+    }
   }
 
-  document.getElementById('hg-reveal-text').textContent =
-    q.explanation || `Верный ответ: ${(q.a || [])[q.c] || ''}`;
+  // Score feedback on timer display
+  const timerEl = document.getElementById('hg-timer');
+  if (timerEl) {
+    timerEl.textContent = isRight ? `+${pts}` : '✗';
+    timerEl.style.color = isRight ? 'var(--green)' : 'var(--red)';
+  }
 
+  // Show next button
   const nextBtn = document.getElementById('hg-next-btn');
-  if (_idx >= _qs.length - 1) {
-    nextBtn.textContent = 'Посмотреть результат →';
-  } else {
-    nextBtn.textContent = `Следующий вопрос →`;
+  if (nextBtn) {
+    nextBtn.style.display = 'block';
+    nextBtn.textContent = _idx >= _qs.length - 1 ? 'Посмотреть результат →' : 'Следующий вопрос →';
   }
 }
 
