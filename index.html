@@ -2399,5 +2399,84 @@ console.log('✅ Firebase Tournaments module loaded');
   </div>
 </div>
 
+<!-- ── Hype Game Screen ─────────────────────────────────────── -->
+<div class="screen" id="hype-game" style="justify-content:flex-start;padding:0">
+
+  <!-- Intro -->
+  <div id="hg-intro" style="width:100%;padding:24px 20px 32px;display:flex;flex-direction:column;gap:16px">
+    <div id="hg-cover" style="width:100%;border-radius:18px;overflow:hidden;background:var(--bg2);min-height:160px;display:flex;align-items:center;justify-content:center">
+      <div style="font-size:56px">📚</div>
+    </div>
+    <div>
+      <div id="hg-title" style="font-size:22px;font-weight:800;margin-bottom:6px">Хайп-игра</div>
+      <div id="hg-desc" style="font-size:13px;color:var(--muted);line-height:1.5"></div>
+    </div>
+    <div id="hg-guest-row" style="display:flex;flex-direction:column;gap:8px">
+      <div style="font-size:12px;color:var(--muted)">Ваше имя (необязательно)</div>
+      <input id="hg-guest-name" type="text" placeholder="Анонимный игрок"
+        style="width:100%;box-sizing:border-box;background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:12px 14px;font-size:14px;color:var(--fg);font-family:inherit;outline:none">
+    </div>
+    <button id="hg-start-btn" onclick="window.hypeGameStart()"
+      style="width:100%;background:var(--accent);border:none;border-radius:14px;padding:16px;font-size:16px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit">
+      Начать игру →
+    </button>
+    <button onclick="showScreen('home')"
+      style="width:100%;background:transparent;border:none;padding:8px;font-size:13px;color:var(--muted);cursor:pointer;font-family:inherit">
+      ← Назад
+    </button>
+  </div>
+
+  <!-- Question -->
+  <div id="hg-question" style="width:100%;display:none;flex-direction:column;flex:1">
+    <div style="padding:14px 16px 0;display:flex;align-items:center;justify-content:space-between">
+      <div id="hg-q-num" style="font-size:12px;color:var(--muted)">Вопрос 1 / 15</div>
+      <div id="hg-timer" style="font-size:15px;font-weight:800;color:var(--accent)">20</div>
+    </div>
+    <div style="padding:0 16px 4px">
+      <div id="hg-progress-bar" style="height:3px;background:var(--bg2);border-radius:2px;margin-top:8px">
+        <div id="hg-progress-fill" style="height:100%;background:var(--accent);border-radius:2px;width:0%;transition:width .3s"></div>
+      </div>
+    </div>
+    <div id="hg-media" style="padding:0 16px"></div>
+    <div style="padding:12px 16px 8px">
+      <div id="hg-q-text" style="font-size:15px;font-weight:700;line-height:1.4;white-space:pre-wrap"></div>
+    </div>
+    <div id="hg-answers" style="padding:0 16px 16px;display:flex;flex-direction:column;gap:8px"></div>
+  </div>
+
+  <!-- Answer reveal -->
+  <div id="hg-reveal" style="width:100%;display:none;flex-direction:column;padding:16px;gap:12px">
+    <div id="hg-reveal-verdict" style="font-size:18px;font-weight:800;text-align:center;padding:8px 0"></div>
+    <div id="hg-reveal-media" style="border-radius:14px;overflow:hidden"></div>
+    <div id="hg-reveal-text" style="font-size:13px;color:var(--muted);text-align:center;line-height:1.5"></div>
+    <button id="hg-next-btn" onclick="window.hypeGameNext()"
+      style="width:100%;background:var(--accent);border:none;border-radius:14px;padding:14px;font-size:15px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit;margin-top:4px">
+      Следующий вопрос →
+    </button>
+  </div>
+
+  <!-- Results -->
+  <div id="hg-results" style="width:100%;display:none;flex-direction:column;padding:20px;gap:16px">
+    <div style="text-align:center">
+      <div id="hg-result-emoji" style="font-size:48px;margin-bottom:8px">🎉</div>
+      <div style="font-size:22px;font-weight:800;margin-bottom:4px">Результат</div>
+      <div id="hg-result-score" style="font-size:40px;font-weight:900;color:var(--accent)"></div>
+      <div id="hg-result-label" style="font-size:13px;color:var(--muted);margin-top:4px"></div>
+    </div>
+    <div id="hg-leaderboard" style="background:var(--bg2);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:8px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:4px">Таблица результатов</div>
+      <div id="hg-lb-rows" style="display:flex;flex-direction:column;gap:6px"></div>
+    </div>
+    <button onclick="showScreen('home')"
+      style="width:100%;background:var(--accent);border:none;border-radius:14px;padding:14px;font-size:15px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit">
+      На главную
+    </button>
+    <button onclick="window.hypeGameRestart()"
+      style="width:100%;background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;padding:12px;font-size:13px;font-weight:700;color:var(--fg);cursor:pointer;font-family:inherit">
+      Сыграть снова
+    </button>
+  </div>
+</div>
+
 </body>
 </html>

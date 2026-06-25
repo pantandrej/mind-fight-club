@@ -79,7 +79,7 @@ export const NON_GAME_SCREENS = new Set([
   'home', 'play-menu', 'shop', 'profile', 'daily-limit', 'score', 'share',
   'admin', 'admin-import', 'tester', 'author-builder', 'create-question',
   'community-feed', 'character', 'teams', 'rules', 'waitlist', 'onboarding',
-  'auth', 'matchmaking', 'tournament', 'duel', 'organizer-cabinet',
+  'auth', 'matchmaking', 'tournament', 'duel', 'hype-game', 'organizer-cabinet',
   'organizer-apply', 'premium',
 ]);
 
