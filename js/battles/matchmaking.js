@@ -374,7 +374,7 @@ async function startBotDuel(botName){
     window._battleSessionStarted = true;
   }
 
-  const bot = window._botPlayer || null;
+  let bot = window._botPlayer || null;
   window._botName    = botName;
   window._isBotDuel  = true;
   window._botAnswerTimeout = null;
@@ -414,7 +414,7 @@ async function startBotDuel(botName){
     return;
   }
   // Pre-set opponent name so it shows immediately (CSS uppercases it)
-  const bot = window._botPlayer;
+  bot = window._botPlayer;
   if (bot) {
     const oppEl = document.getElementById('ds-opp-name');
     if (oppEl) oppEl.textContent = (bot.flag ? bot.flag + ' ' : '') + bot.name;
