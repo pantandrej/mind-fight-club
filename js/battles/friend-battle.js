@@ -170,7 +170,7 @@ async function startDuelGame(){
 }
 
 
-async function startDuelBattle({ chargeSession = true, mode = 'friend_battle' } = {}){
+async function startDuelBattle({ chargeSession = true, mode = 'friend_battle', questions = null } = {}){
   // ── Server-side limit check ────────────────────────────────────
   // Only run if this path is responsible for creating the session.
   // random_battle / virtual_battle paths set chargeSession=false
@@ -210,6 +210,14 @@ async function startDuelBattle({ chargeSession = true, mode = 'friend_battle' } 
   // chargeSession=false: session already created upstream — just verify it exists
   if (!chargeSession && !window._currentSessionId) {
     console.warn('[battle] startDuelBattle(chargeSession=false) but no _currentSessionId set');
+  }
+
+  // Load questions: from parameter, or from _pendingDuelQs, or keep existing duelQs
+  if (questions && questions.length > 0) {
+    duelQs = questions;
+  } else if (window._pendingDuelQs && window._pendingDuelQs.length > 0) {
+    duelQs = window._pendingDuelQs;
+    window._pendingDuelQs = null;
   }
 
   duelIdx=0;duelMyScore=0;duelOppScore=0;
