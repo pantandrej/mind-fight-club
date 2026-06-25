@@ -93,16 +93,20 @@ function _redirectAfterAuth() {
   if (p.get('official') && typeof window.openOfficialTournament === 'function') {
     window.openOfficialTournament(p.get('official')); return;
   }
-  if (p.get('duel')) {
+  const duelCode  = p.get('duel')  || sessionStorage.getItem('mfc_pending_duel');
+  const tournCode = p.get('tourn') || sessionStorage.getItem('mfc_pending_tourn');
+  sessionStorage.removeItem('mfc_pending_duel');
+  sessionStorage.removeItem('mfc_pending_tourn');
+  if (duelCode) {
     showScreen('duel');
     const el = document.getElementById('join-code-input');
-    if (el) el.value = p.get('duel');
+    if (el) { el.value = duelCode; setTimeout(() => window.joinDuel?.(), 300); }
     return;
   }
-  if (p.get('tourn')) {
+  if (tournCode) {
     showScreen('tournament');
     const el = document.getElementById('t-join-code');
-    if (el) el.value = p.get('tourn');
+    if (el) el.value = tournCode;
     return;
   }
   showScreen('home');
@@ -218,7 +222,11 @@ export async function signInGoogle() {
   }
   track('signup_started', { method: 'google' });
   try {
-    const redirectTo = window.location.origin + window.location.pathname;
+    // Preserve duel/tournament params through OAuth redirect
+    const p = new URLSearchParams(window.location.search);
+    if (p.get('duel'))  sessionStorage.setItem('mfc_pending_duel',  p.get('duel'));
+    if (p.get('tourn')) sessionStorage.setItem('mfc_pending_tourn', p.get('tourn'));
+    const redirectTo = window.location.origin + window.location.pathname + window.location.search;
     const { error } = await sb.auth.signInWithOAuth({
       provider: 'google', options: { redirectTo, skipBrowserRedirect: false },
     });

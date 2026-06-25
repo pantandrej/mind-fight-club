@@ -39,9 +39,10 @@ function simulateBotAnswer(q, qIndex){
     }
     const hint = document.getElementById('opp-hint');
     if(hint){
+      const botLabel = window._botPlayer?.name || window._botName || 'Соперник';
       hint.textContent = correct
-        ? (lang==='ru' ? '✓ Бот ответил правильно' : '✓ Bot answered correctly')
-        : (lang==='ru' ? '✗ Бот ошибся'            : '✗ Bot missed');
+        ? `✓ ${botLabel} ответил правильно`
+        : `✗ ${botLabel} ошибся`;
       hint.className = 'opp-hint answered';
     }
   }, delay);
@@ -242,6 +243,17 @@ async function startDuelBattle({ chargeSession = true, mode = 'friend_battle', q
   updateDuelScores();
   buildDots('d-prog-dots',duelQs.length);
   showDuelSection('d-battle');
+
+  // Warn once if player switches tabs during battle (score can't be saved mid-game)
+  const _onHidden = () => {
+    if(document.visibilityState === 'hidden') {
+      window.toast?.('⚠️ Не уходи — результат сохранится только после конца боя', 4000);
+    }
+  };
+  document.removeEventListener('visibilitychange', window._duelTabWarn);
+  window._duelTabWarn = _onHidden;
+  document.addEventListener('visibilitychange', _onHidden, { once: true });
+
   loadDuelQ();
 }
 
@@ -348,16 +360,18 @@ async function duelNextQ(){
       // Bot duel: end immediately — no DB poll needed
       endDuel({host_score: duelMyScore, guest_score: duelOppScore});
     } else {
-      // Real duel: mark my side done and wait for opponent
-      const myField=duelRole==='host'?'host_done':'guest_done';
-      await sb.from('duel_rooms').update({[myField]:true}).eq('code',duelCode);
+      // Real duel: mark my score final and wait for opponent
+      // Use status='done' (set by saveDuelScore) as the sync signal — no extra columns needed
       document.getElementById('d-q-text').textContent='⏳ Waiting for opponent to finish...';
       document.querySelectorAll('#d-answers .ans').forEach(b=>{b.disabled=true;b.style.opacity='.3';});
       const waitPoll=setInterval(async()=>{
         const {data}=await sb.from('duel_rooms').select('*').eq('code',duelCode).single();
         if(!data)return;
-        const bothDone=data.host_done&&data.guest_done;
-        if(bothDone||(Date.now()-new Date(data.created_at).getTime()>300000)){
+        // End when both scores are non-zero, or status=done, or timeout (2 min)
+        const oppField = duelRole==='host' ? 'guest_score' : 'host_score';
+        const oppDone  = (data[oppField] ?? 0) > 0 || data.status === 'done';
+        const timedOut = Date.now()-new Date(data.created_at).getTime() > 120000;
+        if(oppDone || timedOut){
           clearInterval(waitPoll);
           endDuel(data);
         }
