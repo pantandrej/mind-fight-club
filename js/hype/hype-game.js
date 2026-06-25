@@ -284,5 +284,9 @@ export function checkHypeParam() {
   if (slug) openHypeGame(slug);
 }
 
-window.openHypeGame  = openHypeGame;
+window.openHypeGame   = openHypeGame;
 window.checkHypeParam = checkHypeParam;
+
+// Auto-open if ?hype= is in URL (fires after auth decides what to show)
+console.log('[hype-game] module loaded, openHypeGame ready');
+window._hypeAutoSlug = new URLSearchParams(window.location.search).get('hype') || null;

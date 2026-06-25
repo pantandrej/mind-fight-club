@@ -93,13 +93,12 @@ function _redirectAfterAuth() {
   if (p.get('official') && typeof window.openOfficialTournament === 'function') {
     window.openOfficialTournament(p.get('official')); return;
   }
-  const hypeSlug  = p.get('hype')  || sessionStorage.getItem('mfc_pending_hype');
+  const hypeSlug  = p.get('hype')  || sessionStorage.getItem('mfc_pending_hype') || window._hypeAutoSlug || null;
   const duelCode  = p.get('duel')  || sessionStorage.getItem('mfc_pending_duel');
   const tournCode = p.get('tourn') || sessionStorage.getItem('mfc_pending_tourn');
   sessionStorage.removeItem('mfc_pending_hype');
   sessionStorage.removeItem('mfc_pending_duel');
   sessionStorage.removeItem('mfc_pending_tourn');
-  if (hypeSlug) { window.openHypeGame?.(hypeSlug); return; }
   if (duelCode) {
     showScreen('duel');
     const el = document.getElementById('join-code-input');
@@ -113,6 +112,7 @@ function _redirectAfterAuth() {
     return;
   }
   showScreen('home');
+  if (hypeSlug) setTimeout(() => window.openHypeGame?.(hypeSlug), 150);
 }
 
 // ── Called once per session after sign-in ─────────────────────────
@@ -322,10 +322,11 @@ export function continueAsGuest() {
   track('guest_started', {});
   if (typeof window.savePendingRef === 'function') window.savePendingRef();
   const p = new URLSearchParams(window.location.search);
-  if (p.get('hype'))  { window.openHypeGame?.(p.get('hype')); return; }
+  const hypeSlug = p.get('hype') || window._hypeAutoSlug || null;
   if (p.get('duel')) { showScreen('duel'); document.getElementById('join-code-input').value = p.get('duel'); }
   else if (p.get('tourn')) { showScreen('tournament'); document.getElementById('t-join-code').value = p.get('tourn'); }
   else showScreen('home');
+  if (hypeSlug) setTimeout(() => window.openHypeGame?.(hypeSlug), 100);
 }
 
 export async function signOut() {
