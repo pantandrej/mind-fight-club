@@ -126,7 +126,7 @@ function startDuelPoll(){
         duelQs = qs.map(q => ({ ...q })); // canonical from host, no remapping
         console.log('[BFC friend battle loaded]', { count: duelQs.length, first: duelQs[0] });
         clearInterval(duelPoll);
-        startDuelBattle();
+        startDuelBattle({ chargeSession: false, mode: 'friend_battle' }); // host already charged
       }
     }
     // Update opponent score
@@ -247,7 +247,7 @@ async function startDuelBattle({ chargeSession = true, mode = 'friend_battle', q
   // Warn once if player switches tabs during battle (score can't be saved mid-game)
   const _onHidden = () => {
     if(document.visibilityState === 'hidden') {
-      window.toast?.('⚠️ Не уходи — результат сохранится только после конца боя', 4000);
+      window.toast?.('⚠️ Уход со страницы во время дуэли = автоматическое поражение!', 4000);
     }
   };
   document.removeEventListener('visibilitychange', window._duelTabWarn);
