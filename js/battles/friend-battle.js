@@ -362,12 +362,16 @@ async function duelNextQ(){
     } else {
       // Real duel: mark my score final and wait for opponent
       // Use status='done' (set by saveDuelScore) as the sync signal — no extra columns needed
-      document.getElementById('d-q-text').textContent='⏳ Waiting for opponent to finish...';
-      document.querySelectorAll('#d-answers .ans').forEach(b=>{b.disabled=true;b.style.opacity='.3';});
+      document.getElementById('d-answers').innerHTML = '';
+      document.getElementById('d-q-text').textContent = '⏳ Ты ответил на все вопросы! Ждём соперника...';
+      document.getElementById('d-cat-pill').textContent = '';
+      let waitDots = 0;
       const waitPoll=setInterval(async()=>{
+        waitDots = (waitDots + 1) % 4;
+        const dots = '.'.repeat(waitDots + 1);
+        document.getElementById('d-q-text').textContent = `⏳ Ждём соперника${dots}`;
         const {data}=await sb.from('duel_rooms').select('*').eq('code',duelCode).single();
         if(!data)return;
-        // End when both scores are non-zero, or status=done, or timeout (2 min)
         const oppField = duelRole==='host' ? 'guest_score' : 'host_score';
         const oppDone  = (data[oppField] ?? 0) > 0 || data.status === 'done';
         const timedOut = Date.now()-new Date(data.created_at).getTime() > 120000;

@@ -413,6 +413,12 @@ async function startBotDuel(botName){
     showScreen('home');
     return;
   }
+  // Pre-set opponent name so it shows immediately (CSS uppercases it)
+  const bot = window._botPlayer;
+  if (bot) {
+    const oppEl = document.getElementById('ds-opp-name');
+    if (oppEl) oppEl.textContent = (bot.flag ? bot.flag + ' ' : '') + bot.name;
+  }
   window._pendingDuelQs = botBattleQs;
   showScreen('duel');
   showDuelSection('d-battle');
