@@ -34,7 +34,7 @@ function simulateBotAnswer(q, qIndex){
     botAnsweredThisQuestion = true;
     const correct = Math.random() < skill;
     if(correct){
-      duelOppScore += getFixedPoints(q.a.length);
+      duelOppScore += Math.max(1, duelTimeLeft); // same rule as player: points = seconds remaining
       updateDuelScores();
     }
     const hint = document.getElementById('opp-hint');
