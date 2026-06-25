@@ -989,3 +989,17 @@ window.scheduleDailyStreakReminder = scheduleDailyStreakReminder;
 window.createBattleInvite    = createBattleInvite;
 window.acceptBattleInvite    = acceptBattleInvite;
 window.openInviteLink        = openInviteLink;
+
+// Called by matchmaking when this player is the "finder" and should act as host
+window.mmStartAsHost = async function(code, myName) {
+  duelCode     = code;
+  duelRole     = 'host';
+  duelMyName   = myName || 'Вы';
+  duelMyScore  = 0;
+  duelOppScore = 0;
+  duelQs       = [];
+  duelIdx      = 0;
+  if (duelPoll)  { clearInterval(duelPoll);  duelPoll  = null; }
+  if (duelTimer) { clearInterval(duelTimer); duelTimer = null; }
+  await startDuelGame();
+};

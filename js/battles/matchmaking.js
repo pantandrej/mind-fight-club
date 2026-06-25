@@ -284,10 +284,25 @@ async function matchFound(duelCode, myName, oppName){
   document.getElementById('mm-cancel-btn').style.display = 'none';
   track('matchmaking_matched', {code: duelCode});
   await new Promise(r=>setTimeout(r,1200));
-  // Navigate to duel
-  document.getElementById('join-code-input').value = duelCode;
-  showScreen('duel');
-  joinDuel();
+
+  if (oppName) {
+    // This player found the match — act as host: load questions and start game
+    showScreen('duel');
+    showDuelSection('d-battle');
+    // Set module-level duel state via the input (joinDuel reads it)
+    document.getElementById('join-code-input').value = duelCode;
+    // Set global duel vars directly so startDuelGame uses the right code
+    window._mmDuelCode = duelCode;
+    window._mmDuelRole = 'host';
+    window._mmDuelMyName = myName;
+    // Initialise state and start as host
+    window.mmStartAsHost?.(duelCode, myName);
+  } else {
+    // This player was waiting — act as guest: poll for questions from host
+    document.getElementById('join-code-input').value = duelCode;
+    showScreen('duel');
+    joinDuel();
+  }
 }
 
 async function playWithBot(){
