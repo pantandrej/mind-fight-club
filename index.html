@@ -2428,20 +2428,26 @@ console.log('✅ Firebase Tournaments module loaded');
 
   <!-- Question -->
   <div id="hg-question" style="width:100%;display:none;flex-direction:column;flex:1">
-    <div style="padding:14px 16px 0;display:flex;align-items:center;justify-content:space-between">
+    <!-- Header: counter + timer + progress -->
+    <div style="padding:14px 20px 0;display:flex;align-items:center;justify-content:space-between">
       <div id="hg-q-num" style="font-size:12px;color:var(--muted)">Вопрос 1 / 15</div>
       <div id="hg-timer" style="font-size:15px;font-weight:800;color:var(--accent)">20</div>
     </div>
-    <div style="padding:0 16px 4px">
+    <div style="padding:0 20px 8px">
       <div id="hg-progress-bar" style="height:3px;background:var(--bg2);border-radius:2px;margin-top:8px">
         <div id="hg-progress-fill" style="height:100%;background:var(--accent);border-radius:2px;width:0%;transition:width .3s"></div>
       </div>
     </div>
-    <div id="hg-media" style="padding:0 16px"></div>
-    <div style="padding:12px 16px 8px">
-      <div id="hg-q-text" style="font-size:15px;font-weight:700;line-height:1.4;white-space:pre-wrap"></div>
+    <!-- Two-column body: media left, question+answers right -->
+    <div style="display:flex;flex:1;gap:0;min-height:0">
+      <!-- Left: media -->
+      <div id="hg-media" style="flex:1;min-width:0;display:flex;align-items:center;justify-content:center;padding:0 8px 16px 20px"></div>
+      <!-- Right: question text + answers -->
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;padding:0 20px 16px 8px;gap:12px">
+        <div id="hg-q-text" style="font-size:15px;font-weight:700;line-height:1.45;white-space:pre-wrap"></div>
+        <div id="hg-answers" style="display:flex;flex-direction:column;gap:8px"></div>
+      </div>
     </div>
-    <div id="hg-answers" style="padding:0 16px 16px;display:flex;flex-direction:column;gap:8px"></div>
   </div>
 
   <!-- Answer reveal -->

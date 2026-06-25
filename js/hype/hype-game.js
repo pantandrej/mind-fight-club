@@ -72,13 +72,20 @@ function _renderQuestion() {
   document.getElementById('hg-q-num').textContent = `Вопрос ${_idx + 1} / ${_qs.length}`;
   _setProgress((_idx / _qs.length) * 100);
 
-  // Media
+  // Media — show left column only if there's something to show
   const mediaEl = document.getElementById('hg-media');
   mediaEl.innerHTML = '';
   const mediaQ = { img: q.img || null, audio: q.audio || null, video: q.video || null };
-  if (mediaQ.img || mediaQ.audio || mediaQ.video) {
+  const hasMedia = !!(mediaQ.img || mediaQ.audio || mediaQ.video);
+  if (hasMedia) {
     window.renderQMedia?.('hg-media', mediaQ);
+    mediaEl.style.display = '';
+  } else {
+    mediaEl.style.display = 'none';
   }
+  // Right column: full width if no media
+  const rightCol = mediaEl.nextElementSibling;
+  if (rightCol) rightCol.style.flex = hasMedia ? '1' : '2';
 
   // Question text
   document.getElementById('hg-q-text').textContent = q.q || '';
