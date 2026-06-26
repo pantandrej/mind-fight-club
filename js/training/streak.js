@@ -55,45 +55,64 @@ function getStreakFreeze(){
 function hasStreakFreeze(){ return !!getStreakFreeze(); }
 
 async function buyStreakFreeze(){
-  if(hasStreakFreeze()){
-    toast(lang==='ru'?'❄️ Заморозка уже активна!':'❄️ Freeze already active!'); return;
+  if(!currentUser){
+    toast(lang==='ru'?'🔐 Войдите чтобы купить заморозку':'🔐 Sign in to buy freeze'); return;
   }
-  if(neurons < STREAK_FREEZE_PRICE){
+  // Check existing freeze from server profile
+  const { neurons: curNeurons, streak_freezes: freezes } = await _getStreakProfile();
+  if(freezes > 0){
+    toast(lang==='ru'?'❄️ Заморозка уже есть в запасе!':'❄️ You already have a freeze!'); return;
+  }
+  if((curNeurons ?? neurons) < STREAK_FREEZE_PRICE){
     toast(lang==='ru'
       ? `Не хватает нейронов (нужно ${STREAK_FREEZE_PRICE} ⚡)`
       : `Not enough neurons (need ${STREAK_FREEZE_PRICE} ⚡)`);
     return;
   }
-  const result = await spendNeurons(STREAK_FREEZE_PRICE, 'streak_freeze', 'streak_freeze:' + (currentUser?.id||'guest') + ':' + Date.now());
-  if(!result || !result.ok){
-    toast(lang==='ru'?'❌ Ошибка покупки заморозки':'❌ Purchase failed'); return;
+  // Use server RPC (atomic spend + increment streak_freezes)
+  const { data, error } = await sb.rpc('buy_streak_freeze');
+  if(error || !data?.ok){
+    const reason = data?.reason || error?.message || '';
+    if(reason === 'insufficient') toast(lang==='ru'?'❌ Недостаточно нейронов':'❌ Not enough neurons');
+    else toast(lang==='ru'?'❌ Ошибка покупки заморозки':'❌ Purchase failed');
+    return;
   }
-  const expires = new Date(Date.now() + 30*24*3600*1000).toISOString();
-  localStorage.setItem(STREAK_FREEZE_KEY, JSON.stringify({
-    purchased_at: new Date().toISOString(),
-    expires_at: expires
-  }));
-  track('streak_freeze_purchased', {price: STREAK_FREEZE_PRICE});
+  // Sync local balance from server response
+  if(typeof window.setState === 'function') window.setState({ neurons: data.neurons, xp: data.xp });
+  if(typeof window.updNeurons === 'function') window.updNeurons();
+  track('streak_freeze_purchased', { price: STREAK_FREEZE_PRICE });
   toast(lang==='ru'
-    ? `❄️ Заморозка серии куплена! (-${STREAK_FREEZE_PRICE} ⚡) Активна 30 дней`
-    : `❄️ Streak freeze bought! (-${STREAK_FREEZE_PRICE} ⚡) Active for 30 days`, 4000);
+    ? `❄️ Заморозка куплена! (-${STREAK_FREEZE_PRICE} ⚡)`
+    : `❄️ Streak freeze bought! (-${STREAK_FREEZE_PRICE} ⚡)`, 4000);
   renderDailyStreakUI();
 }
 
+async function _getStreakProfile(){
+  if(!currentUser) return {};
+  try{
+    const { data } = await sb.from('profiles')
+      .select('neurons, xp, streak_freezes')
+      .eq('id', currentUser.id).single();
+    return data || {};
+  }catch(e){ return {}; }
+}
+
 function consumeStreakFreezeIfNeeded(lastPlayDate, today, yesterday){
-  // Call when user missed yesterday but has a freeze — use it once
+  // Legacy localStorage freeze — kept for backward compat with users who bought before server RPC
   if(lastPlayDate && lastPlayDate < yesterday && lastPlayDate !== today){
-    const freeze = getStreakFreeze();
+    const freeze = getStreakFreeze(); // localStorage check
     if(freeze){
       localStorage.removeItem(STREAK_FREEZE_KEY);
-      track('streak_freeze_used', {});
+      track('streak_freeze_used', { source: 'local' });
       toast(lang==='ru'
         ? '❄️ Заморозка использована — серия сохранена!'
         : '❄️ Freeze used — streak preserved!', 3500);
-      return true; // streak should continue, not reset
+      return true;
     }
   }
   return false;
+  // Note: server-side freeze is now handled by record_daily_activity() RPC
+  // which auto-applies streak_freezes from profiles table
 }
 
 async function loadDailyStreakData(){
@@ -148,17 +167,27 @@ async function updateDailyStreakOnQuickPlayComplete(){
   _lastQuickPlayDate = today;
   _streakPlayedToday = true;
 
-  // Save to DB
+  // Save to DB — use server RPC (handles freeze auto-apply, idempotent)
   if(currentUser){
     try{
-      await sb.from('profiles').update({
-        daily_streak: newStreak,
-        best_daily_streak: newBest,
-        last_quick_play_date: today
-      }).eq('id', currentUser.id);
+      const { data: rpcData, error: rpcErr } = await sb.rpc('record_daily_activity');
+      if(!rpcErr && rpcData?.ok){
+        // Server is authoritative — sync its values
+        newStreak = rpcData.streak ?? newStreak;
+        if(rpcData.freeze_used){
+          toast(lang==='ru'?'❄️ Заморозка сработала — серия сохранена!':'❄️ Freeze used — streak saved!', 3000);
+        }
+        _dailyStreak = newStreak;
+        _bestDailyStreak = Math.max(_bestDailyStreak, newStreak);
+      } else {
+        // Fallback: direct update if RPC not deployed yet
+        await sb.from('profiles').update({
+          daily_streak: newStreak, best_daily_streak: newBest, last_quick_play_date: today
+        }).eq('id', currentUser.id);
+      }
     }catch(e){ console.warn('[MFC] streak save error:', e.message); }
   }
-  // Also cache locally
+  // Cache locally
   localStorage.setItem('mfc_streak', JSON.stringify({streak:newStreak,best:newBest,date:today}));
 
   renderDailyStreakUI();

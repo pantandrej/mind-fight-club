@@ -10515,43 +10515,55 @@ function copyOrgRefLink(){
 }
 
 async function submitOrgPass(){
-  if(!currentUser){ toast('Войдите чтобы добавить проходку'); return; }
+  if(!currentUser){ toast('🔐 Войдите чтобы добавить проходку'); return; }
+
   const title = document.getElementById('org-pass-title')?.value?.trim();
   const date  = document.getElementById('org-pass-date')?.value?.trim();
   const city  = document.getElementById('org-pass-city')?.value?.trim();
   const price = parseInt(document.getElementById('org-pass-price')?.value) || 300;
   const slots = parseInt(document.getElementById('org-pass-slots')?.value) || 10;
-  const desc  = document.getElementById('org-pass-desc')?.value?.trim();
+  const desc  = document.getElementById('org-pass-desc')?.value?.trim() || '';
 
-  if(!title){ toast('Введите название игры'); return; }
-  if(!date){  toast('Укажите дату'); return; }
-  if(!city){  toast('Укажите город'); return; }
+  if(!title || title.length < 3){ toast('⚠️ Введите название (минимум 3 символа)'); return; }
+  if(!date){  toast('⚠️ Укажите дату'); return; }
+  if(!city){  toast('⚠️ Укажите город'); return; }
+  if(price < 50 || price > 5000){ toast('⚠️ Цена: 50–5000 нейронов'); return; }
+  if(slots < 1 || slots > 200){   toast('⚠️ Мест: 1–200'); return; }
 
-  toast('📤 Публикуем проходку...');
+  // XSS sanitize free-text fields
+  const safe = s => s.replace(/[<>"']/g, c => ({'<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+  const btn = document.querySelector('#organizer-cabinet button[onclick="submitOrgPass()"]');
+  if(btn){ btn.disabled = true; btn.textContent = '⏳ Публикуем...'; }
+
   try{
     const {error} = await sb.from('quiz_passes').insert({
       organizer_id:   currentUser.id,
-      organizer_name: currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || 'Организатор',
-      title, date_text: date, city, description: desc||'',
-      price_neurons:  price,
+      organizer_name: safe(currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || 'Организатор'),
+      title:          safe(title),
+      description:    safe(desc),
+      event_date:     null,        // free-text date for now
+      location:       safe(city),
+      price:          price,
       slots_total:    slots,
       slots_left:     slots,
-      status:         'active',
-      created_at:     new Date().toISOString()
+      status:         'active'
     });
     if(error) throw error;
     toast('✅ Проходка опубликована!');
-    // Clear form
     ['org-pass-title','org-pass-date','org-pass-city','org-pass-desc'].forEach(id=>{
       const el = document.getElementById(id); if(el) el.value='';
     });
     document.getElementById('org-pass-price').value='300';
     document.getElementById('org-pass-slots').value='10';
     loadOrgPasses();
-    loadQuizPasses(); // refresh shop
+    if(typeof loadQuizPasses === 'function') loadQuizPasses();
     track('org_pass_created', {price, slots});
   }catch(e){
-    toast('Ошибка: ' + e.message);
+    console.error('[BFC] submitOrgPass:', e.message);
+    toast('❌ Ошибка: ' + e.message);
+  }finally{
+    if(btn){ btn.disabled = false; btn.textContent = '🚀 Опубликовать проходку'; }
   }
 }
 

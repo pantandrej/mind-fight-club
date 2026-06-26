@@ -472,12 +472,14 @@
       <div class="share-rank" id="share-rank"></div>
       <div class="share-city" id="share-city"></div>
     </div>
+    <!-- Canvas for image export (hidden) -->
+    <canvas id="share-canvas" width="1080" height="1080" style="display:none"></canvas>
     <div class="share-btns">
+      <button class="share-btn" onclick="downloadShareCard()" style="background:linear-gradient(135deg,rgba(108,99,255,.3),rgba(139,131,255,.15));border-color:rgba(108,99,255,.6);font-weight:800">🖼️ <span id="sh-save">Сохранить картинку</span></button>
       <button class="share-btn tg" onclick="shareToTelegram()">✈️ <span id="sh-tg">Отправить в Telegram</span></button>
       <button class="share-btn wa" onclick="shareToWhatsApp()">💬 <span id="sh-wa">Отправить в WhatsApp</span></button>
       <button class="share-btn copy" onclick="copyShareLink()">🔗 <span id="sh-copy">Копировать ссылку</span></button>
       <button class="share-btn duel" onclick="challengeFriendFromShare()">⚔️ <span id="sh-duel">Вызвать друга</span></button>
-      <button class="share-btn team" onclick="showTeamsScreen()">🏟️ <span id="sh-team">Команды</span></button>
     </div>
     <button class="score-sec-btn" style="width:100%;margin-top:4px" onclick="showScreen('home')" id="sh-home">← Назад</button>
   </div>

@@ -1424,6 +1424,106 @@ function copyShareLink(){
   }).catch(()=>{});
 }
 
+// ─── SHARE CARD (Canvas image export) ─────────────────────────────────────
+function drawShareCard(){
+  const canvas = document.getElementById('share-canvas');
+  if (!canvas) return null;
+  const ctx = canvas.getContext('2d');
+  const W = 1080, H = 1080;
+  canvas.width = W; canvas.height = H;
+
+  // Dark background
+  const bg = ctx.createLinearGradient(0, 0, W, H);
+  bg.addColorStop(0, '#0d0d1a'); bg.addColorStop(0.5, '#111128'); bg.addColorStop(1, '#0a0a18');
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+
+  // Glow top-right
+  ctx.save(); ctx.globalAlpha = 0.13;
+  const g1 = ctx.createRadialGradient(W, 0, 0, W, 0, 620);
+  g1.addColorStop(0, '#8b83ff'); g1.addColorStop(1, 'transparent');
+  ctx.fillStyle = g1; ctx.fillRect(0, 0, W, H); ctx.restore();
+
+  // Glow bottom-left
+  ctx.save(); ctx.globalAlpha = 0.09;
+  const g2 = ctx.createRadialGradient(0, H, 0, 0, H, 520);
+  g2.addColorStop(0, '#f0c040'); g2.addColorStop(1, 'transparent');
+  ctx.fillStyle = g2; ctx.fillRect(0, 0, W, H); ctx.restore();
+
+  // Header
+  ctx.fillStyle = 'rgba(255,255,255,0.22)';
+  ctx.font = 'bold 46px Arial'; ctx.textAlign = 'left';
+  ctx.fillText('BRAIN FIGHT CLUB', 80, 98);
+  ctx.strokeStyle = 'rgba(108,99,255,0.4)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(80, 118); ctx.lineTo(W-80, 118); ctx.stroke();
+
+  // Score big number
+  const score = document.getElementById('share-score')?.textContent || '0';
+  const label = document.getElementById('share-label')?.textContent || 'очков';
+  ctx.fillStyle = '#f0c040';
+  ctx.font = 'bold 230px Arial'; ctx.textAlign = 'center';
+  ctx.fillText(score, W/2, 430);
+  ctx.fillStyle = 'rgba(255,255,255,0.45)';
+  ctx.font = 'bold 44px Arial';
+  ctx.fillText(label.toUpperCase(), W/2, 498);
+
+  // Stats row
+  const rank = document.getElementById('share-rank')?.textContent || '';
+  if (rank) {
+    ctx.fillStyle = 'rgba(255,255,255,0.72)';
+    ctx.font = '38px Arial'; ctx.fillText(rank, W/2, 590);
+  }
+
+  // City
+  const city = document.getElementById('share-city')?.textContent || '';
+  if (city && !city.includes('Добавь')) {
+    ctx.fillStyle = '#8b83ff'; ctx.font = 'bold 38px Arial';
+    ctx.fillText(city, W/2, 660);
+  }
+
+  // Streak
+  const streakEl = document.getElementById('share-streak-row');
+  if (streakEl?.style.display !== 'none' && streakEl?.textContent?.trim()) {
+    ctx.fillStyle = '#ff9f43'; ctx.font = 'bold 44px Arial';
+    ctx.fillText(streakEl.textContent, W/2, 740);
+  }
+
+  // Bottom line + CTA
+  ctx.strokeStyle = 'rgba(108,99,255,0.3)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(80, H-150); ctx.lineTo(W-80, H-150); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.32)';
+  ctx.font = '34px Arial';
+  ctx.fillText('brainfightclub.com · Проверь себя!', W/2, H-78);
+
+  return canvas;
+}
+
+async function downloadShareCard(){
+  const canvas = drawShareCard();
+  if (!canvas) return;
+  if (navigator.share && navigator.canShare) {
+    canvas.toBlob(async blob => {
+      const file = new File([blob], 'bfc-result.png', { type: 'image/png' });
+      try {
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: 'Brain Fight Club', text: getShareText() });
+          track('share_card_native', { score: _roundScore }); return;
+        }
+      } catch(e) { /* fallback to download */ }
+      _triggerCanvasDownload(canvas);
+    }, 'image/png');
+    return;
+  }
+  _triggerCanvasDownload(canvas);
+}
+
+function _triggerCanvasDownload(canvas){
+  const a = document.createElement('a');
+  a.download = 'bfc-result.png';
+  a.href = canvas.toDataURL('image/png');
+  a.click();
+  track('share_card_downloaded', { score: _roundScore });
+}
+
 // ─── PROFILE CITY ──────────────────────────────────────────────────────────
 function toggleNameEdit(){
   const edit = document.getElementById('profile-name-edit');
@@ -1639,6 +1739,8 @@ window.startExtractedPack       = startExtractedPack;
 window.showOfficialFromMenu     = showOfficialFromMenu;
 window.shareToTelegram          = shareToTelegram;
 window.copyShareLink            = copyShareLink;
+window.downloadShareCard        = downloadShareCard;
+window.drawShareCard            = drawShareCard;
 
 // ── Full window exports for legacy.js compatibility ───────────────
 window.loadPublishedQuickQuestionsFromDB = loadPublishedQuickQuestionsFromDB;
