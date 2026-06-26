@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Тарифы и услуги — Brain Fight Club</title>
+  <meta name="description" content="Оформите подписку BFC Premium или купите билет на квиз-мероприятие" />
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#0b0b14;color:#f5f5ff;line-height:1.6}
+    .wrap{max-width:760px;margin:0 auto;padding:40px 20px 80px}
+    .back{display:inline-block;margin-bottom:24px;color:#8b83ff;font-weight:700;text-decoration:none;font-size:14px}
+    h1{font-size:28px;font-weight:800;margin-bottom:6px}
+    .sub{font-size:15px;color:#9b9bb0;margin-bottom:36px}
+    h2{font-size:18px;font-weight:800;margin:36px 0 14px;color:#f0c040}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+
+    .card{background:#141422;border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:24px;position:relative;overflow:hidden}
+    .card.highlight{border-color:rgba(240,192,64,.5);background:linear-gradient(135deg,#1a1235,#0d0d1a)}
+    .badge{position:absolute;top:14px;right:14px;background:#f0c040;color:#1a1a00;font-size:11px;font-weight:800;padding:3px 8px;border-radius:6px}
+    .plan-icon{font-size:36px;margin-bottom:12px}
+    .plan-name{font-size:20px;font-weight:800;margin-bottom:4px}
+    .plan-price{font-size:28px;font-weight:800;color:#f0c040;margin-bottom:4px}
+    .plan-price span{font-size:14px;font-weight:600;color:#9b9bb0}
+    .plan-desc{font-size:13px;color:#9b9bb0;margin-bottom:16px}
+    ul{list-style:none;display:flex;flex-direction:column;gap:8px;margin-bottom:20px}
+    li{font-size:13px;display:flex;align-items:flex-start;gap:8px}
+    li::before{content:"✓";color:#4ade80;font-weight:800;flex-shrink:0;margin-top:1px}
+    .btn{display:block;width:100%;background:#f0c040;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:800;color:#1a1a00;cursor:pointer;text-align:center;text-decoration:none;font-family:inherit;transition:opacity .15s}
+    .btn:hover{opacity:.9}
+    .btn.outline{background:transparent;border:1.5px solid rgba(240,192,64,.5);color:#f0c040}
+
+    .pass-card{background:#141422;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:20px;display:flex;gap:16px;align-items:flex-start}
+    .pass-icon{font-size:28px;flex-shrink:0}
+    .pass-title{font-size:16px;font-weight:800;margin-bottom:4px}
+    .pass-desc{font-size:13px;color:#9b9bb0;margin-bottom:10px}
+    .pass-price{font-size:18px;font-weight:800;color:#f0c040}
+
+    .info{background:#141422;border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:18px 20px;margin-top:36px;font-size:13px;color:#9b9bb0;line-height:1.7}
+    .info a{color:#8b83ff}
+    .payment-logos{display:flex;gap:10px;align-items:center;margin-top:14px;flex-wrap:wrap}
+    .plogo{background:#1e1e30;border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;color:#f5f5ff}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="/">← На главную</a>
+
+  <h1>Тарифы и услуги</h1>
+  <p class="sub">Все покупки — цифровые продукты и услуги платформы Brain Fight Club</p>
+
+  <!-- ── Premium Subscription ── -->
+  <h2>⭐ Подписка BFC Premium</h2>
+  <div class="grid">
+
+    <div class="card highlight">
+      <div class="badge">Популярный</div>
+      <div class="plan-icon">⭐</div>
+      <div class="plan-name">Premium — Месяц</div>
+      <div class="plan-price">299 ₽ <span>/ месяц</span></div>
+      <div class="plan-desc">Автоматически продлевается каждые 30 дней. Отменить можно в любой момент.</div>
+      <ul>
+        <li>50 тренировочных вопросов в день (вместо 10)</li>
+        <li>10 баттлов в день (вместо 3)</li>
+        <li>Доступ к закрытым Premium-турнирам</li>
+        <li>Расширенная статистика и аналитика</li>
+        <li>Premium-бейдж и уникальная косметика</li>
+        <li>Ранний доступ к новым пакам вопросов</li>
+        <li>Ежедневная интеллектуальная практика ИНТОП</li>
+      </ul>
+      <a class="btn" href="/">Оформить в приложении</a>
+    </div>
+
+    <div class="card">
+      <div class="plan-icon">🏆</div>
+      <div class="plan-name">Premium — Год</div>
+      <div class="plan-price">1 490 ₽ <span>/ год</span></div>
+      <div class="plan-desc">Единоразовый платёж. Экономия 58% по сравнению с месячной подпиской.</div>
+      <ul>
+        <li>Все возможности месячного Premium</li>
+        <li>365 дней без ограничений</li>
+        <li>Нет автопродления — платишь один раз</li>
+        <li>Специальный значок «Годовой подписчик»</li>
+      </ul>
+      <a class="btn outline" href="/">Купить в приложении</a>
+    </div>
+
+  </div>
+
+  <!-- ── Quiz Passes ── -->
+  <h2>🎟️ Билеты на квиз-мероприятия</h2>
+  <p style="font-size:13px;color:#9b9bb0;margin-bottom:16px">
+    Организаторы квизов размещают мероприятия на платформе. Цена и количество мест указаны для каждого события отдельно.
+  </p>
+
+  <div class="pass-card">
+    <div class="pass-icon">🎟️</div>
+    <div>
+      <div class="pass-title">Билет на квиз-мероприятие</div>
+      <div class="pass-desc">
+        Цифровой билет на конкретное интеллектуальное мероприятие. Даёт право участия в квизе,
+        организованном партнёром платформы. Стоимость, дата и место проведения указываются
+        организатором при создании мероприятия.
+      </div>
+      <div class="pass-price">от 100 ₽ <span style="font-size:13px;font-weight:600;color:#9b9bb0">за мероприятие</span></div>
+    </div>
+  </div>
+
+  <!-- ── Freeze ── -->
+  <h2>🛡️ Заморозка серии</h2>
+
+  <div class="pass-card">
+    <div class="pass-icon">🛡️</div>
+    <div>
+      <div class="pass-title">Заморозка стрика</div>
+      <div class="pass-desc">
+        Виртуальный предмет, который защищает серию ежедневных игр. Если вы не смогли сыграть
+        один день — заморозка автоматически применяется и серия сохраняется. Покупается внутри
+        приложения за нейроны (внутреннюю валюту).
+      </div>
+      <div class="pass-price">500 нейронов <span style="font-size:13px;font-weight:600;color:#9b9bb0">= ≈ внутренняя валюта</span></div>
+    </div>
+  </div>
+
+  <!-- ── Payment info ── -->
+  <div class="info">
+    <strong style="color:#f5f5ff">Порядок оплаты и доставки</strong><br><br>
+    Все товары и услуги — <strong>цифровые</strong>. После успешной оплаты:
+    <ul style="list-style:disc;padding-left:20px;margin-top:8px;color:#9b9bb0">
+      <li>Подписка Premium активируется автоматически в течение 1–5 минут на вашем аккаунте</li>
+      <li>Билет на мероприятие отображается в разделе «Мои билеты» сразу после оплаты</li>
+      <li>Подтверждение приходит на e-mail, указанный при регистрации</li>
+    </ul>
+    <br>
+    <strong style="color:#f5f5ff">Возврат</strong><br>
+    Возврат за неиспользованный период подписки или неиспользованный билет осуществляется в течение 14 дней
+    с момента покупки. Для возврата обратитесь на <a href="mailto:support@brain-fight-club.vercel.app">support@brain-fight-club.vercel.app</a>.
+    <br><br>
+    <strong style="color:#f5f5ff">Реквизиты продавца</strong><br>
+    ИП · ИНН 690707436532 · ОГРНИП 315695200038912 ·
+    <a href="/requisites.html">Полные реквизиты</a>
+    <br><br>
+    Оплата принимается через:
+    <div class="payment-logos">
+      <div class="plogo">ЮKassa</div>
+      <div class="plogo">Visa / Mastercard</div>
+      <div class="plogo">Мир</div>
+      <div class="plogo">СБП</div>
+      <div class="plogo">ЮMoney</div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
