@@ -41,9 +41,9 @@ BEGIN
     SET plan = 'premium', status = 'active', current_period_end = now() + interval '1 year';
 
   -- Create approved organizer profile (skips pending/moderation step)
-  INSERT INTO organizer_profiles (user_id, org_name, contact_email, status, approved_at)
-  VALUES (v_user_id, 'BFC Demo Organizer', v_demo_email, 'approved', now())
-  ON CONFLICT (user_id) DO UPDATE SET status = 'approved', approved_at = now();
+  INSERT INTO organizer_profiles (user_id, display_name, contact_email, city, about, status)
+  VALUES (v_user_id, 'BFC Demo Organizer', v_demo_email, 'Москва', 'Демо-аккаунт для проверки платёжного агента', 'approved')
+  ON CONFLICT (user_id) DO UPDATE SET status = 'approved', display_name = 'BFC Demo Organizer';
 
   -- Seed one demo quiz pass so the shop isn't empty
   INSERT INTO quiz_passes (organizer_id, organizer_name, title, description, event_date, location, price, slots_total, slots_left, status)
