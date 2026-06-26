@@ -2,8 +2,13 @@
 -- BFC: Stats, Leaderboard, Club Aggregation, Team Chat
 -- ============================================================
 
--- ── 1. Player stats view ──────────────────────────────────────
--- Aggregates game_sessions into readable stats per user
+-- ── 1. Add missing columns to game_sessions FIRST ────────────
+ALTER TABLE game_sessions ADD COLUMN IF NOT EXISTS correct_answers int DEFAULT 0;
+ALTER TABLE game_sessions ADD COLUMN IF NOT EXISTS questions_count int DEFAULT 0;
+ALTER TABLE game_sessions ADD COLUMN IF NOT EXISTS score          int DEFAULT 0;
+ALTER TABLE game_sessions ADD COLUMN IF NOT EXISTS won            boolean DEFAULT NULL;
+
+-- ── 2. Player stats view (after columns exist) ────────────────
 CREATE OR REPLACE VIEW player_stats AS
 SELECT
   p.id                                                          AS user_id,
@@ -24,12 +29,6 @@ SELECT
 FROM profiles p
 LEFT JOIN game_sessions gs ON gs.user_id = p.id
 GROUP BY p.id, p.display_name, p.city, p.neurons, p.xp, p.daily_streak, p.best_daily_streak;
-
--- game_sessions needs correct_answers + questions_count columns
-ALTER TABLE game_sessions ADD COLUMN IF NOT EXISTS correct_answers int DEFAULT 0;
-ALTER TABLE game_sessions ADD COLUMN IF NOT EXISTS questions_count int DEFAULT 0;
-ALTER TABLE game_sessions ADD COLUMN IF NOT EXISTS score          int DEFAULT 0;
-ALTER TABLE game_sessions ADD COLUMN IF NOT EXISTS won            boolean DEFAULT NULL;
 
 -- ── 2. Leaderboard view (top 100 by XP) ──────────────────────
 CREATE OR REPLACE VIEW leaderboard_global AS

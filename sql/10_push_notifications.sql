@@ -24,9 +24,13 @@ CREATE TABLE IF NOT EXISTS push_notifications_log (
 );
 
 ALTER TABLE push_notifications_log ENABLE ROW LEVEL SECURITY;
--- Admins can read/write; RLS enforced via is_admin() function from sql/09
+-- Admins can read/write (inline check so this file is self-contained)
 CREATE POLICY "admins manage push log" ON push_notifications_log
-  FOR ALL USING (is_admin()) WITH CHECK (is_admin());
+  FOR ALL USING (
+    EXISTS (SELECT 1 FROM admin_users WHERE user_id = auth.uid())
+  ) WITH CHECK (
+    EXISTS (SELECT 1 FROM admin_users WHERE user_id = auth.uid())
+  );
 
 -- ── RPC: register push token ──────────────────────────────────
 CREATE OR REPLACE FUNCTION register_push_token(p_token text, p_platform text DEFAULT 'web')
