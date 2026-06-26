@@ -2564,6 +2564,16 @@ console.log('✅ Firebase Tournaments module loaded');
   }
 
   // ── Referral code auto-claim on signup ────────────────────
+  // Auto-launch slide pack from URL: ?pack=videogames_sep13
+  const urlPack = new URLSearchParams(location.search).get('pack');
+  if (urlPack) {
+    window.addEventListener('bfc:ready', () => {
+      setTimeout(() => window.openSlidePack?.(urlPack), 500);
+    }, { once: true });
+    // fallback if event already fired
+    setTimeout(() => window.openSlidePack?.(urlPack), 2000);
+  }
+
   const urlRef = new URLSearchParams(location.search).get('ref');
   if (urlRef) localStorage.setItem('bfc_pending_ref', urlRef);
 
