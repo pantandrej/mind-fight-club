@@ -45,14 +45,18 @@ BEGIN
   VALUES (v_user_id, 'BFC Demo Organizer', v_demo_email, 'Москва', 'Демо-аккаунт для проверки платёжного агента', 'approved')
   ON CONFLICT (user_id) DO UPDATE SET status = 'approved', display_name = 'BFC Demo Organizer';
 
+  -- Add event_date column if it doesn't exist yet
+  ALTER TABLE quiz_passes ADD COLUMN IF NOT EXISTS event_date timestamptz;
+  ALTER TABLE quiz_passes ADD COLUMN IF NOT EXISTS date_text text;
+
   -- Seed one demo quiz pass so the shop isn't empty
-  INSERT INTO quiz_passes (organizer_id, organizer_name, title, description, event_date, location, price, slots_total, slots_left, status)
+  INSERT INTO quiz_passes (organizer_id, organizer_name, title, description, date_text, location, price, slots_total, slots_left, status)
   VALUES (
     v_user_id,
     'BFC Demo Organizer',
     'Демо-квиз: Мыслибой',
     'Тест-мероприятие для демонстрации. Ответь на 15 вопросов быстрее соперника!',
-    now() + interval '7 days',
+    '5 июля 2025, 19:00',
     'Москва, ул. Арбат, 1',
     300,
     20,
