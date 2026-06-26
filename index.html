@@ -2426,6 +2426,14 @@ console.log('✅ Firebase Tournaments module loaded');
     </button>
   </div>
 
+  <!-- Waiting for sync start -->
+  <div id="hg-waiting" style="width:100%;display:none;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:16px;padding:32px 24px;text-align:center">
+    <div style="font-size:48px">⏳</div>
+    <div style="font-size:18px;font-weight:800">Игра начнётся через</div>
+    <div id="hg-wait-countdown" style="font-size:56px;font-weight:900;color:var(--accent);font-variant-numeric:tabular-nums">--</div>
+    <div style="font-size:13px;color:var(--muted)">Все участники получат первый вопрос одновременно</div>
+  </div>
+
   <!-- Question -->
   <div id="hg-question" style="width:100%;display:none;flex-direction:column;flex:1">
     <!-- Header -->

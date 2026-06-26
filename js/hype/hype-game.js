@@ -3,30 +3,50 @@ import { sb }       from '../services/supabase.js';
 import { getState } from '../state.js';
 import { showScreen, toast } from '../router.js';
 
-const Q_TIME = 30; // seconds per question
+const Q_TIME    = 30;          // seconds per question
+const Q_TIME_MS = Q_TIME * 1000;
 
-let _game     = null;   // hype_game row
-let _qs       = [];     // questions array
-let _idx      = 0;
-let _score    = 0;
-let _answered = false;
-let _timer    = null;
-let _timeLeft = Q_TIME;
-let _playerName = '';
+let _game        = null;
+let _qs          = [];
+let _score       = 0;
+let _playerName  = '';
+let _answers     = {};   // qIdx → { chosen, pts, isRight }
+let _lastIdx     = -1;   // last rendered question index
+let _answered    = false; // for current question
+let _idx         = 0;    // current question index (free mode)
+let _timeLeft    = Q_TIME;
+let _timer       = null; // free-mode countdown interval
+let _syncLoop    = null; // sync-mode master loop
+
+// ── Helpers ───────────────────────────────────────────────────────
+const _isSynced = () => !!_game?.starts_at;
+
+function _getGameState() {
+  if (!_game?.starts_at) return { state: 'free' };
+  const now     = Date.now();
+  const start   = new Date(_game.starts_at).getTime();
+  const elapsed = now - start;
+  if (elapsed < 0) return { state: 'waiting', secsLeft: Math.ceil(-elapsed / 1000) };
+  const qIdx    = Math.floor(elapsed / Q_TIME_MS);
+  if (qIdx >= _qs.length) return { state: 'done' };
+  const timeLeft = Math.max(0, Q_TIME - Math.floor((elapsed % Q_TIME_MS) / 1000));
+  return { state: 'playing', qIdx, timeLeft };
+}
 
 // ── Entry point ───────────────────────────────────────────────────
 export async function openHypeGame(slug) {
   showScreen('hype-game');
   _show('hg-intro');
 
+  // Reset
+  _answers = {}; _lastIdx = -1; _answered = false;
+  _idx = 0; _score = 0; _timeLeft = Q_TIME;
+  _cleanup();
+
   const { data, error } = await sb.from('hype_games')
     .select('*').eq('slug', slug).eq('active', true).maybeSingle();
 
-  if (!data || error) {
-    toast('Игра не найдена 😕');
-    showScreen('home');
-    return;
-  }
+  if (!data || error) { toast('Игра не найдена 😕'); showScreen('home'); return; }
 
   _game = data;
   _qs   = Array.isArray(data.questions) ? data.questions : [];
@@ -34,41 +54,141 @@ export async function openHypeGame(slug) {
   document.getElementById('hg-title').textContent = data.title || 'Хайп-игра';
   document.getElementById('hg-desc').textContent  = data.description || '';
 
-  // Pre-fill name if logged in
   const { currentUser } = getState();
   if (currentUser) {
-    const nameInput = document.getElementById('hg-guest-name');
-    if (nameInput) {
-      nameInput.value = currentUser.user_metadata?.full_name?.split(' ')[0]
-        || localStorage.getItem('mfc_display_name') || '';
+    const el = document.getElementById('hg-guest-name');
+    if (el) el.value = currentUser.user_metadata?.full_name?.split(' ')[0]
+      || localStorage.getItem('mfc_display_name') || '';
+  }
+
+  // If synced and already started — skip intro, jump in
+  if (_isSynced()) {
+    const gs = _getGameState();
+    if (gs.state === 'playing' || gs.state === 'done') {
+      _playerName = document.getElementById('hg-guest-name')?.value.trim() || 'Аноним';
+      _enterSyncMode();
+      return;
     }
   }
 }
 
-// ── Start ─────────────────────────────────────────────────────────
+// ── Start (button click) ──────────────────────────────────────────
 window.hypeGameStart = function () {
   if (!_game || !_qs.length) { toast('Вопросы не загружены'); return; }
 
   _playerName = document.getElementById('hg-guest-name')?.value.trim()
     || getState().currentUser?.user_metadata?.full_name?.split(' ')[0]
-    || 'Анонимный игрок';
-  _idx = 0; _score = 0; _answered = false;
+    || 'Аноним';
 
-  _show('hg-question');
-  _renderQuestion();
+  if (_isSynced()) {
+    _enterSyncMode();
+  } else {
+    // Free mode
+    _idx = 0; _score = 0; _answered = false; _answers = {};
+    _show('hg-question');
+    _renderQuestion();
+  }
 };
 
-window.hypeGameNext   = _nextQuestion;
+window.hypeGameNext    = _nextQuestion;
 window.hypeGameRestart = () => { _cleanup(); openHypeGame(_game?.slug); };
+
+// ── Sync mode ─────────────────────────────────────────────────────
+function _enterSyncMode() {
+  const gs = _getGameState();
+
+  if (gs.state === 'waiting') {
+    // Show waiting screen with countdown
+    _show('hg-waiting');
+    _updateWaiting(gs.secsLeft);
+    _syncLoop = setInterval(() => {
+      const s = _getGameState();
+      if (s.state === 'waiting') {
+        _updateWaiting(s.secsLeft);
+      } else {
+        clearInterval(_syncLoop);
+        _syncLoop = null;
+        _startSyncLoop();
+      }
+    }, 500);
+    return;
+  }
+
+  _startSyncLoop();
+}
+
+function _startSyncLoop() {
+  _cleanup();
+  _syncLoop = setInterval(() => {
+    const gs = _getGameState();
+
+    if (gs.state === 'done') {
+      _cleanup();
+      if (_lastIdx < _qs.length) {
+        _lastIdx = _qs.length;
+        _finalizeScore();
+        _showResults();
+      }
+      return;
+    }
+
+    if (gs.state !== 'playing') return;
+
+    _timeLeft = gs.timeLeft;
+
+    if (gs.qIdx !== _lastIdx) {
+      // Question changed — render new one
+      _lastIdx  = gs.qIdx;
+      _idx      = gs.qIdx;
+      _answered = !!_answers[gs.qIdx];
+      _show('hg-question');
+      _renderQuestion();
+      if (_answered) _restoreAnswerState(gs.qIdx);
+    } else {
+      // Same question — just tick timer
+      _updateTimer();
+      if (gs.timeLeft === 0 && !_answered) {
+        // Time ran out — auto-submit miss
+        _answered = true;
+        _answers[_idx] = { chosen: -1, pts: 0, isRight: false };
+        _markButtons(_qs[_idx].c ?? 0, -1);
+        _revealInline(false, 0, _qs[_idx]);
+      }
+    }
+  }, 500);
+}
+
+function _updateWaiting(secsLeft) {
+  const el = document.getElementById('hg-wait-countdown');
+  if (el) el.textContent = _formatCountdown(secsLeft);
+}
+
+function _formatCountdown(secs) {
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  return m > 0 ? `${m}:${String(s).padStart(2, '0')}` : `${s}`;
+}
+
+function _restoreAnswerState(qIdx) {
+  const rec = _answers[qIdx];
+  if (!rec) return;
+  const q = _qs[qIdx];
+  _markButtons(q.c ?? 0, rec.chosen);
+  _revealInline(rec.isRight, rec.pts, q);
+}
+
+function _finalizeScore() {
+  _score = Object.values(_answers).reduce((s, r) => s + (r.pts || 0), 0);
+}
 
 // ── Question render ───────────────────────────────────────────────
 function _renderQuestion() {
-  _cleanup();
-  _answered = false;
+  if (!_isSynced()) _cleanup();
+  _answered = !!_answers[_idx];
+
   const q = _qs[_idx];
   if (!q) { _showResults(); return; }
 
-  // Header
   document.getElementById('hg-q-num').textContent = `Вопрос ${_idx + 1} / ${_qs.length}`;
   _setProgress((_idx / _qs.length) * 100);
 
@@ -79,23 +199,17 @@ function _renderQuestion() {
   const mediaEl    = document.getElementById('hg-media');
   const avEl       = document.getElementById('hg-av-media');
   const nextWrap   = document.getElementById('hg-next-wrap');
-  const nextBtn    = document.getElementById('hg-next-btn');
-  const ansImgWrap = document.getElementById('hg-answer-img');
 
-  // Reset
   mediaEl.innerHTML = '';
   avEl.innerHTML = '';
   avEl.style.display = 'none';
-  ansImgWrap.style.display = 'none';
   nextWrap.style.display = 'none';
 
   if (isImg) {
-    // Two-column: question image fills left
     mediaEl.style.cssText = 'display:flex;flex:0 0 50%;min-width:0;overflow:hidden;background:#000;align-items:center;justify-content:center';
     mediaEl.innerHTML = `<img src="${q.img}" alt="" style="width:100%;height:100%;object-fit:contain;display:block"
       onerror="this.style.display='none'">`;
   } else {
-    // Single column: left panel hidden until answer reveal
     mediaEl.style.display = 'none';
     if (isAudio || isVideo) {
       avEl.style.display = 'block';
@@ -103,10 +217,8 @@ function _renderQuestion() {
     }
   }
 
-  // Question text
   document.getElementById('hg-q-text').textContent = q.q || '';
 
-  // Answers
   const answersEl = document.getElementById('hg-answers');
   answersEl.innerHTML = '';
   (q.a || []).forEach((ans, i) => {
@@ -120,28 +232,39 @@ function _renderQuestion() {
     answersEl.appendChild(btn);
   });
 
-  // Timer
-  _timeLeft = Q_TIME;
   _updateTimer();
-  _timer = setInterval(() => {
-    _timeLeft--;
+
+  // Free mode: start countdown interval
+  if (!_isSynced()) {
+    _timeLeft = Q_TIME;
     _updateTimer();
-    if (_timeLeft <= 0) { clearInterval(_timer); _answer(-1); }
-  }, 1000);
+    _timer = setInterval(() => {
+      _timeLeft--;
+      _updateTimer();
+      if (_timeLeft <= 0) { clearInterval(_timer); _answer(-1); }
+    }, 1000);
+  }
 }
 
 function _answer(chosen) {
   if (_answered) return;
   _answered = true;
-  clearInterval(_timer);
+  if (_timer) { clearInterval(_timer); _timer = null; }
 
   const q       = _qs[_idx];
   const correct = q.c ?? 0;
   const isRight = chosen === correct;
   const pts     = isRight ? Math.max(1, _timeLeft) : 0;
-  _score += pts;
 
-  // Color buttons
+  _answers[_idx] = { chosen, pts, isRight };
+
+  if (!_isSynced()) _score += pts;
+
+  _markButtons(correct, chosen);
+  setTimeout(() => _revealInline(isRight, pts, q), 500);
+}
+
+function _markButtons(correct, chosen) {
   document.querySelectorAll('#hg-answers button').forEach(btn => {
     const bi = Number(btn.dataset.idx);
     btn.style.pointerEvents = 'none';
@@ -157,9 +280,6 @@ function _answer(chosen) {
       btn.style.opacity = '0.4';
     }
   });
-
-  // Show answer image inline after short delay
-  setTimeout(() => _revealInline(isRight, pts, q), 500);
 }
 
 function _revealInline(isRight, pts, q) {
@@ -167,7 +287,6 @@ function _revealInline(isRight, pts, q) {
 
   if (q.answer_img) {
     if (!!q.img) {
-      // Image question: swap left column image → answer image
       const img = mediaEl.querySelector('img');
       if (img) {
         img.style.transition = 'opacity .4s';
@@ -175,7 +294,6 @@ function _revealInline(isRight, pts, q) {
         setTimeout(() => { img.src = q.answer_img; img.style.opacity = '1'; }, 400);
       }
     } else {
-      // Non-image question: show answer image in left column (makes two-column)
       mediaEl.style.cssText = 'display:flex;flex:0 0 45%;min-width:0;overflow:hidden;background:#000;align-items:center;justify-content:center';
       mediaEl.innerHTML = `<img src="${q.answer_img}" alt=""
         style="width:100%;height:100%;object-fit:contain;display:block"
@@ -183,20 +301,22 @@ function _revealInline(isRight, pts, q) {
     }
   }
 
-  // Score feedback on timer display
   const timerEl = document.getElementById('hg-timer');
   if (timerEl) {
     timerEl.textContent = isRight ? `+${pts}` : '✗';
     timerEl.style.color = isRight ? 'var(--green)' : 'var(--red)';
   }
 
-  // Show sticky next button
-  const nextWrap = document.getElementById('hg-next-wrap');
-  const nextBtn  = document.getElementById('hg-next-btn');
-  if (nextWrap) nextWrap.style.display = 'block';
-  if (nextBtn)  nextBtn.textContent = _idx >= _qs.length - 1 ? 'Посмотреть результат →' : 'Следующий вопрос →';
+  // In sync mode: no next button — auto-advance by timer
+  if (!_isSynced()) {
+    const nextWrap = document.getElementById('hg-next-wrap');
+    const nextBtn  = document.getElementById('hg-next-btn');
+    if (nextWrap) nextWrap.style.display = 'block';
+    if (nextBtn)  nextBtn.textContent = _idx >= _qs.length - 1 ? 'Посмотреть результат →' : 'Следующий вопрос →';
+  }
 }
 
+// ── Free mode: manual next ────────────────────────────────────────
 function _nextQuestion() {
   _idx++;
   if (_idx >= _qs.length) {
@@ -221,10 +341,7 @@ async function _showResults() {
   document.getElementById('hg-result-label').textContent =
     `из ${max} возможных (${pct}%) · ${_qs.length} вопросов`;
 
-  // Save session
   await _saveSession();
-
-  // Load leaderboard
   _loadLeaderboard();
 }
 
@@ -232,7 +349,6 @@ async function _saveSession() {
   if (!_game?.id) return;
   const { currentUser } = getState();
   const max = _qs.length * Q_TIME;
-
   try {
     await sb.from('hype_game_sessions').insert({
       hype_game_id: _game.id,
@@ -257,7 +373,10 @@ async function _loadLeaderboard() {
     .order('score', { ascending: false })
     .limit(20);
 
-  if (!data?.length) { lbEl.innerHTML = '<div style="font-size:12px;color:var(--muted)">Пока нет результатов</div>'; return; }
+  if (!data?.length) {
+    lbEl.innerHTML = '<div style="font-size:12px;color:var(--muted)">Пока нет результатов</div>';
+    return;
+  }
 
   lbEl.innerHTML = '';
   data.forEach((row, i) => {
@@ -275,9 +394,9 @@ async function _loadLeaderboard() {
   });
 }
 
-// ── Helpers ───────────────────────────────────────────────────────
+// ── UI helpers ────────────────────────────────────────────────────
 function _show(sectionId) {
-  ['hg-intro','hg-question','hg-reveal','hg-results'].forEach(id => {
+  ['hg-intro','hg-waiting','hg-question','hg-reveal','hg-results'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     el.style.display = id === sectionId ? 'flex' : 'none';
@@ -297,7 +416,8 @@ function _updateTimer() {
 }
 
 function _cleanup() {
-  if (_timer) { clearInterval(_timer); _timer = null; }
+  if (_timer)    { clearInterval(_timer);    _timer    = null; }
+  if (_syncLoop) { clearInterval(_syncLoop); _syncLoop = null; }
 }
 
 function _esc(s) {
@@ -314,7 +434,5 @@ export function checkHypeParam() {
 
 window.openHypeGame   = openHypeGame;
 window.checkHypeParam = checkHypeParam;
-
-// Auto-open if ?hype= is in URL (fires after auth decides what to show)
-console.log('[hype-game] module loaded, openHypeGame ready');
-window._hypeAutoSlug = new URLSearchParams(window.location.search).get('hype') || null;
+window._hypeAutoSlug  = new URLSearchParams(window.location.search).get('hype') || null;
+console.log('[hype-game] module loaded');
