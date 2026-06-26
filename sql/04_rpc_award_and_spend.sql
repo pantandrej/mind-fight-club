@@ -26,15 +26,15 @@ CREATE OR REPLACE FUNCTION _bfc_award_amounts(p_type text)
 RETURNS TABLE(neurons int, xp int)
 LANGUAGE sql IMMUTABLE AS $$
   SELECT * FROM (VALUES
-    ('quiz_correct',        10,  10),
-    ('quiz_correct_streak', 15,  15),
-    ('duel_win',            50,  50),
-    ('duel_loss',           10,  10),
-    ('tournament_q_correct',20,  20),
-    ('daily_login',         20,   5),
-    ('referral_bonus',     100,  20),
-    ('onboarding_complete', 50,  10),
-    ('generic_reward',      10,  10)
+    ('quiz_correct'::text,         10::int,  10::int),
+    ('quiz_correct_streak'::text,  15::int,  15::int),
+    ('duel_win'::text,             50::int,  50::int),
+    ('duel_loss'::text,            10::int,  10::int),
+    ('tournament_q_correct'::text, 20::int,  20::int),
+    ('daily_login'::text,          20::int,   5::int),
+    ('referral_bonus'::text,      100::int,  20::int),
+    ('onboarding_complete'::text,  50::int,  10::int),
+    ('generic_reward'::text,       10::int,  10::int)
   ) AS t(op, n, x)
   WHERE op = p_type
   LIMIT 1;

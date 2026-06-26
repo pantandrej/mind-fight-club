@@ -39,7 +39,7 @@ CREATE INDEX IF NOT EXISTS idx_quiz_passes_organizer ON quiz_passes(organizer_id
 CREATE INDEX IF NOT EXISTS idx_quiz_passes_status    ON quiz_passes(status);
 CREATE INDEX IF NOT EXISTS idx_qpp_pass_id           ON quiz_pass_purchases(pass_id);
 CREATE INDEX IF NOT EXISTS idx_qpp_buyer_id          ON quiz_pass_purchases(buyer_id);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_qpp_no_double  ON quiz_pass_purchases(pass_id, buyer_id) WHERE NOT refunded;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_qpp_no_double  ON quiz_pass_purchases(pass_id, buyer_id);
 
 -- RLS
 ALTER TABLE quiz_passes         ENABLE ROW LEVEL SECURITY;
