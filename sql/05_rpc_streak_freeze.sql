@@ -86,7 +86,6 @@ BEGIN
   v_gap := COALESCE(v_today - v_profile.streak_last_date, 999);
 
   IF v_gap = 1 THEN
-    -- Consecutive day → extend streak
     UPDATE profiles
     SET daily_streak     = COALESCE(daily_streak, 0) + 1,
         streak_last_date = v_today,
@@ -95,7 +94,6 @@ BEGIN
     RETURNING * INTO v_profile;
 
   ELSIF v_gap = 2 AND COALESCE(v_profile.streak_freezes, 0) > 0 THEN
-    -- Missed exactly 1 day AND has a freeze → auto-apply freeze
     UPDATE profiles
     SET daily_streak     = COALESCE(daily_streak, 0) + 1,
         streak_last_date = v_today,
@@ -106,7 +104,6 @@ BEGIN
     v_freeze_used := true;
 
   ELSE
-    -- Streak broken → reset
     UPDATE profiles
     SET daily_streak     = 1,
         streak_last_date = v_today,
@@ -115,11 +112,33 @@ BEGIN
     RETURNING * INTO v_profile;
   END IF;
 
+  -- Milestone bonuses: award neurons for 7 / 30 / 100-day streaks
+  -- Uses idempotency key scoped to the specific streak value → awarded only once per milestone
+  DECLARE
+    v_milestone_type text := NULL;
+    v_milestone_key  text;
+  BEGIN
+    IF v_profile.daily_streak = 7   THEN v_milestone_type := 'streak_7_days';   END IF;
+    IF v_profile.daily_streak = 30  THEN v_milestone_type := 'streak_30_days';  END IF;
+    IF v_profile.daily_streak = 100 THEN v_milestone_type := 'streak_100_days'; END IF;
+
+    IF v_milestone_type IS NOT NULL THEN
+      v_milestone_key := v_milestone_type || ':' || v_user_id::text;
+      -- award_currency handles idempotency via currency_ledger UNIQUE key
+      PERFORM award_currency(v_milestone_type, v_milestone_key);
+    END IF;
+  END;
+
   RETURN jsonb_build_object(
     'ok', true,
-    'streak',       v_profile.daily_streak,
-    'freezes_left', v_profile.streak_freezes,
-    'freeze_used',  v_freeze_used
+    'streak',          v_profile.daily_streak,
+    'freezes_left',    v_profile.streak_freezes,
+    'freeze_used',     v_freeze_used,
+    'milestone',       CASE
+                         WHEN v_profile.daily_streak IN (7,30,100)
+                         THEN v_profile.daily_streak
+                         ELSE NULL
+                       END
   );
 END;
 $$;

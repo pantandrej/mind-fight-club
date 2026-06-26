@@ -35,22 +35,28 @@ BEGIN
       WHEN 'quiz_correct'         THEN 10
       WHEN 'quiz_correct_streak'  THEN 15
       WHEN 'duel_win'             THEN 50
-      WHEN 'duel_loss'            THEN 10
+      WHEN 'duel_loss'            THEN  0  -- no reward for loss
       WHEN 'tournament_q_correct' THEN 20
       WHEN 'daily_login'          THEN 20
       WHEN 'referral_bonus'       THEN 100
       WHEN 'onboarding_complete'  THEN 50
+      WHEN 'streak_7_days'        THEN 50   -- 7-day streak bonus
+      WHEN 'streak_30_days'       THEN 200  -- 30-day streak bonus
+      WHEN 'streak_100_days'      THEN 500  -- 100-day streak bonus
       ELSE 10
     END::int AS neurons,
     CASE p_type
       WHEN 'quiz_correct'         THEN 10
       WHEN 'quiz_correct_streak'  THEN 15
       WHEN 'duel_win'             THEN 50
-      WHEN 'duel_loss'            THEN 10
+      WHEN 'duel_loss'            THEN  0
       WHEN 'tournament_q_correct' THEN 20
-      WHEN 'daily_login'          THEN  5
+      WHEN 'daily_login'          THEN 20
       WHEN 'referral_bonus'       THEN 20
       WHEN 'onboarding_complete'  THEN 10
+      WHEN 'streak_7_days'        THEN 50
+      WHEN 'streak_30_days'       THEN 200
+      WHEN 'streak_100_days'      THEN 500
       ELSE 10
     END::int AS xp;
 END;

@@ -39,7 +39,7 @@ function getYesterdayDateKey(){
 // Safe for demo/testing but not for real economy before server-side check.
 // ═══════════════════════════════════════════
 const STREAK_FREEZE_KEY   = 'mfc_streak_freeze_v1';
-const STREAK_FREEZE_PRICE = 30;
+const STREAK_FREEZE_PRICE = 150;
 
 function getStreakFreeze(){
   try{
@@ -176,6 +176,14 @@ async function updateDailyStreakOnQuickPlayComplete(){
         newStreak = rpcData.streak ?? newStreak;
         if(rpcData.freeze_used){
           toast(lang==='ru'?'❄️ Заморозка сработала — серия сохранена!':'❄️ Freeze used — streak saved!', 3000);
+        }
+        if(rpcData.milestone){
+          const bonuses = {7:50, 30:200, 100:500};
+          const b = bonuses[rpcData.milestone] || '';
+          const msg = lang==='ru'
+            ? `🔥 ${rpcData.milestone} дней подряд! +${b} ⚡ нейронов`
+            : `🔥 ${rpcData.milestone}-day streak! +${b} ⚡ neurons`;
+          setTimeout(()=>toast(msg, 5000), 1500);
         }
         _dailyStreak = newStreak;
         _bestDailyStreak = Math.max(_bestDailyStreak, newStreak);
