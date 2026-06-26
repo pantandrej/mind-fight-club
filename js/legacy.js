@@ -3910,8 +3910,10 @@ function shouldIntegrityBeActiveNow(){
 // Event listeners for tab/window focus
 document.addEventListener('visibilitychange', ()=>{
   if(!quizIntegrity.active) return;
+  // Duel tab-switching is handled by _duelTabWarn in friend-battle.js — skip here
+  if(quizIntegrity.mode === 'duel') return;
   if(document.hidden){
-    if(!shouldIntegrityBeActiveNow()) return; // not in an active game — ignore
+    if(!shouldIntegrityBeActiveNow()) return;
     quizIntegrity.awayStartedAt = Date.now();
     track('quiz_tab_hidden', {mode: quizIntegrity.mode});
   } else {
@@ -3926,6 +3928,7 @@ document.addEventListener('visibilitychange', ()=>{
 
 window.addEventListener('blur', ()=>{
   if(!quizIntegrity.active) return;
+  if(quizIntegrity.mode === 'duel') return; // duel handled by _duelTabWarn
   if(!shouldIntegrityBeActiveNow()) return;
   if(!quizIntegrity.awayStartedAt) quizIntegrity.awayStartedAt = Date.now();
   track('quiz_window_blur', {mode: quizIntegrity.mode});

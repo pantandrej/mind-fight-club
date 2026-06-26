@@ -18,6 +18,7 @@ let duelAnswered=false,duelTimer=null,duelTimeLeft=0,duelMaxT=0;
 let duelMyName='You',duelOppNameStr='Соперник';
 let botAnsweredThisQuestion = false;
 let _tabWarnCount = 0;
+let _isRandomBattle = false; // true when came from matchmaking (not friend duel)
 
 // Simulate bot answer independently of whether the player has answered.
 // Uses qIndex to ignore stale timeouts that fired after "Next" was pressed.
@@ -475,6 +476,17 @@ function duelChallengeFriend(){
   resetDuel();
 }
 
+function duelPlayAgain(){
+  const wasRandom = _isRandomBattle || window._isBotDuel;
+  resetDuel();
+  if(wasRandom){
+    // Go back to matchmaking, not friend duel lobby
+    if(typeof window.showPlayMenu === 'function') window.showPlayMenu();
+    else showScreen('home');
+  }
+  // friend duel: resetDuel already shows d-lobby
+}
+
 function resetDuel(){
   window._battleSessionStarted = false;
   window._currentSessionId     = null;
@@ -491,6 +503,8 @@ function resetDuel(){
   window._botName     = null;
   window._pendingBot  = null;
   window._pendingDuelQs = null;
+  _isRandomBattle     = false;
+  window._isRandomBattle = false;
   // Remove tab forfeit listener
   if(window._duelTabWarn){
     document.removeEventListener('visibilitychange', window._duelTabWarn);
@@ -1028,6 +1042,7 @@ window.duelShareWA           = duelShareWA;
 window.duelCopyLink          = duelCopyLink;
 window.duelChallengeFriend   = duelChallengeFriend;
 window.resetDuel             = resetDuel;
+window.duelPlayAgain         = duelPlayAgain;
 window.copyDuelLink          = copyDuelLink;
 window.tournShareTG          = tournShareTG;
 window.tournShareWA          = tournShareWA;
@@ -1063,7 +1078,6 @@ function setMyDot(i, pts, isCorrect) {
   const d = document.getElementById('d-my-dots-dot-' + i);
   if (!d) return;
   d.className = 'dot ' + (isCorrect ? 'done' : 'miss');
-  d.style.cssText += ';font-size:9px;font-weight:800;line-height:1;display:flex;align-items:center;justify-content:center';
   d.textContent = isCorrect ? '+' + pts : '✗';
 }
 
@@ -1071,12 +1085,12 @@ function setOppDot(i, isCorrect, pts) {
   const d = document.getElementById('d-opp-dots-dot-' + i);
   if (!d) return;
   d.className = 'dot ' + (isCorrect ? 'done' : 'miss');
-  d.style.cssText += ';font-size:9px;font-weight:800;line-height:1;display:flex;align-items:center;justify-content:center';
   d.textContent = isCorrect ? (pts ? '+' + pts : '✓') : '✗';
 }
 
 // Called by matchmaking when this player is the "finder" and should act as host
 window.mmStartAsHost = async function(code, myName) {
+  _isRandomBattle = true;
   duelCode     = code;
   duelRole     = 'host';
   duelMyName   = myName || 'Вы';

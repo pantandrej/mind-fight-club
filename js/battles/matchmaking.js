@@ -299,6 +299,7 @@ async function matchFound(duelCode, myName, oppName){
     window.mmStartAsHost?.(duelCode, myName);
   } else {
     // This player was waiting — act as guest: poll for questions from host
+    if(typeof window !== 'undefined') window._isRandomBattle = true;
     document.getElementById('join-code-input').value = duelCode;
     showScreen('duel');
     joinDuel();
