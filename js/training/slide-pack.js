@@ -35,7 +35,6 @@ export function startSlidePack(pack) {
 
   const screen = document.getElementById('slide-pack-screen');
   if (screen) screen.style.display = 'flex';
-  document.getElementById('slide-pack-total').textContent = pack.questions.length;
   renderQuestion();
   track('slide_pack_started', { pack_id: pack.id });
 }
