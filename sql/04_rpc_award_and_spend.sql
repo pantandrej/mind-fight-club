@@ -27,20 +27,33 @@ CREATE POLICY "user reads own ledger" ON currency_ledger FOR SELECT USING (user_
 -- Centralised here — client NEVER sends an amount
 CREATE OR REPLACE FUNCTION _bfc_award_amounts(p_type text)
 RETURNS TABLE(neurons int, xp int)
-LANGUAGE sql IMMUTABLE AS $$
-  SELECT * FROM (VALUES
-    ('quiz_correct'::text,         10::int,  10::int),
-    ('quiz_correct_streak'::text,  15::int,  15::int),
-    ('duel_win'::text,             50::int,  50::int),
-    ('duel_loss'::text,            10::int,  10::int),
-    ('tournament_q_correct'::text, 20::int,  20::int),
-    ('daily_login'::text,          20::int,   5::int),
-    ('referral_bonus'::text,      100::int,  20::int),
-    ('onboarding_complete'::text,  50::int,  10::int),
-    ('generic_reward'::text,       10::int,  10::int)
-  ) AS t(op, n, x)
-  WHERE op = p_type
-  LIMIT 1;
+LANGUAGE plpgsql IMMUTABLE AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    CASE p_type
+      WHEN 'quiz_correct'         THEN 10
+      WHEN 'quiz_correct_streak'  THEN 15
+      WHEN 'duel_win'             THEN 50
+      WHEN 'duel_loss'            THEN 10
+      WHEN 'tournament_q_correct' THEN 20
+      WHEN 'daily_login'          THEN 20
+      WHEN 'referral_bonus'       THEN 100
+      WHEN 'onboarding_complete'  THEN 50
+      ELSE 10
+    END::int AS neurons,
+    CASE p_type
+      WHEN 'quiz_correct'         THEN 10
+      WHEN 'quiz_correct_streak'  THEN 15
+      WHEN 'duel_win'             THEN 50
+      WHEN 'duel_loss'            THEN 10
+      WHEN 'tournament_q_correct' THEN 20
+      WHEN 'daily_login'          THEN  5
+      WHEN 'referral_bonus'       THEN 20
+      WHEN 'onboarding_complete'  THEN 10
+      ELSE 10
+    END::int AS xp;
+END;
 $$;
 
 -- ── award_currency ────────────────────────────────────────────────────
