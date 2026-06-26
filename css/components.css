@@ -172,6 +172,18 @@
 .score-sec-btn{width:100%;background:transparent;border:0.5px solid var(--border);border-radius:12px;padding:12px;font-size:13px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit}
 .score-sec-btn:hover{background:rgba(108,99,255,.1)}
 
+/* ── Slide Pack ── */
+.sp-ans-btn{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:12px 8px;font-size:14px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit;transition:all .15s;text-align:center;line-height:1.3}
+.sp-ans-btn:hover{background:rgba(108,99,255,.2);border-color:rgba(108,99,255,.5)}
+.sp-ans-btn.sp-correct{background:rgba(74,222,128,.2);border-color:#4ade80;color:#4ade80}
+.sp-ans-btn.sp-wrong{background:rgba(224,85,85,.15);border-color:#e05555;color:#e05555}
+.sp-feedback{font-size:15px;font-weight:800;min-height:22px;padding:0 16px;text-align:center}
+.sp-fb-win{color:#4ade80}
+.sp-fb-lose{color:#e05555}
+.sp-dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.15);flex-shrink:0;transition:all .2s}
+.sp-dot.active{background:var(--accent);width:16px;border-radius:3px}
+.sp-dot.done{background:rgba(74,222,128,.5)}
+
 /* ── XP bar ── */
 .xp-bar-wrap{margin:12px 0 8px;width:100%}
 .xp-bar-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}

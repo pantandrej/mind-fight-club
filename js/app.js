@@ -19,6 +19,7 @@ import './hype/hype-game.js';
 import './achievements.js';
 import './onboarding.js';
 import './leaderboard.js';
+import './training/slide-pack.js';
 
 // ── Boot ──────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
