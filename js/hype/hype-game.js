@@ -147,12 +147,19 @@ function _startSyncLoop() {
     } else {
       // Same question — just tick timer
       _updateTimer();
-      if (gs.timeLeft === 0 && !_answered) {
-        // Time ran out — auto-submit miss
-        _answered = true;
-        _answers[_idx] = { chosen: -1, pts: 0, isRight: false };
-        _markButtons(_qs[_idx].c ?? 0, -1);
-        _revealInline(false, 0, _qs[_idx]);
+      if (gs.timeLeft === 0) {
+        // Window expired — reveal answer image regardless of whether player answered
+        if (!_answered) {
+          _answered = true;
+          _answers[_idx] = { chosen: -1, pts: 0, isRight: false };
+          _markButtons(_qs[_idx].c ?? 0, -1);
+        }
+        const rec = _answers[_idx];
+        if (rec && !document.getElementById('hg-media')?.querySelector('[data-revealed]')) {
+          const mediaEl = document.getElementById('hg-media');
+          if (mediaEl) mediaEl.dataset.revealed = '1';
+          _revealInline(rec.isRight, rec.pts, _qs[_idx]);
+        }
       }
     }
   }, 500);
@@ -234,14 +241,18 @@ function _renderQuestion() {
 
   _updateTimer();
 
-  // Free mode: start countdown interval
+  // Free mode: countdown — reveal fires only when timer hits 0 (anti-cheat)
   if (!_isSynced()) {
     _timeLeft = Q_TIME;
     _updateTimer();
     _timer = setInterval(() => {
-      _timeLeft--;
-      _updateTimer();
-      if (_timeLeft <= 0) { clearInterval(_timer); _answer(-1); }
+      if (!_answered) { _timeLeft--; _updateTimer(); }
+      if (_timeLeft <= 0) {
+        clearInterval(_timer); _timer = null;
+        if (!_answered) _answer(-1);
+        const rec = _answers[_idx];
+        if (rec) _revealInline(rec.isRight, rec.pts, _qs[_idx]);
+      }
     }, 1000);
   }
 }
@@ -249,7 +260,7 @@ function _renderQuestion() {
 function _answer(chosen) {
   if (_answered) return;
   _answered = true;
-  if (_timer) { clearInterval(_timer); _timer = null; }
+  // Timer keeps running — reveal happens when window expires
 
   const q       = _qs[_idx];
   const correct = q.c ?? 0;
@@ -257,11 +268,17 @@ function _answer(chosen) {
   const pts     = isRight ? Math.max(1, _timeLeft) : 0;
 
   _answers[_idx] = { chosen, pts, isRight };
-
   if (!_isSynced()) _score += pts;
 
   _markButtons(correct, chosen);
-  setTimeout(() => _revealInline(isRight, pts, q), 500);
+
+  // Immediate feedback on timer display
+  const timerEl = document.getElementById('hg-timer');
+  if (timerEl) {
+    timerEl.textContent = isRight ? `+${pts}` : '✗';
+    timerEl.style.color = isRight ? 'var(--green)' : 'var(--red)';
+  }
+  // Answer image shown only when timer hits 0 — see timer callback above
 }
 
 function _markButtons(correct, chosen) {
@@ -288,11 +305,7 @@ function _revealInline(isRight, pts, q) {
   if (q.answer_img) {
     if (!!q.img) {
       const img = mediaEl.querySelector('img');
-      if (img) {
-        img.style.transition = 'opacity .4s';
-        img.style.opacity = '0';
-        setTimeout(() => { img.src = q.answer_img; img.style.opacity = '1'; }, 400);
-      }
+      if (img) { img.src = q.answer_img; }
     } else {
       mediaEl.style.cssText = 'display:flex;flex:0 0 45%;min-width:0;overflow:hidden;background:#000;align-items:center;justify-content:center';
       mediaEl.innerHTML = `<img src="${q.answer_img}" alt=""

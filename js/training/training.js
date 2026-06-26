@@ -756,7 +756,7 @@ function normalizeDBQuestionForQuickPlay(row){
     c:    correctIdx !== null ? correctIdx : 0,
     correct_index: correctIdx !== null ? correctIdx : 0,
     cat:  row.category || row.cat || 'GENERAL',
-    t:    20,  // 20 seconds = max 20 pts
+    t:    30,
     img:  mtype === 'image' ? murl : null,
     audio: mtype === 'audio' ? murl : null,
     video: mtype === 'video' ? murl : null,
@@ -847,7 +847,7 @@ function startExtractedPack(data, packTitle, importKey){
     q: lang==='ru'?(q.question_ru||q.question_text):(q.question_text||q.question_ru),
     a: lang==='ru'?(q.answers_ru||q.answers_json||[]):(q.answers_json||q.answers_ru||[]),
     c: q.correct_index||0,
-    t: 20,  // 20 seconds = max 20 pts
+    t: 30,
     img:   q.media_type==='image'?(q.image_url||null):null,
     audio: q.media_type==='audio'?(q.audio_url||null):null,
     video: q.media_type==='video'?(q.video_url||null):null,
@@ -1043,7 +1043,7 @@ function renderTimer(){
   const tv=document.getElementById('t-val');
   tv.textContent=timeLeft+'s';tv.style.color=timeLeft<=5?'#e05555':timeLeft<=10?'#f0a050':'#8b83ff';
   const pv=document.getElementById('p-val');
-  if(pv) pv.textContent='+'+( q?getTimedPoints((q.a||[]).length||2, timeLeft, maxT):20 );
+  if(pv) pv.textContent='+'+(timeLeft > 0 ? timeLeft : 1);
 }
 function tick(){if(timeLeft<=0){clearInterval(timerInt);expire();return;}timeLeft--;renderTimer();}
 function expire(){
@@ -1077,7 +1077,7 @@ function pick(i){
   incrementDailyQuestion(); // count this question toward daily limit
   const q=curQ[qIdx];
   document.querySelectorAll('#answers .ans').forEach(b=>b.disabled=true);
-  const pts=getTimedPoints(q.a.length, timeLeft, maxT);
+  const pts=Math.max(1, timeLeft);
   const responseMs = _qStartTime ? Date.now()-_qStartTime : null;
   const isCorrect = i===q.c;
   track('question_answered', {correct: isCorrect, cat: q.cat, q_idx: qIdx, time_ms: responseMs});
@@ -1569,7 +1569,7 @@ export async function loadBattleQuestions(lang = 'ru') {
           q:   text,
           a:   answers,
           c:   picked.c ?? 0,
-          t:   picked.t || 20,
+          t:   30,
         };
         usedIds.add(question.id);
       }
@@ -1586,7 +1586,7 @@ export async function loadBattleQuestions(lang = 'ru') {
       q:   question.q,
       a:   question.a,   // exactly optCount answers
       c:   question.c,   // correct index
-      t:   question.t || 20,
+      t:   30,
     });
   }
 
