@@ -127,11 +127,13 @@ function startDuelPoll(){
     if(duelRole==='guest'&&data.status==='started'&&duelQs.length===0){
       const qs=data.questions;
       if(qs&&qs.length>0){
-        // Map stored questions to current language
-        duelQs = qs.map(q => ({ ...q })); // canonical from host, no remapping
+        duelQs = qs.map(q => ({ ...q })); // canonical from host — same questions guaranteed
         console.log('[BFC friend battle loaded]', { count: duelQs.length, first: duelQs[0] });
         clearInterval(duelPoll);
-        startDuelBattle({ chargeSession: false, mode: 'friend_battle' }); // host already charged
+        startDuelBattle({ chargeSession: false, mode: 'friend_battle' });
+      } else if(data.status==='started'){
+        // questions not written yet — host is still saving, retry on next poll tick
+        console.log('[BFC] guest waiting for questions to appear in room...');
       }
     }
     // Update opponent score
@@ -347,11 +349,12 @@ async function saveDuelScore(){
   if(data){
     const oppF=duelRole==='host'?'guest_score':'host_score';
     if(data[oppF]>duelOppScore){
+      const oppPts = data[oppF] - duelOppScore;
       document.getElementById('opp-hint').textContent=t('oppAnswered');
       document.getElementById('opp-hint').className='opp-hint answered';
-      setOppDot(duelIdx, true); // opponent answered correctly (score increased)
+      setOppDot(duelIdx, true, oppPts);
     } else if(data[oppF]===duelOppScore && duelOppScore>=0){
-      setOppDot(duelIdx, false); // opponent answered wrong / timed out
+      setOppDot(duelIdx, false, 0);
     }
     duelOppScore=data[oppF]||0;updateDuelScores();
   }
@@ -473,16 +476,27 @@ function duelChallengeFriend(){
 }
 
 function resetDuel(){
-  // Reset battle session guard for next battle
   window._battleSessionStarted = false;
   window._currentSessionId     = null;
-  clearInterval(duelPoll);clearInterval(duelTimer);
+  clearInterval(duelPoll); duelPoll = null;
+  clearInterval(duelTimer); duelTimer = null;
   if(window._botAnswerTimeout){ clearTimeout(window._botAnswerTimeout); window._botAnswerTimeout = null; }
-  duelCode=null;duelRole=null;duelQs=[];
-  // Clear bot state
-  window._isBotDuel  = false;
-  window._botPlayer  = null;
-  window._botName    = null;
+  // Full state reset
+  duelCode=null; duelRole=null; duelQs=[]; duelIdx=0;
+  duelMyScore=0; duelOppScore=0; duelAnswered=false;
+  duelMyName='Вы'; duelOppNameStr='Соперник';
+  // Full bot state reset
+  window._isBotDuel   = false;
+  window._botPlayer   = null;
+  window._botName     = null;
+  window._pendingBot  = null;
+  window._pendingDuelQs = null;
+  // Remove tab forfeit listener
+  if(window._duelTabWarn){
+    document.removeEventListener('visibilitychange', window._duelTabWarn);
+    window._duelTabWarn = null;
+  }
+  _tabWarnCount = 0;
   document.getElementById('join-code-input').value='';
   showDuelSection('d-lobby');
 }
@@ -1053,12 +1067,12 @@ function setMyDot(i, pts, isCorrect) {
   d.textContent = isCorrect ? '+' + pts : '✗';
 }
 
-function setOppDot(i, isCorrect) {
+function setOppDot(i, isCorrect, pts) {
   const d = document.getElementById('d-opp-dots-dot-' + i);
   if (!d) return;
   d.className = 'dot ' + (isCorrect ? 'done' : 'miss');
   d.style.cssText += ';font-size:9px;font-weight:800;line-height:1;display:flex;align-items:center;justify-content:center';
-  d.textContent = isCorrect ? '✓' : '✗';
+  d.textContent = isCorrect ? (pts ? '+' + pts : '✓') : '✗';
 }
 
 // Called by matchmaking when this player is the "finder" and should act as host

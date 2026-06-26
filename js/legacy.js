@@ -1386,12 +1386,24 @@ function showProfile(){
   const ph=document.getElementById('profile-hero-div');if(ph)ph.style.display='block';
   const ps=document.querySelector('.profile-stats-grid');if(ps)ps.style.display='grid';
   const pb=document.getElementById('profile-badges-grid');if(pb)pb.style.display='grid';
-  // Fill user info
-  const name=currentUser.user_metadata?.full_name||currentUser.email?.split('@')[0]||'Игрок';
+  // Fill user info — prefer display_name from profiles (user may have changed it)
+  const metaName = currentUser.user_metadata?.full_name||currentUser.email?.split('@')[0]||'Игрок';
+  const savedName = localStorage.getItem('mfc_display_name');
+  const name = savedName || metaName;
   const initial=name[0].toUpperCase();
   document.getElementById('profile-av').textContent=initial;
   document.getElementById('profile-name').textContent=name;
   document.getElementById('profile-email').textContent=currentUser.email||'';
+  // Async: fetch display_name from DB and update if different
+  if(currentUser){
+    sb.from('profiles').select('display_name').eq('id',currentUser.id).single().then(({data})=>{
+      if(data?.display_name && data.display_name !== name){
+        localStorage.setItem('mfc_display_name', data.display_name);
+        document.getElementById('profile-name').textContent = data.display_name;
+        document.getElementById('profile-av').textContent = data.display_name[0].toUpperCase();
+      }
+    }).catch(()=>{});
+  }
   // Show level with progress bar (Fix 7)
   const level = getPlayerLevel(neurons);
   const levelName = level.name[lang];
@@ -3826,8 +3838,13 @@ function integrityViolation(reason){
     }
   } else if(quizIntegrity.mode === 'duel'){
     const awayMs = quizIntegrity.totalAwayMs;
-    if(awayMs > 3000 || v >= 2){
-      // Show forfeit overlay then immediately execute forfeit
+    if(v === 1 && awayMs < 10000){
+      // First offence under 10s — warn only
+      toast('⚠️ ' + (lang==='ru'
+        ? 'Не уходи со страницы! Ещё раз — засчитаем поражение.'
+        : 'Stay on page! Next time it\'s a forfeit.'), 5000);
+    } else if(awayMs > 10000 || v >= 2){
+      // Second offence or >10s away — forfeit
       showIntegrityOverlay(
         '🚫 Поражение',
         lang==='ru'
