@@ -10562,9 +10562,9 @@ async function submitOrgPass(){
       organizer_name: safe(currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || 'Организатор'),
       title:          safe(title),
       description:    safe(desc),
-      event_date:     null,        // free-text date for now
-      location:       safe(city),
-      price:          price,
+      date_text:      safe(date),
+      city:           safe(city),
+      price_neurons:  price,
       slots_total:    slots,
       slots_left:     slots,
       status:         'active'

@@ -5,9 +5,7 @@
 
 -- Step 1: Add missing columns to quiz_passes (DDL must be outside DO block)
 ALTER TABLE quiz_passes ADD COLUMN IF NOT EXISTS event_date timestamptz;
-ALTER TABLE quiz_passes ADD COLUMN IF NOT EXISTS date_text  text;
 ALTER TABLE quiz_passes ADD COLUMN IF NOT EXISTS location   text;
-ALTER TABLE quiz_passes ADD COLUMN IF NOT EXISTS city       text;
 
 -- Step 2: Create demo account data
 DO $$
@@ -38,8 +36,8 @@ BEGIN
   VALUES (v_user_id, 'BFC Demo Organizer', v_demo_email, 'Москва', 'Демо-аккаунт для проверки платёжного агента', 'approved')
   ON CONFLICT (user_id) DO UPDATE SET status = 'approved', display_name = 'BFC Demo Organizer';
 
-  -- Demo quiz pass
-  INSERT INTO quiz_passes (organizer_id, organizer_name, title, description, date_text, city, price, slots_total, slots_left, status)
+  -- Demo quiz pass (using actual column names from quiz_passes)
+  INSERT INTO quiz_passes (organizer_id, organizer_name, title, description, date_text, city, price_neurons, slots_total, slots_left, status)
   VALUES (
     v_user_id,
     'BFC Demo Organizer',
