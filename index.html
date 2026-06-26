@@ -861,6 +861,17 @@
       <div class="profile-av" id="profile-av">?</div>
       <div class="profile-name" id="profile-name">Игрок</div>
       <div class="profile-email" id="profile-email"></div>
+      <!-- Name edit -->
+      <div id="profile-name-edit" style="display:none;margin:6px 0 0;width:100%;max-width:280px">
+        <div style="display:flex;gap:6px">
+          <input class="city-input" id="profile-name-input" type="text" maxlength="32" placeholder="Ваше имя"
+            style="margin-bottom:0;flex:1;text-align:center"/>
+          <button onclick="saveProfileName()" style="background:var(--accent);border:none;border-radius:10px;padding:8px 12px;font-size:12px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit;white-space:nowrap">OK</button>
+        </div>
+      </div>
+      <button id="profile-name-btn" onclick="toggleNameEdit()"
+        style="background:none;border:0.5px solid var(--border);border-radius:8px;padding:4px 10px;font-size:11px;color:var(--muted);cursor:pointer;font-family:inherit;margin-top:4px">✏️ Изменить имя</button>
+
       <div id="profile-city-wrap" style="margin:8px 0 4px;display:flex;align-items:center;justify-content:center;gap:8px">
         <div class="city-tag" id="profile-city-tag" style="display:none">📍 <span id="profile-city-display"></span></div>
         <button id="profile-city-btn" onclick="toggleCityEdit()" style="background:none;border:0.5px solid var(--border);border-radius:8px;padding:4px 10px;font-size:11px;color:var(--muted);cursor:pointer;font-family:inherit">+ Добавить город</button>
@@ -877,49 +888,19 @@
         <button class="profile-signout" onclick="signOut()" id="profile-signout-btn">Выйти</button>
       </div>
     </div>
-    <!-- Stats -->
-    <div class="section-title" id="profile-stats-title">Статистика</div>
-    <div class="profile-stats-grid">
-      <div class="pstat-box">
-        <div class="pstat-val" id="ps-neurons">0</div>
-        <div class="pstat-lbl" id="ps-neurons-lbl">Нейроны</div>
-      </div>
-      <div class="pstat-box">
-        <div class="pstat-val" id="ps-games">0</div>
-        <div class="pstat-lbl" id="ps-games-lbl">Игр</div>
-      </div>
-      <div class="pstat-box">
-        <div class="pstat-val" id="ps-streak">0</div>
-        <div class="pstat-lbl" id="ps-streak-lbl">Лучшая серия</div>
-      </div>
-      <div class="pstat-box">
-        <div class="pstat-val" id="ps-acc">0%</div>
-        <div class="pstat-lbl" id="ps-acc-lbl">Точность</div>
-      </div>
-      <div class="pstat-box">
-        <div class="pstat-val" id="ps-duels">0</div>
-        <div class="pstat-lbl" id="ps-duels-lbl">Дуэлей выиграно</div>
-      </div>
-      <div class="pstat-box">
-        <div class="pstat-val" id="ps-correct">0</div>
-        <div class="pstat-lbl" id="ps-correct-lbl">Верных ответов</div>
-      </div>
-      <div class="pstat-box">
-        <div class="pstat-val" id="ps-duels-played">0</div>
-        <div class="pstat-lbl">Дуэлей сыграно</div>
-      </div>
-      <div class="pstat-box">
-        <div class="pstat-val" id="ps-packs">0</div>
-        <div class="pstat-lbl">Паков сыграно</div>
-      </div>
-      <div class="pstat-box">
-        <div class="pstat-val" id="ps-questions-submitted">0</div>
-        <div class="pstat-lbl">Вопросов предложено</div>
-      </div>
-      <div class="pstat-box">
-        <div class="pstat-val" id="ps-reports">0</div>
-        <div class="pstat-lbl">Жалоб отправлено</div>
-      </div>
+    <!-- Stats hidden until real data is populated -->
+    <div style="display:none" id="profile-stats-title" class="section-title">Статистика</div>
+    <div class="profile-stats-grid" style="display:none">
+      <div class="pstat-box"><div class="pstat-val" id="ps-neurons">0</div><div class="pstat-lbl" id="ps-neurons-lbl">Нейроны</div></div>
+      <div class="pstat-box"><div class="pstat-val" id="ps-games">0</div><div class="pstat-lbl" id="ps-games-lbl">Игр</div></div>
+      <div class="pstat-box"><div class="pstat-val" id="ps-streak">0</div><div class="pstat-lbl" id="ps-streak-lbl">Лучшая серия</div></div>
+      <div class="pstat-box"><div class="pstat-val" id="ps-acc">0%</div><div class="pstat-lbl" id="ps-acc-lbl">Точность</div></div>
+      <div class="pstat-box"><div class="pstat-val" id="ps-duels">0</div><div class="pstat-lbl" id="ps-duels-lbl">Дуэлей выиграно</div></div>
+      <div class="pstat-box"><div class="pstat-val" id="ps-correct">0</div><div class="pstat-lbl" id="ps-correct-lbl">Верных ответов</div></div>
+      <div class="pstat-box"><div class="pstat-val" id="ps-duels-played">0</div><div class="pstat-lbl">Дуэлей сыграно</div></div>
+      <div class="pstat-box"><div class="pstat-val" id="ps-packs">0</div><div class="pstat-lbl">Паков сыграно</div></div>
+      <div class="pstat-box"><div class="pstat-val" id="ps-questions-submitted">0</div><div class="pstat-lbl">Вопросов предложено</div></div>
+      <div class="pstat-box"><div class="pstat-val" id="ps-reports">0</div><div class="pstat-lbl">Жалоб отправлено</div></div>
     </div>
     <!-- Badges -->
     <!-- Rules & Neurons explanation -->
@@ -931,7 +912,7 @@
     <div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;padding:14px;margin-bottom:8px">
       <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--muted);margin-bottom:10px" id="neurons-explain-title">ЧТО ТАКОЕ НЕЙРОНЫ?</div>
       <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:0.5px solid var(--border);font-size:12px"><span style="color:var(--muted)" id="neurons-score-rank-lbl">Твой счёт и место</span><span>🧠</span></div>
-      <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:0.5px solid var(--border);font-size:12px"><span style="color:var(--muted)" id="neurons-correct-lbl">Правильный ответ</span><span style="color:var(--gold)">+10–60 ⚡</span></div>
+      <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:0.5px solid var(--border);font-size:12px"><span style="color:var(--muted)" id="neurons-correct-lbl">Правильный ответ</span><span style="color:var(--gold)">+1–30 ⚡</span></div>
       <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px"><span style="color:var(--muted)">Победа в дуэли</span><span style="color:var(--gold)">+30 ⚡</span></div>
     </div>
     <div class="section-title" id="profile-badges-title">Достижения</div>
@@ -1448,9 +1429,8 @@
       <div class="rules-body" id="r-neurons">
         XP — рейтинг, нейроны — валюта. Чем выше XP, тем выше ты в рейтинге.<br><br>
         <table class="rules-table">
-          <tr><td>Правильный ответ</td><td>+10–60 ⚡</td></tr>
+          <tr><td>Правильный ответ</td><td>+1–30 ⚡</td></tr>
           <tr><td>Победа в дуэли</td><td>+30 ⚡</td></tr>
-          <tr><td>Дневное задание</td><td>+50 ⚡</td></tr>
           <tr><td>Турнир (победа)</td><td>+200 ⚡</td></tr>
           <tr><td>Приглашение друга</td><td>+50 ⚡</td></tr>
         </table><br>
@@ -1486,7 +1466,7 @@
       <div class="rules-hdr"><div class="rules-hdr-icon">⚔️</div><div class="rules-hdr-title" id="r-duels-title">Дуэли</div><div class="rules-arrow" id="r-duels-arr">▼</div></div>
       <div class="rules-body" id="r-duels">
         Вызови друга на дуэль — оба получите <span class="rules-hl">одинаковые вопросы</span> и видите счёт в реальном времени.<br><br>
-        Или нажми <b>Случайный бой</b> — система найдёт случайного соперника онлайн. Если никого нет рядом — сыграй с ботом.
+        Или нажми <b>Случайный бой</b> — система найдёт случайного соперника онлайн.
       </div>
     </div>
 

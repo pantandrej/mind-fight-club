@@ -1425,6 +1425,32 @@ function copyShareLink(){
 }
 
 // ─── PROFILE CITY ──────────────────────────────────────────────────────────
+function toggleNameEdit(){
+  const edit = document.getElementById('profile-name-edit');
+  const btn  = document.getElementById('profile-name-btn');
+  if (!edit) return;
+  const isOpen = edit.style.display !== 'none';
+  edit.style.display = isOpen ? 'none' : 'block';
+  btn.textContent = isOpen ? '✏️ Изменить имя' : 'Отмена';
+  if (!isOpen) {
+    const inp = document.getElementById('profile-name-input');
+    inp.value = document.getElementById('profile-name')?.textContent || '';
+    inp.focus();
+  }
+}
+async function saveProfileName(){
+  const name = document.getElementById('profile-name-input').value.trim();
+  if (!name) return;
+  document.getElementById('profile-name').textContent = name;
+  localStorage.setItem('mfc_display_name', name);
+  document.getElementById('profile-name-edit').style.display = 'none';
+  document.getElementById('profile-name-btn').textContent = '✏️ Изменить имя';
+  if (currentUser) {
+    sb.from('profiles').upsert({ id: currentUser.id, display_name: name, updated_at: new Date().toISOString() }, { onConflict: 'id' }).then(()=>{}).catch(()=>{});
+  }
+  toast(lang === 'ru' ? '✓ Имя сохранено' : '✓ Name saved');
+}
+
 function toggleCityEdit(){
   const edit=document.getElementById('profile-city-edit');
   const btn=document.getElementById('profile-city-btn');
@@ -1645,6 +1671,8 @@ window.getShareText                      = getShareText;
 window.shareToWhatsApp                   = shareToWhatsApp;
 window.toggleCityEdit                    = toggleCityEdit;
 window.saveProfileCity                   = saveProfileCity;
+window.toggleNameEdit                    = toggleNameEdit;
+window.saveProfileName                   = saveProfileName;
 window.renderProfileCity                 = renderProfileCity;
 window.claimDailyGoalBonus              = claimDailyGoalBonus;
 window.isDailyGoalClaimed               = isDailyGoalClaimed;
