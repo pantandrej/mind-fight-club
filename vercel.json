@@ -1,0 +1,7 @@
+{
+  "outputDirectory": ".",
+  "routes": [
+    { "src": "/packs/(.*)", "dest": "/packs/$1" },
+    { "src": "/(.*)", "dest": "/$1" }
+  ]
+}
