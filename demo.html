@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Демо-доступ — Brain Fight Club</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#0b0b14;color:#f5f5ff;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+    .card{background:#141422;border:1px solid rgba(255,255,255,.08);border-radius:24px;padding:36px 28px;max-width:480px;width:100%}
+    .logo{font-size:32px;font-weight:900;letter-spacing:-1px;color:#8b83ff;margin-bottom:24px}
+    h1{font-size:22px;font-weight:800;margin-bottom:8px}
+    p{font-size:14px;color:#9b9bb0;line-height:1.6;margin-bottom:20px}
+    .steps{display:flex;flex-direction:column;gap:14px;margin-bottom:28px}
+    .step{display:flex;gap:14px;align-items:flex-start}
+    .num{width:28px;height:28px;background:rgba(108,99,255,.2);border:1px solid rgba(108,99,255,.4);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#8b83ff;flex-shrink:0;margin-top:1px}
+    .step-text{font-size:13px;line-height:1.6}
+    .step-text b{color:#f5f5ff}
+    .creds{background:rgba(108,99,255,.08);border:1px solid rgba(108,99,255,.2);border-radius:12px;padding:14px 16px;margin-bottom:28px}
+    .cred-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+    .cred-row:last-child{border-bottom:none}
+    .cred-label{font-size:12px;color:#9b9bb0}
+    .cred-val{font-size:13px;font-weight:700;color:#f5f5ff;font-family:monospace}
+    .btn{display:block;width:100%;background:#8b83ff;border:none;border-radius:14px;padding:14px;font-size:15px;font-weight:800;color:#fff;cursor:pointer;text-align:center;text-decoration:none;font-family:inherit;margin-bottom:10px}
+    .btn:hover{background:#7b73ef}
+    .note{font-size:11px;color:#9b9bb0;text-align:center;line-height:1.6}
+    .badge{display:inline-block;background:rgba(240,192,64,.15);border:1px solid rgba(240,192,64,.3);border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;color:#f0c040;margin-left:6px}
+  </style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">BFC</div>
+  <h1>Демо-доступ для партнёров</h1>
+  <p>Войдите в демо-аккаунт организатора, чтобы убедиться в работоспособности приложения и изучить все функции платформы.</p>
+
+  <div class="creds">
+    <div class="cred-row">
+      <span class="cred-label">Email</span>
+      <span class="cred-val">demo@brain-fight-club.vercel.app</span>
+    </div>
+    <div class="cred-row">
+      <span class="cred-label">Пароль</span>
+      <span class="cred-val">BFCdemo2025!</span>
+    </div>
+    <div class="cred-row">
+      <span class="cred-label">Роль</span>
+      <span class="cred-val">Организатор <span class="badge">Premium</span></span>
+    </div>
+  </div>
+
+  <div class="steps">
+    <div class="step">
+      <div class="num">1</div>
+      <div class="step-text"><b>Войдите в приложение</b> с указанными данными. Вы автоматически попадёте в кабинет организатора, где можно создать мероприятие с билетами.</div>
+    </div>
+    <div class="step">
+      <div class="num">2</div>
+      <div class="step-text"><b>Поиграйте как обычный игрок</b> — войдите в режим тренировки или баттла, убедитесь что очки начисляются. В Магазине есть демо-билет на квиз.</div>
+    </div>
+    <div class="step">
+      <div class="num">3</div>
+      <div class="step-text"><b>Проверьте Premium-экран</b> — кнопка «Оформить за 299 ₽» ведёт на страницу оплаты ЮKassa. Тестовый платёж можно сделать с любой картой.</div>
+    </div>
+  </div>
+
+  <a class="btn" href="/">Открыть приложение →</a>
+
+  <div class="note">
+    Демо-аккаунт создан специально для проверки платёжного агента.<br>
+    Вопросы: <a href="mailto:mysliklub@gmail.com" style="color:#8b83ff">mysliklub@gmail.com</a>
+    · <a href="/shop.html" style="color:#8b83ff">Тарифы</a>
+    · <a href="/requisites.html" style="color:#8b83ff">Реквизиты</a>
+  </div>
+</div>
+</body>
+</html>

@@ -10675,19 +10675,23 @@ async function loadQuizPasses(){
     if(!data||!data.length) return; // keep placeholder
     // XSS-safe: all user content goes through _esc()
     // price comes from DB server-side in buyQuizPass — not passed from client
-    el.innerHTML = data.map(p=>`
+    el.innerHTML = data.map(p=>{
+      const dateStr = p.event_date ? new Date(p.event_date).toLocaleDateString('ru-RU',{day:'numeric',month:'long'}) : (p.date_text||'—');
+      const loc = p.location || p.city || '—';
+      const priceN = p.price ?? p.price_neurons ?? 0;
+      return `
       <div style="background:var(--bg2);border:0.5px solid rgba(108,99,255,.3);border-radius:14px;padding:14px;display:flex;align-items:center;gap:12px;cursor:pointer" onclick="buyQuizPass('${_esc(p.id)}')">
         <div style="font-size:28px;flex-shrink:0">🎟️</div>
         <div style="flex:1">
           <div style="font-size:14px;font-weight:800">${_esc(p.title||'Квиз')}</div>
-          <div style="font-size:11px;color:var(--muted)">📅 ${_esc(p.date_text||'—')} · 📍 ${_esc(p.city||'—')}</div>
+          <div style="font-size:11px;color:var(--muted)">📅 ${_esc(dateStr)} · 📍 ${_esc(loc)}</div>
           <div style="font-size:11px;color:var(--muted);margin-top:2px">от ${_esc(p.organizer_name||'Организатор')} · мест: ${p.slots_left||0}</div>
         </div>
         <div style="text-align:right;flex-shrink:0">
-          <div style="font-size:16px;font-weight:800;color:var(--gold)">${p.price_neurons||0} ⚡</div>
+          <div style="font-size:16px;font-weight:800;color:var(--gold)">${priceN} ⚡</div>
           <div style="font-size:10px;color:var(--muted);margin-top:2px">нейронов</div>
         </div>
-      </div>`).join('');
+      </div>`;}).join('');
   }catch(e){ console.error('[MFC] loadQuizPasses exception:', e.message); }
 }
 
