@@ -1503,7 +1503,7 @@
         <div class="play-menu-sub">Стань автором — отправь свой вопрос на проверку</div>
       </div>
     </div>
-    <div class="play-menu-item" onclick="openSlidePack('videogames_sep13')">
+    <div class="play-menu-item" onclick="openSlidePack('videogames')">
       <div class="play-menu-icon">🎮</div>
       <div class="play-menu-info">
         <div class="play-menu-title">Видеоигры</div>
@@ -2564,14 +2564,17 @@ console.log('✅ Firebase Tournaments module loaded');
   }
 
   // ── Referral code auto-claim on signup ────────────────────
-  // Auto-launch slide pack from URL: ?pack=videogames_sep13
+  // Auto-launch slide pack from URL: ?pack=videogames
   const urlPack = new URLSearchParams(location.search).get('pack');
   if (urlPack) {
-    window.addEventListener('bfc:ready', () => {
-      setTimeout(() => window.openSlidePack?.(urlPack), 500);
-    }, { once: true });
-    // fallback if event already fired
-    setTimeout(() => window.openSlidePack?.(urlPack), 2000);
+    // Poll until openSlidePack is ready — works for both guests and auth users
+    const _tryLaunch = setInterval(() => {
+      if (window.openSlidePack && window.loadPack) {
+        clearInterval(_tryLaunch);
+        window.openSlidePack(urlPack);
+      }
+    }, 200);
+    setTimeout(() => clearInterval(_tryLaunch), 10000); // give up after 10s
   }
 
   const urlRef = new URLSearchParams(location.search).get('ref');
