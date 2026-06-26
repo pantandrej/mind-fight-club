@@ -4,6 +4,9 @@
 -- Atomic spend with FOR UPDATE balance lock.
 -- ============================================================
 
+-- Drop old version if exists (fixes return type mismatch)
+DROP FUNCTION IF EXISTS _bfc_award_amounts(text);
+
 -- Ledger table for idempotency (prevents double-award on retry/reload)
 CREATE TABLE IF NOT EXISTS currency_ledger (
   id             bigserial PRIMARY KEY,
