@@ -1264,9 +1264,8 @@ const LETTERS = ['A','B','C','D','E','F'];
 
 
 function getFixedPoints(numOptions){
-  // Максимум очков по количеству вариантов (Мыслибой-стандарт)
-  const pts={2:20,3:30,4:40,5:50,6:60};
-  return pts[numOptions]||20;
+  // Очки = кол-во вариантов × 15: 2→30, 3→45, 4→60, 5→75, 6→90
+  return (numOptions || 2) * 15;
 }
 // Очки с бонусом за скорость: на 1-й секунде = макс, убывает до 1
 function getTimedPoints(numOptions, timeLeft, maxTime){

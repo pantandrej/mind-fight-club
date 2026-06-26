@@ -1043,7 +1043,7 @@ function renderTimer(){
   const tv=document.getElementById('t-val');
   tv.textContent=timeLeft+'s';tv.style.color=timeLeft<=5?'#e05555':timeLeft<=10?'#f0a050':'#8b83ff';
   const pv=document.getElementById('p-val');
-  if(pv) pv.textContent='+'+(timeLeft > 0 ? timeLeft : 1);
+  if(pv) pv.textContent='+'+(q ? getTimedPoints((q.a||[]).length||2, timeLeft, maxT) : 30);
 }
 function tick(){if(timeLeft<=0){clearInterval(timerInt);expire();return;}timeLeft--;renderTimer();}
 function expire(){
@@ -1077,7 +1077,7 @@ function pick(i){
   incrementDailyQuestion(); // count this question toward daily limit
   const q=curQ[qIdx];
   document.querySelectorAll('#answers .ans').forEach(b=>b.disabled=true);
-  const pts=Math.max(1, timeLeft);
+  const pts=getTimedPoints(q.a.length, timeLeft, maxT);
   const responseMs = _qStartTime ? Date.now()-_qStartTime : null;
   const isCorrect = i===q.c;
   track('question_answered', {correct: isCorrect, cat: q.cat, q_idx: qIdx, time_ms: responseMs});

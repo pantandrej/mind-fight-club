@@ -265,7 +265,8 @@ function _answer(chosen) {
   const q       = _qs[_idx];
   const correct = q.c ?? 0;
   const isRight = chosen === correct;
-  const pts     = isRight ? Math.max(1, _timeLeft) : 0;
+  const maxPts  = (q.a?.length || 2) * 15;
+  const pts     = isRight ? Math.max(1, Math.round(maxPts * _timeLeft / Q_TIME)) : 0;
 
   _answers[_idx] = { chosen, pts, isRight };
   if (!_isSynced()) _score += pts;
@@ -345,7 +346,7 @@ async function _showResults() {
   _cleanup();
   _show('hg-results');
 
-  const max   = _qs.length * Q_TIME;
+  const max   = _qs.reduce((s, q) => s + (q.a?.length || 2) * 15, 0);
   const pct   = Math.round((_score / max) * 100);
   const emoji = pct >= 80 ? '🏆' : pct >= 50 ? '🎉' : '💪';
 

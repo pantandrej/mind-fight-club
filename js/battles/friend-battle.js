@@ -35,7 +35,7 @@ function simulateBotAnswer(q, qIndex){
     botAnsweredThisQuestion = true;
     const correct = Math.random() < skill;
     if(correct){
-      duelOppScore += Math.max(1, duelTimeLeft); // same rule as player: points = seconds remaining
+      duelOppScore += Math.max(1, Math.round((q.a?.length||2) * 15 * duelTimeLeft / duelMaxT));
       updateDuelScores();
     }
     const hint = document.getElementById('opp-hint');
@@ -306,7 +306,7 @@ function renderDuelTimer(){
   fill.style.width=pct+'%';fill.style.background=pct<35?'#e05555':pct<60?'#f0a050':'#6c63ff';
   const tv=document.getElementById('d-t-val');
   tv.textContent=duelTimeLeft+'s';tv.style.color=duelTimeLeft<=5?'#e05555':duelTimeLeft<=10?'#f0a050':'#8b83ff';
-  document.getElementById('d-p-val').textContent='+'+(duelTimeLeft>0?duelTimeLeft:1);
+  const _q=duelQs[duelIdx]; document.getElementById('d-p-val').textContent='+'+(duelTimeLeft>0?Math.round((_q?.a?.length||2)*15*duelTimeLeft/duelMaxT):1);
 }
 function duelTick(){if(duelTimeLeft<=0){clearInterval(duelTimer);duelExpire();return;}duelTimeLeft--;renderDuelTimer();}
 function duelExpire(){
@@ -321,7 +321,7 @@ async function pickDuel(i){
   if(duelAnswered)return;duelAnswered=true;clearInterval(duelTimer);
   const q=duelQs[duelIdx];
   document.querySelectorAll('#d-answers .ans').forEach(b=>b.disabled=true);
-  const pts=Math.max(1, duelTimeLeft); // score = seconds remaining (max 20, min 1)
+  const pts=Math.max(1, Math.round((q.a?.length||2) * 15 * duelTimeLeft / duelMaxT));
   if(i===q.c){
     document.querySelectorAll('#d-answers .ans')[i].className='ans correct';
     duelMyScore+=pts;updateDuelScores();
