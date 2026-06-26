@@ -1456,28 +1456,44 @@ function showProfile(){
 }
 
 async function loadProfileStats(){
-  if(!currentUser)return;
-  // Try new profiles table first
-  const {data: pd} = await sb.from('profiles').select('*').eq('id',currentUser.id).single();
-  const {data: od} = await sb.from('user_profiles').select('*').eq('id',currentUser.id).single();
-  const data = pd ? {...od, ...pd, neurons: pd.total_score||od?.neurons||0} : od;
-  if(data){
-    document.getElementById('ps-neurons').textContent=data.neurons||data.total_score||0;
-    document.getElementById('ps-games').textContent=data.games_played||0;
-    document.getElementById('ps-streak').textContent=data.best_streak||0;
-    const totalQ = Math.max((data.games_played||0)*7, 1);
-    const acc = Math.min(Math.round((data.correct_answers||0)/totalQ*100),100);
-    document.getElementById('ps-acc').textContent=acc+'%';
-    document.getElementById('ps-duels').textContent=data.duels_won||0;
-    document.getElementById('ps-correct').textContent=data.correct_answers||0;
-    document.getElementById('ps-duels-played').textContent=(data.duels_played||data.duels_won||0);
-    document.getElementById('ps-packs').textContent=data.packs_played||0;
+  if(!currentUser) return;
+  try{
+    // Use player_stats view (aggregates game_sessions + profiles)
+    const {data, error} = await sb.from('player_stats')
+      .select('*').eq('user_id', currentUser.id).single();
 
-    // Local stats
+    if(error) throw error;
+    if(!data) return;
+
+    const setText = (id, val) => { const el=document.getElementById(id); if(el) el.textContent=val; };
+    setText('ps-neurons',       data.neurons   || 0);
+    setText('ps-games',         data.games_played || 0);
+    setText('ps-streak',        data.best_streak  || 0);
+    setText('ps-acc',           (data.accuracy_pct || 0) + '%');
+    setText('ps-duels',         data.duels_played  || 0);
+    setText('ps-correct',       data.correct_total || 0);
+    setText('ps-duels-played',  data.duels_played  || 0);
+    setText('ps-packs',         data.games_played  || 0);
+
+    // Show stats block if hidden
+    const titleEl = document.getElementById('profile-stats-title');
+    if(titleEl) titleEl.style.display = '';
+
+    // Local stats (not in DB)
     const submittedQ = JSON.parse(localStorage.getItem('mfc_pending_questions')||'[]').length;
     const reportsCount = JSON.parse(localStorage.getItem('mfc_question_reports')||'[]').length;
-    document.getElementById('ps-questions-submitted').textContent=submittedQ;
-    document.getElementById('ps-reports').textContent=reportsCount;
+    setText('ps-questions-submitted', submittedQ);
+    setText('ps-reports', reportsCount);
+
+  }catch(e){
+    console.warn('[BFC] loadProfileStats fallback:', e.message);
+    // Fallback: just show neurons from profiles
+    const {data: pd} = await sb.from('profiles').select('neurons,xp,daily_streak,best_daily_streak').eq('id',currentUser.id).single();
+    if(pd){
+      const setText=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+      setText('ps-neurons', pd.neurons||0);
+      setText('ps-streak',  pd.best_daily_streak||0);
+    }
   }
   loadAnalyticsSummary();
 }

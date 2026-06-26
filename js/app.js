@@ -18,4 +18,32 @@ import './tournaments/tournament-game.js';
 import './hype/hype-game.js';
 
 // ── Boot ──────────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => { initAuth(); });
+document.addEventListener('DOMContentLoaded', () => {
+  initAuth();
+  registerServiceWorker();
+});
+
+async function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    const reg = await navigator.serviceWorker.register('/sw.js');
+    // Ask push permission after first login (called from auth flow)
+    window._swReg = reg;
+  } catch(e) {
+    console.warn('[SW] registration failed:', e.message);
+  }
+}
+
+// Called after successful login to request push permission
+window.requestPushPermission = async function() {
+  if (!window._swReg || !('PushManager' in window)) return;
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') return;
+    // VAPID public key needed for real push — placeholder for now
+    // const sub = await window._swReg.pushManager.subscribe({...});
+    // await sb.rpc('register_push_token', { p_token: JSON.stringify(sub) });
+  } catch(e) {
+    console.warn('[push]', e.message);
+  }
+};

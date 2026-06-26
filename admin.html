@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Админ-панель — Brain Fight Club</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#0b0b14;color:#f5f5ff;min-height:100vh}
+    .sidebar{position:fixed;left:0;top:0;bottom:0;width:220px;background:#0f0f1e;border-right:1px solid rgba(255,255,255,.07);padding:20px 0;display:flex;flex-direction:column}
+    .logo{font-size:20px;font-weight:900;color:#8b83ff;padding:0 20px 20px;border-bottom:1px solid rgba(255,255,255,.07);letter-spacing:-0.5px}
+    .logo span{color:#f5f5ff}
+    .nav{display:flex;flex-direction:column;gap:2px;padding:12px 10px;flex:1}
+    .nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;cursor:pointer;font-size:13px;font-weight:600;color:#9b9bb0;transition:all .15s;border:none;background:none;width:100%;text-align:left}
+    .nav-item:hover{background:rgba(255,255,255,.05);color:#f5f5ff}
+    .nav-item.active{background:rgba(108,99,255,.15);color:#8b83ff}
+    .nav-item .icon{font-size:16px;width:20px;text-align:center;flex-shrink:0}
+    .main{margin-left:220px;padding:28px 32px;min-height:100vh}
+    .page{display:none}
+    .page.active{display:block}
+    .page-title{font-size:22px;font-weight:900;margin-bottom:4px}
+    .page-sub{font-size:13px;color:#9b9bb0;margin-bottom:24px}
+    .cards-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px;margin-bottom:28px}
+    .stat-card{background:#141422;border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:18px 20px}
+    .stat-card .val{font-size:28px;font-weight:900;color:#8b83ff}
+    .stat-card .lbl{font-size:11px;color:#9b9bb0;text-transform:uppercase;letter-spacing:1px;margin-top:4px}
+    .table-wrap{background:#141422;border:1px solid rgba(255,255,255,.07);border-radius:16px;overflow:hidden;margin-bottom:20px}
+    .table-hdr{padding:14px 20px;border-bottom:1px solid rgba(255,255,255,.07);font-size:13px;font-weight:800;display:flex;justify-content:space-between;align-items:center}
+    table{width:100%;border-collapse:collapse}
+    th{text-align:left;padding:10px 16px;font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#9b9bb0;border-bottom:1px solid rgba(255,255,255,.07)}
+    td{padding:11px 16px;font-size:13px;border-bottom:1px solid rgba(255,255,255,.04)}
+    tr:last-child td{border-bottom:none}
+    tr:hover td{background:rgba(255,255,255,.02)}
+    .badge{display:inline-block;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800;letter-spacing:.5px}
+    .badge.pending{background:rgba(240,192,64,.15);color:#f0c040;border:1px solid rgba(240,192,64,.3)}
+    .badge.approved{background:rgba(74,222,128,.1);color:#4ade80;border:1px solid rgba(74,222,128,.2)}
+    .badge.rejected{background:rgba(224,85,85,.1);color:#e05555;border:1px solid rgba(224,85,85,.2)}
+    .badge.premium{background:rgba(240,192,64,.12);color:#f0c040;border:1px solid rgba(240,192,64,.25)}
+    .btn{border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}
+    .btn-approve{background:rgba(74,222,128,.15);color:#4ade80;border:1px solid rgba(74,222,128,.3)}
+    .btn-approve:hover{background:rgba(74,222,128,.25)}
+    .btn-reject{background:rgba(224,85,85,.1);color:#e05555;border:1px solid rgba(224,85,85,.2);margin-left:6px}
+    .btn-reject:hover{background:rgba(224,85,85,.2)}
+    .btn-primary{background:#8b83ff;color:#fff;padding:10px 20px;font-size:13px;border-radius:10px}
+    .btn-primary:hover{background:#7b73ef}
+    .search-bar{display:flex;gap:10px;margin-bottom:16px}
+    .search-input{flex:1;background:#141422;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px 14px;font-size:13px;color:#f5f5ff;font-family:inherit;outline:none}
+    .search-input:focus{border-color:rgba(108,99,255,.5)}
+    select.search-input{cursor:pointer}
+    .push-form{background:#141422;border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:20px 24px;margin-bottom:20px}
+    .push-form label{display:block;font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#9b9bb0;margin-bottom:6px}
+    .push-form input,.push-form textarea,.push-form select{width:100%;background:#0f0f1e;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:10px 14px;font-size:13px;color:#f5f5ff;font-family:inherit;outline:none;margin-bottom:14px}
+    .push-form input:focus,.push-form textarea:focus{border-color:rgba(108,99,255,.5)}
+    .push-form textarea{min-height:80px;resize:vertical}
+    .empty{text-align:center;padding:40px;color:#9b9bb0;font-size:13px}
+    #toast-adm{position:fixed;bottom:24px;right:24px;background:#8b83ff;color:#fff;border-radius:10px;padding:10px 18px;font-size:13px;font-weight:700;opacity:0;transition:opacity .3s;pointer-events:none;z-index:99}
+    @media(max-width:700px){.sidebar{display:none}.main{margin-left:0;padding:16px}}
+  </style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="logo">BFC <span>Admin</span></div>
+  <nav class="nav">
+    <button class="nav-item active" onclick="showPage('dashboard')" data-page="dashboard"><span class="icon">📊</span> Дашборд</button>
+    <button class="nav-item" onclick="showPage('organizers')" data-page="organizers"><span class="icon">🎤</span> Организаторы</button>
+    <button class="nav-item" onclick="showPage('users')" data-page="users"><span class="icon">👥</span> Пользователи</button>
+    <button class="nav-item" onclick="showPage('push')" data-page="push"><span class="icon">🔔</span> Push-уведомления</button>
+    <button class="nav-item" onclick="showPage('passes')" data-page="passes"><span class="icon">🎟️</span> Квиз-пассы</button>
+  </nav>
+  <div style="padding:16px 20px;font-size:11px;color:#555">
+    <div id="adm-user-email">Загрузка...</div>
+    <button onclick="adminLogout()" style="background:none;border:none;color:#e05555;font-size:11px;cursor:pointer;padding:4px 0;font-family:inherit">Выйти</button>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- DASHBOARD -->
+  <div class="page active" id="page-dashboard">
+    <div class="page-title">Дашборд</div>
+    <div class="page-sub">Обзор активности платформы</div>
+    <div class="cards-row" id="dash-cards">
+      <div class="stat-card"><div class="val" id="dc-users">—</div><div class="lbl">Игроков всего</div></div>
+      <div class="stat-card"><div class="val" id="dc-today">—</div><div class="lbl">Активных сегодня</div></div>
+      <div class="stat-card"><div class="val" id="dc-duels">—</div><div class="lbl">Дуэлей сыграно</div></div>
+      <div class="stat-card"><div class="val" id="dc-premium">—</div><div class="lbl">Premium</div></div>
+      <div class="stat-card"><div class="val" id="dc-teams">—</div><div class="lbl">Команд</div></div>
+      <div class="stat-card"><div class="val" id="dc-pending-org">—</div><div class="lbl">Заявок орг.</div></div>
+    </div>
+    <div class="table-wrap">
+      <div class="table-hdr">Топ игроки <span style="font-size:11px;color:#9b9bb0">по XP</span></div>
+      <table><thead><tr><th>#</th><th>Игрок</th><th>XP</th><th>Нейроны</th><th>Стрик</th></tr></thead>
+      <tbody id="dash-top-players"></tbody></table>
+    </div>
+  </div>
+
+  <!-- ORGANIZERS -->
+  <div class="page" id="page-organizers">
+    <div class="page-title">Организаторы</div>
+    <div class="page-sub">Заявки на статус организатора</div>
+    <div class="search-bar">
+      <select class="search-input" id="org-filter" onchange="loadOrganizers()" style="max-width:160px">
+        <option value="pending">Ожидают</option>
+        <option value="approved">Одобрены</option>
+        <option value="rejected">Отклонены</option>
+      </select>
+    </div>
+    <div class="table-wrap">
+      <table><thead><tr><th>Имя</th><th>Email</th><th>Город</th><th>О себе</th><th>Заявка</th><th>Действие</th></tr></thead>
+      <tbody id="org-table"></tbody></table>
+    </div>
+  </div>
+
+  <!-- USERS -->
+  <div class="page" id="page-users">
+    <div class="page-title">Пользователи</div>
+    <div class="page-sub">Поиск и управление аккаунтами</div>
+    <div class="search-bar">
+      <input class="search-input" id="user-search" type="text" placeholder="Поиск по имени или email..." oninput="searchUsers()"/>
+    </div>
+    <div class="table-wrap">
+      <table><thead><tr><th>Имя</th><th>Город</th><th>XP</th><th>Нейроны</th><th>Стрик</th><th>Premium</th></tr></thead>
+      <tbody id="users-table"></tbody></table>
+    </div>
+  </div>
+
+  <!-- PUSH NOTIFICATIONS -->
+  <div class="page" id="page-push">
+    <div class="page-title">Push-уведомления</div>
+    <div class="page-sub">Отправка уведомлений игрокам</div>
+    <div class="push-form">
+      <label>Заголовок</label>
+      <input id="push-title" type="text" placeholder="Например: Не забудь про стрик! 🔥" maxlength="60"/>
+      <label>Текст</label>
+      <textarea id="push-body" placeholder="Сегодня ещё не играл? Твой стрик под угрозой!" maxlength="200"></textarea>
+      <label>Аудитория</label>
+      <select id="push-audience">
+        <option value="all">Все пользователи</option>
+        <option value="streak_risk">Стрик под угрозой (не играли 20+ часов)</option>
+        <option value="premium">Только Premium</option>
+        <option value="no_premium">Без Premium</option>
+      </select>
+      <div style="margin-top:4px">
+        <button class="btn btn-primary" onclick="sendPushNotification()">Отправить уведомление</button>
+        <span id="push-status" style="margin-left:12px;font-size:12px;color:#9b9bb0"></span>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <div class="table-hdr">История уведомлений</div>
+      <table><thead><tr><th>Заголовок</th><th>Аудитория</th><th>Отправлено</th><th>Дата</th></tr></thead>
+      <tbody id="push-history"></tbody></table>
+    </div>
+  </div>
+
+  <!-- QUIZ PASSES -->
+  <div class="page" id="page-passes">
+    <div class="page-title">Квиз-пассы</div>
+    <div class="page-sub">Мероприятия организаторов</div>
+    <div class="table-wrap">
+      <table><thead><tr><th>Название</th><th>Организатор</th><th>Дата</th><th>Город</th><th>Мест</th><th>Статус</th></tr></thead>
+      <tbody id="passes-table"></tbody></table>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast-adm"></div>
+
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+  import { SUPABASE_URL, SUPABASE_ANON_KEY } from '/js/config.js';
+
+  const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  let currentAdmin = null;
+
+  // ── Auth check ─────────────────────────────────────────────
+  async function init() {
+    const { data: { user } } = await sb.auth.getUser();
+    if (!user) { location.href = '/index.html'; return; }
+
+    // Verify admin role
+    const { data: adm } = await sb.from('admin_users').select('role').eq('user_id', user.id).single();
+    if (!adm) { location.href = '/index.html'; return; }
+
+    currentAdmin = { ...user, role: adm.role };
+    document.getElementById('adm-user-email').textContent = user.email;
+    loadDashboard();
+  }
+
+  // ── Navigation ─────────────────────────────────────────────
+  window.showPage = function(id) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+    document.getElementById('page-' + id)?.classList.add('active');
+    document.querySelector(`[data-page="${id}"]`)?.classList.add('active');
+    if (id === 'organizers') loadOrganizers();
+    if (id === 'users') loadUsers();
+    if (id === 'push') loadPushHistory();
+    if (id === 'passes') loadPasses();
+  };
+
+  // ── Dashboard ──────────────────────────────────────────────
+  async function loadDashboard() {
+    const [usersR, teamsR, premiumR, duelsR, pendingR] = await Promise.all([
+      sb.from('profiles').select('id', { count: 'exact', head: true }),
+      sb.from('teams_v2').select('id', { count: 'exact', head: true }),
+      sb.from('subscriptions').select('id', { count: 'exact', head: true }).eq('status','active'),
+      sb.from('game_sessions').select('id', { count: 'exact', head: true }).in('mode',['friend_battle','random_battle','virtual_battle']),
+      sb.from('organizer_profiles').select('id', { count: 'exact', head: true }).eq('status','pending'),
+    ]);
+
+    document.getElementById('dc-users').textContent    = usersR.count ?? '—';
+    document.getElementById('dc-teams').textContent    = teamsR.count ?? '—';
+    document.getElementById('dc-premium').textContent  = premiumR.count ?? '—';
+    document.getElementById('dc-duels').textContent    = duelsR.count ?? '—';
+    document.getElementById('dc-pending-org').textContent = pendingR.count ?? '—';
+    document.getElementById('dc-today').textContent    = '—';
+
+    // Top players
+    const { data: top } = await sb.from('leaderboard_global').select('*').limit(10);
+    const tbody = document.getElementById('dash-top-players');
+    if (top?.length) {
+      tbody.innerHTML = top.map(r =>
+        `<tr><td>#${r.rank}</td><td>${esc(r.display_name||'—')}</td><td>${r.xp.toLocaleString('ru')}</td><td>${r.neurons.toLocaleString('ru')}</td><td>🔥${r.streak}</td></tr>`
+      ).join('');
+    } else {
+      tbody.innerHTML = '<tr><td colspan="5" class="empty">Нет данных</td></tr>';
+    }
+  }
+
+  // ── Organizers ─────────────────────────────────────────────
+  window.loadOrganizers = async function() {
+    const status = document.getElementById('org-filter').value;
+    const { data } = await sb.from('organizer_profiles')
+      .select('user_id,display_name,contact_email,city,about,created_at,status')
+      .eq('status', status).order('created_at', { ascending: true });
+
+    const tbody = document.getElementById('org-table');
+    if (!data?.length) { tbody.innerHTML = `<tr><td colspan="6" class="empty">Нет заявок</td></tr>`; return; }
+
+    tbody.innerHTML = data.map(r => `<tr>
+      <td>${esc(r.display_name||'—')}</td>
+      <td style="color:#9b9bb0">${esc(r.contact_email||'—')}</td>
+      <td>${esc(r.city||'—')}</td>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#9b9bb0" title="${esc(r.about||'')}">${esc(r.about||'—')}</td>
+      <td style="color:#9b9bb0">${new Date(r.created_at).toLocaleDateString('ru')}</td>
+      <td>
+        ${status === 'pending' ? `<button class="btn btn-approve" onclick="approveOrg('${r.user_id}')">Одобрить</button>
+        <button class="btn btn-reject" onclick="rejectOrg('${r.user_id}')">Отклонить</button>` : `<span class="badge ${r.status}">${r.status}</span>`}
+      </td>
+    </tr>`).join('');
+  };
+
+  window.approveOrg = async function(userId) {
+    await sb.rpc('admin_approve_organizer', { p_user_id: userId });
+    showToast('Организатор одобрен');
+    loadOrganizers();
+  };
+
+  window.rejectOrg = async function(userId) {
+    await sb.from('organizer_profiles').update({ status: 'rejected' }).eq('user_id', userId);
+    showToast('Заявка отклонена');
+    loadOrganizers();
+  };
+
+  // ── Users ──────────────────────────────────────────────────
+  async function loadUsers(query = '') {
+    let req = sb.from('profiles').select('id,display_name,city,xp,neurons,daily_streak').order('xp', { ascending: false }).limit(50);
+    if (query) req = req.ilike('display_name', `%${query}%`);
+    const { data } = await req;
+
+    // Check premium
+    const { data: subs } = await sb.from('subscriptions').select('user_id').eq('status', 'active');
+    const premiumSet = new Set((subs || []).map(s => s.user_id));
+
+    const tbody = document.getElementById('users-table');
+    if (!data?.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty">Нет игроков</td></tr>'; return; }
+    tbody.innerHTML = data.map(r => `<tr>
+      <td>${esc(r.display_name||'—')}</td>
+      <td style="color:#9b9bb0">${esc(r.city||'—')}</td>
+      <td>${(r.xp||0).toLocaleString('ru')}</td>
+      <td>${(r.neurons||0).toLocaleString('ru')}</td>
+      <td>🔥${r.daily_streak||0}</td>
+      <td>${premiumSet.has(r.id) ? '<span class="badge premium">Premium</span>' : '<span style="color:#555">—</span>'}</td>
+    </tr>`).join('');
+  }
+
+  let _searchTimer;
+  window.searchUsers = function() {
+    clearTimeout(_searchTimer);
+    _searchTimer = setTimeout(() => loadUsers(document.getElementById('user-search').value.trim()), 300);
+  };
+
+  // ── Push notifications ──────────────────────────────────────
+  window.sendPushNotification = async function() {
+    const title    = document.getElementById('push-title').value.trim();
+    const body     = document.getElementById('push-body').value.trim();
+    const audience = document.getElementById('push-audience').value;
+    const statusEl = document.getElementById('push-status');
+
+    if (!title || !body) { showToast('Заполни заголовок и текст'); return; }
+    statusEl.textContent = 'Отправляем...';
+
+    const { error } = await sb.from('push_notifications_log').insert({
+      title, body, audience,
+      sent_by: currentAdmin.id,
+      sent_at: new Date().toISOString(),
+      recipients_count: 0,
+    });
+
+    if (error) { statusEl.textContent = 'Ошибка: ' + error.message; return; }
+    statusEl.textContent = 'Сохранено. Доставка — через Edge Function после настройки FCM.';
+    showToast('Уведомление запланировано');
+    loadPushHistory();
+  };
+
+  async function loadPushHistory() {
+    const { data } = await sb.from('push_notifications_log')
+      .select('*').order('sent_at', { ascending: false }).limit(20);
+    const tbody = document.getElementById('push-history');
+    if (!data?.length) { tbody.innerHTML = '<tr><td colspan="4" class="empty">Уведомлений ещё не было</td></tr>'; return; }
+    tbody.innerHTML = data.map(r => `<tr>
+      <td>${esc(r.title)}</td>
+      <td style="color:#9b9bb0">${esc(r.audience)}</td>
+      <td>${r.recipients_count || 0}</td>
+      <td style="color:#9b9bb0">${new Date(r.sent_at).toLocaleString('ru')}</td>
+    </tr>`).join('');
+  }
+
+  // ── Quiz passes ────────────────────────────────────────────
+  async function loadPasses() {
+    const { data } = await sb.from('quiz_passes').select('*').order('created_at', { ascending: false }).limit(50);
+    const tbody = document.getElementById('passes-table');
+    if (!data?.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty">Нет мероприятий</td></tr>'; return; }
+    tbody.innerHTML = data.map(r => `<tr>
+      <td>${esc(r.title||'—')}</td>
+      <td style="color:#9b9bb0">${esc(r.organizer_name||'—')}</td>
+      <td>${esc(r.date_text||'—')}</td>
+      <td>${esc(r.city||'—')}</td>
+      <td>${r.slots_left ?? '—'}/${r.slots_total ?? '—'}</td>
+      <td><span class="badge ${r.status==='active'?'approved':'pending'}">${r.status||'—'}</span></td>
+    </tr>`).join('');
+  }
+
+  // ── Helpers ────────────────────────────────────────────────
+  window.adminLogout = async function() {
+    await sb.auth.signOut();
+    location.href = '/index.html';
+  };
+
+  function showToast(msg) {
+    const el = document.getElementById('toast-adm');
+    el.textContent = msg; el.style.opacity = '1';
+    setTimeout(() => el.style.opacity = '0', 3000);
+  }
+
+  function esc(s) {
+    return String(s||'').replace(/[<>"'&]/g, c=>({'<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','&':'&amp;'}[c]));
+  }
+
+  init();
+</script>
+</body>
+</html>

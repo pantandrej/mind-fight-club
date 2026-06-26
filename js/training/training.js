@@ -1240,10 +1240,20 @@ function showScore(){
   const scDuelBtn=document.getElementById('sc-duel-btn');
   if(scDuelBtn)scDuelBtn.textContent=lang==='ru'?'⚔️ Дуэль':'⚔️ Live Duel';
   // Award earned neurons + xp via server RPC (idempotent by game_id)
+  // Save session stats for leaderboard/profile
+  if(window._currentSessionId && window.sb){
+    window.sb.from('game_sessions').update({
+      correct_answers: correctCount,
+      questions_count: Array.isArray(curQ) ? curQ.length : 10,
+      score:           _roundScore,
+    }).eq('id', window._currentSessionId).then(()=>{}).catch(()=>{});
+  }
+  // Sync team score async (club aggregation)
+  if(window.syncTeamScoreAfterGame) window.syncTeamScoreAfterGame();
+
   if(_roundScore > 0 && _gameId){
     awardNeurons(_roundScore, 'quiz_reward', 'quiz:' + _gameId).then(result => {
       if(result){
-        // Update score display with confirmed server balance
         updNeurons();
       }
     });
