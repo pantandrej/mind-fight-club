@@ -1,8 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git -C /Users/andrei/Desktop/BFC/Код status)",
-      "Bash(git -C /Users/andrei/Desktop/BFC/Код remote -v)"
+      "Bash(*)",
+      "Read(*)",
+      "Edit(*)",
+      "Write(*)"
     ]
   }
 }

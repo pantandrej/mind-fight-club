@@ -88,6 +88,8 @@ function _redirectAfterAuth() {
   if (typeof window.checkRefParam   === 'function') window.checkRefParam();
   if (!localStorage.getItem('mfc_onboarded') &&
       typeof window.checkOnboarding === 'function') window.checkOnboarding();
+  // New onboarding + referral claim
+  if (typeof window.checkAndStartOnboarding === 'function') window.checkAndStartOnboarding();
 
   const p = new URLSearchParams(window.location.search);
   if (p.get('official') && typeof window.openOfficialTournament === 'function') {

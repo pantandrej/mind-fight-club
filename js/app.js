@@ -16,6 +16,9 @@ import './battles/friend-battle.js';
 import './battles/matchmaking.js';
 import './tournaments/tournament-game.js';
 import './hype/hype-game.js';
+import './achievements.js';
+import './onboarding.js';
+import './leaderboard.js';
 
 // ── Boot ──────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {

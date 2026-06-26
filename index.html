@@ -562,6 +562,9 @@
   </div>
 </div>
 
+<!-- ONBOARDING OVERLAY -->
+<div id="onboarding-overlay" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.85);align-items:center;justify-content:center;padding:20px"></div>
+
 <!-- TEAM CHAT PANEL (overlay) -->
 <div id="team-chat-panel" style="display:none;position:fixed;inset:0;z-index:200;flex-direction:column;background:var(--bg)">
   <div class="hdr">
@@ -927,6 +930,21 @@
         <button class="profile-signout" onclick="signOut()" id="profile-signout-btn">Выйти</button>
       </div>
     </div>
+    <!-- Level + XP bar -->
+    <div class="xp-bar-wrap" id="xp-bar-wrap">
+      <div class="xp-bar-top">
+        <span class="xp-level-badge" id="xp-level-badge">Ур. 1</span>
+        <span class="xp-label" id="xp-label">0 / 100 XP</span>
+        <span class="xp-level-badge" id="xp-next-badge">Ур. 2</span>
+      </div>
+      <div class="xp-bar-bg"><div class="xp-bar-fill" id="xp-bar-fill" style="width:0%"></div></div>
+    </div>
+
+    <!-- Achievements button -->
+    <button class="achievements-btn" onclick="openAchievements()">
+      🏅 Достижения <span id="achievements-count" style="background:rgba(108,99,255,.3);border-radius:6px;padding:1px 7px;font-size:11px;margin-left:4px">0</span>
+    </button>
+
     <!-- Stats hidden until real data is populated -->
     <div style="display:none" id="profile-stats-title" class="section-title">Статистика</div>
     <div class="profile-stats-grid" style="display:none">
@@ -954,7 +972,18 @@
       <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:0.5px solid var(--border);font-size:12px"><span style="color:var(--muted)" id="neurons-correct-lbl">Правильный ответ</span><span style="color:var(--gold)">+1–30 ⚡</span></div>
       <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px"><span style="color:var(--muted)">Победа в дуэли</span><span style="color:var(--gold)">+30 ⚡</span></div>
     </div>
+    <!-- Referral block -->
+    <div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;padding:14px;margin-bottom:8px">
+      <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--muted);margin-bottom:8px">ПРИГЛАСИ ДРУГА — ОБА +50 ⚡</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div style="flex:1;background:var(--bg);border:0.5px solid var(--border);border-radius:10px;padding:8px 12px;font-size:12px;font-family:monospace;color:var(--accent2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" id="profile-ref-link">Войди чтобы увидеть ссылку</div>
+        <button class="copy-btn" onclick="copyProfileRefLink()">Копировать</button>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px">Приглашено друзей: <span id="profile-ref-count" style="color:var(--accent2);font-weight:700">0</span></div>
+    </div>
+
     <div class="section-title" id="profile-badges-title">Достижения</div>
+    <div id="achievements-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px"></div>
     <div class="profile-badges-grid" id="profile-badges-grid"></div>
     <!-- Analytics mini dashboard -->
     <div id="profile-analytics" style="display:none;margin-top:8px">
@@ -2401,8 +2430,102 @@ console.log('✅ Firebase Tournaments module loaded');
     window.showScreen = function(id, ...args) {
       _origShowScreen(id, ...args);
       if (id === 'teams') loadLeaderboard(_lbTab);
+      if (id === 'profile') loadProfileExtras();
     };
   }
+</script>
+<script type="module">
+  import { loadAchievements, renderAchievementsScreen, checkAchievements, BADGES } from '/js/achievements.js';
+  import { shouldShowOnboarding, startOnboarding } from '/js/onboarding.js';
+
+  // ── Profile extras: XP bar + achievements + referral ──────
+  window.loadProfileExtras = async function() {
+    const { currentUser } = window._bfcState?.() || {};
+    if (!currentUser || !window.sb) return;
+
+    const { data: p } = await window.sb.from('profiles')
+      .select('xp,neurons,daily_streak,best_daily_streak,referral_code,referral_count')
+      .eq('id', currentUser.id).single();
+    if (!p) return;
+
+    // XP bar
+    const xp = p.xp || 0;
+    const level = xpToLevel(xp);
+    const { cur, next, pct } = xpProgress(xp, level);
+    const el = id => document.getElementById(id);
+    if (el('xp-level-badge')) el('xp-level-badge').textContent = 'Ур. ' + level;
+    if (el('xp-next-badge'))  el('xp-next-badge').textContent  = 'Ур. ' + (level + 1);
+    if (el('xp-label'))       el('xp-label').textContent       = cur + ' / ' + next + ' XP';
+    if (el('xp-bar-fill'))    el('xp-bar-fill').style.width    = pct + '%';
+
+    // Referral link
+    if (p.referral_code) {
+      const link = location.origin + location.pathname + '?ref=' + p.referral_code;
+      if (el('profile-ref-link')) el('profile-ref-link').textContent = link;
+      if (el('profile-ref-count')) el('profile-ref-count').textContent = p.referral_count || 0;
+      window._myRefLink = link;
+    }
+
+    // Achievements
+    const earned = await loadAchievements();
+    if (el('achievements-count')) el('achievements-count').textContent = earned.length + ' / ' + Object.keys(BADGES).length;
+    renderAchievementsScreen(earned);
+
+    // Check new achievements
+    checkAchievements({
+      streak:       p.best_daily_streak || 0,
+      neurons:      p.neurons || 0,
+      level,
+      has_team:     !!localStorage.getItem('mfc_team'),
+    });
+  };
+
+  window.openAchievements = function() {
+    // Scroll to achievements grid on profile screen
+    const el = document.getElementById('achievements-grid');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  window.copyProfileRefLink = function() {
+    const link = window._myRefLink;
+    if (!link) { window.toast?.('Войди в аккаунт'); return; }
+    navigator.clipboard.writeText(link).then(() => window.toast?.('Ссылка скопирована! 🔗'));
+  };
+
+  // XP level math
+  function xpToLevel(xp) {
+    const t = [0,100,250,500,1000,2000,3500,5500,8000,11000];
+    for (let i = t.length - 1; i >= 0; i--) if (xp >= t[i]) return i + 1;
+    return 1;
+  }
+  function xpProgress(xp, level) {
+    const thresholds = [0,100,250,500,1000,2000,3500,5500,8000,11000];
+    const cur_start = thresholds[level - 1] || 0;
+    const next_val  = thresholds[level] || (cur_start + 5000);
+    const range = next_val - cur_start;
+    const progress = xp - cur_start;
+    return { cur: progress, next: range, pct: Math.min(100, Math.round(progress / range * 100)) };
+  }
+
+  // ── Referral code auto-claim on signup ────────────────────
+  const urlRef = new URLSearchParams(location.search).get('ref');
+  if (urlRef) localStorage.setItem('bfc_pending_ref', urlRef);
+
+  window.claimPendingReferral = async function() {
+    const code = localStorage.getItem('bfc_pending_ref');
+    if (!code || !window.sb) return;
+    const { data } = await window.sb.rpc('claim_referral', { p_code: code });
+    if (data?.ok) {
+      localStorage.removeItem('bfc_pending_ref');
+      window.toast?.('🤝 Реферальный бонус зачислен! +50 ⚡');
+    }
+  };
+
+  // ── Onboarding check after auth ────────────────────────────
+  window.checkAndStartOnboarding = function() {
+    if (shouldShowOnboarding()) setTimeout(startOnboarding, 800);
+    window.claimPendingReferral?.();
+  };
 </script>
 
 

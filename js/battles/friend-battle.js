@@ -13,7 +13,7 @@ import { track } from '../services/analytics.js';
 // DUEL — clean rewrite
 // ═══════════════════════════════════════════
 let duelCode=null,duelRole=null,duelPoll=null;
-let duelQs=[],duelIdx=0,duelMyScore=0,duelOppScore=0;
+let duelQs=[],duelIdx=0,duelMyScore=0,duelOppScore=0,duelMyCorrect=0;
 let duelAnswered=false,duelTimer=null,duelTimeLeft=0,duelMaxT=0;
 let duelMyName='You',duelOppNameStr='Соперник';
 let botAnsweredThisQuestion = false;
@@ -62,7 +62,7 @@ async function createDuel(){
 
   duelCode=randCode();duelRole='host';
   duelMyName=currentUser?.user_metadata?.full_name?.split(' ')[0]||'Хост';
-  duelMyScore=0;duelOppScore=0;duelQs=[];duelIdx=0;
+  duelMyScore=0;duelOppScore=0;duelQs=[];duelIdx=0;duelMyCorrect=0;
 
   await sb.from('duel_rooms').upsert({code:duelCode,host_score:0,guest_score:0,status:'waiting',questions:null,created_at:new Date().toISOString()});
   track('duel_created', {code: duelCode});
@@ -91,7 +91,7 @@ async function joinDuel(){
 
   duelCode=code;duelRole='guest';
   duelMyName=currentUser?.user_metadata?.full_name?.split(' ')[0]||'Guest'+(Math.floor(Math.random()*99)+1);
-  duelMyScore=0;duelOppScore=0;duelQs=[];duelIdx=0;
+  duelMyScore=0;duelOppScore=0;duelQs=[];duelIdx=0;duelMyCorrect=0;
 
   await sb.from('duel_rooms').update({status:'ready'}).eq('code',code);
   track('duel_joined', {code});
@@ -340,7 +340,7 @@ async function pickDuel(i){
   const pts=Math.max(1, Math.round((q.a?.length||2) * 15 * duelTimeLeft / duelMaxT));
   if(i===q.c){
     document.querySelectorAll('#d-answers .ans')[i].className='ans correct';
-    duelMyScore+=pts;updateDuelScores();
+    duelMyScore+=pts;duelMyCorrect++;updateDuelScores();
     showFb('d-fb','✓ +'+pts,true);setMyDot(duelIdx, pts, true);
   } else {
     document.querySelectorAll('#d-answers .ans')[i].className='ans wrong';
@@ -423,6 +423,36 @@ async function duelNextQ(){
     loadDuelQ();
   }
 }
+async function _saveDuelStats(myS, oppS, win) {
+  if (!window.sb || !window._currentDuelSessionId) return;
+  try {
+    await window.sb.from('game_sessions').update({
+      score:           myS,
+      correct_answers: duelMyCorrect || 0,
+      questions_count: duelQs?.length || 10,
+      won:             win,
+    }).eq('id', window._currentDuelSessionId);
+  } catch(e) { /* silent */ }
+  // Award duel win via economy
+  if (win) {
+    try { await window.sb.rpc('award_currency', { p_event_type: 'duel_win', p_idempotency_key: 'duel_win:' + duelCode }); } catch(e) {}
+  }
+  // Check achievements async
+  if (window.checkAchievements) {
+    const { data: stats } = await window.sb.from('player_stats').select('*').eq('user_id', (await window.sb.auth.getUser()).data.user?.id).single().catch(() => ({ data: null }));
+    if (stats) window.checkAchievements({
+      duels_played: stats.duels_played,
+      duels_won:    stats.duels_played, // approximation
+      games_played: stats.games_played,
+      streak:       stats.streak,
+      neurons:      stats.neurons,
+      perfect_game: myS >= duelQs?.length * 90,
+    });
+  }
+  // Sync club score
+  if (window.syncTeamScoreAfterGame) window.syncTeamScoreAfterGame();
+}
+
 function endDuel(data){
   clearInterval(duelPoll);clearInterval(duelTimer);
   if(window._botAnswerTimeout){ clearTimeout(window._botAnswerTimeout); window._botAnswerTimeout = null; }
@@ -438,7 +468,7 @@ function endDuel(data){
     oppS = duelRole==='host' ? guestS : hostS;
   }
   const win=myS>oppS, tie=myS===oppS;
-  if(win)saveDuelWin();
+  _saveDuelStats(myS, oppS, win);
   stopIntegrity();
   track('duel_completed', {result: win?'win':tie?'tie':'lose', my_score: myS, opp_score: oppS, bot: !!window._isBotDuel});
   // ── Начисляем XP клубу за бой ──
