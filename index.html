@@ -2431,7 +2431,7 @@ console.log('✅ Firebase Tournaments module loaded');
     <!-- Header -->
     <div style="padding:14px 20px 0;display:flex;align-items:center;justify-content:space-between">
       <div id="hg-q-num" style="font-size:12px;color:var(--muted)">Вопрос 1 / 15</div>
-      <div id="hg-timer" style="font-size:16px;font-weight:800;color:var(--accent)">20</div>
+      <div id="hg-timer" style="font-size:16px;font-weight:800;color:var(--accent)">30</div>
     </div>
     <div style="padding:0 20px 10px">
       <div id="hg-progress-bar" style="height:3px;background:var(--bg2);border-radius:2px;margin-top:8px">
@@ -2439,22 +2439,26 @@ console.log('✅ Firebase Tournaments module loaded');
       </div>
     </div>
     <!-- Body: layout set by JS based on media type -->
-    <div id="hg-body" style="display:flex;flex:1;min-height:0">
-      <!-- Image column (shown only for image questions) -->
-      <div id="hg-media" style="display:none;flex:1;min-width:0;position:relative;overflow:hidden;border-radius:0 0 0 0"></div>
-      <!-- Right panel: audio/video (if any) + question + answers + answer image -->
-      <div id="hg-right" style="flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;padding:12px 24px 20px;gap:10px;overflow-y:auto">
+    <div id="hg-body" style="display:flex;flex:1;min-height:0;overflow:hidden">
+      <!-- Media column: question image OR answer image revealed after answering -->
+      <div id="hg-media" style="display:none"></div>
+      <!-- Right panel: audio/video + question + answers (scrollable) -->
+      <div id="hg-right" style="flex:1;min-width:0;display:flex;flex-direction:column;padding:12px 20px 0;gap:10px;overflow-y:auto">
         <div id="hg-av-media" style="display:none"></div>
         <div id="hg-q-text" style="font-size:15px;font-weight:700;line-height:1.45;white-space:pre-wrap"></div>
-        <div id="hg-answers" style="display:flex;flex-direction:column;gap:8px"></div>
-        <!-- Answer image — revealed inline after answering -->
-        <div id="hg-answer-img" style="display:none;margin-top:8px;border-radius:14px;overflow:hidden;max-height:280px">
-          <img id="hg-answer-img-el" src="" alt="" style="width:100%;max-height:280px;object-fit:contain;display:block">
+        <div id="hg-answers" style="display:flex;flex-direction:column;gap:8px;padding-bottom:8px"></div>
+        <!-- unused placeholder kept for JS refs -->
+        <div id="hg-answer-img" style="display:none">
+          <img id="hg-answer-img-el" src="" alt="" style="display:none">
         </div>
-        <button id="hg-next-btn" onclick="window.hypeGameNext()" style="display:none;width:100%;background:var(--accent);border:none;border-radius:14px;padding:14px;font-size:15px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit;margin-top:4px">
-          Следующий вопрос →
-        </button>
       </div>
+    </div>
+    <!-- Sticky next button — always visible at bottom -->
+    <div id="hg-next-wrap" style="display:none;padding:10px 20px 16px;background:var(--bg)">
+      <button id="hg-next-btn" onclick="window.hypeGameNext()"
+        style="width:100%;background:var(--accent);border:none;border-radius:14px;padding:14px;font-size:15px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit">
+        Следующий вопрос →
+      </button>
     </div>
   </div>
 

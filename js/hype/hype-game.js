@@ -3,7 +3,7 @@ import { sb }       from '../services/supabase.js';
 import { getState } from '../state.js';
 import { showScreen, toast } from '../router.js';
 
-const Q_TIME = 20; // seconds per question
+const Q_TIME = 30; // seconds per question
 
 let _game     = null;   // hype_game row
 let _qs       = [];     // questions array
@@ -76,10 +76,10 @@ function _renderQuestion() {
   const isAudio = !!q.audio;
   const isVideo = !!q.video;
 
-  const mediaEl = document.getElementById('hg-media');
-  const avEl    = document.getElementById('hg-av-media');
-  const rightEl = document.getElementById('hg-right');
-  const nextBtn = document.getElementById('hg-next-btn');
+  const mediaEl    = document.getElementById('hg-media');
+  const avEl       = document.getElementById('hg-av-media');
+  const nextWrap   = document.getElementById('hg-next-wrap');
+  const nextBtn    = document.getElementById('hg-next-btn');
   const ansImgWrap = document.getElementById('hg-answer-img');
 
   // Reset
@@ -87,18 +87,16 @@ function _renderQuestion() {
   avEl.innerHTML = '';
   avEl.style.display = 'none';
   ansImgWrap.style.display = 'none';
-  nextBtn.style.display = 'none';
+  nextWrap.style.display = 'none';
 
   if (isImg) {
-    // Two-column: image fills left, answers on right
-    mediaEl.style.cssText = 'display:flex;flex:1;min-width:0;overflow:hidden;background:#000';
-    mediaEl.innerHTML = `<img src="${q.img}" alt="" style="width:100%;height:100%;object-fit:cover;display:block"
+    // Two-column: question image fills left
+    mediaEl.style.cssText = 'display:flex;flex:0 0 50%;min-width:0;overflow:hidden;background:#000;align-items:center;justify-content:center';
+    mediaEl.innerHTML = `<img src="${q.img}" alt="" style="width:100%;height:100%;object-fit:contain;display:block"
       onerror="this.style.display='none'">`;
-    rightEl.style.flex = '1';
   } else {
-    // Single column: no left panel
+    // Single column: left panel hidden until answer reveal
     mediaEl.style.display = 'none';
-    rightEl.style.flex = '1';
     if (isAudio || isVideo) {
       avEl.style.display = 'block';
       window.renderQMedia?.('hg-av-media', { img: null, audio: q.audio || null, video: q.video || null });
@@ -165,13 +163,11 @@ function _answer(chosen) {
 }
 
 function _revealInline(isRight, pts, q) {
-  // Replace left-column image with answer image (if image question)
-  // OR show answer image below answers (if audio/text question)
+  const mediaEl = document.getElementById('hg-media');
+
   if (q.answer_img) {
-    const isImg = !!q.img;
-    if (isImg) {
-      // Swap left column image → answer image with smooth transition
-      const mediaEl = document.getElementById('hg-media');
+    if (!!q.img) {
+      // Image question: swap left column image → answer image
       const img = mediaEl.querySelector('img');
       if (img) {
         img.style.transition = 'opacity .4s';
@@ -179,11 +175,11 @@ function _revealInline(isRight, pts, q) {
         setTimeout(() => { img.src = q.answer_img; img.style.opacity = '1'; }, 400);
       }
     } else {
-      // Show below answers
-      const wrap = document.getElementById('hg-answer-img');
-      const imgEl = document.getElementById('hg-answer-img-el');
-      imgEl.src = q.answer_img;
-      wrap.style.display = 'block';
+      // Non-image question: show answer image in left column (makes two-column)
+      mediaEl.style.cssText = 'display:flex;flex:0 0 45%;min-width:0;overflow:hidden;background:#000;align-items:center;justify-content:center';
+      mediaEl.innerHTML = `<img src="${q.answer_img}" alt=""
+        style="width:100%;height:100%;object-fit:contain;display:block"
+        onerror="this.parentElement.style.display='none'">`;
     }
   }
 
@@ -194,12 +190,11 @@ function _revealInline(isRight, pts, q) {
     timerEl.style.color = isRight ? 'var(--green)' : 'var(--red)';
   }
 
-  // Show next button
-  const nextBtn = document.getElementById('hg-next-btn');
-  if (nextBtn) {
-    nextBtn.style.display = 'block';
-    nextBtn.textContent = _idx >= _qs.length - 1 ? 'Посмотреть результат →' : 'Следующий вопрос →';
-  }
+  // Show sticky next button
+  const nextWrap = document.getElementById('hg-next-wrap');
+  const nextBtn  = document.getElementById('hg-next-btn');
+  if (nextWrap) nextWrap.style.display = 'block';
+  if (nextBtn)  nextBtn.textContent = _idx >= _qs.length - 1 ? 'Посмотреть результат →' : 'Следующий вопрос →';
 }
 
 function _nextQuestion() {
