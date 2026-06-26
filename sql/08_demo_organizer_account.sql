@@ -1,27 +1,20 @@
 -- ============================================================
 -- BFC: Demo organizer account for YooKassa verification
 -- Run once in Supabase SQL Editor (service role)
---
--- After running:
---   email: demo@brain-fight-club.vercel.app
---   password: set via Supabase Dashboard → Auth → Users → invite/reset
---
--- This creates a demo organizer account that bypasses pending status
--- so YooKassa manager can immediately see the organizer cabinet.
 -- ============================================================
 
--- 1. First create the user in Supabase Auth dashboard manually:
---    Dashboard → Authentication → Users → "Invite user"
---    Email: demo@brain-fight-club.vercel.app
---
--- 2. Then run the rest of this script with the user's UUID:
+-- Step 1: Add missing columns to quiz_passes (DDL must be outside DO block)
+ALTER TABLE quiz_passes ADD COLUMN IF NOT EXISTS event_date timestamptz;
+ALTER TABLE quiz_passes ADD COLUMN IF NOT EXISTS date_text  text;
+ALTER TABLE quiz_passes ADD COLUMN IF NOT EXISTS location   text;
+ALTER TABLE quiz_passes ADD COLUMN IF NOT EXISTS city       text;
 
+-- Step 2: Create demo account data
 DO $$
 DECLARE
   v_demo_email text := 'demo@brain-fight-club.vercel.app';
   v_user_id    uuid;
 BEGIN
-  -- Find user by email
   SELECT id INTO v_user_id FROM auth.users WHERE email = v_demo_email;
 
   IF v_user_id IS NULL THEN
@@ -29,29 +22,23 @@ BEGIN
     RETURN;
   END IF;
 
-  -- Ensure profile exists
+  -- Profile
   INSERT INTO profiles (id, display_name, neurons, xp)
   VALUES (v_user_id, 'BFC Demo', 1000, 1000)
   ON CONFLICT (id) DO UPDATE SET display_name = 'BFC Demo';
 
-  -- Give subscription (Premium, so limits screen isn't hit)
+  -- Premium subscription
   INSERT INTO subscriptions (user_id, plan, status, current_period_end)
   VALUES (v_user_id, 'premium', 'active', now() + interval '1 year')
   ON CONFLICT (user_id) DO UPDATE
     SET plan = 'premium', status = 'active', current_period_end = now() + interval '1 year';
 
-  -- Create approved organizer profile (skips pending/moderation step)
+  -- Approved organizer profile
   INSERT INTO organizer_profiles (user_id, display_name, contact_email, city, about, status)
   VALUES (v_user_id, 'BFC Demo Organizer', v_demo_email, 'Москва', 'Демо-аккаунт для проверки платёжного агента', 'approved')
   ON CONFLICT (user_id) DO UPDATE SET status = 'approved', display_name = 'BFC Demo Organizer';
 
-  -- Add any missing columns to quiz_passes
-  ALTER TABLE quiz_passes ADD COLUMN IF NOT EXISTS event_date timestamptz;
-  ALTER TABLE quiz_passes ADD COLUMN IF NOT EXISTS date_text  text;
-  ALTER TABLE quiz_passes ADD COLUMN IF NOT EXISTS location   text;
-  ALTER TABLE quiz_passes ADD COLUMN IF NOT EXISTS city       text;
-
-  -- Seed one demo quiz pass so the shop isn't empty
+  -- Demo quiz pass
   INSERT INTO quiz_passes (organizer_id, organizer_name, title, description, date_text, city, price, slots_total, slots_left, status)
   VALUES (
     v_user_id,
