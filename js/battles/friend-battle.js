@@ -19,6 +19,7 @@ let duelMyName='You',duelOppNameStr='Соперник';
 let botAnsweredThisQuestion = false;
 let _tabWarnCount = 0;
 let _isRandomBattle = false; // true when came from matchmaking (not friend duel)
+let _oppScoreAtQStart = 0;  // opponent score when current question started (to detect miss)
 
 // Simulate bot answer independently of whether the player has answered.
 // Uses qIndex to ignore stale timeouts that fired after "Next" was pressed.
@@ -289,6 +290,18 @@ function loadDuelQ(){
     b.innerHTML='<span class="ans-l">'+answerLetter(i)+'</span><span>'+a+'</span>';
     b.onclick=()=>pickDuel(i);ans.appendChild(b);
   });
+  // Mark previous question as opp miss if their score didn't change during it
+  if(duelIdx > 0 && !window._isBotDuel){
+    const prevIdx = duelIdx - 1;
+    const prevDot = document.getElementById('d-opp-dots-dot-' + prevIdx);
+    if(prevDot && !prevDot.textContent){
+      // Still empty → opponent didn't answer that question → mark as miss
+      setOppDot(prevIdx, false, 0);
+    }
+    // Check current score vs saved — if no change → previous was a miss
+    // (setOppDot in saveDuelScore handles the correct case already)
+  }
+  _oppScoreAtQStart = duelOppScore;
   setDot('d-my-dots',duelIdx,'active');
   setDot('d-opp-dots',duelIdx,'active');
   renderDuelTimer();
@@ -349,15 +362,16 @@ async function saveDuelScore(){
   const {data}=await sb.from('duel_rooms').select('host_score,guest_score').eq('code',duelCode).single();
   if(data){
     const oppF=duelRole==='host'?'guest_score':'host_score';
-    if(data[oppF]>duelOppScore){
-      const oppPts = data[oppF] - duelOppScore;
+    const newOppScore = data[oppF] ?? 0;
+    if(newOppScore > duelOppScore){
+      const oppPts = newOppScore - duelOppScore;
       document.getElementById('opp-hint').textContent=t('oppAnswered');
       document.getElementById('opp-hint').className='opp-hint answered';
       setOppDot(duelIdx, true, oppPts);
-    } else if(data[oppF]===duelOppScore && duelOppScore>=0){
-      setOppDot(duelIdx, false, 0);
     }
-    duelOppScore=data[oppF]||0;updateDuelScores();
+    // Don't mark opponent as missed here — they might just not have answered yet
+    // The miss dot is set when the next question loads (previous stays as pending dot)
+    duelOppScore = newOppScore; updateDuelScores();
   }
 }
 function updateDuelScores(){
@@ -384,6 +398,9 @@ async function duelNextQ(){
       document.getElementById('d-answers').innerHTML = '';
       document.getElementById('d-q-text').textContent = '⏳ Ты ответил на все вопросы! Ждём соперника...';
       document.getElementById('d-cat-pill').textContent = '';
+      // Mark my side as finished — use a separate flag so we can tell BOTH finished
+      const myDoneField = duelRole === 'host' ? 'host_done' : 'guest_done';
+      await sb.from('duel_rooms').update({ [myDoneField]: true }).eq('code', duelCode).catch(()=>{});
       let waitDots = 0;
       const waitPoll=setInterval(async()=>{
         waitDots = (waitDots + 1) % 4;
@@ -391,8 +408,10 @@ async function duelNextQ(){
         document.getElementById('d-q-text').textContent = `⏳ Ждём соперника${dots}`;
         const {data}=await sb.from('duel_rooms').select('*').eq('code',duelCode).single();
         if(!data)return;
-        const oppField = duelRole==='host' ? 'guest_score' : 'host_score';
-        const oppDone  = (data[oppField] ?? 0) > 0 || data.status === 'done';
+        const oppField     = duelRole==='host' ? 'guest_score' : 'host_score';
+        const oppDoneField = duelRole==='host' ? 'guest_done'  : 'host_done';
+        // Opponent is done when they set their _done flag, OR both saved scores and status='done'
+        const oppDone  = data[oppDoneField] === true || data.status === 'done';
         const timedOut = Date.now()-new Date(data.created_at).getTime() > 120000;
         if(oppDone || timedOut){
           clearInterval(waitPoll);
