@@ -174,20 +174,70 @@ function renderAnswer(qIdx, ansElapsed) {
   const leftMs = _t.a_duration * 1000 - ansElapsed;
   const myPick = _answered[q.n];
   const correct = myPick === q.c;
+  const resultColor = myPick !== undefined ? (correct ? '#4ade80' : '#e05555') : 'var(--muted)';
+  const resultText  = myPick !== undefined ? (correct ? '✓ Правильно!' : `✗ Правильный: ${q.a[q.c]}`) : 'Время вышло';
 
   document.getElementById('trn-body').innerHTML = `
     <div style="display:flex;flex-direction:column;height:100%">
       <div style="padding:4px 14px 0;display:flex;gap:4px;justify-content:center;flex-wrap:wrap" id="trn-dots"></div>
-      <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:6px 12px;min-height:0">
+      <div style="display:flex;align-items:center;justify-content:center;padding:6px 12px;max-height:40vh;min-height:0">
         <img src="${q.ans_img || q.img}" style="max-width:100%;max-height:100%;border-radius:10px;object-fit:contain"/>
       </div>
-      <div style="text-align:center;padding:8px 14px;font-size:16px;font-weight:900;${myPick !== undefined ? (correct ? 'color:#4ade80' : 'color:#e05555') : 'color:var(--muted)'}">
-        ${myPick !== undefined ? (correct ? '✓ Правильно!' : `✗ Правильный: ${q.a[q.c]}`) : 'Время вышло без ответа'}
+      <div style="text-align:center;padding:6px 14px 4px;font-size:16px;font-weight:900;color:${resultColor}">
+        ${resultText}
+      </div>
+      <div id="trn-live-board" style="flex:1;overflow-y:auto;padding:6px 12px 12px;display:flex;flex-direction:column;gap:4px">
+        <div style="text-align:center;color:var(--muted);font-size:12px;padding:8px">Загружаем таблицу...</div>
       </div>
     </div>
   `;
   renderDots(qIdx);
   updateBar(leftMs / (_t.a_duration * 1000));
+  loadLiveLeaderboard();
+}
+
+async function loadLiveLeaderboard() {
+  const el = document.getElementById('trn-live-board');
+  if (!el) return;
+
+  const { data: rows } = await sb.from('tournament_participants')
+    .select('user_id, score, correct, profiles(display_name)')
+    .eq('tournament_id', _t.id)
+    .order('score', { ascending: false })
+    .limit(20);
+
+  if (!rows || !rows.length) { el.innerHTML = ''; return; }
+
+  const user = (await sb.auth.getUser()).data?.user;
+  const myIdx = rows.findIndex(r => user && r.user_id === user.id);
+  const myPlace = myIdx + 1;
+
+  // Show: top-3 + context rows around me (2 above, me, 2 below)
+  const show = new Set([0, 1, 2]);
+  if (myIdx >= 0) for (let i = Math.max(0, myIdx-2); i <= Math.min(rows.length-1, myIdx+2); i++) show.add(i);
+
+  let html = `<div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:800;margin-bottom:4px;text-align:center">
+    📊 Таблица ${myPlace > 0 ? `· Ты на <span style="color:var(--accent2);font-size:13px;font-weight:900">${myPlace}</span> месте` : ''}
+  </div>`;
+
+  let prev = -1;
+  rows.forEach((r, i) => {
+    if (!show.has(i)) return;
+    if (prev >= 0 && i > prev + 1) html += `<div style="text-align:center;color:var(--muted);font-size:11px;padding:2px">···</div>`;
+    prev = i;
+
+    const isMe   = user && r.user_id === user.id;
+    const medal  = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}.`;
+    const name   = r.profiles?.display_name || 'Игрок';
+    html += `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:10px;font-size:13px;
+      ${isMe ? 'background:rgba(108,99,255,.2);border:1px solid rgba(108,99,255,.4);font-weight:800' : 'background:rgba(255,255,255,.04)'}">
+      <div style="min-width:26px;font-size:15px">${medal}</div>
+      <div style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${isMe ? '👉 ' : ''}${name}</div>
+      <div style="color:var(--accent2);font-weight:800;flex-shrink:0">⚡${r.score}</div>
+    </div>`;
+  });
+
+  el.innerHTML = html;
 }
 
 function renderFinished() {
