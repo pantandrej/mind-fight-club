@@ -2,8 +2,9 @@
 // Timer-based: no host needed. start_at is known → each client calculates
 // current question/phase from Date.now().
 
-import { sb }     from '../services/supabase.js';
-import { track }  from '../services/analytics.js';
+import { sb }              from '../services/supabase.js';
+import { track }           from '../services/analytics.js';
+import { sharePackResult } from '../share-card.js';
 
 let _t       = null;   // tournament row
 let _pack    = null;   // pack.json data
@@ -253,31 +254,69 @@ async function loadLeaderboardAndRender() {
     .limit(50);
 
   const user = sb.auth?.getUser ? (await sb.auth.getUser()).data?.user : null;
+  const myIdx = (rows || []).findIndex(r => user && r.user_id === user.id);
+  const myPlace = myIdx + 1;
+  const total = rows?.length || 0;
+
+  // Place emoji & message
+  const placeEmoji = myPlace === 1 ? '🥇' : myPlace === 2 ? '🥈' : myPlace === 3 ? '🥉' : '🎯';
+  const placeMsg = myPlace === 1 ? 'Победа! Ты первый!' :
+                   myPlace <= 3  ? `Топ-3! Отличный результат!` :
+                   myPlace > 0   ? `Место ${myPlace} из ${total}` : 'Результаты';
+
+  // Bonus neurons for top-3
+  const BONUSES = [300, 150, 75];
+  const myBonus = myPlace >= 1 && myPlace <= 3 ? BONUSES[myPlace - 1] : 0;
+  if (myBonus > 0 && user) {
+    window.awardNeurons?.(myBonus, 'tournament_top3', _t.id);
+  }
+
+  // Determine which rows to show: top-3 always, then 2 above me, me, 2 below
+  const showIdxs = new Set([0, 1, 2]);
+  if (myIdx >= 0) [-2,-1,0,1,2].forEach(d => { const i = myIdx+d; if(i>=0) showIdxs.add(i); });
+  let prevShown = null;
 
   const list = (rows || []).map((r, i) => {
+    if (!showIdxs.has(i)) return '';
+    const gap = prevShown !== null && i - prevShown > 1
+      ? `<div style="text-align:center;color:var(--muted);font-size:11px;padding:4px 0">· · ·</div>` : '';
+    prevShown = i;
     const name  = r.profiles?.display_name || 'Игрок';
     const isMe  = user && r.user_id === user.id;
     const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}.`;
-    return `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;${isMe ? 'background:rgba(108,99,255,.15);font-weight:800' : ''}">
+    const bonusBadge = i < 3 ? `<span style="font-size:10px;color:var(--gold);margin-left:4px">+${BONUSES[i]}⚡</span>` : '';
+    return gap + `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;${isMe ? 'background:rgba(108,99,255,.18);border:0.5px solid rgba(108,99,255,.4)' : ''}">
       <div style="font-size:18px;min-width:28px">${medal}</div>
-      <div style="flex:1">${name}</div>
-      <div style="color:var(--accent2);font-weight:800">⚡ ${r.score}</div>
-      <div style="color:var(--muted);font-size:12px">${r.correct}/${_pack.questions.length}</div>
+      <div style="flex:1;font-weight:${isMe?'900':'400'}">${name}${isMe?' 👈':''}</div>
+      <div style="text-align:right">
+        <div style="color:var(--accent2);font-weight:800">⚡ ${r.score}</div>
+        <div style="color:var(--muted);font-size:11px">${r.correct}/${_pack.questions.length}${bonusBadge}</div>
+      </div>
     </div>`;
   }).join('');
 
+  const pct = _pack.questions.length > 0 ? Math.round(_correct / _pack.questions.length * 100) : 0;
+
   document.getElementById('trn-body').innerHTML = `
-    <div style="text-align:center;padding:20px 14px 10px">
-      <div style="font-size:36px">🏆</div>
-      <div style="font-size:20px;font-weight:900;margin:6px 0">${_t.title} — итоги</div>
-      <div style="font-size:14px;color:var(--accent2);font-weight:800">Ваш счёт: ⚡ ${_score} · ${_correct}/${_pack.questions.length}</div>
+    <div style="text-align:center;padding:24px 14px 12px">
+      <div style="font-size:48px;margin-bottom:8px">${placeEmoji}</div>
+      <div style="font-size:22px;font-weight:900;margin-bottom:4px">${placeMsg}</div>
+      <div style="font-size:14px;color:var(--accent2);font-weight:800;margin-bottom:6px">⚡ ${_score} очков · ${_correct}/${_pack.questions.length} правильных · ${pct}%</div>
+      ${myBonus > 0 ? `<div style="display:inline-block;background:rgba(240,192,64,.15);border:0.5px solid rgba(240,192,64,.4);border-radius:10px;padding:6px 14px;font-size:13px;font-weight:800;color:var(--gold);margin-bottom:4px">🎉 +${myBonus} ⚡ за топ-${myPlace}!</div>` : ''}
     </div>
-    <div style="flex:1;overflow-y:auto;padding:0 4px 16px">${list}</div>
-    <div style="padding:12px 14px">
-      <button class="big-btn" onclick="closeTournament()">← Назад</button>
+    <div style="flex:1;overflow-y:auto;padding:0 8px 8px">${list}</div>
+    <div style="padding:12px 14px;display:flex;gap:8px">
+      <button class="big-btn" style="flex:1" onclick="closeTournament()">← На главную</button>
+      <button onclick="shareTournamentResult()" style="background:rgba(255,255,255,.07);border:0.5px solid rgba(255,255,255,.15);border-radius:14px;padding:12px 16px;font-size:13px;font-weight:800;color:var(--muted);cursor:pointer;font-family:inherit">📤</button>
     </div>
   `;
 }
+
+window.shareTournamentResult = function() {
+  const pct = _pack?.questions?.length > 0 ? Math.round(_correct / _pack.questions.length * 100) : 0;
+  const { sharePackResult } = window._shareModule || {};
+  sharePackResult({ title: _t.title, score: _score, correct: _correct, total: _pack.questions.length, pct });
+};
 
 function renderDots(activeIdx) {
   const el = document.getElementById('trn-dots');

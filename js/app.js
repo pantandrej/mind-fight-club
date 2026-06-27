@@ -22,6 +22,7 @@ import './leaderboard.js';
 import './training/slide-pack.js';
 import { refreshHomeBanner } from './tournaments/tournament-pack.js';
 import { loadDailyQuestion } from './daily-question.js';
+import { loadActivityFeed }  from './activity-feed.js';
 import './pwa.js';
 
 // ── Boot ──────────────────────────────────────────────────────────
@@ -32,6 +33,8 @@ document.addEventListener('DOMContentLoaded', () => {
   setTimeout(refreshHomeBanner, 2000);
   // Load daily question card on home
   setTimeout(loadDailyQuestion, 3000);
+  // Activity feed — who's playing right now
+  setTimeout(loadActivityFeed, 4000);
 });
 
 async function registerServiceWorker() {
