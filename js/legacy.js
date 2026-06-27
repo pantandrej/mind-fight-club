@@ -1573,6 +1573,67 @@ const ANALYTICS_LABEL_MAP = {
   'author_questions_submitted': 'Отправленные вопросы авторов',
 };
 
+window.loadAdminKPI = async function() {
+  if (!isAdmin()) return;
+  const el = document.getElementById('admin-kpi-content');
+  if (!el) return;
+  el.innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:8px 0">⏳ Загрузка...</div>';
+
+  const since30 = new Date(Date.now() - 30*24*60*60*1000).toISOString();
+  const since7  = new Date(Date.now() - 7*24*60*60*1000).toISOString();
+  const today   = new Date(); today.setHours(0,0,0,0);
+
+  try {
+    const [
+      { count: totalUsers },
+      { count: newUsers30 },
+      { count: dau },
+      { count: packPlays7 },
+      { count: trnParticipants30 },
+      { data: topPacks },
+    ] = await Promise.all([
+      sb.from('profiles').select('*', { count: 'exact', head: true }),
+      sb.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', since30),
+      sb.from('analytics_events').select('*', { count: 'exact', head: true }).eq('event_name', 'session_start').gte('created_at', today.toISOString()),
+      sb.from('pack_results').select('*', { count: 'exact', head: true }).gte('played_at', since7),
+      sb.from('tournament_participants').select('*', { count: 'exact', head: true }).gte('created_at', since30),
+      sb.from('pack_results').select('pack_id, pack_title').gte('played_at', since7).limit(200),
+    ]);
+
+    // Count pack plays
+    const packCounts = {};
+    (topPacks || []).forEach(r => { packCounts[r.pack_title || r.pack_id] = (packCounts[r.pack_title || r.pack_id] || 0) + 1; });
+    const topPackList = Object.entries(packCounts).sort((a,b) => b[1]-a[1]).slice(0, 3);
+
+    const kpi = [
+      { label: 'Всего пользователей', value: totalUsers ?? '—', icon: '👤' },
+      { label: 'Новых за 30 дней',    value: newUsers30 ?? '—', icon: '🆕' },
+      { label: 'Сессий сегодня (DAU)', value: dau ?? '—',       icon: '📅' },
+      { label: 'Игр в паки (7 дней)', value: packPlays7 ?? '—', icon: '🎮' },
+      { label: 'Турнирных участий (30д)', value: trnParticipants30 ?? '—', icon: '🏆' },
+    ];
+
+    const grid = kpi.map(k => `
+      <div style="background:var(--bg3);border-radius:10px;padding:12px;text-align:center">
+        <div style="font-size:20px;margin-bottom:4px">${k.icon}</div>
+        <div style="font-size:22px;font-weight:900;color:var(--accent2)">${k.value}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px;line-height:1.3">${k.label}</div>
+      </div>`).join('');
+
+    const packsHtml = topPackList.length ? `
+      <div style="margin-top:12px;font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.5px;margin-bottom:6px">ТОП ПАКИ (7 дней)</div>
+      ${topPackList.map(([name, n], i) => `
+        <div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:0.5px solid var(--border)">
+          <span>${['🥇','🥈','🥉'][i]} ${name}</span>
+          <span style="color:var(--accent2);font-weight:800">${n} игр</span>
+        </div>`).join('')}` : '';
+
+    el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:4px">${grid}</div>${packsHtml}`;
+  } catch(e) {
+    el.innerHTML = `<div style="color:var(--muted);font-size:12px">Ошибка: ${e.message}</div>`;
+  }
+};
+
 async function loadAdminAnalytics(){
   if(!isAdmin()) return;
   const el = document.getElementById('admin-analytics-content');

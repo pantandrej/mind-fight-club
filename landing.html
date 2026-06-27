@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Brain Fight Club — живые квиз-турниры онлайн</title>
+<meta name="description" content="Тематические квизы, онлайн-турниры в реальном времени и дуэли с друзьями. Отвечай быстрее — зарабатывай больше. Бесплатно, без скачивания.">
+<meta property="og:title" content="Brain Fight Club — живые квиз-турниры">
+<meta property="og:description" content="Тематические паки, онлайн-турниры и дуэли с друзьями. Чем быстрее отвечаешь — тем больше нейронов.">
+<meta property="og:image" content="https://brain-fight-club.vercel.app/og-image.png">
+<meta property="og:url" content="https://brain-fight-club.vercel.app/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://brain-fight-club.vercel.app/">
+<link rel="icon" href="/icon-192.png">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebApplication","name":"Brain Fight Club","url":"https://brain-fight-club.vercel.app","description":"Онлайн-платформа для квизов, живых турниров и интеллектуальных дуэлей","applicationCategory":"Game","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"RUB"}}
+</script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d0d1a;--bg2:#12082a;--text:#ffffff;--muted:rgba(255,255,255,.5);
+  --accent:#6c63ff;--accent2:#a78bfa;--gold:#f0c040;--green:#4ade80;
+}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;line-height:1.5;min-height:100vh}
+a{text-decoration:none;color:inherit}
+
+/* NAV */
+nav{position:sticky;top:0;z-index:100;background:rgba(13,13,26,.9);backdrop-filter:blur(12px);border-bottom:0.5px solid rgba(255,255,255,.08);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between}
+.nav-logo{font-size:18px;font-weight:900;letter-spacing:-.5px;color:var(--accent2)}
+.nav-links{display:flex;align-items:center;gap:20px}
+.nav-links a{font-size:13px;font-weight:600;color:var(--muted);transition:color .15s}
+.nav-links a:hover{color:var(--text)}
+.nav-cta{background:var(--accent);border:none;border-radius:10px;padding:8px 18px;font-size:13px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit}
+.nav-cta:hover{background:#7c74ff}
+
+/* HERO */
+.hero{max-width:760px;margin:0 auto;padding:80px 24px 60px;text-align:center}
+.hero-badge{display:inline-block;background:rgba(108,99,255,.15);border:0.5px solid rgba(108,99,255,.4);border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;color:var(--accent2);margin-bottom:24px;letter-spacing:.5px}
+.hero h1{font-size:clamp(36px,7vw,72px);font-weight:900;line-height:1.05;letter-spacing:-1.5px;margin-bottom:20px}
+.hero h1 span{color:var(--accent2)}
+.hero p{font-size:clamp(15px,2.5vw,20px);color:var(--muted);max-width:520px;margin:0 auto 36px;line-height:1.6}
+.cta-row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.btn-primary{background:var(--accent);border:none;border-radius:14px;padding:15px 32px;font-size:16px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit;transition:transform .1s,background .15s}
+.btn-primary:hover{background:#7c74ff;transform:translateY(-1px)}
+.btn-secondary{background:rgba(255,255,255,.06);border:0.5px solid rgba(255,255,255,.15);border-radius:14px;padding:15px 28px;font-size:16px;font-weight:700;color:var(--text);cursor:pointer;font-family:inherit;transition:background .15s}
+.btn-secondary:hover{background:rgba(255,255,255,.1)}
+
+/* STATS ROW */
+.stats{display:flex;justify-content:center;gap:40px;flex-wrap:wrap;padding:32px 24px;border-top:0.5px solid rgba(255,255,255,.06);border-bottom:0.5px solid rgba(255,255,255,.06);margin-bottom:80px}
+.stat{text-align:center}
+.stat-n{font-size:32px;font-weight:900;color:var(--accent2)}
+.stat-l{font-size:12px;color:var(--muted);margin-top:2px}
+
+/* HOW IT WORKS */
+.section{max-width:860px;margin:0 auto 80px;padding:0 24px}
+.section-tag{font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--accent2);margin-bottom:12px}
+.section h2{font-size:clamp(26px,4vw,40px);font-weight:900;letter-spacing:-.5px;margin-bottom:48px}
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:24px}
+.step{background:rgba(255,255,255,.03);border:0.5px solid rgba(255,255,255,.08);border-radius:18px;padding:24px;position:relative}
+.step-n{font-size:11px;font-weight:800;letter-spacing:1px;color:var(--accent2);margin-bottom:12px}
+.step-icon{font-size:36px;margin-bottom:12px}
+.step h3{font-size:17px;font-weight:800;margin-bottom:8px}
+.step p{font-size:13px;color:var(--muted);line-height:1.5}
+
+/* FEATURES */
+.features{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.feat{background:rgba(255,255,255,.03);border:0.5px solid rgba(255,255,255,.08);border-radius:16px;padding:20px 22px;display:flex;gap:14px;align-items:flex-start}
+.feat-icon{font-size:28px;flex-shrink:0;margin-top:2px}
+.feat h3{font-size:15px;font-weight:800;margin-bottom:4px}
+.feat p{font-size:12px;color:var(--muted);line-height:1.5}
+
+/* FOR ORGANIZERS */
+.org-card{background:linear-gradient(135deg,rgba(108,99,255,.12),rgba(168,85,247,.08));border:0.5px solid rgba(108,99,255,.3);border-radius:24px;padding:40px;display:flex;gap:32px;align-items:center;flex-wrap:wrap}
+.org-text{flex:1;min-width:260px}
+.org-text h2{font-size:28px;font-weight:900;margin-bottom:12px}
+.org-text p{font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:20px}
+.org-perks{list-style:none;display:flex;flex-direction:column;gap:8px;margin-bottom:24px}
+.org-perks li{font-size:13px;color:var(--muted);display:flex;gap:8px;align-items:flex-start}
+.org-perks li::before{content:"✓";color:var(--green);font-weight:900;flex-shrink:0}
+.org-emoji{font-size:72px;flex-shrink:0}
+
+/* FOOTER */
+footer{border-top:0.5px solid rgba(255,255,255,.06);padding:32px 24px;text-align:center}
+footer p{font-size:12px;color:var(--muted)}
+footer a{color:var(--accent2)}
+
+/* PHONE MOCKUP */
+.mockup-wrap{display:flex;justify-content:center;gap:16px;padding:0 24px 80px;flex-wrap:wrap}
+.phone{background:rgba(255,255,255,.04);border:0.5px solid rgba(255,255,255,.1);border-radius:28px;padding:20px 16px;width:220px;flex-shrink:0}
+.phone-hdr{font-size:10px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent2);margin-bottom:12px}
+.phone-q{background:rgba(255,255,255,.05);border-radius:12px;padding:14px;margin-bottom:8px}
+.phone-q-text{font-size:11px;font-weight:800;margin-bottom:10px;line-height:1.4}
+.phone-timer{font-size:20px;font-weight:900;color:var(--gold);text-align:center;margin-bottom:8px}
+.phone-btn{background:rgba(108,99,255,.2);border:0.5px solid rgba(108,99,255,.4);border-radius:8px;padding:8px 10px;font-size:11px;font-weight:700;color:var(--accent2);margin-bottom:4px;text-align:center}
+.phone-btn.correct{background:rgba(74,222,128,.15);border-color:rgba(74,222,128,.4);color:var(--green)}
+.phone-board{background:rgba(255,255,255,.04);border-radius:10px;padding:10px}
+.board-row{display:flex;justify-content:space-between;font-size:10px;padding:4px 0;color:var(--muted)}
+.board-row.me{color:var(--text);font-weight:800;background:rgba(108,99,255,.15);border-radius:6px;padding:4px 6px;margin:-4px -6px}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-logo">🧠 BFC</a>
+  <div class="nav-links">
+    <a href="#how">Как это работает</a>
+    <a href="#features">Возможности</a>
+    <a href="#organizers">Организаторам</a>
+  </div>
+  <a href="/"><button class="nav-cta">Играть бесплатно →</button></a>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-badge">🧪 Бета · Открытый доступ</div>
+  <h1>Квизы, которые <span>захватывают</span></h1>
+  <p>Тематические паки, живые онлайн-турниры и дуэли с друзьями. Отвечай быстрее всех — побеждай.</p>
+  <div class="cta-row">
+    <a href="/"><button class="btn-primary">⚡ Начать играть — бесплатно</button></a>
+    <a href="#organizers"><button class="btn-secondary">Провести свой квиз →</button></a>
+  </div>
+</div>
+
+<!-- STATS -->
+<div class="stats">
+  <div class="stat"><div class="stat-n">∞</div><div class="stat-l">Паков в разработке</div></div>
+  <div class="stat"><div class="stat-n">⚡</div><div class="stat-l">Нейроны за скорость</div></div>
+  <div class="stat"><div class="stat-n">🏆</div><div class="stat-l">Живые турниры</div></div>
+  <div class="stat"><div class="stat-n">0₽</div><div class="stat-l">Всегда бесплатно</div></div>
+</div>
+
+<!-- PHONE MOCKUPS -->
+<div class="mockup-wrap">
+  <div class="phone">
+    <div class="phone-hdr">📦 Тематический пак</div>
+    <div class="phone-q">
+      <div class="phone-q-text">Какой жанр у игры The Last of Us?</div>
+      <div class="phone-timer">⏱ 14с</div>
+      <div class="phone-btn correct">✓ Экшн / Выживание</div>
+      <div class="phone-btn" style="opacity:.4">Файтинг</div>
+      <div class="phone-btn" style="opacity:.4">Гонки</div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);text-align:center">+85 ⚡ нейронов за скорость</div>
+  </div>
+  <div class="phone">
+    <div class="phone-hdr">🏆 Живой турнир</div>
+    <div class="phone-board">
+      <div class="board-row" style="font-size:9px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.3);margin-bottom:4px"><span>Игрок</span><span>Очки</span></div>
+      <div class="board-row">🥇 Катя М.<span style="color:var(--gold)">340</span></div>
+      <div class="board-row">🥈 Дима Р.<span>290</span></div>
+      <div class="board-row me">🎯 Ты &nbsp;#3<span style="color:var(--accent2)">265</span></div>
+      <div class="board-row">4. Маша К.<span style="opacity:.5">220</span></div>
+      <div class="board-row">5. Антон<span style="opacity:.5">180</span></div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:8px">Осталось 2 вопроса</div>
+  </div>
+  <div class="phone">
+    <div class="phone-hdr">📤 Результат</div>
+    <div style="text-align:center;padding:12px 0">
+      <div style="font-size:40px;margin-bottom:8px">🏆</div>
+      <div style="font-size:15px;font-weight:900;margin-bottom:4px">Видеоигры v2</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:12px">3/3 правильных · 94%</div>
+      <div style="background:rgba(108,99,255,.2);border:0.5px solid rgba(108,99,255,.4);border-radius:10px;padding:8px;font-size:18px;font-weight:900;color:var(--accent2);margin-bottom:12px">⚡ 310 нейронов</div>
+      <div style="font-size:10px;color:var(--muted)">★★★ Поделиться в TG →</div>
+    </div>
+  </div>
+</div>
+
+<!-- HOW IT WORKS -->
+<div class="section" id="how">
+  <div class="section-tag">Как работает</div>
+  <h2>Три шага до первой победы</h2>
+  <div class="steps">
+    <div class="step">
+      <div class="step-n">01</div>
+      <div class="step-icon">🎮</div>
+      <h3>Выбери тему</h3>
+      <p>Видеоигры, кино, история, наука — открываем новые паки каждую неделю.</p>
+    </div>
+    <div class="step">
+      <div class="step-n">02</div>
+      <div class="step-icon">⚡</div>
+      <h3>Отвечай быстро</h3>
+      <p>30 секунд на вопрос. Чем раньше нажмёшь правильный ответ — тем больше нейронов.</p>
+    </div>
+    <div class="step">
+      <div class="step-n">03</div>
+      <div class="step-icon">🏆</div>
+      <h3>Соревнуйся</h3>
+      <p>Живые турниры — все отвечают одновременно. Таблица обновляется в реальном времени.</p>
+    </div>
+  </div>
+</div>
+
+<!-- FEATURES -->
+<div class="section" id="features">
+  <div class="section-tag">Возможности</div>
+  <h2>Всё что нужно для крутого квиза</h2>
+  <div class="features">
+    <div class="feat"><div class="feat-icon">🏆</div><div><h3>Онлайн-турниры</h3><p>Все игроки отвечают одновременно. Живая таблица. Уведомление за 5 мин до старта.</p></div></div>
+    <div class="feat"><div class="feat-icon">⚔️</div><div><h3>Дуэли 1 на 1</h3><p>Вызови друга на бой. 10 вопросов, кто набрал больше — тот победил.</p></div></div>
+    <div class="feat"><div class="feat-icon">📦</div><div><h3>Тематические паки</h3><p>Слайд-вопросы с картинками и музыкой. Правила пака перед стартом.</p></div></div>
+    <div class="feat"><div class="feat-icon">⚡</div><div><h3>Нейроны</h3><p>Внутренняя валюта за скорость и правильность. Трать на проходки живых квизов.</p></div></div>
+    <div class="feat"><div class="feat-icon">🔥</div><div><h3>Стрик</h3><p>Играй каждый день — стрик растёт. 7, 30, 100 дней — бонусные нейроны.</p></div></div>
+    <div class="feat"><div class="feat-icon">📲</div><div><h3>PWA-приложение</h3><p>Работает как приложение на любом устройстве. Без App Store, без скачивания.</p></div></div>
+  </div>
+</div>
+
+<!-- ORGANIZERS -->
+<div class="section" id="organizers">
+  <div class="org-card">
+    <div class="org-text">
+      <div class="section-tag" style="margin-bottom:12px">Для организаторов</div>
+      <h2>Проводишь живые квизы?</h2>
+      <p>Разместись на платформе — игроки тратят нейроны на проходки твоих квизов, ты получаешь новых клиентов.</p>
+      <ul class="org-perks">
+        <li>Страница с твоими квизами в приложении</li>
+        <li>Игроки платят нейронами — ты получаешь аудиторию</li>
+        <li>Онлайн-турниры с твоими вопросами</li>
+        <li>Статистика: кто пришёл, откуда</li>
+      </ul>
+      <a href="/"><button class="btn-primary" style="font-size:14px;padding:12px 24px">🏟️ Подать заявку →</button></a>
+    </div>
+    <div class="org-emoji">🏟️</div>
+  </div>
+</div>
+
+<!-- FINAL CTA -->
+<div style="text-align:center;padding:60px 24px 80px">
+  <div style="font-size:48px;margin-bottom:16px">🧠</div>
+  <h2 style="font-size:clamp(24px,4vw,40px);font-weight:900;margin-bottom:12px">Готов проверить мозг?</h2>
+  <p style="font-size:15px;color:var(--muted);margin-bottom:28px">Бесплатно. Без скачивания. Прямо сейчас.</p>
+  <a href="/"><button class="btn-primary" style="font-size:18px;padding:18px 40px">⚡ Начать играть</button></a>
+</div>
+
+<footer>
+  <p>© 2025 Brain Fight Club &nbsp;·&nbsp; <a href="/">Открыть приложение</a> &nbsp;·&nbsp; mysliklub@gmail.com</p>
+</footer>
+
+</body>
+</html>

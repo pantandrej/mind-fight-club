@@ -8,7 +8,22 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Brain Fight Club">
 <link rel="manifest" href="/manifest.json">
-<title>Brain Fight Club</title>
+<title>Brain Fight Club — квиз-платформа для живых турниров</title>
+<meta name="description" content="Тематические квизы, онлайн-турниры в реальном времени и дуэли с друзьями. Отвечай быстрее — зарабатывай больше нейронов. Бесплатно, без скачивания.">
+<meta name="keywords" content="квиз, онлайн квиз, турнир по знаниям, интеллектуальная игра, Brain Fight Club">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://brain-fight-club.vercel.app/">
+<meta property="og:title" content="Brain Fight Club — живые квиз-турниры">
+<meta property="og:description" content="Тематические паки, онлайн-турниры и дуэли с друзьями. Чем быстрее отвечаешь — тем больше нейронов.">
+<meta property="og:image" content="https://brain-fight-club.vercel.app/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Brain Fight Club — живые квиз-турниры">
+<meta name="twitter:description" content="Тематические паки, онлайн-турниры и дуэли с друзьями.">
+<meta name="twitter:image" content="https://brain-fight-club.vercel.app/og-image.png">
+<link rel="canonical" href="https://brain-fight-club.vercel.app/">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebApplication","name":"Brain Fight Club","url":"https://brain-fight-club.vercel.app","description":"Онлайн-платформа для квизов, живых турниров и интеллектуальных дуэлей","applicationCategory":"Game","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"RUB"}}
+</script>
 
 <!-- CDN dependencies (must load before ES modules) -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -162,6 +177,15 @@
       <div onclick="openPremiumScreen()" style="background:rgba(240,192,64,.08);border:0.5px solid rgba(240,192,64,.3);border-radius:14px;padding:14px;cursor:pointer;display:flex;align-items:flex-start;gap:10px">
         <div style="font-size:22px;flex-shrink:0">⭐</div>
         <div><div style="font-size:13px;font-weight:800;margin-bottom:2px;color:var(--gold)">Premium</div><div style="font-size:11px;color:var(--muted);line-height:1.3">Больше баттлов и тренировок</div></div>
+      </div>
+    </div>
+
+    <!-- Organizer CTA — subtle footer card -->
+    <div onclick="showScreen('organizer-apply')" style="background:rgba(108,99,255,.06);border:0.5px solid rgba(108,99,255,.2);border-radius:14px;padding:12px 14px;margin-bottom:16px;cursor:pointer;display:flex;align-items:center;gap:12px">
+      <div style="font-size:26px">🏟️</div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:800;margin-bottom:1px">Проводишь живые квизы?</div>
+        <div style="font-size:11px;color:var(--muted)">Стань организатором на платформе — подать заявку →</div>
       </div>
     </div>
     <div class="section-title" id="h-topic-title">Тема</div>
@@ -1220,6 +1244,18 @@
        style="font-size:11px;color:var(--accent2);text-decoration:none;font-weight:700">DB →</a>
   </div>
   <div style="width:100%;max-width:600px;padding:12px 16px 100px;display:flex;flex-direction:column;gap:10px">
+
+    <!-- Section: KPI Dashboard -->
+    <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--muted);margin:4px 0 8px">📊 КЛЮЧЕВЫЕ МЕТРИКИ</div>
+    <div id="admin-kpi-wrap" style="background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;padding:14px;margin-bottom:4px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <span style="font-size:12px;color:var(--muted)">Последние 30 дней</span>
+        <button onclick="loadAdminKPI()" style="background:var(--accent);border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit">↺ Загрузить</button>
+      </div>
+      <div id="admin-kpi-content">
+        <div style="color:var(--muted);font-size:12px;text-align:center;padding:8px 0">Нажми Загрузить →</div>
+      </div>
+    </div>
 
     <!-- Section: Tester -->
     <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--muted);margin:4px 0 2px">🧪 ТЕСТИРОВАНИЕ</div>
