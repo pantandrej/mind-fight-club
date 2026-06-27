@@ -240,7 +240,7 @@ function renderDots() {
   }).join('');
 }
 
-function endPack() {
+async function endPack() {
   stopTimer();
   stopMedia();
   track('slide_pack_completed', { pack_id: _pack.id, score: _score, correct: _correct });
@@ -256,6 +256,26 @@ function endPack() {
 
   if (_score > 0 && window.awardNeurons) {
     window.awardNeurons(_score, 'quiz_reward', `pack:${_pack.id}:${Date.now()}`);
+  }
+
+  // Save result to DB and localStorage
+  const result = {
+    pack_id: _pack.id,
+    pack_title: _pack.title || _pack.id,
+    score: _score,
+    correct: _correct,
+    total: _pack.questions.length,
+    played_at: new Date().toISOString(),
+  };
+  const history = JSON.parse(localStorage.getItem('bfc_pack_history') || '[]');
+  history.unshift(result);
+  localStorage.setItem('bfc_pack_history', JSON.stringify(history.slice(0, 50)));
+
+  if (sb) {
+    const user = (await sb.auth.getUser()).data?.user;
+    if (user) {
+      sb.from('pack_results').insert({ user_id: user.id, ...result }).then(() => {}).catch(() => {});
+    }
   }
 }
 

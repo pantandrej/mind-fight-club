@@ -1496,6 +1496,45 @@ async function loadProfileStats(){
     }
   }
   loadAnalyticsSummary();
+  loadPackHistory();
+}
+
+async function loadPackHistory() {
+  const wrap = document.getElementById('pack-history-wrap');
+  const list = document.getElementById('pack-history-list');
+  if (!wrap || !list) return;
+
+  // Try DB first, fall back to localStorage
+  let rows = [];
+  if (currentUser && sb) {
+    const { data } = await sb.from('pack_results')
+      .select('*').eq('user_id', currentUser.id)
+      .order('played_at', { ascending: false }).limit(10);
+    rows = data || [];
+  }
+  if (!rows.length) {
+    rows = JSON.parse(localStorage.getItem('bfc_pack_history') || '[]').slice(0, 10);
+  }
+  if (!rows.length) return;
+
+  wrap.style.display = '';
+  const icons = { 0: '📚', 50: '🎯', 80: '🏆' };
+  list.innerHTML = rows.map(r => {
+    const pct = Math.round((r.correct / (r.total || 1)) * 100);
+    const icon = pct >= 80 ? '🏆' : pct >= 50 ? '🎯' : '📚';
+    const date = new Date(r.played_at).toLocaleDateString('ru', { day: 'numeric', month: 'short' });
+    return `<div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:12px">
+      <div style="font-size:24px">${icon}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.pack_title || r.pack_id}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${r.correct}/${r.total} верных · ${date}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-size:16px;font-weight:900;color:var(--accent2)">⚡${r.score}</div>
+        <div style="font-size:11px;color:var(--muted)">${pct}%</div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 async function loadAnalyticsSummary(){
