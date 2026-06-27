@@ -159,16 +159,24 @@ window.spPick = function(i) {
   document.getElementById('sp-score').textContent = _score;
   renderDots();
 
-  // Show answer slide after 0.8s, then advance after another 2s
+  // Show answer slide after 0.8s, hold 15s, then advance
   setTimeout(() => {
     if (q.ans_img) {
       document.getElementById('sp-img').src = q.ans_img;
     }
-    setTimeout(() => {
-      _qIdx++;
-      if (_qIdx < _pack.questions.length) renderQuestion();
-      else endPack();
-    }, 2200);
+    // Show countdown so user knows when it advances
+    let left = 15;
+    const fb = document.getElementById('sp-feedback');
+    const tick = setInterval(() => {
+      left--;
+      if (fb) fb.textContent = (fb.textContent.replace(/\s*\(\d+s\)$/, '')) + ` (${left}s)`;
+      if (left <= 0) {
+        clearInterval(tick);
+        _qIdx++;
+        if (_qIdx < _pack.questions.length) renderQuestion();
+        else endPack();
+      }
+    }, 1000);
   }, 800);
 };
 
