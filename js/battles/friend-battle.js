@@ -319,16 +319,12 @@ function loadDuelQ(){
     b.innerHTML='<span class="ans-l">'+answerLetter(i)+'</span><span>'+a+'</span>';
     b.onclick=()=>pickDuel(i);ans.appendChild(b);
   });
-  // Mark previous question as opp miss if their score didn't change during it
+  // Fill all previous opponent dots that are still empty → opponent missed those questions
   if(duelIdx > 0 && !window._isBotDuel){
-    const prevIdx = duelIdx - 1;
-    const prevDot = document.getElementById('d-opp-dots-dot-' + prevIdx);
-    if(prevDot && !prevDot.textContent){
-      // Still empty → opponent didn't answer that question → mark as miss
-      setOppDot(prevIdx, false, 0);
+    for(let pi = 0; pi < duelIdx; pi++){
+      const prevDot = document.getElementById('d-opp-dots-dot-' + pi);
+      if(prevDot && !prevDot.textContent){ setOppDot(pi, false, 0); }
     }
-    // Check current score vs saved — if no change → previous was a miss
-    // (setOppDot in saveDuelScore handles the correct case already)
   }
   _oppScoreAtQStart = duelOppScore;
   setDot('d-my-dots',duelIdx,'active');
@@ -385,21 +381,7 @@ async function saveDuelScore(){
   try {
     await sb.from('duel_rooms').update({ [field]: duelMyScore }).eq('code', duelCode);
   } catch(e) { console.error('[duel] saveDuelScore failed:', e); }
-  // Fetch opponent score for hint display
-  try {
-    const {data} = await sb.from('duel_rooms').select('host_score,guest_score').eq('code',duelCode).single();
-    if(data){
-      const oppF = duelRole==='host' ? 'guest_score' : 'host_score';
-      const newOppScore = data[oppF] ?? 0;
-      if(newOppScore > duelOppScore){
-        const oppPts = newOppScore - duelOppScore;
-        document.getElementById('opp-hint').textContent = t('oppAnswered');
-        document.getElementById('opp-hint').className = 'opp-hint answered';
-        setOppDot(duelIdx, true, oppPts);
-      }
-      duelOppScore = newOppScore; updateDuelScores();
-    }
-  } catch(e) { /* silent — opponent score hint is non-critical */ }
+  // Opponent score is handled by _oppPollInterval — no separate fetch needed here
 }
 function updateDuelScores(){
   document.getElementById('ds-me-score').textContent=duelMyScore;
