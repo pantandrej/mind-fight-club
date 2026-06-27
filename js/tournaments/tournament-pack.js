@@ -270,14 +270,14 @@ window.trnPick = async function(i) {
   _answered[q.n] = i;
   if (correct) { _score += pts; _correct++; }
 
-  // Highlight chosen button
+  // Just mark chosen button as selected — don't reveal correct/wrong until answer phase
   document.querySelectorAll('.sp-ans-btn').forEach((btn, idx) => {
-    if (idx === q.c)  btn.classList.add('sp-correct');
-    else if (idx === i) btn.classList.add('sp-wrong');
     btn.disabled = true;
+    if (idx === i) btn.style.cssText += ';border-color:rgba(255,255,255,.5);opacity:1;background:rgba(255,255,255,.15)';
+    else btn.style.opacity = '0.4';
   });
   const fb = document.getElementById('trn-feedback');
-  if (fb) { fb.textContent = correct ? `✓ +${pts}` : `✗ ${q.a[q.c]}`; fb.style.color = correct ? '#4ade80' : '#e05555'; }
+  if (fb) { fb.textContent = '✓ Ответ принят'; fb.style.color = 'var(--muted)'; }
 
   // Save to DB
   const user = sb.auth?.getUser ? (await sb.auth.getUser()).data?.user : null;
