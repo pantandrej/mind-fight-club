@@ -23,7 +23,7 @@ CREATE POLICY "tournaments writable by admins" ON tournaments FOR ALL
 CREATE TABLE IF NOT EXISTS tournament_participants (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   tournament_id   uuid NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
-  user_id         uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id         uuid NOT NULL REFERENCES auth.users ON DELETE CASCADE,
   score           int NOT NULL DEFAULT 0,
   correct         int NOT NULL DEFAULT 0,
   registered_at   timestamptz NOT NULL DEFAULT now(),
@@ -42,7 +42,7 @@ CREATE POLICY "participants update own" ON tournament_participants FOR UPDATE
 CREATE TABLE IF NOT EXISTS tournament_answers (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   tournament_id   uuid NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
-  user_id         uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id         uuid NOT NULL REFERENCES auth.users ON DELETE CASCADE,
   question_n      int NOT NULL,
   picked          int NOT NULL,   -- answer index chosen (-1 = timeout)
   correct         bool NOT NULL,
