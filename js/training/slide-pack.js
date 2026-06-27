@@ -17,6 +17,31 @@ let _mediaEl    = null;
 let _ansTimer   = null;
 const MAX_TIME  = 20;
 
+function showRules(rulesImg) {
+  const game = document.getElementById('sp-game');
+  const wrap = document.getElementById('sp-rules-wrap');
+  if (wrap) {
+    wrap.style.display = 'flex';
+    document.getElementById('sp-rules-img').src = rulesImg;
+    return;
+  }
+  // Create rules overlay inside slide-pack-screen
+  const screen = document.getElementById('slide-pack-screen');
+  const div = document.createElement('div');
+  div.id = 'sp-rules-wrap';
+  div.style.cssText = 'flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;gap:16px';
+  div.innerHTML = `
+    <img id="sp-rules-img" src="${rulesImg}" style="max-width:100%;max-height:70vh;border-radius:12px;object-fit:contain"/>
+    <button class="big-btn" style="width:100%;max-width:340px" onclick="window._spStartGame()">Начать игру →</button>
+  `;
+  screen.appendChild(div);
+  window._spStartGame = () => {
+    div.style.display = 'none';
+    document.getElementById('sp-game').style.display = 'flex';
+    renderQuestion();
+  };
+}
+
 export async function loadPack(packId) {
   try {
     const res = await fetch(`/packs/${packId}/pack.json`);
@@ -40,10 +65,16 @@ export function startSlidePack(pack) {
   stopMedia();
 
   document.getElementById('slide-pack-screen').style.display = 'flex';
-  document.getElementById('sp-game').style.display   = 'flex';
+  document.getElementById('sp-game').style.display   = 'none';
   document.getElementById('sp-result').style.display = 'none';
   document.getElementById('sp-review').style.display = 'none';
-  renderQuestion();
+
+  if (pack.rules_img) {
+    showRules(pack.rules_img);
+  } else {
+    document.getElementById('sp-game').style.display = 'flex';
+    renderQuestion();
+  }
   track('slide_pack_started', { pack_id: pack.id });
 }
 

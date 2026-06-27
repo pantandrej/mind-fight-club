@@ -1,0 +1,35 @@
+{
+  "id": "videogames_v2",
+  "title": "Видеоигры v2",
+  "emoji": "🎮",
+  "category": "videogames",
+  "type": "slide_pack",
+  "description": "3 вопроса — тест новый формат",
+  "rules_img": "/packs/videogames_v2/rules.jpg",
+  "questions": [
+    {
+      "n": 1,
+      "img": "/packs/videogames_v2/q1.jpg",
+      "q": "Правда ли, что в игре Принц Персии 2003 года кинжал даёт возможность управлять временем?",
+      "a": ["ДА", "НЕТ"],
+      "c": 0,
+      "ans_img": "/packs/videogames_v2/a1.jpg"
+    },
+    {
+      "n": 2,
+      "img": "/packs/videogames_v2/q2.jpg",
+      "q": "Назовите жанр игры по культовому боевому кличу: «Лиииииирооой»",
+      "a": ["RPG", "Шутер"],
+      "c": 0,
+      "ans_img": "/packs/videogames_v2/a2.jpg"
+    },
+    {
+      "n": 3,
+      "img": "/packs/videogames_v2/q3.jpg",
+      "q": "Кто получится, если из названия этой игры убрать последнюю букву?",
+      "a": ["ЖЕНЩИНА", "МУЖЧИНА"],
+      "c": 0,
+      "ans_img": "/packs/videogames_v2/a3.jpg"
+    }
+  ]
+}
