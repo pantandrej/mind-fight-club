@@ -14,6 +14,7 @@ let _timeLeft   = 20;
 let _timer      = null;
 let _history    = [];
 let _mediaEl    = null;
+let _ansTimer   = null;
 const MAX_TIME  = 20;
 
 export async function loadPack(packId) {
@@ -55,6 +56,7 @@ function renderQuestion() {
   _showingAns = false;
   stopTimer();
   stopMedia();
+  clearInterval(_ansTimer); _ansTimer = null;
 
   document.getElementById('sp-q-num').textContent = `${_qIdx + 1} / ${_pack.questions.length}`;
   document.getElementById('sp-score').textContent  = _score;
@@ -159,23 +161,30 @@ window.spPick = function(i) {
   document.getElementById('sp-score').textContent = _score;
   renderDots();
 
-  // Show answer slide after 0.8s, hold 15s, then advance
+  // Show answer slide after 0.8s, hold 15s (or user presses Далее)
   setTimeout(() => {
-    if (q.ans_img) {
-      document.getElementById('sp-img').src = q.ans_img;
-    }
-    // Show countdown so user knows when it advances
-    let left = 15;
+    if (q.ans_img) document.getElementById('sp-img').src = q.ans_img;
+
+    // Show Далее button + countdown
     const fb = document.getElementById('sp-feedback');
-    const tick = setInterval(() => {
+    let left = 15;
+    const advance = () => {
+      clearInterval(_ansTimer);
+      _qIdx++;
+      if (_qIdx < _pack.questions.length) renderQuestion();
+      else endPack();
+    };
+    window._spAdvance = advance;
+
+    if (fb) {
+      fb.innerHTML = `${win ? `✓ +${pts}` : `✗ ${q.a[q.c]}`} &nbsp;<button onclick="window._spAdvance()" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:8px;color:#fff;font-size:12px;font-weight:700;padding:3px 10px;cursor:pointer;font-family:inherit">Далее (<span id="sp-ans-left">${left}</span>s)</button>`;
+    }
+
+    _ansTimer = setInterval(() => {
       left--;
-      if (fb) fb.textContent = (fb.textContent.replace(/\s*\(\d+s\)$/, '')) + ` (${left}s)`;
-      if (left <= 0) {
-        clearInterval(tick);
-        _qIdx++;
-        if (_qIdx < _pack.questions.length) renderQuestion();
-        else endPack();
-      }
+      const el = document.getElementById('sp-ans-left');
+      if (el) el.textContent = left;
+      if (left <= 0) advance();
     }, 1000);
   }, 800);
 };
