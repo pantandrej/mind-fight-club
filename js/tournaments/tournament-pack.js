@@ -308,16 +308,78 @@ window.trnRegister = async function(tournamentId) {
 
 // ── Tournaments list screen ───────────────────────────────────────────
 
+let _listRefreshTimer = null;
+
+window.closeTournamentsList = function() {
+  clearInterval(_listRefreshTimer);
+  _listRefreshTimer = null;
+  document.getElementById('tournaments-list-screen').style.display = 'none';
+};
+
+let _listRows = [];
+let _listUser = null;
+let _listRegIds = new Set();
+
+function _renderTournamentList() {
+  const body = document.getElementById('trn-list-body');
+  if (!body || !_listRows.length) return;
+
+  body.innerHTML = _listRows.map(t => {
+    const startsAt = new Date(t.starts_at);
+    const diffMs   = startsAt.getTime() - Date.now();
+    const isLive   = t.status === 'active' || diffMs <= 0;
+    const isReg    = _listRegIds.has(t.id);
+
+    let timeStr;
+    if (isLive) {
+      timeStr = '<span style="color:#4ade80;font-weight:800">● LIVE</span>';
+    } else {
+      const d = Math.floor(diffMs / 86400000);
+      const h = Math.floor((diffMs % 86400000) / 3600000);
+      const m = Math.floor((diffMs % 3600000) / 60000);
+      const s = Math.floor((diffMs % 60000) / 1000);
+      timeStr = d > 0 ? `через ${d}д ${h}ч` : h > 0 ? `через ${h}ч ${m}м` : m > 0 ? `через ${m}м ${s}с` : `через ${s}с`;
+    }
+
+    let btn;
+    if (isLive) {
+      btn = `<button class="big-btn" style="flex:1;padding:10px;background:linear-gradient(135deg,#22c55e,#16a34a)" onclick="openTournamentAndClose('${t.id}')">▶ Играть сейчас</button>`;
+    } else if (isReg) {
+      btn = `<button class="score-sec-btn" style="flex:1;padding:10px;color:#4ade80" disabled>✓ Зарегистрирован</button>`;
+    } else if (_listUser) {
+      btn = `<button class="big-btn" style="flex:1;padding:10px" onclick="trnRegister('${t.id}',this)">Зарегистрироваться</button>`;
+    } else {
+      btn = `<button class="score-sec-btn" style="flex:1;padding:10px" onclick="window.toast?.('Войдите, чтобы зарегистрироваться')">Войти и зарегистрироваться</button>`;
+    }
+
+    return `<div style="background:rgba(255,255,255,.05);border-radius:14px;padding:16px;border:1px solid ${isLive ? 'rgba(74,222,128,.3)' : 'rgba(255,255,255,.08)'}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+        <div style="font-size:16px;font-weight:900">${t.title}</div>
+        <div style="font-size:12px">${timeStr}</div>
+      </div>
+      ${t.description ? `<div style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.4">${t.description}</div>` : ''}
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
+        ⏱ ${t.q_duration}с на вопрос · 📅 ${startsAt.toLocaleDateString('ru', {day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'})}
+      </div>
+      <div style="display:flex;gap:8px">${btn}</div>
+    </div>`;
+  }).join('');
+}
+
 window.openTournamentsListScreen = async function() {
   const screen = document.getElementById('tournaments-list-screen');
   screen.style.display = 'flex';
+  clearInterval(_listRefreshTimer);
+  _listRefreshTimer = setInterval(_renderTournamentList, 1000);  // re-render every second (no DB call)
+
+  const body = document.getElementById('trn-list-body');
+  body.innerHTML = `<div style="text-align:center;color:var(--muted);padding:24px">Загрузка...</div>`;
 
   const { data: rows } = await sb.from('tournaments')
     .select('*')
     .in('status', ['upcoming', 'active'])
     .order('starts_at', { ascending: true });
 
-  const body = document.getElementById('trn-list-body');
   if (!rows || rows.length === 0) {
     body.innerHTML = `<div style="text-align:center;color:var(--muted);padding:40px 16px">
       <div style="font-size:40px;margin-bottom:12px">🏆</div>
@@ -327,53 +389,15 @@ window.openTournamentsListScreen = async function() {
     return;
   }
 
-  // Check user registration
-  const user = sb.auth?.getUser ? (await sb.auth.getUser()).data?.user : null;
-  let registeredIds = new Set();
-  if (user) {
+  _listRows = rows;
+  _listUser = sb.auth?.getUser ? (await sb.auth.getUser()).data?.user : null;
+  _listRegIds = new Set();
+  if (_listUser) {
     const { data: reg } = await sb.from('tournament_participants')
-      .select('tournament_id').eq('user_id', user.id);
-    (reg || []).forEach(r => registeredIds.add(r.tournament_id));
+      .select('tournament_id').eq('user_id', _listUser.id);
+    (reg || []).forEach(r => _listRegIds.add(r.tournament_id));
   }
-
-  body.innerHTML = rows.map(t => {
-    const startsAt  = new Date(t.starts_at);
-    const now       = Date.now();
-    const diffMs    = startsAt.getTime() - now;
-    const isActive  = t.status === 'active';
-    const isReg     = registeredIds.has(t.id);
-
-    let timeStr;
-    if (isActive) {
-      timeStr = '<span style="color:#4ade80;font-weight:800">● LIVE</span>';
-    } else {
-      const d = Math.floor(diffMs / 86400000);
-      const h = Math.floor((diffMs % 86400000) / 3600000);
-      const m = Math.floor((diffMs % 3600000) / 60000);
-      timeStr = d > 0 ? `через ${d}д ${h}ч` : h > 0 ? `через ${h}ч ${m}м` : `через ${m}м`;
-    }
-
-    return `<div style="background:rgba(255,255,255,.05);border-radius:14px;padding:16px;border:1px solid rgba(255,255,255,.08)">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
-        <div style="font-size:16px;font-weight:900">${t.title}</div>
-        <div style="font-size:12px">${timeStr}</div>
-      </div>
-      ${t.description ? `<div style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.4">${t.description}</div>` : ''}
-      <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
-        ⏱ ${t.q_duration}с на вопрос · 📅 ${startsAt.toLocaleDateString('ru', {day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'})}
-      </div>
-      <div style="display:flex;gap:8px">
-        ${isActive
-          ? `<button class="big-btn" style="flex:1;padding:10px" onclick="openTournamentAndClose('${t.id}')">▶ Играть</button>`
-          : isReg
-          ? `<button class="score-sec-btn" style="flex:1;padding:10px;color:#4ade80" disabled>✓ Зарегистрирован</button>`
-          : user
-          ? `<button class="big-btn" style="flex:1;padding:10px" onclick="trnRegister('${t.id}',this)">Зарегистрироваться</button>`
-          : `<button class="score-sec-btn" style="flex:1;padding:10px" onclick="window.toast?.('Войдите, чтобы зарегистрироваться')">Войти и зарегистрироваться</button>`
-        }
-      </div>
-    </div>`;
-  }).join('');
+  _renderTournamentList();
 };
 
 window.openTournamentAndClose = function(id) {
