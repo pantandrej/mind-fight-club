@@ -20,6 +20,7 @@ import './achievements.js';
 import './onboarding.js';
 import './leaderboard.js';
 import './training/slide-pack.js';
+import './tournaments/tournament-pack.js';
 
 // ── Boot ──────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {

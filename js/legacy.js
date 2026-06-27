@@ -2806,7 +2806,7 @@ async function checkLiveOfficialTournament(){
 // showCupScreen: always leads to the official tournament.
 // If there's a live tournament → show it. Otherwise show a friendly placeholder.
 function showCupScreen(){
-  // Try to show an active official tournament
+  if (window.openTournamentsListScreen) { window.openTournamentsListScreen(); return; }
   showOfficialFromMenu();
 }
 
