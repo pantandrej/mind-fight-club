@@ -353,28 +353,26 @@ async function pickDuel(i){
   document.getElementById('d-next-btn').className='next-btn show';
 }
 async function saveDuelScore(){
-  // Skip all Supabase writes for bot duels — bot has no DB room
   if(window._isBotDuel) return;
-  const field=duelRole==='host'?'host_score':'guest_score';
-  const isLast=duelIdx>=duelQs.length-1;
-  const update={[field]:duelMyScore};
-  if(isLast)update.status='done';
-  await sb.from('duel_rooms').update(update).eq('code',duelCode);
-  // Poll for opponent answered hint
-  const {data}=await sb.from('duel_rooms').select('host_score,guest_score').eq('code',duelCode).single();
-  if(data){
-    const oppF=duelRole==='host'?'guest_score':'host_score';
-    const newOppScore = data[oppF] ?? 0;
-    if(newOppScore > duelOppScore){
-      const oppPts = newOppScore - duelOppScore;
-      document.getElementById('opp-hint').textContent=t('oppAnswered');
-      document.getElementById('opp-hint').className='opp-hint answered';
-      setOppDot(duelIdx, true, oppPts);
+  const field = duelRole==='host' ? 'host_score' : 'guest_score';
+  try {
+    await sb.from('duel_rooms').update({ [field]: duelMyScore }).eq('code', duelCode);
+  } catch(e) { console.error('[duel] saveDuelScore failed:', e); }
+  // Fetch opponent score for hint display
+  try {
+    const {data} = await sb.from('duel_rooms').select('host_score,guest_score').eq('code',duelCode).single();
+    if(data){
+      const oppF = duelRole==='host' ? 'guest_score' : 'host_score';
+      const newOppScore = data[oppF] ?? 0;
+      if(newOppScore > duelOppScore){
+        const oppPts = newOppScore - duelOppScore;
+        document.getElementById('opp-hint').textContent = t('oppAnswered');
+        document.getElementById('opp-hint').className = 'opp-hint answered';
+        setOppDot(duelIdx, true, oppPts);
+      }
+      duelOppScore = newOppScore; updateDuelScores();
     }
-    // Don't mark opponent as missed here — they might just not have answered yet
-    // The miss dot is set when the next question loads (previous stays as pending dot)
-    duelOppScore = newOppScore; updateDuelScores();
-  }
+  } catch(e) { /* silent — opponent score hint is non-critical */ }
 }
 function updateDuelScores(){
   document.getElementById('ds-me-score').textContent=duelMyScore;
@@ -382,7 +380,6 @@ function updateDuelScores(){
 }
 async function duelNextQ(){
   stopAudio();
-  // Cancel any pending bot answer for this question
   if(window._botAnswerTimeout){ clearTimeout(window._botAnswerTimeout); window._botAnswerTimeout = null; }
   duelIdx++;
   if(duelIdx>=duelQs.length){
@@ -392,34 +389,57 @@ async function duelNextQ(){
     document.getElementById('d-fb').className='fb';
 
     if(window._isBotDuel){
-      // Bot duel: end immediately — no DB poll needed
       endDuel({host_score: duelMyScore, guest_score: duelOppScore});
     } else {
-      // Real duel: mark my score final and wait for opponent
-      // Use status='done' (set by saveDuelScore) as the sync signal — no extra columns needed
       document.getElementById('d-answers').innerHTML = '';
       document.getElementById('d-q-text').textContent = '⏳ Ты ответил на все вопросы! Ждём соперника...';
       document.getElementById('d-cat-pill').textContent = '';
-      // Mark my side as finished — use a separate flag so we can tell BOTH finished
-      const myDoneField = duelRole === 'host' ? 'host_done' : 'guest_done';
-      await sb.from('duel_rooms').update({ [myDoneField]: true }).eq('code', duelCode).catch(()=>{});
+
+      // Ensure my final score is written before starting waitPoll
+      const myField = duelRole === 'host' ? 'host_score' : 'guest_score';
+      const myDoneField = duelRole === 'host' ? 'host_done'  : 'guest_done';
+      const oppDoneField = duelRole === 'host' ? 'guest_done' : 'host_done';
+      const oppField     = duelRole === 'host' ? 'guest_score': 'host_score';
+      try {
+        // Write final score + done flag atomically
+        await sb.from('duel_rooms')
+          .update({ [myField]: duelMyScore, [myDoneField]: true })
+          .eq('code', duelCode);
+      } catch(e) { console.error('[duel] final score write failed:', e); }
+
+      const _waitStart = Date.now();
       let waitDots = 0;
-      const waitPoll=setInterval(async()=>{
+      let _waitEnded = false;
+      const waitPoll = setInterval(async() => {
+        if(_waitEnded) return;
         waitDots = (waitDots + 1) % 4;
-        const dots = '.'.repeat(waitDots + 1);
-        document.getElementById('d-q-text').textContent = `⏳ Ждём соперника${dots}`;
-        const {data}=await sb.from('duel_rooms').select('*').eq('code',duelCode).single();
-        if(!data)return;
-        const oppField     = duelRole==='host' ? 'guest_score' : 'host_score';
-        const oppDoneField = duelRole==='host' ? 'guest_done'  : 'host_done';
-        // Opponent is done when they set their _done flag, OR both saved scores and status='done'
-        const oppDone  = data[oppDoneField] === true || data.status === 'done';
-        const timedOut = Date.now()-new Date(data.created_at).getTime() > 120000;
-        if(oppDone || timedOut){
-          clearInterval(waitPoll);
-          endDuel(data);
+        const txt = document.getElementById('d-q-text');
+        if(txt) txt.textContent = `⏳ Ждём соперника${'.'.repeat(waitDots + 1)}`;
+
+        try {
+          const {data} = await sb.from('duel_rooms').select('*').eq('code',duelCode).single();
+          if(!data || _waitEnded) return;
+
+          // Opponent done: they set their done flag OR their score appeared AND 5s passed
+          const oppDoneFlagSet = data[oppDoneField] === true;
+          const oppScoreSaved  = (data[oppField] ?? -1) >= 0;
+          const elapsed        = Date.now() - _waitStart;
+          // End if: opp done flag, OR opp score present+5s waited, OR 45s hard timeout
+          const shouldEnd = oppDoneFlagSet
+            || (oppScoreSaved && elapsed > 5000)
+            || elapsed > 45000;
+
+          if(shouldEnd){
+            _waitEnded = true;
+            clearInterval(waitPoll);
+            // If opponent score is still 0 and we haven't waited long enough, give a grace period
+            endDuel(data);
+          }
+        } catch(e) {
+          // Network error — keep waiting
+          console.warn('[duel] waitPoll fetch error:', e);
         }
-      },1500);
+      }, 2000);
     }
   } else {
     loadDuelQ();
