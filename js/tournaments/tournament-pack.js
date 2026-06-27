@@ -515,7 +515,9 @@ window.openTournamentLobby = async function(id) {
   if (isLive) {
     action.innerHTML = `<button class="big-btn" style="width:100%;padding:16px;font-size:16px;background:linear-gradient(135deg,#22c55e,#16a34a)" onclick="openLobbyAndPlay('${id}')">▶ Играть сейчас</button>`;
   } else if (isReg) {
-    action.innerHTML = `<button class="score-sec-btn" style="width:100%;padding:16px;color:#4ade80" disabled>✓ Зарегистрирован — ждём старта</button>`;
+    action.innerHTML = `
+      <button class="score-sec-btn" style="width:100%;padding:16px;color:#4ade80" disabled>✓ Зарегистрирован — ждём старта</button>
+      <button onclick="requestPushForTournament('${id}')" style="width:100%;margin-top:8px;background:rgba(255,255,255,.06);border:0.5px solid rgba(255,255,255,.15);border-radius:12px;padding:12px;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit">🔔 Уведомить за 5 мин до старта</button>`;
   } else if (user) {
     action.innerHTML = `<button class="big-btn" style="width:100%;padding:16px" onclick="trnRegisterLobby('${id}', this)">Зарегистрироваться</button>`;
   } else {

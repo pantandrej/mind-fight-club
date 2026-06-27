@@ -21,6 +21,7 @@ import './onboarding.js';
 import './leaderboard.js';
 import './training/slide-pack.js';
 import { refreshHomeBanner } from './tournaments/tournament-pack.js';
+import './pwa.js';
 
 // ── Boot ──────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
