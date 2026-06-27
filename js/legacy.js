@@ -1909,12 +1909,9 @@ async function loadAdminDashboard(){
   if(!isAdmin()) return;
   // Check for pending organizer applications
   _checkOrgApplications();
-}
 
   const kpiEl = document.getElementById('admin-kpis');
   const evEl  = document.getElementById('admin-events');
-  const topQEl  = null;
-  const hardQEl = null;
 
   if(kpiEl) kpiEl.innerHTML = '<div style="grid-column:1/-1;color:var(--muted);font-size:12px;text-align:center;padding:8px">⏳ Загрузка метрик...</div>';
   if(evEl) evEl.innerHTML = '';
