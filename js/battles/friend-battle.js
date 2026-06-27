@@ -36,8 +36,10 @@ function simulateBotAnswer(q, qIndex){
     if(botAnsweredThisQuestion)         return;
     botAnsweredThisQuestion = true;
     const correct = Math.random() < skill;
+    let botPts = 0;
     if(correct){
-      duelOppScore += Math.max(1, Math.round((q.a?.length||2) * 15 * duelTimeLeft / duelMaxT));
+      botPts = Math.max(1, Math.round((q.a?.length||2) * 15 * duelTimeLeft / duelMaxT));
+      duelOppScore += botPts;
       updateDuelScores();
     }
     const hint = document.getElementById('opp-hint');
@@ -48,7 +50,7 @@ function simulateBotAnswer(q, qIndex){
         : `✗ ${botLabel} ошибся`;
       hint.className = 'opp-hint answered';
     }
-    setOppDot(qIndex, correct);
+    setOppDot(qIndex, correct, botPts);
   }, delay);
 }
 
