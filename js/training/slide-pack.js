@@ -2,6 +2,7 @@
 import { sb }       from '../services/supabase.js';
 import { getState } from '../state.js';
 import { track }    from '../services/analytics.js';
+import { sharePackResult } from '../share-card.js';
 
 let _pack       = null;
 let _qIdx       = 0;
@@ -300,14 +301,14 @@ window.spShowReview = function() {
 window.spRestart = function() { startSlidePack(_pack); };
 
 window.spShareResult = function() {
-  const pct  = Math.round(_correct / _pack.questions.length * 100);
-  const icon = pct >= 80 ? '🏆' : pct >= 50 ? '🎯' : '📚';
-  const text = `${icon} Сыграл в «${_pack.title || 'Brain Fight Club'}»\n✅ ${_correct}/${_pack.questions.length} правильных · ⚡${_score} очков · ${pct}%\n\n🧠 Попробуй сам: brain-fight-club.vercel.app`;
-  if (navigator.share) {
-    navigator.share({ text }).catch(() => {});
-  } else {
-    navigator.clipboard?.writeText(text).then(() => window.toast?.('Скопировано в буфер!'));
-  }
+  const pct = Math.round(_correct / _pack.questions.length * 100);
+  sharePackResult({
+    title:   _pack.title || 'Brain Fight Club',
+    score:   _score,
+    correct: _correct,
+    total:   _pack.questions.length,
+    pct,
+  });
 };
 
 window.spClose = function() {
