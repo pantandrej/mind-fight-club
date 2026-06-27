@@ -21,6 +21,7 @@ let botAnsweredThisQuestion = false;
 let _tabWarnCount = 0;
 let _isRandomBattle = false; // true when came from matchmaking (not friend duel)
 let _oppScoreAtQStart = 0;  // opponent score when current question started (to detect miss)
+let _myAnswers = []; // per-question points for this player (0 = miss)
 
 // Simulate bot answer independently of whether the player has answered.
 // Uses qIndex to ignore stale timeouts that fired after "Next" was pressed.
@@ -233,7 +234,7 @@ async function startDuelBattle({ chargeSession = true, mode = 'friend_battle', q
     window._pendingDuelQs = null;
   }
 
-  duelIdx=0;duelMyScore=0;duelOppScore=0;
+  duelIdx=0;duelMyScore=0;duelOppScore=0;_myAnswers=[];
   startIntegrity('duel'); // start ONLY when battle begins, not in lobby
   if(duelRole==='guest' && !window._isBotDuel){
     sb.from('duel_rooms').update({guest_score:0}).eq('code',duelCode);
@@ -275,25 +276,35 @@ async function startDuelBattle({ chargeSession = true, mode = 'friend_battle', q
   // Continuous opponent-score watcher (real duels only)
   if(!window._isBotDuel){
     if(_oppPollInterval) clearInterval(_oppPollInterval);
-    let _oppNextDot = 0; // next dot index to fill for opponent
+    const oppScoreF   = duelRole==='host' ? 'guest_score'   : 'host_score';
+    const oppAnswersF = duelRole==='host' ? 'guest_answers'  : 'host_answers';
+    let _lastOppAnswersLen = 0;
     _oppPollInterval = setInterval(async () => {
       if(window._isBotDuel){ clearInterval(_oppPollInterval); return; }
       try {
-        const oppF = duelRole==='host' ? 'guest_score' : 'host_score';
-        const {data} = await sb.from('duel_rooms').select(oppF).eq('code',duelCode).single();
+        const {data} = await sb.from('duel_rooms')
+          .select(`${oppScoreF},${oppAnswersF}`)
+          .eq('code',duelCode).single();
         if(!data) return;
-        const newOppScore = data[oppF] ?? 0;
-        if(newOppScore !== duelOppScore){
-          const oppPts = newOppScore - duelOppScore;
-          if(oppPts > 0 && _oppNextDot < duelQs.length){
-            setOppDot(_oppNextDot, true, oppPts);
-            _oppNextDot++;
-            const hint = document.getElementById('opp-hint');
-            if(hint){ hint.textContent = `✓ ${duelOppNameStr} ответил правильно`; hint.className='opp-hint answered'; }
-          }
-          duelOppScore = newOppScore;
-          updateDuelScores();
+        const newOppScore  = data[oppScoreF]   ?? 0;
+        const oppAnswers   = Array.isArray(data[oppAnswersF]) ? data[oppAnswersF] : [];
+        // Render each answered dot from the per-question array
+        for(let i = 0; i < oppAnswers.length; i++){
+          const pts = oppAnswers[i] ?? 0;
+          const dot = document.getElementById('d-opp-dots-dot-' + i);
+          if(dot && !dot.textContent){ setOppDot(i, pts > 0, pts); }
         }
+        // Show hint if opponent just answered a new question
+        if(oppAnswers.length > _lastOppAnswersLen){
+          const lastPts = oppAnswers[oppAnswers.length - 1] ?? 0;
+          const hint = document.getElementById('opp-hint');
+          if(hint && lastPts > 0){
+            hint.textContent = `✓ ${duelOppNameStr} ответил правильно`;
+            hint.className='opp-hint answered';
+          }
+          _lastOppAnswersLen = oppAnswers.length;
+        }
+        if(newOppScore !== duelOppScore){ duelOppScore = newOppScore; updateDuelScores(); }
       } catch(e) { /* silent */ }
     }, 1500);
   }
@@ -377,11 +388,15 @@ async function pickDuel(i){
 }
 async function saveDuelScore(){
   if(window._isBotDuel) return;
-  const field = duelRole==='host' ? 'host_score' : 'guest_score';
+  const scoreField   = duelRole==='host' ? 'host_score'   : 'guest_score';
+  const answersField = duelRole==='host' ? 'host_answers'  : 'guest_answers';
+  // Record this question's points (0 = miss/timeout)
+  _myAnswers[duelIdx] = duelMyScore - (_myAnswers.slice(0,duelIdx).reduce((a,b)=>a+b,0));
   try {
-    await sb.from('duel_rooms').update({ [field]: duelMyScore }).eq('code', duelCode);
+    await sb.from('duel_rooms')
+      .update({ [scoreField]: duelMyScore, [answersField]: _myAnswers })
+      .eq('code', duelCode);
   } catch(e) { console.error('[duel] saveDuelScore failed:', e); }
-  // Opponent score is handled by _oppPollInterval — no separate fetch needed here
 }
 function updateDuelScores(){
   document.getElementById('ds-me-score').textContent=duelMyScore;
