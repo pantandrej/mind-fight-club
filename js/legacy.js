@@ -2896,13 +2896,15 @@ function checkHypeParam(){
 }
 
 const CONSUMABLES = {
-  streak_freeze: { name: 'Заморозка стрика',   cost: 150,  key: 'bfc_streak_freeze' },
-  hint:          { name: 'Подсказка',           cost: 50,   key: 'bfc_hints' },
-  double_xp:     { name: 'Двойные нейроны',     cost: 200,  key: 'bfc_double_xp' },
-  avatar_frame:  { name: 'Рамка аватара',       cost: 500,  key: 'bfc_avatar_frame' },
+  // streak_freeze: handled by buyStreakFreeze() in streak.js — do NOT duplicate
+  hint:         { name: 'Подсказка',       cost: 50,  key: 'bfc_hints' },
+  double_xp:    { name: 'Двойные нейроны', cost: 200, key: 'bfc_double_xp' },
+  avatar_frame: { name: 'Рамка аватара',   cost: 500, key: 'bfc_avatar_frame' },
 };
 
 window.buyConsumable = async function(type) {
+  if (type === 'streak_freeze') { window.buyStreakFreeze?.(); return; }
+
   const item = CONSUMABLES[type];
   if (!item) return;
   const n = neurons ?? 0;
@@ -2912,28 +2914,23 @@ window.buyConsumable = async function(type) {
   }
   if (!confirm(`Потратить ${item.cost} ⚡ на «${item.name}»?`)) return;
 
-  const result = await spendNeurons(item.cost, 'consumable', type);
+  const result = await spendNeurons(item.cost, 'consumable', `${type}:${Date.now()}`);
   if (!result?.ok) {
     toast(result?.reason === 'insufficient' ? '❌ Недостаточно нейронов' : '❌ Ошибка списания');
     return;
   }
 
-  // Store locally
-  if (type === 'avatar_frame') {
-    localStorage.setItem(item.key, '1');
-    toast('🖼️ Рамка активирована! Видна в лидерборде.');
-  } else if (type === 'streak_freeze') {
-    const cur = parseInt(localStorage.getItem(item.key) || '0');
-    localStorage.setItem(item.key, cur + 1);
-    toast(`🧊 Заморозка добавлена! У тебя: ${cur + 1} шт.`);
-  } else if (type === 'hint') {
+  if (type === 'hint') {
     const cur = parseInt(localStorage.getItem(item.key) || '0');
     localStorage.setItem(item.key, cur + 1);
     toast(`💡 Подсказка добавлена! У тебя: ${cur + 1} шт.`);
   } else if (type === 'double_xp') {
-    const expires = Date.now() + 3600000; // 1 hour
+    const expires = Date.now() + 3600000;
     localStorage.setItem(item.key, expires);
     toast('✨ Двойные нейроны активны 1 час!');
+  } else if (type === 'avatar_frame') {
+    localStorage.setItem(item.key, '1');
+    toast('🖼️ Рамка активирована! Видна в лидерборде.');
   }
 
   track('consumable_bought', { type, cost: item.cost });

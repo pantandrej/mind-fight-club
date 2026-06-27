@@ -27,10 +27,11 @@ export async function loadActivityFeed() {
     const since = new Date(Date.now() - 24 * 3600000).toISOString();
     const { data } = await sb
       .from('pack_results')
-      .select('pack_id, pack_title, score, correct, total, played_at, profiles(display_name)')
+      .select('pack_id, pack_title, score, correct, total, played_at, user_id, profiles(display_name)')
       .gte('played_at', since)
       .order('played_at', { ascending: false })
       .limit(8);
+    // Note: requires sql/17_fixes.sql "pack_results public feed" policy
 
     if (!data?.length) return;
 
