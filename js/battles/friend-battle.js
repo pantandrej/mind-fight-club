@@ -275,6 +275,7 @@ async function startDuelBattle({ chargeSession = true, mode = 'friend_battle', q
   // Continuous opponent-score watcher (real duels only)
   if(!window._isBotDuel){
     if(_oppPollInterval) clearInterval(_oppPollInterval);
+    let _oppNextDot = 0; // next dot index to fill for opponent
     _oppPollInterval = setInterval(async () => {
       if(window._isBotDuel){ clearInterval(_oppPollInterval); return; }
       try {
@@ -284,10 +285,9 @@ async function startDuelBattle({ chargeSession = true, mode = 'friend_battle', q
         const newOppScore = data[oppF] ?? 0;
         if(newOppScore !== duelOppScore){
           const oppPts = newOppScore - duelOppScore;
-          if(oppPts > 0){
-            // Show pts on the opponent's current dot (best-guess: same question index as us)
-            const dotIdx = Math.max(0, duelIdx - 1); // last completed question
-            setOppDot(dotIdx, true, oppPts);
+          if(oppPts > 0 && _oppNextDot < duelQs.length){
+            setOppDot(_oppNextDot, true, oppPts);
+            _oppNextDot++;
             const hint = document.getElementById('opp-hint');
             if(hint){ hint.textContent = `✓ ${duelOppNameStr} ответил правильно`; hint.className='opp-hint answered'; }
           }

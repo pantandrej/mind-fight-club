@@ -411,16 +411,27 @@ let _listRegIds = new Set();
 
 function _renderTournamentList() {
   const body = document.getElementById('trn-list-body');
-  if (!body || !_listRows.length) return;
+  if (!body) return;
 
-  body.innerHTML = _listRows.map(t => {
+  const now = Date.now();
+  const active = _listRows.filter(t => {
+    if (t.status === 'finished') return false;
+    if (t.status === 'active') return _trnEndsAt(t) > now;
+    return true; // upcoming
+  });
+  const past = _listRows.filter(t =>
+    t.status === 'finished' || (t.status === 'active' && _trnEndsAt(t) <= now)
+  );
+
+  const renderCard = (t, finished) => {
     const startsAt = new Date(t.starts_at);
-    const diffMs   = startsAt.getTime() - Date.now();
-    const isLive   = t.status === 'active' || diffMs <= 0;
+    const diffMs   = startsAt.getTime() - now;
+    const isLive   = !finished && (t.status === 'active' || diffMs <= 0);
     const isReg    = _listRegIds.has(t.id);
-
     let timeStr;
-    if (isLive) {
+    if (finished) {
+      timeStr = `<span style="color:var(--muted)">Завершён</span>`;
+    } else if (isLive) {
       timeStr = '<span style="color:#4ade80;font-weight:800">● LIVE</span>';
     } else {
       const d = Math.floor(diffMs / 86400000);
@@ -429,8 +440,9 @@ function _renderTournamentList() {
       const s = Math.floor((diffMs % 60000) / 1000);
       timeStr = d > 0 ? `через ${d}д ${h}ч` : h > 0 ? `через ${h}ч ${m}м` : m > 0 ? `через ${m}м ${s}с` : `через ${s}с`;
     }
-
-    return `<div onclick="openTournamentLobby('${t.id}')" style="background:rgba(255,255,255,.05);border-radius:14px;padding:16px;border:1px solid ${isLive ? 'rgba(74,222,128,.3)' : 'rgba(255,255,255,.08)'};cursor:pointer">
+    const border = isLive ? 'rgba(74,222,128,.3)' : finished ? 'rgba(255,255,255,.04)' : 'rgba(255,255,255,.08)';
+    const opacity = finished ? 'opacity:.6' : '';
+    return `<div onclick="openTournamentLobby('${t.id}')" style="background:rgba(255,255,255,.05);border-radius:14px;padding:16px;border:1px solid ${border};cursor:pointer;${opacity}">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
         <div style="font-size:16px;font-weight:900">${t.title}</div>
         <div style="font-size:12px">${timeStr}</div>
@@ -438,36 +450,47 @@ function _renderTournamentList() {
       ${t.description ? `<div style="font-size:13px;color:var(--muted);margin-bottom:10px;line-height:1.4">${t.description}</div>` : ''}
       <div style="font-size:12px;color:var(--muted)">
         ⏱ ${t.q_duration}с на вопрос · 📅 ${startsAt.toLocaleDateString('ru', {day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'})}
-        ${isReg ? ' · <span style="color:#4ade80;font-weight:700">✓ Зарегистрирован</span>' : ''}
+        ${isReg && !finished ? ' · <span style="color:#4ade80;font-weight:700">✓ Зарегистрирован</span>' : ''}
+        ${finished ? ' · <span style="color:var(--accent2)">📊 Результаты</span>' : ''}
       </div>
     </div>`;
-  }).join('');
+  };
+
+  let html = '';
+  if (active.length) {
+    html += active.map(t => renderCard(t, false)).join('');
+  } else {
+    html += `<div style="text-align:center;color:var(--muted);padding:32px 16px">
+      <div style="font-size:36px;margin-bottom:10px">🏆</div>
+      <div style="font-weight:700;margin-bottom:4px">Активных турниров нет</div>
+      <div style="font-size:13px">Следите за анонсами!</div>
+    </div>`;
+  }
+  if (past.length) {
+    html += `<div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-weight:700;margin:20px 0 10px">Прошедшие</div>`;
+    html += past.map(t => renderCard(t, true)).join('');
+  }
+
+  body.innerHTML = html;
 }
 
 window.openTournamentsListScreen = async function() {
   const screen = document.getElementById('tournaments-list-screen');
   screen.style.display = 'flex';
   clearInterval(_listRefreshTimer);
-  _listRefreshTimer = setInterval(_renderTournamentList, 1000);  // re-render every second (no DB call)
+  _listRefreshTimer = setInterval(_renderTournamentList, 1000);
 
   const body = document.getElementById('trn-list-body');
   body.innerHTML = `<div style="text-align:center;color:var(--muted);padding:24px">Загрузка...</div>`;
 
+  sb.rpc('sync_tournament_statuses').catch(() => {});
+
   const { data: rows } = await sb.from('tournaments')
     .select('*')
-    .in('status', ['upcoming', 'active'])
-    .order('starts_at', { ascending: true });
+    .order('starts_at', { ascending: false })
+    .limit(20);
 
-  if (!rows || rows.length === 0) {
-    body.innerHTML = `<div style="text-align:center;color:var(--muted);padding:40px 16px">
-      <div style="font-size:40px;margin-bottom:12px">🏆</div>
-      <div style="font-size:16px;font-weight:700;margin-bottom:6px">Турниров пока нет</div>
-      <div style="font-size:13px">Следите за анонсами!</div>
-    </div>`;
-    return;
-  }
-
-  _listRows = rows;
+  _listRows = rows || [];
   _listUser = sb.auth?.getUser ? (await sb.auth.getUser()).data?.user : null;
   _listRegIds = new Set();
   if (_listUser) {
@@ -624,17 +647,32 @@ window.trnRegisterLobby = async function(id, btn) {
 
 // ── Home banner ───────────────────────────────────────────────────────
 
+// Compute estimated end time for a tournament
+function _trnEndsAt(t) {
+  const qCount = t.q_count || 15;
+  return new Date(t.starts_at).getTime() + qCount * (t.q_duration + t.a_duration) * 1000;
+}
+
 export async function refreshHomeBanner() {
+  // Sync statuses server-side first
+  sb.rpc('sync_tournament_statuses').catch(() => {});
+
   const { data: rows } = await sb.from('tournaments')
     .select('*').in('status', ['upcoming', 'active'])
-    .order('starts_at', { ascending: true }).limit(3);
+    .order('starts_at', { ascending: true }).limit(5);
 
   const banner = document.getElementById('home-trn-banner');
   if (!banner) return;
 
-  // Find soonest upcoming or live
   const now = Date.now();
-  const t = (rows || []).find(r => new Date(r.starts_at).getTime() - now < 24 * 3600 * 1000);
+  // Filter out tournaments that have actually ended (client-side fallback)
+  const live = (rows || []).filter(r => {
+    if (r.status === 'upcoming') return new Date(r.starts_at).getTime() - now < 24 * 3600 * 1000;
+    if (r.status === 'active')   return _trnEndsAt(r) > now;
+    return false;
+  });
+
+  const t = live[0];
   if (!t) { banner.style.display = 'none'; return; }
 
   banner.style.display = '';
@@ -642,12 +680,13 @@ export async function refreshHomeBanner() {
   banner.onclick = () => window.openTournamentLobby(t.id);
 
   const diffMs = new Date(t.starts_at).getTime() - now;
-  const label = document.getElementById('home-trn-label');
+  const label  = document.getElementById('home-trn-label');
   const timeEl = document.getElementById('home-trn-time');
 
   if (diffMs <= 0) {
     label.textContent = '🔴 LIVE';
-    timeEl.textContent = 'Турнир идёт — заходи!';
+    const endsIn = Math.max(0, Math.ceil((_trnEndsAt(t) - now) / 60000));
+    timeEl.textContent = endsIn > 0 ? `Турнир идёт — ещё ~${endsIn}м` : 'Турнир идёт — заходи!';
   } else {
     label.textContent = '🏆 СКОРО ТУРНИР';
     const m = Math.floor(diffMs / 60000);
@@ -655,7 +694,6 @@ export async function refreshHomeBanner() {
     timeEl.textContent = h > 0 ? `через ${h}ч ${m % 60}м` : `через ${m}м`;
   }
 
-  // Re-check every minute
   setTimeout(refreshHomeBanner, 60000);
 }
 
