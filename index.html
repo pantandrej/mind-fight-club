@@ -81,6 +81,18 @@
       <div class="hero-sub" id="h-sub">Играй. Думай. Побеждай.</div>
       <button class="play-btn" id="h-play" onclick="showPlayMenu()" style="font-size:17px;padding:16px">⚡ Играть</button>
     </div>
+    <!-- Tournament banner -->
+    <div id="home-trn-banner" style="display:none;background:linear-gradient(135deg,rgba(108,99,255,.2),rgba(168,85,247,.15));border:1px solid rgba(108,99,255,.4);border-radius:16px;padding:14px 16px;margin-bottom:16px;cursor:pointer" onclick="showCupScreen()">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent2);font-weight:800;margin-bottom:4px" id="home-trn-label">🏆 ТУРНИР</div>
+          <div style="font-size:15px;font-weight:900" id="home-trn-title">Видеоигры — сезон 1</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:3px" id="home-trn-time">через 5м</div>
+        </div>
+        <div style="font-size:32px">🏆</div>
+      </div>
+    </div>
+
     <!-- Задание дня teaser — скрыто: режим убран из основного UX -->
     <div id="home-daily-teaser" style="display:none" onclick="showScreen('shop')">
       <div>
@@ -613,6 +625,79 @@
   <div id="trn-body" style="flex:1;overflow-y:auto;display:flex;flex-direction:column"></div>
 </div>
 
+<!-- TOURNAMENT LOBBY SCREEN -->
+<div id="tournament-lobby-screen" style="display:none;position:fixed;inset:0;z-index:158;background:var(--bg);flex-direction:column">
+  <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.07)">
+    <button onclick="closeTournamentLobby()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer">←</button>
+    <div style="font-size:17px;font-weight:900" id="lobby-title">Турнир</div>
+  </div>
+  <div style="flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:14px">
+    <!-- Countdown hero -->
+    <div style="background:linear-gradient(135deg,rgba(108,99,255,.2),rgba(168,85,247,.15));border:1px solid rgba(108,99,255,.35);border-radius:20px;padding:28px 20px;text-align:center">
+      <div style="font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;font-weight:800;margin-bottom:8px" id="lobby-status-label">До старта</div>
+      <div style="font-size:52px;font-weight:900;font-variant-numeric:tabular-nums;color:var(--accent2)" id="lobby-countdown">—</div>
+      <div style="font-size:13px;color:var(--muted);margin-top:8px" id="lobby-starts-at"></div>
+    </div>
+    <!-- Info -->
+    <div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px">
+        <span style="color:var(--muted)">⏱ Время на вопрос</span>
+        <span style="font-weight:800" id="lobby-q-dur">30с</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px">
+        <span style="color:var(--muted)">📋 Вопросов</span>
+        <span style="font-weight:800" id="lobby-q-count">15</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px">
+        <span style="color:var(--muted)">👥 Участников</span>
+        <span style="font-weight:800" id="lobby-participants">—</span>
+      </div>
+    </div>
+    <!-- Description -->
+    <div id="lobby-desc-wrap" style="display:none;background:var(--bg2);border:0.5px solid var(--border);border-radius:16px;padding:16px;font-size:13px;color:var(--muted);line-height:1.6" id="lobby-desc"></div>
+    <!-- Action -->
+    <div id="lobby-action"></div>
+  </div>
+</div>
+
+<!-- CREATE TOURNAMENT MODAL -->
+<div id="create-trn-modal" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.7);align-items:flex-end">
+  <div style="background:var(--bg);border-radius:20px 20px 0 0;padding:20px 16px 40px;width:100%;max-height:90vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <div style="font-size:17px;font-weight:900">➕ Создать турнир</div>
+      <button onclick="document.getElementById('create-trn-modal').style.display='none'" style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer">×</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:700">НАЗВАНИЕ</div>
+        <input id="ctrn-title" type="text" placeholder="Видеоигры — сезон 2" class="city-input" style="width:100%;box-sizing:border-box"/>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:700">ОПИСАНИЕ</div>
+        <textarea id="ctrn-desc" placeholder="О чём турнир, что будет..." style="width:100%;background:var(--bg2);border:0.5px solid var(--border);border-radius:10px;padding:10px 12px;font-size:14px;color:var(--text);font-family:inherit;resize:vertical;min-height:80px;box-sizing:border-box"></textarea>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:700">ПАК</div>
+        <select id="ctrn-pack" class="city-input" style="width:100%;box-sizing:border-box">
+          <option value="videogames">Видеоигры (15 вопросов)</option>
+          <option value="videogames_v2">Видеоигры v2 (3 вопроса)</option>
+        </select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:700">ДАТА И ВРЕМЯ СТАРТА</div>
+          <input id="ctrn-starts" type="datetime-local" class="city-input" style="width:100%;box-sizing:border-box"/>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:700">СЕКУНД НА ВОПРОС</div>
+          <input id="ctrn-qdur" type="number" value="30" min="10" max="120" class="city-input" style="width:100%;box-sizing:border-box"/>
+        </div>
+      </div>
+      <button class="big-btn" style="width:100%;margin-top:8px" onclick="submitCreateTournament()">Создать →</button>
+    </div>
+  </div>
+</div>
+
 <!-- TOURNAMENTS LIST SCREEN -->
 <div id="tournaments-list-screen" style="display:none;position:fixed;inset:0;z-index:155;background:var(--bg);flex-direction:column">
   <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.07)">
@@ -670,9 +755,10 @@
     <div style="font-size:28px;font-weight:900;margin-bottom:4px">⚡ <span id="sp-res-score">0</span></div>
     <div style="font-size:15px;color:var(--muted);margin-bottom:4px">Правильных: <span id="sp-res-correct" style="color:var(--accent2);font-weight:800">0/15</span></div>
     <div style="font-size:32px;font-weight:900;color:var(--accent2);margin-bottom:24px" id="sp-res-pct">0%</div>
-    <button class="big-btn" onclick="spRestart()" style="margin-bottom:10px">Ещё раз →</button>
-    <button class="score-sec-btn" onclick="spShowReview()" style="margin-bottom:10px">Разбор ошибок →</button>
-    <button class="score-sec-btn" onclick="spClose()">← На главную</button>
+    <button class="big-btn" onclick="spRestart()" style="margin-bottom:10px;width:100%;max-width:320px">Ещё раз →</button>
+    <button class="score-sec-btn" onclick="spShareResult()" style="margin-bottom:10px;width:100%;max-width:320px">📤 Поделиться</button>
+    <button class="score-sec-btn" onclick="spShowReview()" style="margin-bottom:10px;width:100%;max-width:320px">Разбор ошибок →</button>
+    <button class="score-sec-btn" onclick="spClose()" style="width:100%;max-width:320px">← На главную</button>
   </div>
 
   <!-- Review screen -->
@@ -1088,6 +1174,13 @@
         → Полная аналитика в Supabase →
       </a>
     </div>
+    <!-- Create tournament (admin only) -->
+    <div id="create-trn-btn-wrap" style="display:none;margin-bottom:8px">
+      <button onclick="openCreateTournament()" style="width:100%;background:rgba(108,99,255,.12);border:1px solid rgba(108,99,255,.35);border-radius:14px;padding:14px;font-size:14px;font-weight:800;color:var(--accent2);cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:10px">
+        ➕ Создать турнир
+      </button>
+    </div>
+
     <!-- Admin: compact button only in profile -->
     <div id="admin-dashboard" style="display:none;margin-top:8px">
       <button onclick="showScreen('admin')" style="width:100%;background:rgba(240,192,64,.1);border:1px solid var(--gold);border-radius:14px;padding:14px;font-size:14px;font-weight:800;color:var(--gold);cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:10px">

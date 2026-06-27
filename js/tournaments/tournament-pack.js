@@ -341,27 +341,16 @@ function _renderTournamentList() {
       timeStr = d > 0 ? `через ${d}д ${h}ч` : h > 0 ? `через ${h}ч ${m}м` : m > 0 ? `через ${m}м ${s}с` : `через ${s}с`;
     }
 
-    let btn;
-    if (isLive) {
-      btn = `<button class="big-btn" style="flex:1;padding:10px;background:linear-gradient(135deg,#22c55e,#16a34a)" onclick="openTournamentAndClose('${t.id}')">▶ Играть сейчас</button>`;
-    } else if (isReg) {
-      btn = `<button class="score-sec-btn" style="flex:1;padding:10px;color:#4ade80" disabled>✓ Зарегистрирован</button>`;
-    } else if (_listUser) {
-      btn = `<button class="big-btn" style="flex:1;padding:10px" onclick="trnRegister('${t.id}',this)">Зарегистрироваться</button>`;
-    } else {
-      btn = `<button class="score-sec-btn" style="flex:1;padding:10px" onclick="window.toast?.('Войдите, чтобы зарегистрироваться')">Войти и зарегистрироваться</button>`;
-    }
-
-    return `<div style="background:rgba(255,255,255,.05);border-radius:14px;padding:16px;border:1px solid ${isLive ? 'rgba(74,222,128,.3)' : 'rgba(255,255,255,.08)'}">
+    return `<div onclick="openTournamentLobby('${t.id}')" style="background:rgba(255,255,255,.05);border-radius:14px;padding:16px;border:1px solid ${isLive ? 'rgba(74,222,128,.3)' : 'rgba(255,255,255,.08)'};cursor:pointer">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
         <div style="font-size:16px;font-weight:900">${t.title}</div>
         <div style="font-size:12px">${timeStr}</div>
       </div>
-      ${t.description ? `<div style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.4">${t.description}</div>` : ''}
-      <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
+      ${t.description ? `<div style="font-size:13px;color:var(--muted);margin-bottom:10px;line-height:1.4">${t.description}</div>` : ''}
+      <div style="font-size:12px;color:var(--muted)">
         ⏱ ${t.q_duration}с на вопрос · 📅 ${startsAt.toLocaleDateString('ru', {day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'})}
+        ${isReg ? ' · <span style="color:#4ade80;font-weight:700">✓ Зарегистрирован</span>' : ''}
       </div>
-      <div style="display:flex;gap:8px">${btn}</div>
     </div>`;
   }).join('');
 }
@@ -420,3 +409,189 @@ window.trnRegister = async function(id, btn) {
 };
 
 window.openTournament = openTournament;
+
+// ── Tournament Lobby ──────────────────────────────────────────────────
+
+let _lobbyT = null;
+let _lobbyTimer = null;
+
+window.openTournamentLobby = async function(id) {
+  const { data: t } = await sb.from('tournaments').select('*').eq('id', id).single();
+  if (!t) return;
+  _lobbyT = t;
+
+  // Load participant count
+  const { count } = await sb.from('tournament_participants')
+    .select('*', { count: 'exact', head: true }).eq('tournament_id', id);
+
+  const screen = document.getElementById('tournament-lobby-screen');
+  screen.style.display = 'flex';
+
+  document.getElementById('lobby-title').textContent = t.title;
+  document.getElementById('lobby-q-dur').textContent = t.q_duration + 'с';
+
+  // Try to load pack for question count
+  try {
+    const res = await fetch(`/packs/${t.pack_id}/pack.json`);
+    const pack = await res.json();
+    document.getElementById('lobby-q-count').textContent = pack.questions.length;
+  } catch(_) {}
+
+  document.getElementById('lobby-participants').textContent = (count || 0) + ' чел.';
+
+  const descWrap = document.getElementById('lobby-desc-wrap');
+  if (t.description) {
+    descWrap.style.display = '';
+    descWrap.textContent = t.description;
+  }
+
+  const startsAt = new Date(t.starts_at);
+  document.getElementById('lobby-starts-at').textContent =
+    startsAt.toLocaleDateString('ru', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+
+  // Check registration
+  const user = (await sb.auth.getUser()).data?.user;
+  const action = document.getElementById('lobby-action');
+  let isReg = false;
+  if (user) {
+    const { data: reg } = await sb.from('tournament_participants')
+      .select('id').eq('tournament_id', id).eq('user_id', user.id).maybeSingle();
+    isReg = !!reg;
+  }
+
+  const diffMs = startsAt.getTime() - Date.now();
+  const isLive = diffMs <= 0;
+
+  if (isLive) {
+    action.innerHTML = `<button class="big-btn" style="width:100%;padding:16px;font-size:16px;background:linear-gradient(135deg,#22c55e,#16a34a)" onclick="openLobbyAndPlay('${id}')">▶ Играть сейчас</button>`;
+  } else if (isReg) {
+    action.innerHTML = `<button class="score-sec-btn" style="width:100%;padding:16px;color:#4ade80" disabled>✓ Зарегистрирован — ждём старта</button>`;
+  } else if (user) {
+    action.innerHTML = `<button class="big-btn" style="width:100%;padding:16px" onclick="trnRegisterLobby('${id}', this)">Зарегистрироваться</button>`;
+  } else {
+    action.innerHTML = `<button class="big-btn" style="width:100%;padding:16px" onclick="signInGoogle()">Войти и зарегистрироваться</button>`;
+  }
+
+  // Countdown ticker
+  clearInterval(_lobbyTimer);
+  _updateLobbyCountdown();
+  _lobbyTimer = setInterval(_updateLobbyCountdown, 1000);
+};
+
+function _updateLobbyCountdown() {
+  if (!_lobbyT) return;
+  const diffMs = new Date(_lobbyT.starts_at).getTime() - Date.now();
+  const el = document.getElementById('lobby-countdown');
+  const actionEl = document.getElementById('lobby-action');
+  if (!el) return;
+  if (diffMs <= 0) {
+    el.textContent = '● LIVE';
+    el.style.color = '#4ade80';
+    document.getElementById('lobby-status-label').textContent = 'Турнир идёт!';
+    // Switch button to play
+    if (actionEl && !actionEl.querySelector('.play-now-btn')) {
+      actionEl.innerHTML = `<button class="big-btn play-now-btn" style="width:100%;padding:16px;font-size:16px;background:linear-gradient(135deg,#22c55e,#16a34a)" onclick="openLobbyAndPlay('${_lobbyT.id}')">▶ Играть сейчас</button>`;
+    }
+    return;
+  }
+  const h = Math.floor(diffMs / 3600000);
+  const m = Math.floor((diffMs % 3600000) / 60000);
+  const s = Math.floor((diffMs % 60000) / 1000);
+  el.textContent = h > 0 ? `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}` : `${m}:${String(s).padStart(2,'0')}`;
+}
+
+window.closeTournamentLobby = function() {
+  clearInterval(_lobbyTimer);
+  document.getElementById('tournament-lobby-screen').style.display = 'none';
+};
+
+window.openLobbyAndPlay = function(id) {
+  window.closeTournamentLobby();
+  document.getElementById('tournaments-list-screen').style.display = 'none';
+  openTournament(id);
+};
+
+window.trnRegisterLobby = async function(id, btn) {
+  const user = (await sb.auth.getUser()).data?.user;
+  if (!user) { window.toast?.('Войдите'); return; }
+  if (btn) { btn.disabled = true; btn.textContent = '...'; }
+  const { data } = await sb.rpc('register_for_tournament', { p_tournament_id: id });
+  if (data?.ok) {
+    window.toast?.('✓ Зарегистрированы!');
+    _listRegIds?.add(id);
+    if (btn) { btn.textContent = '✓ Зарегистрирован — ждём старта'; btn.style.color = '#4ade80'; }
+  } else {
+    if (btn) { btn.disabled = false; btn.textContent = 'Зарегистрироваться'; }
+  }
+};
+
+// ── Home banner ───────────────────────────────────────────────────────
+
+export async function refreshHomeBanner() {
+  const { data: rows } = await sb.from('tournaments')
+    .select('*').in('status', ['upcoming', 'active'])
+    .order('starts_at', { ascending: true }).limit(3);
+
+  const banner = document.getElementById('home-trn-banner');
+  if (!banner) return;
+
+  // Find soonest upcoming or live
+  const now = Date.now();
+  const t = (rows || []).find(r => new Date(r.starts_at).getTime() - now < 24 * 3600 * 1000);
+  if (!t) { banner.style.display = 'none'; return; }
+
+  banner.style.display = '';
+  document.getElementById('home-trn-title').textContent = t.title;
+  banner.onclick = () => window.openTournamentLobby(t.id);
+
+  const diffMs = new Date(t.starts_at).getTime() - now;
+  const label = document.getElementById('home-trn-label');
+  const timeEl = document.getElementById('home-trn-time');
+
+  if (diffMs <= 0) {
+    label.textContent = '🔴 LIVE';
+    timeEl.textContent = 'Турнир идёт — заходи!';
+  } else {
+    label.textContent = '🏆 СКОРО ТУРНИР';
+    const m = Math.floor(diffMs / 60000);
+    const h = Math.floor(m / 60);
+    timeEl.textContent = h > 0 ? `через ${h}ч ${m % 60}м` : `через ${m}м`;
+  }
+
+  // Re-check every minute
+  setTimeout(refreshHomeBanner, 60000);
+}
+
+// ── Create tournament (admin) ─────────────────────────────────────────
+
+window.openCreateTournament = function() {
+  // Set default start time to 1 hour from now
+  const dt = new Date(Date.now() + 3600000);
+  const pad = n => String(n).padStart(2, '0');
+  const local = `${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+  document.getElementById('ctrn-starts').value = local;
+  document.getElementById('create-trn-modal').style.display = 'flex';
+};
+
+window.submitCreateTournament = async function() {
+  const title    = document.getElementById('ctrn-title').value.trim();
+  const desc     = document.getElementById('ctrn-desc').value.trim();
+  const pack_id  = document.getElementById('ctrn-pack').value;
+  const starts   = document.getElementById('ctrn-starts').value;
+  const q_dur    = parseInt(document.getElementById('ctrn-qdur').value) || 30;
+
+  if (!title || !starts) { window.toast?.('Заполни название и время'); return; }
+
+  const { error } = await sb.from('tournaments').insert({
+    title, description: desc || null, pack_id,
+    starts_at: new Date(starts).toISOString(),
+    q_duration: q_dur, a_duration: 15,
+  });
+
+  if (error) { window.toast?.('Ошибка: ' + error.message); return; }
+  window.toast?.('✓ Турнир создан!');
+  document.getElementById('create-trn-modal').style.display = 'none';
+  document.getElementById('ctrn-title').value = '';
+  document.getElementById('ctrn-desc').value = '';
+  refreshHomeBanner();
+};

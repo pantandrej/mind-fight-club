@@ -1781,6 +1781,9 @@ async function loadAdminDashboard(){
   // Show compact admin button in profile
   const dash = document.getElementById('admin-dashboard');
   if(dash && isAdmin()) dash.style.display = 'block';
+  // Show create tournament button for admins
+  const ctrn = document.getElementById('create-trn-btn-wrap');
+  if(ctrn && isAdmin()) ctrn.style.display = 'block';
   if(!isAdmin()) return;
 
   const kpiEl = document.getElementById('admin-kpis');

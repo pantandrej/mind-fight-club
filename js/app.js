@@ -20,12 +20,14 @@ import './achievements.js';
 import './onboarding.js';
 import './leaderboard.js';
 import './training/slide-pack.js';
-import './tournaments/tournament-pack.js';
+import { refreshHomeBanner } from './tournaments/tournament-pack.js';
 
 // ── Boot ──────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   initAuth();
   registerServiceWorker();
+  // Show tournament banner if any starts within 24h
+  setTimeout(refreshHomeBanner, 2000);
 });
 
 async function registerServiceWorker() {
