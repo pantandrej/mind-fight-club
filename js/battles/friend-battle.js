@@ -15,6 +15,7 @@ import { track } from '../services/analytics.js';
 let duelCode=null,duelRole=null,duelPoll=null;
 let duelQs=[],duelIdx=0,duelMyScore=0,duelOppScore=0,duelMyCorrect=0;
 let duelAnswered=false,duelTimer=null,duelTimeLeft=0,duelMaxT=0;
+let _oppPollInterval=null; // continuous opponent-score watcher during real duel
 let duelMyName='You',duelOppNameStr='Соперник';
 let botAnsweredThisQuestion = false;
 let _tabWarnCount = 0;
@@ -271,6 +272,32 @@ async function startDuelBattle({ chargeSession = true, mode = 'friend_battle', q
   };
   document.addEventListener('visibilitychange', window._duelTabWarn);
 
+  // Continuous opponent-score watcher (real duels only)
+  if(!window._isBotDuel){
+    if(_oppPollInterval) clearInterval(_oppPollInterval);
+    _oppPollInterval = setInterval(async () => {
+      if(window._isBotDuel){ clearInterval(_oppPollInterval); return; }
+      try {
+        const oppF = duelRole==='host' ? 'guest_score' : 'host_score';
+        const {data} = await sb.from('duel_rooms').select(oppF).eq('code',duelCode).single();
+        if(!data) return;
+        const newOppScore = data[oppF] ?? 0;
+        if(newOppScore !== duelOppScore){
+          const oppPts = newOppScore - duelOppScore;
+          if(oppPts > 0){
+            // Show pts on the opponent's current dot (best-guess: same question index as us)
+            const dotIdx = Math.max(0, duelIdx - 1); // last completed question
+            setOppDot(dotIdx, true, oppPts);
+            const hint = document.getElementById('opp-hint');
+            if(hint){ hint.textContent = `✓ ${duelOppNameStr} ответил правильно`; hint.className='opp-hint answered'; }
+          }
+          duelOppScore = newOppScore;
+          updateDuelScores();
+        }
+      } catch(e) { /* silent */ }
+    }, 1500);
+  }
+
   loadDuelQ();
 }
 
@@ -477,6 +504,7 @@ async function _saveDuelStats(myS, oppS, win) {
 
 function endDuel(data){
   clearInterval(duelPoll);clearInterval(duelTimer);
+  if(_oppPollInterval){ clearInterval(_oppPollInterval); _oppPollInterval = null; }
   if(window._botAnswerTimeout){ clearTimeout(window._botAnswerTimeout); window._botAnswerTimeout = null; }
   // For bot duels use local scores; for real duels use DB scores
   let myS, oppS;
@@ -563,6 +591,7 @@ function resetDuel(){
   window._currentSessionId     = null;
   clearInterval(duelPoll); duelPoll = null;
   clearInterval(duelTimer); duelTimer = null;
+  if(_oppPollInterval){ clearInterval(_oppPollInterval); _oppPollInterval = null; }
   if(window._botAnswerTimeout){ clearTimeout(window._botAnswerTimeout); window._botAnswerTimeout = null; }
   // Full state reset
   duelCode=null; duelRole=null; duelQs=[]; duelIdx=0;
