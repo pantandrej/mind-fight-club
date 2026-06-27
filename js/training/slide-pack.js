@@ -1,7 +1,7 @@
 // ── Slide Pack Player ─────────────────────────────────────────
-import { sb }         from '../services/supabase.js';
-import { getState }   from '../state.js';
-import { track }      from '../services/analytics.js';
+import { sb }       from '../services/supabase.js';
+import { getState } from '../state.js';
+import { track }    from '../services/analytics.js';
 
 let _pack       = null;
 let _qIdx       = 0;
@@ -9,9 +9,11 @@ let _score      = 0;
 let _correct    = 0;
 let _answered   = false;
 let _paused     = false;
+let _showingAns = false;
 let _timeLeft   = 20;
 let _timer      = null;
-let _history    = []; // {q, picked, correct} for review
+let _history    = [];
+let _mediaEl    = null;
 const MAX_TIME  = 20;
 
 export async function loadPack(packId) {
@@ -26,13 +28,15 @@ export async function loadPack(packId) {
 }
 
 export function startSlidePack(pack) {
-  _pack     = pack;
-  _qIdx     = 0;
-  _score    = 0;
-  _correct  = 0;
-  _answered = false;
-  _paused   = false;
-  _history  = [];
+  _pack       = pack;
+  _qIdx       = 0;
+  _score      = 0;
+  _correct    = 0;
+  _answered   = false;
+  _paused     = false;
+  _showingAns = false;
+  _history    = [];
+  stopMedia();
 
   document.getElementById('slide-pack-screen').style.display = 'flex';
   document.getElementById('sp-game').style.display   = 'flex';
@@ -46,9 +50,11 @@ function renderQuestion() {
   const q = _pack.questions[_qIdx];
   if (!q) { endPack(); return; }
 
-  _answered = false;
-  _paused   = false;
+  _answered   = false;
+  _paused     = false;
+  _showingAns = false;
   stopTimer();
+  stopMedia();
 
   document.getElementById('sp-q-num').textContent = `${_qIdx + 1} / ${_pack.questions.length}`;
   document.getElementById('sp-score').textContent  = _score;
@@ -56,19 +62,43 @@ function renderQuestion() {
   const pauseBtn = document.getElementById('sp-pause-btn');
   if (pauseBtn) pauseBtn.textContent = '⏸';
 
+  // Show question image
   const img = document.getElementById('sp-img');
-  img.src   = q.img;
+  img.src = q.img;
 
   document.getElementById('sp-q-text').textContent = q.q;
   document.getElementById('sp-feedback').textContent = '';
   document.getElementById('sp-feedback').className   = 'sp-feedback';
 
-  // Answer buttons — center last one when count is odd
+  // Media: audio or video before/during question
+  const mediaWrap = document.getElementById('sp-media-wrap');
+  mediaWrap.innerHTML = '';
+  if (q.audio) {
+    const audio = document.createElement('audio');
+    audio.src = q.audio;
+    audio.controls = true;
+    audio.autoplay = true;
+    audio.style.cssText = 'width:100%;max-width:340px;margin:4px auto;display:block';
+    mediaWrap.appendChild(audio);
+    _mediaEl = audio;
+  } else if (q.video) {
+    const video = document.createElement('video');
+    video.src = q.video;
+    video.controls = true;
+    video.autoplay = true;
+    video.muted = false;
+    video.style.cssText = 'width:100%;max-width:400px;max-height:200px;border-radius:10px;margin:4px auto;display:block';
+    mediaWrap.appendChild(video);
+    _mediaEl = video;
+  }
+
+  // Answer buttons
   const grid = document.getElementById('sp-answers-grid');
   const n = q.a.length;
-  grid.style.gridTemplateColumns = n <= 2 ? 'repeat(2,1fr)' : 'repeat(2,1fr)';
+  grid.style.gridTemplateColumns = 'repeat(2,1fr)';
   grid.innerHTML = q.a.map((ans, i) => {
-    const center = (n % 2 === 1 && i === n - 1) ? ' style="grid-column:1/-1;max-width:50%;margin:0 auto;width:100%"' : '';
+    const center = (n % 2 === 1 && i === n - 1)
+      ? ' style="grid-column:1/-1;max-width:50%;margin:0 auto;width:100%"' : '';
     return `<button class="sp-ans-btn" data-i="${i}" onclick="spPick(${i})"${center}>${ans}</button>`;
   }).join('');
 
@@ -80,7 +110,7 @@ function renderQuestion() {
 
 function startTimer() {
   _timer = setInterval(() => {
-    if (_paused) return;
+    if (_paused || _showingAns) return;
     _timeLeft--;
     updateTimerBar();
     if (_timeLeft <= 0) {
@@ -90,9 +120,10 @@ function startTimer() {
   }, 1000);
 }
 
-function stopTimer() {
-  clearInterval(_timer);
-  _timer = null;
+function stopTimer() { clearInterval(_timer); _timer = null; }
+
+function stopMedia() {
+  if (_mediaEl) { try { _mediaEl.pause(); } catch(_) {} _mediaEl = null; }
 }
 
 function updateTimerBar() {
@@ -102,8 +133,10 @@ function updateTimerBar() {
 
 window.spPick = function(i) {
   if (_answered || _paused) return;
-  _answered = true;
+  _answered   = true;
+  _showingAns = true;
   stopTimer();
+  stopMedia();
 
   const q   = _pack.questions[_qIdx];
   const win = i === q.c;
@@ -112,6 +145,7 @@ window.spPick = function(i) {
   if (win) { _score += pts; _correct++; }
   _history.push({ q, picked: i, correct: q.c, pts });
 
+  // Highlight answer buttons
   document.querySelectorAll('.sp-ans-btn').forEach((btn, idx) => {
     if (idx === q.c)  btn.classList.add('sp-correct');
     else if (idx === i) btn.classList.add('sp-wrong');
@@ -125,11 +159,17 @@ window.spPick = function(i) {
   document.getElementById('sp-score').textContent = _score;
   renderDots();
 
+  // Show answer slide after 0.8s, then advance after another 2s
   setTimeout(() => {
-    _qIdx++;
-    if (_qIdx < _pack.questions.length) renderQuestion();
-    else endPack();
-  }, 1800);
+    if (q.ans_img) {
+      document.getElementById('sp-img').src = q.ans_img;
+    }
+    setTimeout(() => {
+      _qIdx++;
+      if (_qIdx < _pack.questions.length) renderQuestion();
+      else endPack();
+    }, 2200);
+  }, 800);
 };
 
 window.spTogglePause = function() {
@@ -137,6 +177,7 @@ window.spTogglePause = function() {
   _paused = !_paused;
   const btn = document.getElementById('sp-pause-btn');
   if (btn) btn.textContent = _paused ? '▶' : '⏸';
+  if (_mediaEl) { _paused ? _mediaEl.pause() : _mediaEl.play(); }
 };
 
 function renderDots() {
@@ -144,15 +185,16 @@ function renderDots() {
   if (!el) return;
   el.innerHTML = _pack.questions.map((_, i) => {
     const h = _history[i];
-    const cls = i < _qIdx
-      ? ('sp-dot done' + (h && h.picked === h.correct ? '' : ' wrong'))
-      : i === _qIdx ? 'sp-dot active' : 'sp-dot';
+    let cls = 'sp-dot';
+    if (i < _qIdx) cls += h && h.picked === h.correct ? ' done' : ' done wrong';
+    else if (i === _qIdx) cls += ' active';
     return `<div class="${cls}"></div>`;
   }).join('');
 }
 
 function endPack() {
   stopTimer();
+  stopMedia();
   track('slide_pack_completed', { pack_id: _pack.id, score: _score, correct: _correct });
 
   document.getElementById('sp-game').style.display   = 'none';
@@ -180,19 +222,18 @@ window.spShowReview = function() {
     return `<div class="sp-rev-item ${ok ? 'sp-rev-ok' : 'sp-rev-wrong'}">
       <div class="sp-rev-num">${i+1}</div>
       <div class="sp-rev-body">
-        <div class="sp-rev-q">${h.q.q || ''}</div>
+        <img src="${h.q.ans_img || h.q.img}" style="width:100%;border-radius:8px;margin-bottom:6px;display:block"/>
         <div class="sp-rev-ans">${ok ? '✓' : '✗'} ${h.q.a[h.correct]}${!ok && h.picked >= 0 ? ` <span class="sp-rev-yours">(ты: ${h.q.a[h.picked]})</span>` : ''}</div>
       </div>
     </div>`;
   }).join('');
 };
 
-window.spRestart = function() {
-  startSlidePack(_pack);
-};
+window.spRestart = function() { startSlidePack(_pack); };
 
 window.spClose = function() {
   stopTimer();
+  stopMedia();
   document.getElementById('slide-pack-screen').style.display = 'none';
   if (window.showScreen) window.showScreen('home');
 };

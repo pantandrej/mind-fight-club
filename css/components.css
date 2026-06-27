@@ -183,6 +183,7 @@
 .sp-dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.15);flex-shrink:0;transition:all .2s}
 .sp-dot.active{background:var(--accent);width:16px;border-radius:3px}
 .sp-dot.done{background:rgba(74,222,128,.5)}
+.sp-dot.done.wrong{background:rgba(224,85,85,.5)}
 
 /* ── XP bar ── */
 .xp-bar-wrap{margin:12px 0 8px;width:100%}
