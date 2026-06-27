@@ -21,6 +21,7 @@ import './onboarding.js';
 import './leaderboard.js';
 import './training/slide-pack.js';
 import { refreshHomeBanner } from './tournaments/tournament-pack.js';
+import { loadDailyQuestion } from './daily-question.js';
 import './pwa.js';
 
 // ── Boot ──────────────────────────────────────────────────────────
@@ -29,6 +30,8 @@ document.addEventListener('DOMContentLoaded', () => {
   registerServiceWorker();
   // Show tournament banner if any starts within 24h
   setTimeout(refreshHomeBanner, 2000);
+  // Load daily question card on home
+  setTimeout(loadDailyQuestion, 3000);
 });
 
 async function registerServiceWorker() {

@@ -1573,6 +1573,67 @@ const ANALYTICS_LABEL_MAP = {
   'author_questions_submitted': 'Отправленные вопросы авторов',
 };
 
+async function _checkOrgApplications() {
+  const alert = document.getElementById('admin-org-alert');
+  if (!alert) return;
+  const { count } = await sb.from('organizer_profiles')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'pending');
+  if (count > 0) {
+    alert.style.display = 'block';
+    document.getElementById('admin-org-alert-text').textContent = `${count} новых заявок организаторов`;
+  }
+}
+
+window.loadAdminOrgApplications = async function() {
+  const alert = document.getElementById('admin-org-alert');
+  const panel = document.getElementById('admin-org-applications');
+  const list  = document.getElementById('admin-org-list');
+  if (!panel || !list) return;
+  if (alert) alert.style.display = 'none';
+  panel.style.display = 'block';
+
+  const { data } = await sb.from('organizer_profiles')
+    .select('user_id, display_name, contact_email, city, about, status, created_at')
+    .order('created_at', { ascending: false })
+    .limit(20);
+
+  if (!data?.length) { list.innerHTML = '<div style="color:var(--muted);font-size:12px">Нет заявок</div>'; return; }
+
+  list.innerHTML = data.map(r => `
+    <div style="border-bottom:0.5px solid var(--border);padding:10px 0;font-size:12px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+        <span style="font-weight:800">${r.display_name || '—'}</span>
+        <span style="background:${r.status==='pending'?'rgba(240,192,64,.15)':'rgba(74,222,128,.15)'};color:${r.status==='pending'?'var(--gold)':'var(--green)'};border-radius:6px;padding:2px 8px">${r.status}</span>
+      </div>
+      <div style="color:var(--muted)">${r.contact_email} · ${r.city || 'город не указан'}</div>
+      <div style="color:var(--muted);margin-top:3px;line-height:1.4">${(r.about||'').slice(0,120)}</div>
+      ${r.status === 'pending' ? `
+        <div style="display:flex;gap:6px;margin-top:8px">
+          <button onclick="approveOrg('${r.user_id}')" style="background:rgba(74,222,128,.15);border:0.5px solid var(--green);border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;color:var(--green);cursor:pointer;font-family:inherit">✓ Одобрить</button>
+          <button onclick="rejectOrg('${r.user_id}')" style="background:rgba(224,85,85,.1);border:0.5px solid rgba(224,85,85,.3);border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;color:var(--red);cursor:pointer;font-family:inherit">✗ Отклонить</button>
+        </div>` : ''}
+    </div>`).join('');
+};
+
+window.approveOrg = async function(userId) {
+  const { error } = await sb.from('organizer_profiles')
+    .update({ status: 'approved', approved_at: new Date().toISOString() })
+    .eq('user_id', userId);
+  if (error) { toast('Ошибка: ' + error.message); return; }
+  toast('✓ Организатор одобрен');
+  window.loadAdminOrgApplications();
+};
+
+window.rejectOrg = async function(userId) {
+  const { error } = await sb.from('organizer_profiles')
+    .update({ status: 'rejected' })
+    .eq('user_id', userId);
+  if (error) { toast('Ошибка: ' + error.message); return; }
+  toast('Заявка отклонена');
+  window.loadAdminOrgApplications();
+};
+
 window.loadAdminKPI = async function() {
   if (!isAdmin()) return;
   const el = document.getElementById('admin-kpi-content');
@@ -1846,6 +1907,9 @@ async function loadAdminDashboard(){
   const ctrn = document.getElementById('create-trn-btn-wrap');
   if(ctrn && isAdmin()) ctrn.style.display = 'block';
   if(!isAdmin()) return;
+  // Check for pending organizer applications
+  _checkOrgApplications();
+}
 
   const kpiEl = document.getElementById('admin-kpis');
   const evEl  = document.getElementById('admin-events');

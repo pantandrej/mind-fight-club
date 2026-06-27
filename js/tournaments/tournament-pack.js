@@ -512,16 +512,22 @@ window.openTournamentLobby = async function(id) {
   const diffMs = startsAt.getTime() - Date.now();
   const isLive = diffMs <= 0;
 
+  const shareBtn = `<button onclick="shareTournamentLink('${id}')" style="width:100%;margin-top:8px;background:rgba(255,255,255,.06);border:0.5px solid rgba(255,255,255,.15);border-radius:12px;padding:11px;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit">📤 Позвать друзей</button>`;
+
   if (isLive) {
-    action.innerHTML = `<button class="big-btn" style="width:100%;padding:16px;font-size:16px;background:linear-gradient(135deg,#22c55e,#16a34a)" onclick="openLobbyAndPlay('${id}')">▶ Играть сейчас</button>`;
+    action.innerHTML = `<button class="big-btn" style="width:100%;padding:16px;font-size:16px;background:linear-gradient(135deg,#22c55e,#16a34a)" onclick="openLobbyAndPlay('${id}')">▶ Играть сейчас</button>${shareBtn}`;
   } else if (isReg) {
     action.innerHTML = `
       <button class="score-sec-btn" style="width:100%;padding:16px;color:#4ade80" disabled>✓ Зарегистрирован — ждём старта</button>
-      <button onclick="requestPushForTournament('${id}')" style="width:100%;margin-top:8px;background:rgba(255,255,255,.06);border:0.5px solid rgba(255,255,255,.15);border-radius:12px;padding:12px;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit">🔔 Уведомить за 5 мин до старта</button>`;
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button onclick="notifyTournamentTG('${id}')" style="flex:1;background:rgba(44,165,224,.12);border:0.5px solid rgba(44,165,224,.3);border-radius:12px;padding:11px;font-size:12px;font-weight:700;color:rgba(44,165,224,.9);cursor:pointer;font-family:inherit">✈️ Уведомить в TG</button>
+        <button onclick="requestPushForTournament('${id}')" style="flex:1;background:rgba(255,255,255,.06);border:0.5px solid rgba(255,255,255,.15);border-radius:12px;padding:11px;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit">🔔 Push</button>
+      </div>
+      ${shareBtn}`;
   } else if (user) {
-    action.innerHTML = `<button class="big-btn" style="width:100%;padding:16px" onclick="trnRegisterLobby('${id}', this)">Зарегистрироваться</button>`;
+    action.innerHTML = `<button class="big-btn" style="width:100%;padding:16px" onclick="trnRegisterLobby('${id}', this)">Зарегистрироваться</button>${shareBtn}`;
   } else {
-    action.innerHTML = `<button class="big-btn" style="width:100%;padding:16px" onclick="signInGoogle()">Войти и зарегистрироваться</button>`;
+    action.innerHTML = `<button class="big-btn" style="width:100%;padding:16px" onclick="signInGoogle()">Войти и зарегистрироваться</button>${shareBtn}`;
   }
 
   // Countdown ticker
@@ -646,4 +652,26 @@ window.submitCreateTournament = async function() {
   document.getElementById('ctrn-title').value = '';
   document.getElementById('ctrn-desc').value = '';
   refreshHomeBanner();
+};
+
+window.shareTournamentLink = function(id) {
+  const url = `${location.origin}${location.pathname}?t=${id}`;
+  const t = _lobbyT;
+  const title = t?.title || 'Турнир';
+  const text = `🏆 Иду на «${title}» в Brain Fight Club!\nПрисоединяйся:\n${url}`;
+  if (navigator.share) {
+    navigator.share({ text, url }).catch(() => {});
+  } else {
+    navigator.clipboard?.writeText(text).then(() => window.toast?.('Ссылка скопирована!'));
+  }
+};
+
+window.notifyTournamentTG = function(id) {
+  const t = _lobbyT;
+  const title = t?.title || 'Турнир';
+  const url = `${location.origin}${location.pathname}?t=${id}`;
+  const starts = t?.starts_at ? new Date(t.starts_at).toLocaleString('ru', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : '';
+  const text = `🏆 Напомни мне про турнир «${title}» (${starts})\n${url}`;
+  const encoded = encodeURIComponent(text);
+  window.open(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encoded}`, '_blank');
 };

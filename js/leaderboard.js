@@ -8,13 +8,22 @@ export async function loadLeaderboard(tab = 'players') {
   const myRowEl = document.getElementById('lb-my-row');
   if (!listEl) return;
 
+  // Update tab button styles
+  ['players','week','clubs'].forEach(t => {
+    const btn = document.getElementById(`lb-tab-${t}`);
+    if (btn) btn.classList.toggle('active', t === tab);
+  });
+
   listEl.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted)">Загружаем...</div>';
+  if (myRowEl) myRowEl.style.display = 'none';
 
   try {
     if (tab === 'players') {
       const { data, error } = await sb.from('leaderboard_global').select('*');
       if (error) throw error;
       renderPlayerLeaderboard(data || [], listEl, myRowEl);
+    } else if (tab === 'week') {
+      await renderWeekLeaderboard(listEl, myRowEl);
     } else {
       const { data, error } = await sb.from('leaderboard_clubs').select('*');
       if (error) throw error;
@@ -23,6 +32,78 @@ export async function loadLeaderboard(tab = 'players') {
   } catch(e) {
     console.error('[lb]', e.message);
     listEl.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted)">Ошибка загрузки</div>';
+  }
+}
+
+async function renderWeekLeaderboard(listEl, myRowEl) {
+  const { currentUser } = getState();
+
+  // Monday 00:00 this week
+  const now = new Date();
+  const mon = new Date(now);
+  mon.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+  mon.setHours(0, 0, 0, 0);
+
+  // Next Monday
+  const nextMon = new Date(mon);
+  nextMon.setDate(mon.getDate() + 7);
+
+  // Time until reset
+  const msLeft = nextMon - now;
+  const daysLeft = Math.floor(msLeft / 86400000);
+  const hoursLeft = Math.floor((msLeft % 86400000) / 3600000);
+  const resetLabel = daysLeft > 0 ? `Сброс через ${daysLeft}д ${hoursLeft}ч` : `Сброс через ${hoursLeft}ч`;
+
+  const { data: rows, error } = await sb
+    .from('pack_results')
+    .select('user_id, score, profiles(display_name, city)')
+    .gte('played_at', mon.toISOString())
+    .order('score', { ascending: false })
+    .limit(200);
+
+  if (error) throw error;
+
+  // Aggregate by user
+  const agg = {};
+  (rows || []).forEach(r => {
+    if (!agg[r.user_id]) agg[r.user_id] = { user_id: r.user_id, score: 0, display_name: r.profiles?.display_name, city: r.profiles?.city };
+    agg[r.user_id].score += r.score || 0;
+  });
+
+  const sorted = Object.values(agg).sort((a, b) => b.score - a.score);
+  const myIdx = sorted.findIndex(r => r.user_id === currentUser?.id);
+
+  const resetBanner = `<div style="font-size:11px;color:var(--muted);text-align:center;padding:8px 0 12px;border-bottom:0.5px solid var(--border);margin-bottom:4px">🔄 ${resetLabel} · Топ-3 получат бонусные нейроны</div>`;
+
+  if (!sorted.length) {
+    listEl.innerHTML = resetBanner + '<div style="text-align:center;padding:24px;color:var(--muted)">Никто ещё не играл на этой неделе</div>';
+    return;
+  }
+
+  const html = sorted.slice(0, 50).map((r, i) => {
+    const rank = i + 1;
+    const isMe = r.user_id === currentUser?.id;
+    const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`;
+    const bonusBadge = rank <= 3 ? `<span style="font-size:10px;background:rgba(240,192,64,.15);border:0.5px solid rgba(240,192,64,.3);border-radius:6px;padding:2px 6px;color:var(--gold);margin-left:6px">+${[300,150,75][rank-1]}⚡</span>` : '';
+    return `<div class="lb-row${isMe ? ' lb-me' : ''}">
+      <div class="lb-rank">${medal}</div>
+      <div class="lb-info">
+        <div class="lb-name">${_esc(r.display_name || 'Игрок')}${bonusBadge}</div>
+        <div class="lb-city">${r.city ? _esc(r.city) : ''}</div>
+      </div>
+      <div class="lb-score">${r.score.toLocaleString('ru')} ⚡</div>
+    </div>`;
+  }).join('');
+
+  listEl.innerHTML = resetBanner + html;
+
+  // My position if outside top 50
+  if (myRowEl && myIdx >= 50 && currentUser) {
+    const me = sorted[myIdx];
+    myRowEl.style.display = 'flex';
+    myRowEl.innerHTML = `<div class="lb-rank" style="color:var(--muted)">#${myIdx+1}</div>
+      <div class="lb-info"><div class="lb-name">Вы</div></div>
+      <div class="lb-score">${me.score.toLocaleString('ru')} ⚡</div>`;
   }
 }
 

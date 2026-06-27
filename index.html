@@ -15,11 +15,11 @@
 <meta property="og:url" content="https://brain-fight-club.vercel.app/">
 <meta property="og:title" content="Brain Fight Club — живые квиз-турниры">
 <meta property="og:description" content="Тематические паки, онлайн-турниры и дуэли с друзьями. Чем быстрее отвечаешь — тем больше нейронов.">
-<meta property="og:image" content="https://brain-fight-club.vercel.app/og-image.png">
+<meta property="og:image" content="https://brain-fight-club.vercel.app/og-image.svg">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Brain Fight Club — живые квиз-турниры">
 <meta name="twitter:description" content="Тематические паки, онлайн-турниры и дуэли с друзьями.">
-<meta name="twitter:image" content="https://brain-fight-club.vercel.app/og-image.png">
+<meta name="twitter:image" content="https://brain-fight-club.vercel.app/og-image.svg">
 <link rel="canonical" href="https://brain-fight-club.vercel.app/">
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"WebApplication","name":"Brain Fight Club","url":"https://brain-fight-club.vercel.app","description":"Онлайн-платформа для квизов, живых турниров и интеллектуальных дуэлей","applicationCategory":"Game","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"RUB"}}
@@ -598,9 +598,10 @@
 
     <!-- Global leaderboard tabs -->
     <div style="margin-top:4px">
-      <div class="section-title" style="margin-bottom:8px">🏆 Глобальный рейтинг</div>
+      <div class="section-title" style="margin-bottom:8px">🏆 Рейтинг</div>
       <div class="city-tabs">
-        <button class="city-tab active" id="lb-tab-players" onclick="switchLbTab('players')">Игроки</button>
+        <button class="city-tab active" id="lb-tab-players" onclick="switchLbTab('players')">Всё время</button>
+        <button class="city-tab" id="lb-tab-week" onclick="switchLbTab('week')">Эта неделя</button>
         <button class="city-tab" id="lb-tab-clubs" onclick="switchLbTab('clubs')">Клубы</button>
       </div>
       <div id="lb-list" style="margin-top:8px"><div style="padding:16px;text-align:center;color:var(--muted);font-size:13px">Загрузка...</div></div>
@@ -1244,6 +1245,21 @@
        style="font-size:11px;color:var(--accent2);text-decoration:none;font-weight:700">DB →</a>
   </div>
   <div style="width:100%;max-width:600px;padding:12px 16px 100px;display:flex;flex-direction:column;gap:10px">
+
+    <!-- Organizer applications alert -->
+    <div id="admin-org-alert" style="display:none;background:rgba(240,192,64,.1);border:1px solid rgba(240,192,64,.35);border-radius:14px;padding:12px 14px;margin-bottom:10px;cursor:pointer" onclick="loadAdminOrgApplications()">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="font-size:22px">🏟️</div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:800;color:var(--gold)" id="admin-org-alert-text">Новые заявки организаторов</div>
+          <div style="font-size:11px;color:var(--muted)">Нажми чтобы просмотреть →</div>
+        </div>
+      </div>
+    </div>
+    <div id="admin-org-applications" style="display:none;background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px">
+      <div style="font-size:12px;font-weight:800;margin-bottom:10px">🏟️ Заявки организаторов</div>
+      <div id="admin-org-list"><div style="color:var(--muted);font-size:12px">Загрузка...</div></div>
+    </div>
 
     <!-- Section: KPI Dashboard -->
     <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--muted);margin:4px 0 8px">📊 КЛЮЧЕВЫЕ МЕТРИКИ</div>
@@ -2758,19 +2774,33 @@ console.log('✅ Firebase Tournaments module loaded');
 
   // ── Referral code auto-claim on signup ────────────────────
   // Auto-launch slide pack from URL: ?pack=videogames
-  const urlPack = new URLSearchParams(location.search).get('pack');
+  const _urlParams = new URLSearchParams(location.search);
+
+  // Deep link: ?pack=videogames_v2
+  const urlPack = _urlParams.get('pack');
   if (urlPack) {
-    // Poll until openSlidePack is ready — works for both guests and auth users
     const _tryLaunch = setInterval(() => {
       if (window.openSlidePack && window.loadPack) {
         clearInterval(_tryLaunch);
         window.openSlidePack(urlPack);
       }
     }, 200);
-    setTimeout(() => clearInterval(_tryLaunch), 10000); // give up after 10s
+    setTimeout(() => clearInterval(_tryLaunch), 10000);
   }
 
-  const urlRef = new URLSearchParams(location.search).get('ref');
+  // Deep link: ?t=tournamentId → open lobby
+  const urlTournament = _urlParams.get('t');
+  if (urlTournament) {
+    const _tryTrn = setInterval(() => {
+      if (window.openTournamentLobby) {
+        clearInterval(_tryTrn);
+        window.openTournamentLobby(urlTournament);
+      }
+    }, 200);
+    setTimeout(() => clearInterval(_tryTrn), 10000);
+  }
+
+  const urlRef = _urlParams.get('ref');
   if (urlRef) localStorage.setItem('bfc_pending_ref', urlRef);
 
   window.claimPendingReferral = async function() {
