@@ -264,10 +264,12 @@ async function loadLeaderboardAndRender() {
                    myPlace <= 3  ? `Топ-3! Отличный результат!` :
                    myPlace > 0   ? `Место ${myPlace} из ${total}` : 'Результаты';
 
-  // Bonus neurons for top-3
+  // Bonus neurons for top-3 (once per tournament per session)
   const BONUSES = [300, 150, 75];
   const myBonus = myPlace >= 1 && myPlace <= 3 ? BONUSES[myPlace - 1] : 0;
-  if (myBonus > 0 && user) {
+  const bonusKey = `trn_bonus_${_t.id}`;
+  if (myBonus > 0 && user && !sessionStorage.getItem(bonusKey)) {
+    sessionStorage.setItem(bonusKey, '1');
     window.awardNeurons?.(myBonus, 'tournament_top3', _t.id);
   }
 
@@ -314,7 +316,6 @@ async function loadLeaderboardAndRender() {
 
 window.shareTournamentResult = function() {
   const pct = _pack?.questions?.length > 0 ? Math.round(_correct / _pack.questions.length * 100) : 0;
-  const { sharePackResult } = window._shareModule || {};
   sharePackResult({ title: _t.title, score: _score, correct: _correct, total: _pack.questions.length, pct });
 };
 

@@ -142,14 +142,10 @@ function startDuelPoll(){
         console.log('[BFC] guest waiting for questions to appear in room...');
       }
     }
-    // Update opponent score
-    if(data.status==='started'||data.status==='done'){
+    // Update opponent score while in lobby (before battle starts)
+    if(data.status==='started'){
       const oppScore=duelRole==='host'?data.guest_score:data.host_score;
-      if(oppScore!==undefined){duelOppScore=oppScore;updateDuelScores();}
-    }
-    if(data.status==='done'&&duelQs.length>0){
-      clearInterval(duelPoll);
-      setTimeout(()=>endDuel(data),500);
+      if(oppScore!=null){duelOppScore=oppScore;updateDuelScores();}
     }
   },2000);
 }
@@ -236,9 +232,8 @@ async function startDuelBattle({ chargeSession = true, mode = 'friend_battle', q
 
   duelIdx=0;duelMyScore=0;duelOppScore=0;_myAnswers=[];
   startIntegrity('duel'); // start ONLY when battle begins, not in lobby
-  if(duelRole==='guest' && !window._isBotDuel){
-    sb.from('duel_rooms').update({guest_score:0}).eq('code',duelCode);
-  }
+  // Do NOT write guest_score:0 — waitPoll checks (score >= 0) to detect "opponent answered".
+  // A pre-written 0 would trigger that check immediately and end the duel after 5s timeout.
   document.getElementById('ds-me-name').textContent=duelMyName;
   // Opponent display name — bot vs real player
   let oppLabel;
@@ -288,11 +283,14 @@ async function startDuelBattle({ chargeSession = true, mode = 'friend_battle', q
         if(!data) return;
         const newOppScore  = data[oppScoreF]   ?? 0;
         const oppAnswers   = Array.isArray(data[oppAnswersF]) ? data[oppAnswersF] : [];
-        // Render each answered dot from the per-question array
+        // Render each answered dot from the per-question array.
+        // Allow overwriting ✗ (pre-filled by loadDuelQ) if DB confirms opponent answered.
         for(let i = 0; i < oppAnswers.length; i++){
           const pts = oppAnswers[i] ?? 0;
           const dot = document.getElementById('d-opp-dots-dot-' + i);
-          if(dot && !dot.textContent){ setOppDot(i, pts > 0, pts); }
+          if(!dot) continue;
+          const alreadyCorrect = dot.textContent && dot.textContent !== '✗';
+          if(!alreadyCorrect){ setOppDot(i, pts > 0, pts); }
         }
         // Show hint if opponent just answered a new question
         if(oppAnswers.length > _lastOppAnswersLen){
