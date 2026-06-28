@@ -1105,6 +1105,15 @@
       <div style="font-size:12px;color:var(--muted);line-height:1.5">Добавляй проходки на свои квизы.<br>Игроки тратят нейроны — ты получаешь клиентов.</div>
     </div>
 
+    <!-- Ticket check-in button -->
+    <button onclick="openTicketCheckin()" style="background:linear-gradient(135deg,rgba(74,222,128,.15),rgba(74,222,128,.05));border:0.5px solid rgba(74,222,128,.4);border-radius:16px;padding:16px;display:flex;align-items:center;gap:12px;cursor:pointer;font-family:inherit;width:100%;text-align:left">
+      <div style="font-size:28px">🎫</div>
+      <div>
+        <div style="font-size:14px;font-weight:800;color:#4ade80">Отметка на входе</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">Сканируй билеты участников у двери</div>
+      </div>
+    </button>
+
     <!-- Add quiz pass form -->
     <div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:10px">
       <div style="font-size:13px;font-weight:800;margin-bottom:2px">➕ Добавить проходку</div>
@@ -1280,6 +1289,18 @@
     <div id="duel-history-wrap" style="margin-bottom:16px">
       <div class="section-title">История дуэлей</div>
       <div id="duel-history-list" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+
+    <!-- Clubs -->
+    <div style="margin-top:16px;margin-bottom:16px">
+      <button onclick="openClubsScreen()" style="width:100%;background:rgba(108,99,255,.1);border:1px solid rgba(108,99,255,.25);border-radius:14px;padding:13px 16px;display:flex;align-items:center;gap:10px;cursor:pointer;font-family:inherit">
+        <div style="font-size:22px">🧠</div>
+        <div style="flex:1;text-align:left">
+          <div style="font-size:14px;font-weight:800;color:var(--text)">Клубы</div>
+          <div style="font-size:11px;color:var(--muted)" id="profile-club-sub">Вступи в клуб и играй за команду</div>
+        </div>
+        <div style="font-size:18px;color:var(--accent2)">→</div>
+      </button>
     </div>
 
     <!-- Friends -->
@@ -3158,6 +3179,23 @@ console.log('✅ Firebase Tournaments module loaded');
 
 <!-- Onboarding Modal -->
 <!-- Onboarding handled by js/training/streak.js → #onboarding screen -->
+
+<!-- ── Clubs Screen ─────────────────────────────────── -->
+<div id="clubs-screen" style="display:none;position:fixed;inset:0;z-index:500;background:var(--bg);flex-direction:column;overflow-y:auto">
+  <div style="padding:20px 20px 0;display:flex;align-items:center;gap:12px;margin-bottom:16px">
+    <button onclick="document.getElementById('clubs-screen').style.display='none'" style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;padding:0">←</button>
+    <div style="font-size:20px;font-weight:900">Клубы</div>
+    <div style="flex:1"></div>
+    <button onclick="showCreateClubModal()" style="background:var(--accent);border:none;border-radius:10px;padding:8px 14px;font-size:13px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit">+ Создать</button>
+  </div>
+  <div style="padding:0 20px 20px">
+    <div id="my-club-section" style="margin-bottom:16px"></div>
+    <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--muted);margin-bottom:8px">🏆 ТОП КЛУБЫ</div>
+    <div id="clubs-list" style="display:flex;flex-direction:column;gap:8px">
+      <div style="color:var(--muted);font-size:13px">Загрузка...</div>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>

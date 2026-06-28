@@ -9627,10 +9627,137 @@ document.addEventListener('DOMContentLoaded', () => {
     const _origShowScreen_goals = window.showScreen;
     window.showScreen = function(name){
       _origShowScreen_goals.apply(this, arguments);
-      if(name === 'home') setTimeout(renderHomeNextGoal, 60);
+      if(name === 'home') {
+        setTimeout(renderHomeNextGoal, 60);
+        setTimeout(() => window.checkDailyReward?.(), 1000);
+      }
     };
   }
 });
+
+// ── Daily login reward ────────────────────────────────────────────────
+window.checkDailyReward = async function() {
+  if (!currentUser) return;
+  const key = 'bfc_daily_reward_' + currentUser.id;
+  const lastClaim = localStorage.getItem(key);
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  if (lastClaim === today) return; // already claimed today
+
+  // Call award_currency with daily_login operation type
+  const { data } = await sb.rpc('award_currency', {
+    p_operation_type: 'daily_login',
+    p_operation_key: 'daily_login_' + today + '_' + currentUser.id,
+  });
+
+  if (data?.ok && !data.already_processed) {
+    localStorage.setItem(key, today);
+    // Calculate streak for bonus message
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    const streak = lastClaim === yesterday
+      ? parseInt(localStorage.getItem(key + '_streak') || '0') + 1
+      : 1;
+    localStorage.setItem(key + '_streak', streak);
+
+    // Show reward toast
+    _showDailyRewardPopup(data.awarded_neurons, streak);
+
+    // Update neuron display
+    if (typeof window.updNeurons === 'function') window.updNeurons();
+    if (typeof window.loadUserNeurons === 'function') window.loadUserNeurons();
+  }
+};
+
+function _showDailyRewardPopup(neurons, streak) {
+  const isBonus = streak > 0 && streak % 7 === 0;
+  let modal = document.getElementById('daily-reward-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'daily-reward-modal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(10,10,20,.85);display:flex;align-items:center;justify-content:center;padding:20px';
+    modal.onclick = () => modal.remove();
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = `<div style="background:var(--bg2);border-radius:24px;padding:28px;width:100%;max-width:320px;text-align:center">
+    <div style="font-size:48px;margin-bottom:8px">${isBonus ? '🎁' : '⚡'}</div>
+    <div style="font-size:20px;font-weight:900;margin-bottom:4px">${isBonus ? 'Бонус недели!' : 'Ежедневная награда'}</div>
+    <div style="font-size:36px;font-weight:900;color:var(--accent2);margin:12px 0">+${neurons} ⚡</div>
+    ${streak > 1 ? `<div style="font-size:13px;color:var(--muted);margin-bottom:8px">🔥 ${streak} дней подряд</div>` : ''}
+    ${isBonus ? `<div style="font-size:13px;color:#4ade80;margin-bottom:8px">7-дневный стрик!</div>` : ''}
+    <button onclick="document.getElementById('daily-reward-modal').remove()" style="width:100%;background:var(--accent);border:none;border-radius:14px;padding:14px;font-size:15px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit;margin-top:8px">Забрать!</button>
+  </div>`;
+  modal.style.display = 'flex';
+  setTimeout(() => modal.remove(), 8000);
+}
+
+// ── Ticket Check-in (for organizers) ──────────────────────────────────
+window.openTicketCheckin = function() {
+  let modal = document.getElementById('checkin-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'checkin-modal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:9990;background:var(--bg);display:flex;flex-direction:column';
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = `<div style="padding:20px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+      <button onclick="document.getElementById('checkin-modal').remove()" style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;padding:0">←</button>
+      <div style="font-size:18px;font-weight:900">Отметка на входе</div>
+    </div>
+    <div style="background:rgba(108,99,255,.08);border:1px solid rgba(108,99,255,.25);border-radius:16px;padding:20px;margin-bottom:16px;text-align:center">
+      <div style="font-size:13px;color:var(--muted);margin-bottom:10px">Введи код билета участника</div>
+      <input id="checkin-code-input" placeholder="BFC-XXXX-XXXX" maxlength="14"
+        style="width:100%;text-align:center;font-size:20px;font-weight:900;letter-spacing:2px;background:var(--bg3);border:0.5px solid var(--border);border-radius:12px;padding:14px;color:var(--text);font-family:inherit;outline:none;box-sizing:border-box;margin-bottom:12px;text-transform:uppercase"
+        oninput="this.value=this.value.toUpperCase()"
+        onkeydown="if(event.key==='Enter')redeemTicket()" />
+      <button onclick="redeemTicket()" style="width:100%;background:var(--accent);border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit">✓ Отметить</button>
+    </div>
+    <div id="checkin-result" style="font-size:14px;text-align:center;min-height:24px"></div>
+    <div style="margin-top:16px">
+      <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--muted);margin-bottom:8px">ПОСЛЕДНИЕ ОТМЕТКИ</div>
+      <div id="checkin-recent" style="font-size:13px;color:var(--muted)"></div>
+    </div>
+  </div>`;
+  modal.style.display = 'flex';
+  setTimeout(() => document.getElementById('checkin-code-input')?.focus(), 100);
+};
+
+window.redeemTicket = async function() {
+  const code = document.getElementById('checkin-code-input')?.value.trim().toUpperCase();
+  const resultEl = document.getElementById('checkin-result');
+  const recentEl = document.getElementById('checkin-recent');
+  if (!code) return;
+
+  const { data: ticket, error } = await sb.from('quiz_pass_purchases')
+    .select('id, buyer_name, is_redeemed, quiz_passes(title, organizer_id)')
+    .eq('ticket_code', code)
+    .maybeSingle();
+
+  if (error || !ticket) {
+    if (resultEl) resultEl.innerHTML = '<div style="color:var(--red);font-size:28px">❌ Билет не найден</div>';
+    return;
+  }
+
+  // Check organizer owns this pass
+  if (ticket.quiz_passes?.organizer_id !== currentUser?.id) {
+    if (resultEl) resultEl.innerHTML = '<div style="color:var(--red)">❌ Это не твоё мероприятие</div>';
+    return;
+  }
+
+  if (ticket.is_redeemed) {
+    if (resultEl) resultEl.innerHTML = `<div style="color:#f59e0b;font-size:20px">⚠️ Уже отмечен<br><span style="font-size:13px;color:var(--muted)">${ticket.buyer_name}</span></div>`;
+    return;
+  }
+
+  await sb.from('quiz_pass_purchases').update({ is_redeemed: true }).eq('id', ticket.id);
+  if (resultEl) resultEl.innerHTML = `<div style="color:#4ade80;font-size:28px">✅ Вход разрешён<br><span style="font-size:16px">${ticket.buyer_name}</span></div>`;
+  if (document.getElementById('checkin-code-input')) document.getElementById('checkin-code-input').value = '';
+
+  // Add to recent list
+  const item = document.createElement('div');
+  item.style.cssText = 'padding:8px;background:rgba(74,222,128,.08);border-radius:10px;margin-bottom:6px;font-size:12px';
+  item.innerHTML = `<span style="color:#4ade80">✓</span> ${ticket.buyer_name} · ${new Date().toLocaleTimeString('ru',{hour:'2-digit',minute:'2-digit'})}`;
+  recentEl?.prepend(item);
+};
 
 
 // ═══════════════════════════════════════════
@@ -12019,3 +12146,191 @@ function _timeUntil(isoStr) {
   const m = Math.floor((ms % 3600000) / 60000);
   return h > 0 ? `${h}ч ${m}м` : `${m} мин`;
 }
+
+// ══════════════════════════════════════════════════════════
+// CLUBS
+// ══════════════════════════════════════════════════════════
+
+// showClubScreen is called from the nav button (id="nav-teams")
+window.showClubScreen = function() { openClubsScreen(); };
+
+window.openClubsScreen = async function() {
+  const screen = document.getElementById('clubs-screen');
+  if (!screen) return;
+  screen.style.display = 'flex';
+  loadClubsList();
+  loadMyClub();
+};
+
+async function loadClubsList() {
+  const el = document.getElementById('clubs-list');
+  if (!el) return;
+  const { data } = await sb.from('clubs')
+    .select('id,name,emoji,description,member_count,total_neurons')
+    .order('total_neurons', { ascending: false })
+    .limit(20);
+  if (!data?.length) { el.innerHTML = '<div style="color:var(--muted);font-size:13px">Клубов ещё нет — создай первый!</div>'; return; }
+  el.innerHTML = data.map((c, i) => `
+    <div onclick="openClubDetail('${c.id}')" style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px;cursor:pointer">
+      <div style="font-size:28px;width:44px;text-align:center">${c.emoji||'🧠'}</div>
+      <div style="flex:1">
+        <div style="font-size:14px;font-weight:800">${c.name}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${c.member_count} участников · ${c.total_neurons.toLocaleString('ru')} ⚡</div>
+      </div>
+      <div style="font-size:18px;font-weight:900;color:var(--accent2)">#${i+1}</div>
+    </div>`).join('');
+}
+
+async function loadMyClub() {
+  const el = document.getElementById('my-club-section');
+  if (!el || !currentUser) return;
+  const { data: member } = await sb.from('club_members')
+    .select('club_id, clubs(id,name,emoji,member_count,total_neurons)')
+    .eq('user_id', currentUser.id).maybeSingle();
+  if (!member?.clubs) { el.innerHTML = ''; return; }
+  const c = member.clubs;
+  el.innerHTML = `
+    <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--muted);margin-bottom:8px">МОЙ КЛУБ</div>
+    <div onclick="openClubDetail('${c.id}')" style="display:flex;align-items:center;gap:12px;background:rgba(108,99,255,.12);border:1px solid rgba(108,99,255,.3);border-radius:14px;padding:14px;cursor:pointer;margin-bottom:12px">
+      <div style="font-size:28px">${c.emoji||'🧠'}</div>
+      <div style="flex:1">
+        <div style="font-size:14px;font-weight:800">${c.name}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${c.member_count} участников · ${c.total_neurons.toLocaleString('ru')} ⚡</div>
+      </div>
+      <div style="font-size:12px;color:var(--accent2);font-weight:700">→</div>
+    </div>`;
+  // Update profile subtitle too
+  const sub = document.getElementById('profile-club-sub');
+  if (sub) sub.textContent = c.name;
+}
+
+window.openClubDetail = async function(clubId) {
+  const { data: club } = await sb.from('clubs').select('*').eq('id', clubId).single();
+  if (!club) return;
+  const { data: members } = await sb.from('club_members')
+    .select('user_id, role, profiles(display_name, neurons, xp)')
+    .eq('club_id', clubId)
+    .order('profiles(neurons)', { ascending: false })
+    .limit(50);
+
+  const { data: myMembership } = currentUser ? await sb.from('club_members')
+    .select('role').eq('club_id', clubId).eq('user_id', currentUser.id).maybeSingle() : { data: null };
+
+  let modal = document.getElementById('club-detail-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'club-detail-modal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:600;background:var(--bg);overflow-y:auto;display:flex;flex-direction:column';
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = `
+    <div style="padding:20px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+        <button onclick="document.getElementById('club-detail-modal').remove()" style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;padding:0">←</button>
+        <div style="font-size:32px">${club.emoji||'🧠'}</div>
+        <div>
+          <div style="font-size:18px;font-weight:900">${club.name}</div>
+          <div style="font-size:12px;color:var(--muted)">${club.member_count} участников</div>
+        </div>
+      </div>
+      ${club.description ? `<div style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.5">${club.description}</div>` : ''}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px">
+        <div style="background:rgba(255,255,255,.05);border-radius:12px;padding:12px;text-align:center">
+          <div style="font-size:20px;font-weight:900;color:var(--accent2)">${club.total_neurons.toLocaleString('ru')}</div>
+          <div style="font-size:11px;color:var(--muted)">Нейроны ⚡</div>
+        </div>
+        <div style="background:rgba(255,255,255,.05);border-radius:12px;padding:12px;text-align:center">
+          <div style="font-size:20px;font-weight:900;color:var(--accent2)">${club.member_count}</div>
+          <div style="font-size:11px;color:var(--muted)">Участников</div>
+        </div>
+      </div>
+      ${!myMembership && club.member_count < 50 ? `<button onclick="joinClub('${club.id}')" style="width:100%;background:var(--accent);border:none;border-radius:14px;padding:14px;font-size:15px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit;margin-bottom:16px">Вступить в клуб</button>` : ''}
+      ${myMembership ? `<button onclick="leaveClub('${club.id}')" style="width:100%;background:rgba(255,255,255,.07);border:0.5px solid var(--border);border-radius:14px;padding:12px;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit;margin-bottom:16px">Покинуть клуб</button>` : ''}
+      <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--muted);margin-bottom:10px">🏅 УЧАСТНИКИ</div>
+      ${(members||[]).map((m, i) => {
+        const p = m.profiles;
+        const rank = window.getRank ? window.getRank(p?.xp||0) : {icon:'🥉'};
+        return `<div style="display:flex;align-items:center;gap:10px;padding:10px;background:rgba(255,255,255,.04);border-radius:12px;margin-bottom:6px">
+          <div style="font-size:14px;font-weight:900;color:var(--muted);width:24px">${i+1}</div>
+          <div style="width:36px;height:36px;border-radius:50%;background:rgba(108,99,255,.2);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:900;color:var(--accent2)">${(p?.display_name||'?')[0].toUpperCase()}</div>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:700">${p?.display_name||'Игрок'} ${rank.icon}</div>
+            <div style="font-size:11px;color:var(--muted)">${p?.neurons||0} ⚡</div>
+          </div>
+          ${m.role==='owner'?'<div style="font-size:11px;color:var(--accent2);font-weight:700">👑</div>':''}
+        </div>`;
+      }).join('')}
+    </div>`;
+  modal.style.display = 'flex';
+};
+
+window.joinClub = async function(clubId) {
+  if (!currentUser) { toast('Войдите чтобы вступить в клуб'); return; }
+  const { error } = await sb.from('club_members').insert({ club_id: clubId, user_id: currentUser.id });
+  if (error) { toast('Ошибка: ' + error.message); return; }
+  await sb.rpc('join_club', { p_club_id: clubId }).catch(() => {});
+  toast('✅ Ты в клубе!');
+  openClubDetail(clubId);
+  loadMyClub();
+  loadClubsList();
+};
+
+window.leaveClub = async function(clubId) {
+  if (!currentUser) return;
+  await sb.from('club_members').delete().eq('club_id', clubId).eq('user_id', currentUser.id);
+  await sb.rpc('leave_club', { p_club_id: clubId }).catch(() => {});
+  toast('Ты покинул клуб');
+  document.getElementById('club-detail-modal')?.remove();
+  loadMyClub();
+  loadClubsList();
+};
+
+window.showCreateClubModal = function() {
+  let modal = document.getElementById('create-club-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'create-club-modal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:700;background:rgba(10,10,20,.9);display:flex;align-items:flex-end;justify-content:center';
+    modal.onclick = e => { if(e.target===modal) modal.remove(); };
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = `<div style="background:var(--bg2);border-radius:24px 24px 0 0;padding:24px;width:100%;max-width:480px">
+    <div style="font-size:18px;font-weight:900;margin-bottom:16px">Создать клуб</div>
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      <input id="club-emoji-input" value="🧠" maxlength="2"
+        style="width:56px;text-align:center;font-size:24px;background:var(--bg3);border:0.5px solid var(--border);border-radius:12px;padding:10px;color:var(--text);font-family:inherit;outline:none" />
+      <input id="club-name-input" placeholder="Название клуба" maxlength="40"
+        style="flex:1;background:var(--bg3);border:0.5px solid var(--border);border-radius:12px;padding:12px;font-size:14px;color:var(--text);font-family:inherit;outline:none" />
+    </div>
+    <textarea id="club-desc-input" placeholder="Описание (необязательно)" rows="2" maxlength="200"
+      style="width:100%;background:var(--bg3);border:0.5px solid var(--border);border-radius:12px;padding:12px;font-size:13px;color:var(--text);font-family:inherit;outline:none;resize:none;box-sizing:border-box;margin-bottom:12px"></textarea>
+    <div id="create-club-err" style="font-size:12px;color:var(--red);min-height:16px;margin-bottom:8px"></div>
+    <div style="display:flex;gap:8px">
+      <button onclick="document.getElementById('create-club-modal').remove()" style="flex:1;background:rgba(255,255,255,.07);border:0.5px solid var(--border);border-radius:14px;padding:13px;font-size:14px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit">Отмена</button>
+      <button onclick="submitCreateClub()" style="flex:1;background:var(--accent);border:none;border-radius:14px;padding:13px;font-size:14px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit">Создать →</button>
+    </div>
+  </div>`;
+  modal.style.display = 'flex';
+  setTimeout(() => document.getElementById('club-name-input')?.focus(), 100);
+};
+
+window.submitCreateClub = async function() {
+  const name  = document.getElementById('club-name-input')?.value.trim();
+  const emoji = document.getElementById('club-emoji-input')?.value.trim() || '🧠';
+  const desc  = document.getElementById('club-desc-input')?.value.trim();
+  const errEl = document.getElementById('create-club-err');
+  if (!name) { if(errEl) errEl.textContent = 'Введи название'; return; }
+  if (!currentUser) { if(errEl) errEl.textContent = 'Нужно войти'; return; }
+
+  const { data: club, error } = await sb.from('clubs').insert({
+    name, emoji, description: desc || null, owner_id: currentUser.id
+  }).select().single();
+  if (error) { if(errEl) errEl.textContent = error.code === '23505' ? 'Такое название уже занято' : error.message; return; }
+
+  await sb.from('club_members').insert({ club_id: club.id, user_id: currentUser.id, role: 'owner' });
+  document.getElementById('create-club-modal')?.remove();
+  toast('🎉 Клуб «' + name + '» создан!');
+  loadClubsList();
+  loadMyClub();
+  openClubDetail(club.id);
+};
