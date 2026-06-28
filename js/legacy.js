@@ -11449,3 +11449,45 @@ window.refreshSubscriptionStatus= refreshSubscriptionStatus;
 window.isPremiumActive          = isPremiumActive;
 window.checkPremiumReturn       = checkPremiumReturn;
 window.showPremiumCTA           = showPremiumCTA;
+
+// ═══════════════════════════════════════════
+// DUEL INCOMING CALL UI
+// ═══════════════════════════════════════════
+let _diCode = null, _diTimer = null, _diCountdown = 30;
+
+window.showDuelIncoming = function(code, hostName) {
+  _diCode = code;
+  _diCountdown = 30;
+  const el = document.getElementById('duel-incoming');
+  if (!el) return;
+  document.getElementById('di-caller').textContent = (hostName || '?')[0].toUpperCase();
+  document.getElementById('di-name').textContent = hostName || 'Соперник';
+  el.style.display = 'flex';
+  _diTimer = setInterval(() => {
+    _diCountdown--;
+    const cd = document.getElementById('di-countdown');
+    if (cd) cd.textContent = `Автоотклонение через ${_diCountdown}с`;
+    if (_diCountdown <= 0) declineDuelIncoming();
+  }, 1000);
+};
+
+window.acceptDuelIncoming = function() {
+  clearInterval(_diTimer);
+  document.getElementById('duel-incoming').style.display = 'none';
+  if (_diCode) {
+    showScreen('duel');
+    document.getElementById('join-code-input').value = _diCode;
+    setTimeout(() => window.joinDuel?.(), 300);
+  }
+};
+
+window.declineDuelIncoming = function() {
+  clearInterval(_diTimer);
+  const el = document.getElementById('duel-incoming');
+  if (el) el.style.display = 'none';
+  _diCode = null;
+};
+
+// Onboarding is handled by js/training/streak.js → window.showOnboarding / showScreen('onboarding')
+
+window.obNext = obNext;

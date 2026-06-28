@@ -1082,7 +1082,20 @@ function pick(i){
   const isCorrect = i===q.c;
   track('question_answered', {correct: isCorrect, cat: q.cat, q_idx: qIdx, time_ms: responseMs});
   if(isCorrect){
-    document.querySelectorAll('#answers .ans')[i].className='ans correct';
+    const correctBtn = document.querySelectorAll('#answers .ans')[i];
+    correctBtn.className='ans correct';
+    // Correct answer animation
+    correctBtn.classList.add('burst');
+    setTimeout(()=>correctBtn.classList.remove('burst'), 550);
+    const rect = correctBtn.getBoundingClientRect();
+    const fl = document.createElement('div');
+    fl.className = 'float-score';
+    fl.textContent = '+' + pts;
+    fl.style.left = (rect.left + rect.width/2 - 20) + 'px';
+    fl.style.top = (rect.top + window.scrollY - 10) + 'px';
+    fl.style.position = 'fixed';
+    document.body.appendChild(fl);
+    setTimeout(()=>fl.remove(), 950);
     correctCount += 1;
     streak += 1;
     _roundScore += pts;

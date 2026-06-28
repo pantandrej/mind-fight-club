@@ -382,13 +382,31 @@ function duelExpire(){
   saveDuelScore();
   document.getElementById('d-next-btn').className='next-btn show';
 }
+function triggerCorrectAnimation(pts, buttonEl){
+  if(!buttonEl) return;
+  // Add burst class
+  buttonEl.classList.add('burst');
+  setTimeout(()=>buttonEl.classList.remove('burst'), 550);
+  // Floating +N score
+  const rect = buttonEl.getBoundingClientRect();
+  const fl = document.createElement('div');
+  fl.className = 'float-score';
+  fl.textContent = '+' + pts;
+  fl.style.left = (rect.left + rect.width/2 - 20) + 'px';
+  fl.style.top = (rect.top + window.scrollY - 10) + 'px';
+  fl.style.position = 'fixed';
+  document.body.appendChild(fl);
+  setTimeout(()=>fl.remove(), 950);
+}
 async function pickDuel(i){
   if(duelAnswered)return;duelAnswered=true;clearInterval(duelTimer);
   const q=duelQs[duelIdx];
   document.querySelectorAll('#d-answers .ans').forEach(b=>b.disabled=true);
   const pts=Math.max(1, Math.round((q.a?.length||2) * 15 * duelTimeLeft / duelMaxT));
   if(i===q.c){
-    document.querySelectorAll('#d-answers .ans')[i].className='ans correct';
+    const correctBtn = document.querySelectorAll('#d-answers .ans')[i];
+    correctBtn.className='ans correct';
+    triggerCorrectAnimation(pts, correctBtn);
     duelMyScore+=pts;duelMyCorrect++;updateDuelScores();
     showFb('d-fb','✓ +'+pts,true);setMyDot(duelIdx, pts, true);
   } else {
@@ -491,6 +509,14 @@ async function _saveDuelStats(myS, oppS, win) {
       won:             win,
     }).eq('id', window._currentDuelSessionId);
   } catch(e) { /* silent */ }
+  // Track win streak in localStorage
+  const _streakKey = 'bfc_duel_win_streak';
+  if (win) {
+    const prev = parseInt(localStorage.getItem(_streakKey) || '0', 10);
+    localStorage.setItem(_streakKey, prev + 1);
+  } else {
+    localStorage.setItem(_streakKey, '0');
+  }
   // Award duel win via economy
   if (win) {
     try { await window.sb.rpc('award_currency', { p_event_type: 'duel_win', p_idempotency_key: 'duel_win:' + duelCode }); } catch(e) {}
@@ -556,6 +582,21 @@ function endDuel(data){
   document.getElementById('d-res-me-box').className='result-box'+(win?' winner':'');
   document.getElementById('d-res-opp-box').className='result-box'+(oppS>myS?' winner':'');
   showDuelSection('d-result');
+  // Show win streak badge if >= 2 wins in a row
+  if (win) {
+    const _streak = parseInt(localStorage.getItem('bfc_duel_win_streak') || '0', 10);
+    if (_streak >= 2) {
+      const badge = document.createElement('div');
+      badge.className = 'streak-badge';
+      badge.textContent = '🔥 Серия: ' + _streak + ' побед подряд!';
+      document.body.appendChild(badge);
+      setTimeout(() => {
+        badge.style.transition = 'opacity .4s';
+        badge.style.opacity = '0';
+        setTimeout(() => badge.remove(), 450);
+      }, 3500);
+    }
+  }
   // Show post-game phrases for real (non-bot) duels
   const pgPhrases = document.getElementById('duel-postgame-phrases');
   if (pgPhrases) pgPhrases.style.display = window._isBotDuel ? 'none' : 'block';

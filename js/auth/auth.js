@@ -102,9 +102,21 @@ function _redirectAfterAuth() {
   sessionStorage.removeItem('mfc_pending_duel');
   sessionStorage.removeItem('mfc_pending_tourn');
   if (duelCode) {
-    showScreen('duel');
-    const el = document.getElementById('join-code-input');
-    if (el) { el.value = duelCode; setTimeout(() => window.joinDuel?.(), 300); }
+    // Fetch host name and show incoming call UI
+    (async () => {
+      let hostName = 'Соперник';
+      try {
+        const { data } = await window.sb.from('duel_rooms').select('host_name').eq('code', duelCode.toUpperCase()).maybeSingle();
+        if (data?.host_name) hostName = data.host_name;
+      } catch(e) { /* ignore, use default */ }
+      if (typeof window.showDuelIncoming === 'function') {
+        window.showDuelIncoming(duelCode, hostName);
+      } else {
+        showScreen('duel');
+        const el = document.getElementById('join-code-input');
+        if (el) { el.value = duelCode; setTimeout(() => window.joinDuel?.(), 300); }
+      }
+    })();
     return;
   }
   if (tournCode) {
@@ -137,7 +149,8 @@ async function _onUserLoaded(user) {
   setTimeout(() => {
     if (typeof window.renderBadges       === 'function') window.renderBadges();
     if (typeof window.renderHomeNextGoal === 'function') window.renderHomeNextGoal();
-  }, 500);
+    if (typeof window.showOnboarding     === 'function') window.showOnboarding();
+  }, 800);
 }
 
 // ── Load balance from server ──────────────────────────────────────
