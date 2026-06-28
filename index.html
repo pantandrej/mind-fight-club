@@ -300,6 +300,17 @@
       </div>
       <button class="big-btn green" id="d-start-btn" onclick="startDuelGame()" style="display:none">⚔️ Начать бой!</button>
       <div class="wait-txt" id="d-wait-txt"><div class="pulse-dot"></div><span>Ждём соперника...</span></div>
+      <!-- Lobby phrases (shown after opponent joins) -->
+      <div id="duel-lobby-phrases" style="display:none;margin-top:16px">
+        <div style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Написать сопернику</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center">
+          <button class="duel-phrase-btn" onclick="sendDuelPhrase('Удачи! 🤝')">Удачи! 🤝</button>
+          <button class="duel-phrase-btn" onclick="sendDuelPhrase('Погнали! 🚀')">Погнали! 🚀</button>
+          <button class="duel-phrase-btn" onclick="sendDuelPhrase('Страшно? 😈')">Страшно? 😈</button>
+          <button class="duel-phrase-btn" onclick="sendDuelPhrase('Готов 💪')">Готов 💪</button>
+        </div>
+      </div>
+      <div id="duel-phrase-toast" class="duel-phrase-toast" style="display:none"></div>
     </div>
 
     <!-- BATTLE -->
@@ -330,6 +341,17 @@
       <div class="answers" id="d-answers"></div>
       <div class="fb" id="d-fb"></div>
       <button class="next-btn" id="d-next-btn" onclick="duelNextQ()">Далее →</button>
+      <!-- Emoji reactions bar -->
+      <div id="duel-reactions" class="duel-reactions">
+        <button class="duel-react-btn" onclick="sendDuelReaction('🔥')">🔥</button>
+        <button class="duel-react-btn" onclick="sendDuelReaction('💀')">💀</button>
+        <button class="duel-react-btn" onclick="sendDuelReaction('🎉')">🎉</button>
+        <button class="duel-react-btn" onclick="sendDuelReaction('😤')">😤</button>
+        <button class="duel-react-btn" onclick="sendDuelReaction('👏')">👏</button>
+        <button class="duel-react-btn" onclick="sendDuelReaction('🤯')">🤯</button>
+      </div>
+      <!-- Floating emoji container -->
+      <div id="duel-float-layer" style="position:absolute;inset:0;pointer-events:none;overflow:hidden"></div>
     </div>
 
     <!-- RESULT -->
@@ -352,6 +374,16 @@
           <button onclick="duelShareTG()" style="flex:1;background:#2CA5E0;border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit">✈️ Telegram</button>
           <button onclick="duelShareWA()" style="flex:1;background:#25D366;border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit">💬 WhatsApp</button>
           <button onclick="duelCopyLink()" style="flex:1;background:var(--bg3);border:0.5px solid var(--border);border-radius:10px;padding:10px;font-size:13px;font-weight:800;color:var(--accent2);cursor:pointer;font-family:inherit">🔗 Копировать</button>
+        </div>
+      </div>
+      <!-- Post-game phrases -->
+      <div id="duel-postgame-phrases" style="display:none;margin:12px 0">
+        <div style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Сказать сопернику</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center">
+          <button class="duel-phrase-btn" onclick="sendDuelPhrase('GG 🤝')">GG 🤝</button>
+          <button class="duel-phrase-btn" onclick="sendDuelPhrase('Везёт тебе 😅')">Везёт тебе 😅</button>
+          <button class="duel-phrase-btn" onclick="sendDuelPhrase('Красавчик! 👑')">Красавчик! 👑</button>
+          <button class="duel-phrase-btn" onclick="sendDuelPhrase('Реванш! ⚔️')">Реванш! ⚔️</button>
         </div>
       </div>
       <div style="display:flex;gap:8px;margin-top:8px">

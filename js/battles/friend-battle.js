@@ -22,6 +22,7 @@ let _tabWarnCount = 0;
 let _isRandomBattle = false; // true when came from matchmaking (not friend duel)
 let _oppScoreAtQStart = 0;  // opponent score when current question started (to detect miss)
 let _myAnswers = []; // per-question points for this player (0 = miss)
+let _duelChannel = null; // Supabase Realtime broadcast channel for reactions/phrases
 
 // Simulate bot answer independently of whether the player has answered.
 // Uses qIndex to ignore stale timeouts that fired after "Next" was pressed.
@@ -110,6 +111,9 @@ async function joinDuel(){
   document.getElementById('opp-pulse').style.display='none';
   document.getElementById('d-start-btn').style.display='none';
   document.getElementById('d-wait-txt').style.display='flex';
+  const lpGuest = document.getElementById('duel-lobby-phrases');
+  if (lpGuest) lpGuest.style.display = 'block';
+  _initDuelChannel(code);
 
   showDuelSection('d-waiting');
   startDuelPoll();
@@ -128,6 +132,10 @@ function startDuelPoll(){
       document.getElementById('opp-pulse').style.display='none';
       document.getElementById('d-start-btn').style.display='block';
       document.getElementById('d-wait-txt').style.display='none';
+      // Show lobby phrases and init channel now that both players are in
+      const lp = document.getElementById('duel-lobby-phrases');
+      if (lp) lp.style.display = 'block';
+      _initDuelChannel(duelCode);
     }
     // Guest sees game started — load questions from DB
     if(duelRole==='guest'&&data.status==='started'&&duelQs.length===0){
@@ -251,6 +259,13 @@ async function startDuelBattle({ chargeSession = true, mode = 'friend_battle', q
   updateDuelScores();
   buildBattleDots(duelQs.length);
   showDuelSection('d-battle');
+  // Init chat channel; hide lobby phrases, show post-game phrases on result
+  _initDuelChannel(duelCode);
+  const lobbyPhrases = document.getElementById('duel-lobby-phrases');
+  if (lobbyPhrases) lobbyPhrases.style.display = 'none';
+  // Reactions bar: hide for bot duels
+  const reactBar = document.getElementById('duel-reactions');
+  if (reactBar) reactBar.style.display = window._isBotDuel ? 'none' : 'flex';
 
   // Tab warning: first switch = toast, second = forfeit
   _tabWarnCount = 0;
@@ -541,6 +556,9 @@ function endDuel(data){
   document.getElementById('d-res-me-box').className='result-box'+(win?' winner':'');
   document.getElementById('d-res-opp-box').className='result-box'+(oppS>myS?' winner':'');
   showDuelSection('d-result');
+  // Show post-game phrases for real (non-bot) duels
+  const pgPhrases = document.getElementById('duel-postgame-phrases');
+  if (pgPhrases) pgPhrases.style.display = window._isBotDuel ? 'none' : 'block';
 }
 // ── Share функции для дуэли ──
 function _duelShareText(){
@@ -580,12 +598,71 @@ function duelPlayAgain(){
   // friend duel: resetDuel already shows d-lobby
 }
 
+// ── Duel chat / reactions ────────────────────────────────────────────────────
+
+function _initDuelChannel(code) {
+  if (_duelChannel) { try { sb.removeChannel(_duelChannel); } catch(e){} _duelChannel = null; }
+  if (window._isBotDuel) return;
+  _duelChannel = sb.channel(`duel-chat:${code}`, { config: { broadcast: { self: false } } });
+  _duelChannel.on('broadcast', { event: 'msg' }, ({ payload }) => _onDuelMsg(payload));
+  _duelChannel.subscribe();
+}
+
+function _onDuelMsg({ text, isReaction }) {
+  if (isReaction) {
+    _floatEmoji(text, false);
+  } else {
+    // Show phrase as a toast / in opp-hint
+    const hint = document.getElementById('opp-hint');
+    if (hint) { hint.textContent = `💬 ${duelOppNameStr}: ${text}`; hint.className = 'opp-hint answered'; }
+    _showPhraseToast(`${duelOppNameStr}: ${text}`);
+  }
+}
+
+function _floatEmoji(emoji, isMine) {
+  const layer = document.getElementById('duel-float-layer');
+  if (!layer) return;
+  const el = document.createElement('div');
+  el.className = 'duel-float-emoji';
+  // Mine floats on left side, opponent's on right
+  el.style.left = isMine ? `${15 + Math.random()*20}%` : `${60 + Math.random()*20}%`;
+  el.textContent = emoji;
+  layer.appendChild(el);
+  setTimeout(() => el.remove(), 1900);
+}
+
+function _showPhraseToast(text) {
+  const el = document.getElementById('duel-phrase-toast') || document.querySelector('.duel-phrase-toast');
+  if (!el) return;
+  el.textContent = text;
+  el.style.display = 'block';
+  clearTimeout(el._hideTimer);
+  el._hideTimer = setTimeout(() => { el.style.display = 'none'; }, 3000);
+}
+
+window.sendDuelReaction = function(emoji) {
+  if (window._isBotDuel || !_duelChannel) return;
+  _duelChannel.send({ type: 'broadcast', event: 'msg', payload: { text: emoji, isReaction: true } });
+  _floatEmoji(emoji, true);
+};
+
+window.sendDuelPhrase = function(text) {
+  if (window._isBotDuel) return;
+  if (_duelChannel) {
+    _duelChannel.send({ type: 'broadcast', event: 'msg', payload: { text, isReaction: false } });
+  }
+  _showPhraseToast(`Вы: ${text}`);
+};
+
+// ── Reset ────────────────────────────────────────────────────────────────────
+
 function resetDuel(){
   window._battleSessionStarted = false;
   window._currentSessionId     = null;
   clearInterval(duelPoll); duelPoll = null;
   clearInterval(duelTimer); duelTimer = null;
   if(_oppPollInterval){ clearInterval(_oppPollInterval); _oppPollInterval = null; }
+  if(_duelChannel){ try { sb.removeChannel(_duelChannel); } catch(e){} _duelChannel = null; }
   if(window._botAnswerTimeout){ clearTimeout(window._botAnswerTimeout); window._botAnswerTimeout = null; }
   // Full state reset
   duelCode=null; duelRole=null; duelQs=[]; duelIdx=0;
