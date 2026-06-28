@@ -266,3 +266,29 @@
 .streak-badge{position:fixed;bottom:110px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#ff6b35,#f7931e);border-radius:24px;padding:10px 22px;font-size:15px;font-weight:900;color:#fff;z-index:999;white-space:nowrap;box-shadow:0 4px 20px rgba(255,107,53,.4);animation:streakBadgeIn .4s ease-out forwards;pointer-events:none}
 .ob-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.2);transition:background .2s,width .2s}
 .ob-dot.active{background:var(--accent);width:20px;border-radius:4px}
+
+/* Rank badges */
+.rank-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 800;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  margin-top: 4px;
+}
+.rank-progress {
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.1);
+  margin-top: 8px;
+  overflow: hidden;
+}
+.rank-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}

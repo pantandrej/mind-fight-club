@@ -1427,6 +1427,12 @@ function showProfile(){
   const levelWrap = document.createElement('div');
   levelWrap.innerHTML = badgeHTML;
   afterEl.insertAdjacentElement('afterend', levelWrap);
+  // Rank badge
+  document.querySelectorAll('.profile-rank-wrap').forEach(b=>b.remove());
+  const rankWrap = document.createElement('div');
+  rankWrap.className = 'profile-rank-wrap';
+  rankWrap.innerHTML = _rankBadgeHTML(xp);
+  levelWrap.insertAdjacentElement('afterend', rankWrap);
   document.getElementById('n-profile').textContent=neurons;
   // Load stats from DB
   loadProfileStats();
@@ -1453,6 +1459,21 @@ function showProfile(){
   document.getElementById('ps-duels-lbl').textContent=lang==='ru'?'Дуэли выиграны':'Duels won';
   document.getElementById('ps-correct-lbl').textContent=lang==='ru'?'Верных ответов':'Correct answers';
   document.getElementById('profile-signout-btn').textContent=lang==='ru'?'Выйти':'Sign out';
+  // Share profile button
+  const signoutBtn = document.getElementById('profile-signout-btn');
+  if (signoutBtn && !document.getElementById('profile-share-btn')) {
+    const shareBtn = document.createElement('button');
+    shareBtn.id = 'profile-share-btn';
+    shareBtn.className = signoutBtn.className;
+    shareBtn.style.cssText = 'width:100%;margin-bottom:8px;background:rgba(108,99,255,.12);border:0.5px solid var(--accent2);color:var(--accent2);border-radius:14px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit';
+    shareBtn.textContent = '🔗 Поделиться профилем';
+    shareBtn.onclick = () => {
+      const displayName = document.getElementById('profile-name')?.textContent || '';
+      navigator.clipboard.writeText(location.origin + '?u=' + encodeURIComponent(displayName))
+        .then(() => window.toast?.('🔗 Ссылка на профиль скопирована!'));
+    };
+    signoutBtn.parentElement.insertBefore(shareBtn, signoutBtn);
+  }
   }catch(e){console.error('Profile error:',e);}
 }
 
@@ -1524,6 +1545,8 @@ async function loadProfileStats(){
   loadAnalyticsSummary();
   loadPackHistory();
   loadDuelHistory();
+  loadFriends();
+  loadPendingChallenges();
 }
 
 async function loadPackHistory() {
@@ -2799,6 +2822,49 @@ async function showOTFinished(){
   }).join('') || '<div style="padding:14px;text-align:center;color:var(--muted)">No results yet</div>';
 }
 
+// ─── ADMIN: AI QUESTION GENERATION ───────────────────────
+window._aiGeneratedQuestions = null;
+
+window.adminGenerateAIQuestions = async function() {
+  if (!isAdmin()) { toast('Admin only'); return; }
+  const topic = document.getElementById('ai-topic-input')?.value.trim();
+  if (!topic) { toast('Введи тему'); return; }
+  const count = parseInt(document.getElementById('ai-count')?.value) || 10;
+  const lang  = document.getElementById('ai-lang')?.value || 'ru';
+
+  const btn      = document.getElementById('ai-gen-btn');
+  const resultEl = document.getElementById('ai-gen-result');
+  if (btn) { btn.textContent = '⏳ Генерирую...'; btn.disabled = true; }
+  if (resultEl) resultEl.innerHTML = '';
+
+  try {
+    const { data, error } = await sb.functions.invoke('generate-questions', {
+      body: { topic, count, lang },
+    });
+    if (error || !data?.ok) throw new Error(data?.reason || error?.message || 'Ошибка');
+
+    window._aiGeneratedQuestions = data.questions;
+
+    // Auto-fill tournament title if empty
+    const titleInput = document.getElementById('ot-new-title');
+    if (titleInput && !titleInput.value) titleInput.value = 'Квиз: ' + topic;
+
+    if (resultEl) {
+      resultEl.innerHTML =
+        `<div style="color:#4ade80;font-weight:700;margin-bottom:6px">✅ Готово: ${data.count} вопросов</div>` +
+        data.questions.slice(0, 3).map((q, i) =>
+          `<div style="padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:11px;line-height:1.4">${i+1}. ${q.q}</div>`
+        ).join('') +
+        (data.count > 3 ? `<div style="color:var(--muted);font-size:11px;margin-top:3px">...и ещё ${data.count-3} вопросов</div>` : '') +
+        `<div style="margin-top:6px;font-size:11px;color:var(--accent2)">👆 Нажми «Создать турнир» чтобы запустить с этими вопросами</div>`;
+    }
+  } catch(e) {
+    if (resultEl) resultEl.innerHTML = `<div style="color:var(--red)">❌ ${e.message}</div>`;
+  } finally {
+    if (btn) { btn.textContent = '✨ Сгенерировать вопросы'; btn.disabled = false; }
+  }
+};
+
 // ─── ADMIN: CREATE OFFICIAL TOURNAMENT ───────────────────
 async function adminCreateOfficialTournament(){
   if(!isAdmin()){ toast('Admin only'); return; }
@@ -2823,6 +2889,19 @@ async function adminCreateOfficialTournament(){
   }).select().single();
   if(otErr){ toast('Ошибка: '+otErr.message); if(btn){btn.textContent='Create Tournament →';btn.disabled=false;} return; }
 
+  // ── Use AI-generated questions if available ───────────────
+  if (window._aiGeneratedQuestions?.length) {
+    const aiQs = window._aiGeneratedQuestions.slice(0, numQs);
+    window._aiGeneratedQuestions = null;
+    if(document.getElementById('ai-gen-result')) document.getElementById('ai-gen-result').innerHTML='';
+    if(document.getElementById('ai-topic-input')) document.getElementById('ai-topic-input').value='';
+    // Store inline so the tournament gameplay can read them (same format as ALL_Q)
+    window._officialTournamentLocalQs = aiQs;
+    if(btn){btn.textContent='Create Tournament →';btn.disabled=false;}
+    _finishCreateOT(ot, title, code, accessCode, isPrivate, orgName, numQs, cat, true);
+    return;
+  }
+
   // Pick questions from ALL_Q + local (fallback if no DB questions)
   let pool = cat==='ALL' ? ALL_Q : ALL_Q.filter(q=>(q.cat||'')===cat);
   pool = pool.sort(()=>Math.random()-.5).slice(0, numQs);
@@ -2835,16 +2914,18 @@ async function adminCreateOfficialTournament(){
   const {data:dbQRows} = await qFilter;
   if(dbQRows && dbQRows.length){
     dbQs = dbQRows.sort(()=>Math.random()-.5).slice(0,numQs);
-    // Insert official_tournament_questions from DB
     await sb.from('official_tournament_questions').insert(
       dbQs.map((q,i)=>({ tournament_id:ot.id, question_id:q.id, position:i+1 }))
     );
   } else {
-    // Fallback: insert local questions as text-based entries (question_id null)
     toast('⚠️ No DB questions found — using local questions for this tournament');
   }
 
   if(btn){btn.textContent='Create Tournament →';btn.disabled=false;}
+  _finishCreateOT(ot, title, code, accessCode, isPrivate, orgName, numQs, cat, false);
+}
+
+function _finishCreateOT(ot, title, code, accessCode, isPrivate, orgName, numQs, cat, aiUsed){
   document.getElementById('ot-new-title').value='';
   if(document.getElementById('ot-new-org')) document.getElementById('ot-new-org').value='';
   if(document.getElementById('ot-new-private')) document.getElementById('ot-new-private').checked=false;
@@ -2853,8 +2934,8 @@ async function adminCreateOfficialTournament(){
     ? location.origin+location.pathname+'?official='+code+'&ac='+accessCode
     : location.origin+location.pathname+'?official='+code;
   navigator.clipboard.writeText(link).catch(()=>{});
-  toast('✅ Турнир создан! Ссылка скопирована', 4000);
-  track('official_tournament_created', {code, title, numQs, cat, isPrivate});
+  toast('✅ Турнир создан!' + (aiUsed?' (AI-вопросы)':'') + ' Ссылка скопирована', 4000);
+  track('official_tournament_created', {code, title, numQs, cat, isPrivate, ai: aiUsed});
 
   if(isPrivate) showPrivateTournamentQR(ot.id, code, accessCode, title, orgName);
   loadAdminOTList();
@@ -11661,6 +11742,7 @@ window.showOppProfile = async function(userId, displayName) {
     <div style="text-align:center;margin-bottom:16px">
       <div style="width:64px;height:64px;border-radius:50%;background:rgba(108,99,255,.2);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;font-size:28px;font-weight:900;color:var(--accent2)">${initial}</div>
       <div style="font-size:18px;font-weight:900">${displayName || 'Соперник'}</div>
+      <div id="opp-profile-rank" style="margin-top:6px"></div>
       <div id="opp-profile-loading" style="font-size:13px;color:var(--muted);margin-top:4px">Загрузка...</div>
     </div>
     <div id="opp-profile-stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px"></div>
@@ -11677,6 +11759,8 @@ window.showOppProfile = async function(userId, displayName) {
     const statsEl = document.getElementById('opp-profile-stats');
     if (!data) { if (loadEl) loadEl.textContent = 'Нет данных'; return; }
     if (loadEl) loadEl.textContent = '';
+    const rankEl = document.getElementById('opp-profile-rank');
+    if (rankEl) rankEl.innerHTML = _rankBadgeHTML(data.xp || 0);
     if (statsEl) statsEl.innerHTML = [
       { v: data.games_played || 0,         l: 'Игр' },
       { v: data.duels_played || 0,         l: 'Дуэлей' },
@@ -11723,3 +11807,215 @@ window.updatePushBtn = updatePushBtn;
     });
   }
 })();
+
+// ═══════════════════════════════════════════
+// RANKS SYSTEM
+// ═══════════════════════════════════════════
+const RANKS = [
+  { min: 0,     name: 'Новобранец',   icon: '🥉', color: '#cd7f32' },
+  { min: 500,   name: 'Ученик',       icon: '📚', color: '#888' },
+  { min: 1500,  name: 'Знаток',       icon: '🥈', color: '#aaa' },
+  { min: 3000,  name: 'Эксперт',      icon: '⭐', color: '#f0c040' },
+  { min: 6000,  name: 'Мастер',       icon: '🥇', color: '#ffd700' },
+  { min: 12000, name: 'Гроссмейстер', icon: '💎', color: '#a78bfa' },
+  { min: 25000, name: 'Легенда',      icon: '👑', color: '#f59e0b' },
+];
+
+function getRank(xpVal) {
+  let rank = RANKS[0];
+  for (const r of RANKS) { if ((xpVal || 0) >= r.min) rank = r; }
+  return rank;
+}
+window.getRank = getRank;
+
+function _rankBadgeHTML(xpVal) {
+  const rank = getRank(xpVal);
+  const nextRank = RANKS.find(r => r.min > (xpVal || 0));
+  const prevMin = rank.min;
+  const nextMin = nextRank ? nextRank.min : null;
+  let progressHTML = '';
+  if (nextMin) {
+    const pct = Math.min(100, Math.round(((xpVal || 0) - prevMin) / (nextMin - prevMin) * 100));
+    progressHTML = `<div class="rank-progress"><div class="rank-progress-fill" style="width:${pct}%;background:${rank.color}"></div></div>
+    <div style="font-size:10px;color:var(--muted);margin-top:2px;text-align:center">${xpVal || 0} / ${nextMin} XP</div>`;
+  } else {
+    progressHTML = `<div style="font-size:10px;color:var(--muted);margin-top:4px;text-align:center">Максимальный ранг!</div>`;
+  }
+  return `<div style="text-align:center">
+    <div class="rank-badge" style="color:${rank.color};border-color:${rank.color}40">${rank.icon} ${rank.name}</div>
+    ${progressHTML}
+  </div>`;
+}
+
+// ═══════════════════════════════════════════
+// PUBLIC PROFILE MODAL
+// ═══════════════════════════════════════════
+window.openPublicProfile = async function(username, userId) {
+  let modal = document.getElementById('pub-profile-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'pub-profile-modal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:9995;background:rgba(10,10,20,.88);display:flex;align-items:center;justify-content:center;padding:16px';
+    modal.onclick = e => { if (e.target === modal) modal.remove(); };
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = `<div style="background:var(--bg2);border-radius:20px;padding:28px;width:100%;max-width:440px;border:0.5px solid var(--border);text-align:center">
+    <div id="pub-profile-inner"><div style="color:var(--muted);font-size:14px">Загрузка...</div></div>
+  </div>`;
+  modal.style.display = 'flex';
+
+  try {
+    let query = sb.from('player_stats').select('*');
+    if (userId) query = query.eq('user_id', userId);
+    else query = query.eq('display_name', username);
+    const { data } = await query.single();
+    if (!data) {
+      document.getElementById('pub-profile-inner').innerHTML = '<div style="color:var(--muted)">Профиль не найден</div>';
+      return;
+    }
+    const initial = (data.display_name || username || '?')[0].toUpperCase();
+    const rankHTML = _rankBadgeHTML(data.xp || 0);
+    const shareUrl = location.origin + '?u=' + encodeURIComponent(data.display_name || username || '');
+    document.getElementById('pub-profile-inner').innerHTML = `
+      <div style="width:72px;height:72px;border-radius:50%;background:rgba(108,99,255,.2);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:32px;font-weight:900;color:var(--accent2)">${initial}</div>
+      <div style="font-size:20px;font-weight:900;margin-bottom:4px">${data.display_name || username || '—'}</div>
+      ${data.city ? `<div style="font-size:13px;color:var(--muted);margin-bottom:8px">📍 ${data.city}</div>` : ''}
+      <div style="margin-bottom:12px">${rankHTML}</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px">
+        ${[
+          { v: data.neurons || 0,              l: '⚡ Нейроны' },
+          { v: data.xp || 0,                   l: 'XP' },
+          { v: data.games_played || 0,          l: 'Игр' },
+          { v: data.duels_played || 0,          l: 'Дуэлей' },
+          { v: (data.accuracy_pct || 0) + '%',  l: 'Точность' },
+          { v: data.best_streak || 0,           l: 'Лучший стрик' },
+          { v: data.duels_won || 0,             l: 'Побед' },
+        ].map(s => `<div style="background:rgba(255,255,255,.05);border-radius:12px;padding:12px">
+          <div style="font-size:18px;font-weight:900;color:var(--accent2)">${s.v}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${s.l}</div>
+        </div>`).join('')}
+      </div>
+      <button onclick="navigator.clipboard.writeText('${shareUrl}').then(()=>window.toast?.('🔗 Ссылка скопирована!'))" style="width:100%;background:rgba(108,99,255,.15);border:0.5px solid var(--accent2);border-radius:14px;padding:12px;font-size:14px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit;margin-bottom:8px">🔗 Поделиться профилем</button>
+      <button onclick="document.getElementById('pub-profile-modal').remove()" style="width:100%;background:rgba(255,255,255,.07);border:0.5px solid var(--border);border-radius:14px;padding:12px;font-size:14px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit">Закрыть</button>
+    `;
+  } catch (e) {
+    const inner = document.getElementById('pub-profile-inner');
+    if (inner) inner.innerHTML = '<div style="color:var(--muted)">Нет данных</div>';
+  }
+};
+
+// ─── Friends & Async Challenges ────────────────────────────────────────────
+
+async function loadFriends() {
+  if (!currentUser) return;
+  const el = document.getElementById('friends-list');
+  if (!el) return;
+
+  const { data } = await sb.from('friendships')
+    .select('friend_id, profiles!friendships_friend_id_fkey(display_name, xp, neurons)')
+    .eq('user_id', currentUser.id)
+    .limit(20);
+
+  if (!data || !data.length) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:12px">Пока нет друзей — добавь первого!</div>';
+    return;
+  }
+
+  el.innerHTML = data.map(f => {
+    const p = f.profiles;
+    const rank = window.getRank ? window.getRank(p?.xp || 0) : { icon: '🥉' };
+    return `<div onclick="window.showOppProfile('${f.friend_id}','${p?.display_name||''}')"
+      style="display:flex;align-items:center;gap:10px;padding:10px;background:rgba(255,255,255,.05);border-radius:12px;margin-bottom:6px;cursor:pointer">
+      <div style="width:36px;height:36px;border-radius:50%;background:rgba(108,99,255,.2);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:var(--accent2)">${(p?.display_name||'?')[0].toUpperCase()}</div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:700">${p?.display_name||'Игрок'} ${rank.icon}</div>
+        <div style="font-size:11px;color:var(--muted)">${p?.neurons||0} ⚡</div>
+      </div>
+      <button onclick="event.stopPropagation();challengeFriend('${f.friend_id}','${p?.display_name||''}')"
+        style="background:var(--accent);border:none;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit">⚔️</button>
+    </div>`;
+  }).join('');
+}
+
+window.showAddFriendModal = function() {
+  let modal = document.getElementById('add-friend-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'add-friend-modal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:9990;background:rgba(10,10,20,.85);display:flex;align-items:center;justify-content:center;padding:20px';
+    modal.onclick = e => { if(e.target===modal) modal.remove(); };
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = `<div style="background:var(--bg2);border-radius:20px;padding:24px;width:100%;max-width:340px">
+    <div style="font-size:17px;font-weight:900;margin-bottom:16px">Добавить друга</div>
+    <input id="add-friend-input" placeholder="Имя пользователя"
+      style="width:100%;background:var(--bg3);border:0.5px solid var(--border);border-radius:12px;padding:12px;font-size:15px;color:var(--text);font-family:inherit;outline:none;box-sizing:border-box;margin-bottom:8px" />
+    <div id="add-friend-err" style="font-size:12px;color:var(--red);min-height:16px;margin-bottom:8px"></div>
+    <div style="display:flex;gap:8px">
+      <button onclick="document.getElementById('add-friend-modal').remove()" style="flex:1;background:rgba(255,255,255,.07);border:0.5px solid var(--border);border-radius:12px;padding:12px;font-size:14px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit">Отмена</button>
+      <button onclick="submitAddFriend()" style="flex:1;background:var(--accent);border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit">Добавить</button>
+    </div>
+  </div>`;
+  modal.style.display = 'flex';
+  setTimeout(() => document.getElementById('add-friend-input')?.focus(), 100);
+};
+
+window.submitAddFriend = async function() {
+  const name = document.getElementById('add-friend-input')?.value.trim();
+  const errEl = document.getElementById('add-friend-err');
+  if (!name) { if(errEl) errEl.textContent = 'Введи имя'; return; }
+
+  const { data: found } = await sb.from('profiles').select('id,display_name').eq('display_name', name).maybeSingle();
+  if (!found) { if(errEl) errEl.textContent = 'Пользователь не найден'; return; }
+  if (found.id === currentUser?.id) { if(errEl) errEl.textContent = 'Нельзя добавить себя'; return; }
+
+  const { error } = await sb.from('friendships').insert({ user_id: currentUser.id, friend_id: found.id }).single();
+  if (error && error.code !== '23505') { if(errEl) errEl.textContent = 'Ошибка: ' + error.message; return; }
+
+  document.getElementById('add-friend-modal')?.remove();
+  window.toast?.('✅ ' + found.display_name + ' добавлен в друзья!');
+  loadFriends();
+};
+
+window.challengeFriend = async function(friendId, friendName) {
+  if (typeof window.createDuel === 'function') {
+    await window.createDuel();
+    if (window.sendPushToUser && window._currentDuelCode) {
+      window.sendPushToUser(friendId, {
+        title: `⚔️ ${window.currentUser?.user_metadata?.full_name || 'Друг'} вызывает на дуэль!`,
+        body: 'Зайди в Brain Fight Club и прими вызов!',
+        url: '/?duel=' + window._currentDuelCode,
+        tag: 'duel-invite',
+      });
+    }
+  }
+};
+
+window.loadPendingChallenges = async function() {
+  if (!currentUser) return;
+  const { data, count } = await sb.from('async_challenges')
+    .select('*', { count: 'exact' })
+    .eq('challenged_id', currentUser.id)
+    .eq('status', 'pending')
+    .gt('expires_at', new Date().toISOString());
+
+  const badge = document.getElementById('challenges-badge');
+  if (badge) badge.textContent = count > 0 ? count : '';
+  if (badge) badge.style.display = count > 0 ? 'flex' : 'none';
+
+  const pendingEl = document.getElementById('pending-challenges');
+  if (!pendingEl || !data?.length) return;
+  pendingEl.innerHTML = data.map(c => `
+    <div style="background:rgba(108,99,255,.1);border:1px solid rgba(108,99,255,.3);border-radius:12px;padding:12px;margin-bottom:8px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:4px">⚔️ Тебя вызвали на дуэль!</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Истекает через ${_timeUntil(c.expires_at)}</div>
+      <button onclick="acceptAsyncChallenge('${c.id}')" style="width:100%;background:var(--accent);border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit">Принять вызов →</button>
+    </div>`).join('');
+};
+
+function _timeUntil(isoStr) {
+  const ms = new Date(isoStr) - Date.now();
+  const h = Math.floor(ms / 3600000);
+  const m = Math.floor((ms % 3600000) / 60000);
+  return h > 0 ? `${h}ч ${m}м` : `${m} мин`;
+}

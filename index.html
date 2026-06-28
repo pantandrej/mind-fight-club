@@ -1282,6 +1282,16 @@
       <div id="duel-history-list" style="display:flex;flex-direction:column;gap:8px"></div>
     </div>
 
+    <!-- Friends -->
+    <div id="friends-wrap" style="margin-top:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div style="font-size:13px;font-weight:800">Друзья</div>
+        <button onclick="showAddFriendModal()" style="background:var(--accent);border:none;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit">+ Добавить</button>
+      </div>
+      <div id="pending-challenges"></div>
+      <div id="friends-list" style="font-size:13px;color:var(--muted)">Загрузка...</div>
+    </div>
+
     <div class="section-title" id="profile-badges-title">Достижения</div>
     <div id="achievements-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px"></div>
     <div class="profile-badges-grid" id="profile-badges-grid"></div>
@@ -1447,6 +1457,29 @@
     <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--muted);margin:8px 0 2px">🏆 ТУРНИРЫ</div>
     <div style="background:var(--bg2);border:0.5px solid rgba(240,192,64,.25);border-radius:14px;padding:14px">
       <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">Создать турнир</div>
+
+      <!-- AI Question Generator -->
+      <div style="background:rgba(108,99,255,.08);border:1px solid rgba(108,99,255,.25);border-radius:12px;padding:12px;margin-bottom:12px">
+        <div style="font-size:12px;font-weight:800;color:var(--accent2);margin-bottom:8px">✨ AI-генерация вопросов</div>
+        <input id="ai-topic-input" placeholder="Тема (напр. История России, Марвел, Формула-1)"
+          style="width:100%;background:var(--bg3);border:0.5px solid var(--border);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--text);font-family:inherit;outline:none;margin-bottom:8px;box-sizing:border-box" />
+        <div style="display:flex;gap:6px;margin-bottom:8px">
+          <select id="ai-count" style="flex:1;background:var(--bg3);border:0.5px solid var(--border);border-radius:10px;padding:8px 10px;font-size:12px;color:var(--text);font-family:inherit;outline:none">
+            <option value="5">5 вопросов</option>
+            <option value="10" selected>10 вопросов</option>
+            <option value="15">15 вопросов</option>
+            <option value="20">20 вопросов</option>
+          </select>
+          <select id="ai-lang" style="flex:1;background:var(--bg3);border:0.5px solid var(--border);border-radius:10px;padding:8px 10px;font-size:12px;color:var(--text);font-family:inherit;outline:none">
+            <option value="ru">🇷🇺 Русский</option>
+            <option value="en">🇺🇸 English</option>
+          </select>
+        </div>
+        <button onclick="adminGenerateAIQuestions()" id="ai-gen-btn"
+          style="width:100%;background:linear-gradient(135deg,#6c63ff,#a78bfa);border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit;margin-bottom:6px">✨ Сгенерировать вопросы</button>
+        <div id="ai-gen-result" style="font-size:12px;color:var(--muted)"></div>
+      </div>
+
       <input id="ot-new-title" placeholder="Название (напр. Кубок умов)"
         style="width:100%;background:var(--bg3);border:0.5px solid var(--border);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--text);font-family:inherit;outline:none;margin-bottom:8px;box-sizing:border-box" />
       <input id="ot-new-org" placeholder="Организация (необязательно, напр. Яндекс)"

@@ -133,6 +133,12 @@ function _redirectAfterAuth() {
   }
   showScreen('home');
   if (hypeSlug) setTimeout(() => window.openHypeGame?.(hypeSlug), 150);
+  if (p.get('u') || p.get('uid')) {
+    const uname = p.get('u');
+    const uid = p.get('uid');
+    setTimeout(() => window.openPublicProfile?.(uname, uid), 300);
+    // Don't return — still show home screen underneath
+  }
 }
 
 // ── Called once per session after sign-in ─────────────────────────
