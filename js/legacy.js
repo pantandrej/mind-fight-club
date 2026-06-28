@@ -2939,8 +2939,19 @@ async function adminStartOT(id){
   const confirmed = confirm(msg);
   if(!confirmed) return;
 
-  await sb.from('official_tournaments').update({status:'live', started_at:new Date().toISOString()}).eq('id',id);
+  const {data:ot} = await sb.from('official_tournaments')
+    .update({status:'live', started_at:new Date().toISOString()})
+    .eq('id',id).select('title,code').single();
   toast('▶ Tournament started!');
+  // Push all subscribers of this tournament
+  if (window.sendPushToTournament && ot) {
+    window.sendPushToTournament(id, {
+      title: '🏆 Турнир начался!',
+      body:  `«${ot.title}» — заходи прямо сейчас!`,
+      url:   '/?official=' + ot.code,
+      tag:   'tournament-start',
+    });
+  }
   loadAdminOTList();
 }
 

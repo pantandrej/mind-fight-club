@@ -80,3 +80,57 @@ export async function requestPushForTournament(tournamentId) {
 }
 
 window.requestPushForTournament = requestPushForTournament;
+
+// ── General push subscription (for duel invites) ──────────────────────
+
+export async function requestPushPermission(context = 'general') {
+  if (!('Notification' in window)) return false;
+  const perm = await Notification.requestPermission();
+  if (perm !== 'granted') return false;
+
+  const sub = await subscribeToPush();
+  if (!sub) return false;
+
+  const { sb } = await import('./services/supabase.js');
+  const user = (await sb.auth.getUser()).data?.user;
+  if (!user) return false;
+
+  await sb.from('push_subscriptions').upsert({
+    user_id:  user.id,
+    endpoint: sub.endpoint,
+    keys:     sub.toJSON().keys,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'endpoint' });
+
+  return true;
+}
+
+// ── Call Edge Function to push one user ───────────────────────────────
+
+export async function sendPushToUser(userId, { title, body, url, tag } = {}) {
+  try {
+    const { sb } = await import('./services/supabase.js');
+    await sb.functions.invoke('send-push', {
+      body: { user_id: userId, title, body, url, tag },
+    });
+  } catch(e) {
+    console.warn('[push] sendPushToUser failed:', e.message);
+  }
+}
+
+// ── Call Edge Function to push all tournament subscribers ─────────────
+
+export async function sendPushToTournament(tournamentId, { title, body, url, tag } = {}) {
+  try {
+    const { sb } = await import('./services/supabase.js');
+    await sb.functions.invoke('send-push', {
+      body: { tournament_id: tournamentId, title, body, url, tag },
+    });
+  } catch(e) {
+    console.warn('[push] sendPushToTournament failed:', e.message);
+  }
+}
+
+window.requestPushPermission  = requestPushPermission;
+window.sendPushToUser         = sendPushToUser;
+window.sendPushToTournament   = sendPushToTournament;

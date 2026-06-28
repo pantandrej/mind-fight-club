@@ -198,6 +198,15 @@ async function startMatchmaking(){
       await sb.from('matchmaking_queue').update({status:'matched', matched_duel_id:duelCode}).eq('id',mmQueueId);
       await sb.from('matchmaking_queue').update({status:'matched', matched_duel_id:duelCode}).eq('id',opp.id);
       clearInterval(mmInterval);
+      // Push notify opponent (fire-and-forget, don't block on failure)
+      if (window.sendPushToUser) {
+        window.sendPushToUser(opp.user_id, {
+          title: `⚔️ ${myName} вызывает на дуэль!`,
+          body:  'Соперник найден — открой Brain Fight Club!',
+          url:   '/?duel=' + duelCode,
+          tag:   'duel-invite',
+        });
+      }
       await matchFound(duelCode, myName, opp.display_name);
       return;
     }
