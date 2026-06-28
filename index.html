@@ -1449,6 +1449,8 @@
       <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">Создать турнир</div>
       <input id="ot-new-title" placeholder="Название (напр. Кубок умов)"
         style="width:100%;background:var(--bg3);border:0.5px solid var(--border);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--text);font-family:inherit;outline:none;margin-bottom:8px;box-sizing:border-box" />
+      <input id="ot-new-org" placeholder="Организация (необязательно, напр. Яндекс)"
+        style="width:100%;background:var(--bg3);border:0.5px solid var(--border);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--text);font-family:inherit;outline:none;margin-bottom:8px;box-sizing:border-box" />
       <div style="display:flex;gap:6px;margin-bottom:8px">
         <select id="ot-new-qs" style="flex:1;background:var(--bg3);border:0.5px solid var(--border);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--text);font-family:inherit;outline:none">
           <option value="10">10 вопросов</option>
@@ -1464,6 +1466,10 @@
           <option value="SPORTS">Спорт</option>
         </select>
       </div>
+      <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;cursor:pointer;font-size:13px;color:var(--text)">
+        <input type="checkbox" id="ot-new-private" style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer" />
+        🔒 Приватный (только по QR-коду)
+      </label>
       <button onclick="adminCreateOfficialTournament()" class="big-btn" style="font-size:13px;padding:12px">Создать турнир →</button>
       <div id="ot-admin-list" style="margin-top:12px">
         <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px">Активные турниры</div>

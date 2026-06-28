@@ -93,7 +93,7 @@ function _redirectAfterAuth() {
 
   const p = new URLSearchParams(window.location.search);
   if (p.get('official') && typeof window.openOfficialTournament === 'function') {
-    window.openOfficialTournament(p.get('official')); return;
+    window.openOfficialTournament(p.get('official'), p.get('ac')); return;
   }
   const hypeSlug  = p.get('hype')  || sessionStorage.getItem('mfc_pending_hype') || window._hypeAutoSlug || null;
   const duelCode  = p.get('duel')  || sessionStorage.getItem('mfc_pending_duel');

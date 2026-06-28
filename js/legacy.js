@@ -2466,7 +2466,63 @@ function randOTCode(){
   return 'OT'+Math.random().toString(36).slice(2,7).toUpperCase();
 }
 
-async function openOfficialTournament(code){
+async function openOfficialTournament(code, accessCode){
+  // accessCode can come from URL param ?ac=... or be passed directly
+  const ac = accessCode || new URLSearchParams(window.location.search).get('ac') || null;
+
+  // Fetch tournament to check if private
+  const {data:t} = await sb.from('official_tournaments')
+    .select('is_private,access_code,title,org_name').eq('code',code).maybeSingle();
+
+  if(t?.is_private && t.access_code) {
+    if(!ac || ac.toUpperCase() !== t.access_code.toUpperCase()) {
+      // Prompt for access code
+      _promptPrivateAccess(code, t);
+      return;
+    }
+  }
+
+  showScreen('official-tournament');
+  document.getElementById('n-ot').textContent = neurons;
+  await loadOfficialTournament(code);
+}
+
+function _promptPrivateAccess(code, t){
+  let modal = document.getElementById('private-access-modal');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'private-access-modal';
+    modal.style.cssText='position:fixed;inset:0;z-index:9996;background:rgba(10,10,20,.9);display:flex;align-items:center;justify-content:center;padding:20px';
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML=`<div style="background:var(--bg2);border-radius:20px;padding:24px;width:100%;max-width:340px;text-align:center">
+    <div style="font-size:32px;margin-bottom:8px">🔒</div>
+    <div style="font-size:17px;font-weight:900;margin-bottom:4px">${t.title||'Приватный турнир'}</div>
+    ${t.org_name?`<div style="font-size:12px;color:var(--muted);margin-bottom:12px">${t.org_name}</div>`:'<div style="margin-bottom:12px"></div>'}
+    <div style="font-size:13px;color:var(--muted);margin-bottom:16px">Введите код доступа, который дал организатор</div>
+    <input id="private-ac-input" maxlength="8" placeholder="XXXXXX"
+      style="width:100%;text-align:center;font-size:24px;font-weight:900;letter-spacing:4px;background:var(--bg3);border:0.5px solid var(--border);border-radius:12px;padding:14px;color:var(--text);font-family:inherit;outline:none;box-sizing:border-box;margin-bottom:12px"
+      oninput="this.value=this.value.toUpperCase()" />
+    <div id="private-ac-err" style="font-size:12px;color:var(--red);margin-bottom:10px;min-height:16px"></div>
+    <div style="display:flex;gap:8px">
+      <button onclick="document.getElementById('private-access-modal').remove()" style="flex:1;background:rgba(255,255,255,.07);border:0.5px solid var(--border);border-radius:12px;padding:12px;font-size:14px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit">Отмена</button>
+      <button onclick="_submitPrivateAccess('${code}')" style="flex:1;background:var(--accent);border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit">Войти →</button>
+    </div>
+  </div>`;
+  modal.style.display='flex';
+  setTimeout(()=>document.getElementById('private-ac-input')?.focus(),100);
+}
+
+async function _submitPrivateAccess(code){
+  const entered = (document.getElementById('private-ac-input')?.value||'').trim().toUpperCase();
+  if(!entered){ document.getElementById('private-ac-err').textContent='Введите код'; return; }
+  const {data:t} = await sb.from('official_tournaments')
+    .select('access_code').eq('code',code).maybeSingle();
+  if(!t || entered !== (t.access_code||'').toUpperCase()){
+    document.getElementById('private-ac-err').textContent='Неверный код. Попробуй ещё раз.';
+    return;
+  }
+  document.getElementById('private-access-modal')?.remove();
   showScreen('official-tournament');
   document.getElementById('n-ot').textContent = neurons;
   await loadOfficialTournament(code);
@@ -2748,10 +2804,13 @@ async function adminCreateOfficialTournament(){
   if(!isAdmin()){ toast('Admin only'); return; }
   const title = document.getElementById('ot-new-title').value.trim();
   if(!title){ toast('Enter title'); return; }
-  const desc = document.getElementById('ot-new-desc').value.trim();
-  const numQs = parseInt(document.getElementById('ot-new-qs').value)||10;
-  const cat = document.getElementById('ot-new-cat').value;
+  const desc    = (document.getElementById('ot-new-desc')||{}).value?.trim() || '';
+  const orgName = (document.getElementById('ot-new-org')||{}).value?.trim() || null;
+  const numQs   = parseInt(document.getElementById('ot-new-qs').value)||10;
+  const cat     = document.getElementById('ot-new-cat').value;
+  const isPrivate = document.getElementById('ot-new-private')?.checked || false;
   const code = randOTCode();
+  const accessCode = isPrivate ? Math.random().toString(36).slice(2,8).toUpperCase() : null;
 
   const btn = document.querySelector('[onclick="adminCreateOfficialTournament()"]');
   if(btn){ btn.textContent='Creating...'; btn.disabled=true; }
@@ -2759,6 +2818,7 @@ async function adminCreateOfficialTournament(){
   // Create tournament
   const {data:ot, error:otErr} = await sb.from('official_tournaments').insert({
     code, title, description:desc, status:'lobby',
+    is_private: isPrivate, access_code: accessCode, org_name: orgName,
     created_by: currentUser.id, created_at: new Date().toISOString()
   }).select().single();
   if(otErr){ toast('Ошибка: '+otErr.message); if(btn){btn.textContent='Create Tournament →';btn.disabled=false;} return; }
@@ -2786,13 +2846,47 @@ async function adminCreateOfficialTournament(){
 
   if(btn){btn.textContent='Create Tournament →';btn.disabled=false;}
   document.getElementById('ot-new-title').value='';
-  document.getElementById('ot-new-desc').value='';
+  if(document.getElementById('ot-new-org')) document.getElementById('ot-new-org').value='';
+  if(document.getElementById('ot-new-private')) document.getElementById('ot-new-private').checked=false;
 
-  const link = location.origin+location.pathname+'?official='+code;
+  const link = isPrivate
+    ? location.origin+location.pathname+'?official='+code+'&ac='+accessCode
+    : location.origin+location.pathname+'?official='+code;
   navigator.clipboard.writeText(link).catch(()=>{});
-  toast('✅ Tournament created! Link copied: '+code, 4000);
-  track('official_tournament_created', {code, title, numQs, cat});
+  toast('✅ Турнир создан! Ссылка скопирована', 4000);
+  track('official_tournament_created', {code, title, numQs, cat, isPrivate});
+
+  if(isPrivate) showPrivateTournamentQR(ot.id, code, accessCode, title, orgName);
   loadAdminOTList();
+}
+
+function showPrivateTournamentQR(id, code, accessCode, title, orgName){
+  const link = location.origin+location.pathname+'?official='+code+'&ac='+accessCode;
+  const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=240x240&data='+encodeURIComponent(link);
+  let modal = document.getElementById('private-qr-modal');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'private-qr-modal';
+    modal.style.cssText='position:fixed;inset:0;z-index:9995;background:rgba(10,10,20,.9);display:flex;align-items:flex-end;justify-content:center';
+    modal.onclick = e => { if(e.target===modal) modal.remove(); };
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = `<div style="background:var(--bg2);border-radius:24px 24px 0 0;padding:24px;width:100%;max-width:480px;text-align:center">
+    <div style="font-size:18px;font-weight:900;margin-bottom:4px">🔒 Приватный турнир</div>
+    <div style="font-size:14px;font-weight:700;color:var(--accent2);margin-bottom:2px">${title}</div>
+    ${orgName?`<div style="font-size:12px;color:var(--muted);margin-bottom:12px">${orgName}</div>`:'<div style="margin-bottom:12px"></div>'}
+    <img src="${qrUrl}" alt="QR" style="width:180px;height:180px;border-radius:16px;background:#fff;padding:8px;box-sizing:border-box;margin-bottom:16px" />
+    <div style="background:rgba(108,99,255,.15);border:0.5px solid var(--accent);border-radius:12px;padding:10px;margin-bottom:12px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Код доступа</div>
+      <div style="font-size:28px;font-weight:900;letter-spacing:4px;color:var(--accent2)">${accessCode}</div>
+    </div>
+    <div style="font-size:12px;color:var(--muted);word-break:break-all;margin-bottom:16px">${link}</div>
+    <div style="display:flex;gap:8px">
+      <button onclick="navigator.clipboard.writeText('${link}').catch(()=>{});window.toast('Ссылка скопирована!')" style="flex:1;background:var(--accent);border:none;border-radius:14px;padding:13px;font-size:14px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit">📋 Копировать ссылку</button>
+      <button onclick="document.getElementById('private-qr-modal').remove()" style="flex:1;background:rgba(255,255,255,.07);border:0.5px solid var(--border);border-radius:14px;padding:13px;font-size:14px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit">Закрыть</button>
+    </div>
+  </div>`;
+  modal.style.display='flex';
 }
 
 async function loadAdminOTList(){
@@ -2806,11 +2900,13 @@ async function loadAdminOTList(){
     <div style="background:var(--bg3);border-radius:12px;padding:12px;margin-bottom:8px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
         <div>
-          <div style="font-size:13px;font-weight:800">${ot.title}</div>
-          <div style="font-size:10px;color:var(--muted)">${ot.code} · ${ot.status.toUpperCase()}</div>
+          <div style="font-size:13px;font-weight:800">${ot.is_private?'🔒 ':''} ${ot.title}</div>
+          <div style="font-size:10px;color:var(--muted)">${ot.code} · ${ot.status.toUpperCase()}${ot.org_name?' · '+ot.org_name:''}</div>
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
-          <button onclick="copyOTLink('${ot.code}')" style="background:var(--bg2);border:0.5px solid var(--border);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit">🔗 Link</button>
+          ${ot.is_private&&ot.access_code
+            ? `<button onclick="showPrivateTournamentQR('${ot.id}','${ot.code}','${ot.access_code}','${ot.title.replace(/'/g,"\\'")}','${(ot.org_name||'').replace(/'/g,"\\'")}') " style="background:var(--bg2);border:0.5px solid var(--accent);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit">📱 QR</button>`
+            : `<button onclick="copyOTLink('${ot.code}')" style="background:var(--bg2);border:0.5px solid var(--border);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit">🔗 Link</button>`}
           ${ot.status==='lobby'?`<button onclick="adminStartOT('${ot.id}')" style="background:var(--green);border:none;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit">▶ Start</button>`:''}
           ${ot.status==='live'?`<button onclick="adminFinishOT('${ot.id}')" style="background:var(--red);border:none;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit">⏹ Finish</button>`:''}
           <button onclick="openOfficialTournament('${ot.code}')" style="background:var(--accent);border:none;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit">👁 View</button>
@@ -3066,7 +3162,8 @@ async function checkLiveOfficialTournament(){
   const item = document.getElementById('pm-official-item');
   if(!item) return;
   try{
-    const {data} = await sb.from('official_tournaments').select('code,title').eq('status','live').limit(1).maybeSingle();
+    const {data} = await sb.from('official_tournaments').select('code,title')
+      .eq('status','live').or('is_private.is.null,is_private.eq.false').limit(1).maybeSingle();
     if(data){
       item.style.display = 'flex';
       document.getElementById('pm-official').textContent = data.title||'Официальный турнир';

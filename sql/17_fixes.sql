@@ -11,7 +11,8 @@ CREATE POLICY "pack_results public feed" ON pack_results
   FOR SELECT USING (played_at > now() - interval '24 hours');
 
 -- ── Fix 2: player_stats — include pack_results in games count ─────────
-CREATE OR REPLACE VIEW player_stats AS
+DROP VIEW IF EXISTS player_stats CASCADE;
+CREATE VIEW player_stats AS
 SELECT
   p.id                                                          AS user_id,
   p.display_name,
