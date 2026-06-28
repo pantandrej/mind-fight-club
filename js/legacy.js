@@ -1497,6 +1497,7 @@ async function loadProfileStats(){
   }
   loadAnalyticsSummary();
   loadPackHistory();
+  loadDuelHistory();
 }
 
 async function loadPackHistory() {
@@ -1532,6 +1533,47 @@ async function loadPackHistory() {
       <div style="text-align:right;flex-shrink:0">
         <div style="font-size:16px;font-weight:900;color:var(--accent2)">⚡${r.score}</div>
         <div style="font-size:11px;color:var(--muted)">${pct}%</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function loadDuelHistory() {
+  const wrap = document.getElementById('duel-history-wrap');
+  const list  = document.getElementById('duel-history-list');
+  if (!wrap || !list || !currentUser) return;
+
+  const { data: sessions } = await sb
+    .from('game_sessions')
+    .select('id, mode, score, correct_answers, questions_count, won, started_at, opponent_name')
+    .eq('user_id', currentUser.id)
+    .in('mode', ['friend_battle', 'random_battle', 'virtual_battle'])
+    .order('started_at', { ascending: false })
+    .limit(20);
+
+  if (!sessions || sessions.length === 0) {
+    wrap.style.display = 'none';
+    return;
+  }
+
+  wrap.style.display = 'block';
+  list.innerHTML = sessions.map(s => {
+    const won   = s.won;
+    const date  = new Date(s.started_at).toLocaleDateString('ru', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    const mode  = s.mode === 'friend_battle' ? 'Друг' : s.mode === 'random_battle' ? 'Случайный' : 'Бот';
+    const opp   = s.opponent_name || mode;
+    const result = won === true ? '🏆 Победа' : won === false ? '💀 Поражение' : '🤝 Ничья';
+    const color  = won === true ? 'var(--green, #4ade80)' : won === false ? 'var(--red, #f87171)' : 'var(--muted)';
+    const acc    = s.questions_count > 0 ? Math.round((s.correct_answers || 0) / s.questions_count * 100) : 0;
+    return `<div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:12px">
+      <div style="font-size:20px">${won === true ? '🏆' : won === false ? '💀' : '🤝'}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:700;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">vs ${opp}</div>
+        <div style="font-size:11px;color:var(--muted)">${date} · ${mode}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-weight:800;font-size:13px;color:${color}">${result}</div>
+        <div style="font-size:11px;color:var(--muted)">⚡${s.score || 0} · ${acc}%</div>
       </div>
     </div>`;
   }).join('');

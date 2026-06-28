@@ -256,6 +256,13 @@ async function loadLeaderboardAndRender() {
   const user = sb.auth?.getUser ? (await sb.auth.getUser()).data?.user : null;
   const myIdx = (rows || []).findIndex(r => user && r.user_id === user.id);
   const myPlace = myIdx + 1;
+
+  // If player opened a finished tournament without having played this session,
+  // _score/_correct are 0. Load their real result from the leaderboard rows.
+  if (myIdx >= 0 && _score === 0 && _correct === 0) {
+    _score   = rows[myIdx].score   ?? 0;
+    _correct = rows[myIdx].correct ?? 0;
+  }
   const total = rows?.length || 0;
 
   // Place emoji & message

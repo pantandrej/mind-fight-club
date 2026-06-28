@@ -454,7 +454,6 @@ async function duelNextQ(){
           if(shouldEnd){
             _waitEnded = true;
             clearInterval(waitPoll);
-            // If opponent score is still 0 and we haven't waited long enough, give a grace period
             endDuel(data);
           }
         } catch(e) {
@@ -486,7 +485,7 @@ async function _saveDuelStats(myS, oppS, win) {
     const { data: stats } = await window.sb.from('player_stats').select('*').eq('user_id', (await window.sb.auth.getUser()).data.user?.id).single().catch(() => ({ data: null }));
     if (stats) window.checkAchievements({
       duels_played: stats.duels_played,
-      duels_won:    stats.duels_played, // approximation
+      duels_won:    stats.duels_won,
       games_played: stats.games_played,
       streak:       stats.streak,
       neurons:      stats.neurons,
