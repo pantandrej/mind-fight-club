@@ -17,6 +17,7 @@ let duelQs=[],duelIdx=0,duelMyScore=0,duelOppScore=0,duelMyCorrect=0;
 let duelAnswered=false,duelTimer=null,duelTimeLeft=0,duelMaxT=0;
 let _oppPollInterval=null; // continuous opponent-score watcher during real duel
 let duelMyName='You',duelOppNameStr='Соперник';
+let _duelOppUserId = null; // set when duel starts for profile tap
 let botAnsweredThisQuestion = false;
 let _tabWarnCount = 0;
 let _isRandomBattle = false; // true when came from matchmaking (not friend duel)
@@ -259,6 +260,22 @@ async function startDuelBattle({ chargeSession = true, mode = 'friend_battle', q
   updateDuelScores();
   buildBattleDots(duelQs.length);
   showDuelSection('d-battle');
+
+  // Opponent profile tap — fetch opp user_id for mini profile modal
+  _duelOppUserId = null;
+  if (!window._isBotDuel) {
+    sb.from('duel_rooms').select('host_id,guest_id').eq('code', duelCode).single()
+      .then(({data}) => {
+        if (data) _duelOppUserId = duelRole === 'host' ? data.guest_id : data.host_id;
+      }).catch(() => {});
+  }
+  // Make opponent name elements tappable to show mini profile
+  ['ds-opp-name', 'd-res-opp-name'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.cursor = 'pointer';
+    el.onclick = () => window.showOppProfile(_duelOppUserId, oppLabel);
+  });
   // Init chat channel; hide lobby phrases, show post-game phrases on result
   _initDuelChannel(duelCode);
   const lobbyPhrases = document.getElementById('duel-lobby-phrases');
@@ -600,6 +617,27 @@ function endDuel(data){
   // Show post-game phrases for real (non-bot) duels
   const pgPhrases = document.getElementById('duel-postgame-phrases');
   if (pgPhrases) pgPhrases.style.display = window._isBotDuel ? 'none' : 'block';
+  // After a win, gently prompt for push permission if not yet asked
+  if (win && typeof Notification !== 'undefined' && Notification.permission === 'default') {
+    setTimeout(() => {
+      const hint = document.createElement('div');
+      hint.style.cssText = 'margin-top:14px;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px 16px;text-align:center';
+      hint.innerHTML = `
+        <div style="font-size:15px;font-weight:700;margin-bottom:6px">🔔 Узнавай о вызовах первым!</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:12px">Включи уведомления, чтобы не пропустить дуэль</div>
+        <div style="display:flex;gap:8px;justify-content:center">
+          <button onclick="requestPushPermission('post_win').then(()=>this.closest('div[style]').remove())"
+            style="background:var(--accent);border:none;border-radius:10px;padding:9px 18px;font-size:13px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit">
+            Включить
+          </button>
+          <button onclick="this.closest('div[style]').remove()"
+            style="background:transparent;border:1px solid var(--border);border-radius:10px;padding:9px 14px;font-size:13px;color:var(--muted);cursor:pointer;font-family:inherit">
+            Не сейчас
+          </button>
+        </div>`;
+      document.getElementById('d-result')?.appendChild(hint);
+    }, 2000);
+  }
 }
 // ── Share функции для дуэли ──
 function _duelShareText(){

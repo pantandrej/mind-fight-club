@@ -41,3 +41,55 @@ GRANT SELECT ON player_stats TO authenticated, anon;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS name_color  text DEFAULT NULL;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS name_title  text DEFAULT NULL;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS avatar_frame text DEFAULT NULL;
+
+-- ── Fix 4: award_referrer() — credit referrer when invited user signs up ──
+-- Runs as SECURITY DEFINER so it can update another user's row.
+-- Caller must be the invited user (p_invited_id = auth.uid()) to prevent abuse.
+CREATE OR REPLACE FUNCTION award_referrer(
+  p_referrer_id uuid,
+  p_invited_id  uuid
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_caller_id uuid := auth.uid();
+  v_key       text;
+  v_neurons   int := 100;
+  v_xp        int := 20;
+BEGIN
+  -- Only the invited user can trigger this award
+  IF v_caller_id IS NULL OR v_caller_id != p_invited_id THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'unauthorized');
+  END IF;
+
+  -- Cannot refer yourself
+  IF p_referrer_id = p_invited_id THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'self_referral');
+  END IF;
+
+  v_key := 'ref_gave:' || p_invited_id::text;
+
+  -- Idempotent insert into ledger
+  INSERT INTO currency_ledger (user_id, operation_type, operation_key, awarded_neurons, awarded_xp)
+  VALUES (p_referrer_id, 'referral_bonus', v_key, v_neurons, v_xp)
+  ON CONFLICT (user_id, operation_key) DO NOTHING;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('ok', true, 'already_processed', true);
+  END IF;
+
+  -- Credit the referrer
+  UPDATE profiles
+  SET neurons    = COALESCE(neurons, 0) + v_neurons,
+      xp         = COALESCE(xp, 0)      + v_xp,
+      updated_at = now()
+  WHERE id = p_referrer_id;
+
+  RETURN jsonb_build_object('ok', true, 'already_processed', false, 'awarded_neurons', v_neurons);
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION award_referrer(uuid, uuid) TO authenticated;

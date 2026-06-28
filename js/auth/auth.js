@@ -109,6 +109,12 @@ function _redirectAfterAuth() {
         const { data } = await window.sb.from('duel_rooms').select('host_name').eq('code', duelCode.toUpperCase()).maybeSingle();
         if (data?.host_name) hostName = data.host_name;
       } catch(e) { /* ignore, use default */ }
+      if (typeof window.showLocalNotification === 'function') {
+        window.showLocalNotification(
+          `⚔️ ${hostName} вызывает на дуэль!`,
+          'Открой Brain Fight Club и прими вызов 🔥'
+        );
+      }
       if (typeof window.showDuelIncoming === 'function') {
         window.showDuelIncoming(duelCode, hostName);
       } else {

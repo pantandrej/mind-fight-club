@@ -1432,6 +1432,7 @@ function showProfile(){
   loadProfileStats();
   renderProfileCity();
   if(isAdmin()) loadAdminDashboard();
+  updatePushBtn();
   // Translate labels
   const L=T[lang];
   document.getElementById('profile-stats-title').textContent = 'Статистика';
@@ -1453,6 +1454,31 @@ function showProfile(){
   document.getElementById('ps-correct-lbl').textContent=lang==='ru'?'Верных ответов':'Correct answers';
   document.getElementById('profile-signout-btn').textContent=lang==='ru'?'Выйти':'Sign out';
   }catch(e){console.error('Profile error:',e);}
+}
+
+function updatePushBtn(){
+  const btn = document.getElementById('push-notif-btn');
+  if(!btn) return;
+  if(!('Notification' in window)){
+    btn.style.display = 'none';
+    return;
+  }
+  if(Notification.permission === 'granted'){
+    btn.textContent = '✅ Уведомления включены';
+    btn.disabled = true;
+    btn.style.opacity = '.5';
+    btn.style.cursor = 'default';
+  } else if(Notification.permission === 'denied'){
+    btn.textContent = '🚫 Уведомления заблокированы';
+    btn.disabled = true;
+    btn.style.opacity = '.5';
+    btn.style.cursor = 'default';
+  } else {
+    btn.textContent = '🔔 Включить уведомления о дуэлях';
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    btn.style.cursor = 'pointer';
+  }
 }
 
 async function loadProfileStats(){
@@ -5479,13 +5505,33 @@ async function checkRefParam(){
     invited_user_id: currentUser.id,
     ref_code: ref,
     status: 'signed_up',
-    reward_referrer: 50,
-    reward_invited: 50,
+    reward_referrer: 100,
+    reward_invited: 100,
     signed_up_at: new Date().toISOString(),
     created_at: new Date().toISOString()
   });
   localStorage.removeItem('mfc_pending_ref');
   track('referral_signed_up', {ref_code: ref});
+
+  // Award new user (referral signup bonus)
+  try {
+    const {data: awardData} = await sb.rpc('award_currency', {
+      p_operation_type: 'referral_bonus',
+      p_operation_key: 'ref_new:' + currentUser.id
+    });
+    if (awardData?.ok && !awardData?.already_processed) {
+      await refreshBalance();
+      toast('🎁 +' + (awardData.awarded_neurons || 100) + ' нейронов за регистрацию по приглашению!', 3500);
+    }
+  } catch(e) { console.log('Referral signup award failed:', e); }
+
+  // Award referrer via server-side RPC (runs as SECURITY DEFINER to bypass RLS)
+  try {
+    await sb.rpc('award_referrer', {
+      p_referrer_id: referrerId,
+      p_invited_id: currentUser.id
+    });
+  } catch(e) { console.log('Referrer award RPC failed:', e); }
 }
 
 async function findUserByRefCode(code){
@@ -11490,4 +11536,82 @@ window.declineDuelIncoming = function() {
 
 // Onboarding is handled by js/training/streak.js → window.showOnboarding / showScreen('onboarding')
 
+// ═══════════════════════════════════════════
+// OPPONENT MINI PROFILE MODAL
+// ═══════════════════════════════════════════
+window.showOppProfile = async function(userId, displayName) {
+  let modal = document.getElementById('opp-profile-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'opp-profile-modal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:9990;background:rgba(10,10,20,.85);display:flex;align-items:flex-end;justify-content:center';
+    modal.onclick = e => { if (e.target === modal) modal.remove(); };
+    document.body.appendChild(modal);
+  }
+  const initial = (displayName || '?')[0].toUpperCase();
+  modal.innerHTML = `<div style="background:var(--bg2);border-radius:24px 24px 0 0;padding:24px;width:100%;max-width:480px;border-top:0.5px solid var(--border)">
+    <div style="text-align:center;margin-bottom:16px">
+      <div style="width:64px;height:64px;border-radius:50%;background:rgba(108,99,255,.2);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;font-size:28px;font-weight:900;color:var(--accent2)">${initial}</div>
+      <div style="font-size:18px;font-weight:900">${displayName || 'Соперник'}</div>
+      <div id="opp-profile-loading" style="font-size:13px;color:var(--muted);margin-top:4px">Загрузка...</div>
+    </div>
+    <div id="opp-profile-stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px"></div>
+    <button onclick="document.getElementById('opp-profile-modal').remove()" style="width:100%;background:rgba(255,255,255,.07);border:0.5px solid var(--border);border-radius:14px;padding:12px;font-size:14px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit">Закрыть</button>
+  </div>`;
+  modal.style.display = 'flex';
+
+  try {
+    let query = sb.from('player_stats').select('*');
+    if (userId) query = query.eq('user_id', userId);
+    else query = query.eq('display_name', displayName);
+    const { data } = await query.single();
+    const loadEl = document.getElementById('opp-profile-loading');
+    const statsEl = document.getElementById('opp-profile-stats');
+    if (!data) { if (loadEl) loadEl.textContent = 'Нет данных'; return; }
+    if (loadEl) loadEl.textContent = '';
+    if (statsEl) statsEl.innerHTML = [
+      { v: data.games_played || 0,         l: 'Игр' },
+      { v: data.duels_played || 0,         l: 'Дуэлей' },
+      { v: (data.accuracy_pct || 0) + '%', l: 'Точность' },
+      { v: data.neurons || 0,              l: 'Нейроны ⚡' },
+      { v: data.best_streak || 0,          l: 'Лучший стрик' },
+      { v: data.duels_won || 0,            l: 'Побед' },
+    ].map(s => `<div style="background:rgba(255,255,255,.05);border-radius:12px;padding:12px;text-align:center">
+      <div style="font-size:18px;font-weight:900;color:var(--accent2)">${s.v}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px">${s.l}</div>
+    </div>`).join('');
+  } catch (e) {
+    const loadEl = document.getElementById('opp-profile-loading');
+    if (loadEl) loadEl.textContent = 'Нет данных';
+  }
+};
+
 window.obNext = obNext;
+
+// ── THEME TOGGLE ──────────────────────────────────────────────────────────────
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme');
+  const next = current === 'light' ? 'dark' : 'light';
+  if (next === 'light') {
+    document.documentElement.setAttribute('data-theme', 'light');
+  } else {
+    document.documentElement.removeAttribute('data-theme');
+  }
+  localStorage.setItem('bfc_theme', next);
+  const btn = document.getElementById('theme-toggle-btn');
+  if (btn) btn.textContent = next === 'light' ? '☀️ Светлая тема' : '🌙 Тёмная тема';
+}
+window.toggleTheme = toggleTheme;
+window.updatePushBtn = updatePushBtn;
+
+// Apply saved theme immediately on load
+(function() {
+  const saved = localStorage.getItem('bfc_theme');
+  if (saved === 'light') {
+    document.documentElement.setAttribute('data-theme', 'light');
+    window.addEventListener('DOMContentLoaded', () => {
+      const btn = document.getElementById('theme-toggle-btn');
+      if (btn) btn.textContent = '☀️ Светлая тема';
+    });
+  }
+})();
