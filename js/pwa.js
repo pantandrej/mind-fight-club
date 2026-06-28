@@ -1,6 +1,6 @@
 // ── PWA install + Push notifications ─────────────────────────────────
 
-const VAPID_PUBLIC = 'BALHCo-WxSqcH2MpBHfYscDMfnbNkiC69nJt5fjXOgtBPB9xh6pPkL44Ry3C1q7If9zIQdYJI76XFFEqQoXosuU';
+const VAPID_PUBLIC = 'BFQAIVpFoe6trPlt-JHI1JvGbgktpVXe1xJV88ghzqXka3ykFAvJVhzStBsjmQ_0biZHxzEZSNsRU7D8vFJjblo';
 
 // ── PWA Install ───────────────────────────────────────────────────────
 
