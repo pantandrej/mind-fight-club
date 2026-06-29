@@ -137,7 +137,10 @@ function _redirectAfterAuth() {
     const uname = p.get('u');
     const uid = p.get('uid');
     setTimeout(() => window.openPublicProfile?.(uname, uid), 300);
-    // Don't return — still show home screen underneath
+  }
+  if (p.get('join_club')) {
+    const clubId = p.get('join_club');
+    setTimeout(() => window.joinClubFromLink?.(clubId), 500);
   }
 }
 

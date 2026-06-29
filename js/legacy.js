@@ -9682,12 +9682,61 @@ function _showDailyRewardPopup(neurons, streak) {
     <div style="font-size:20px;font-weight:900;margin-bottom:4px">${isBonus ? 'Бонус недели!' : 'Ежедневная награда'}</div>
     <div style="font-size:36px;font-weight:900;color:var(--accent2);margin:12px 0">+${neurons} ⚡</div>
     ${streak > 1 ? `<div style="font-size:13px;color:var(--muted);margin-bottom:8px">🔥 ${streak} дней подряд</div>` : ''}
+    ${streak === 1 && neurons > 0 ? `<div style="font-size:12px;color:var(--muted);margin-bottom:8px">Вчера не заходил? <span onclick="document.getElementById('daily-reward-modal').remove();window.showStreakRestoreModal?.()" style="color:var(--accent2);cursor:pointer;font-weight:700">Восстановить серию →</span></div>` : ''}
     ${isBonus ? `<div style="font-size:13px;color:#4ade80;margin-bottom:8px">7-дневный стрик!</div>` : ''}
     <button onclick="document.getElementById('daily-reward-modal').remove()" style="width:100%;background:var(--accent);border:none;border-radius:14px;padding:14px;font-size:15px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit;margin-top:8px">Забрать!</button>
   </div>`;
   modal.style.display = 'flex';
   setTimeout(() => modal.remove(), 8000);
 }
+
+// ── Streak Restore ─────────────────────────────────────────────────────
+window.showStreakRestoreModal = async function() {
+  if (!currentUser) { toast('Войдите в аккаунт'); return; }
+  const COST = 50;
+  let modal = document.getElementById('streak-restore-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'streak-restore-modal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(10,10,20,.88);display:flex;align-items:center;justify-content:center;padding:20px';
+    modal.onclick = e => { if (e.target === modal) modal.remove(); };
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = `<div style="background:var(--bg2);border-radius:24px;padding:28px;width:100%;max-width:320px;text-align:center">
+    <div style="font-size:48px;margin-bottom:8px">🔥</div>
+    <div style="font-size:18px;font-weight:900;margin-bottom:6px">Восстановить серию?</div>
+    <div style="font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:20px">
+      Твоя ежедневная серия прервалась.<br>
+      Заплати <b style="color:var(--accent2)">${COST} ⚡</b> и продолжи с 1 дня.
+    </div>
+    <div id="streak-restore-err" style="font-size:12px;color:var(--red);min-height:16px;margin-bottom:8px"></div>
+    <button onclick="doRestoreStreak()" style="width:100%;background:var(--accent);border:none;border-radius:14px;padding:14px;font-size:15px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit;margin-bottom:10px">Восстановить за ${COST} ⚡</button>
+    <button onclick="document.getElementById('streak-restore-modal').remove()" style="width:100%;background:rgba(255,255,255,.07);border:0.5px solid var(--border);border-radius:14px;padding:12px;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit">Не сейчас</button>
+  </div>`;
+  modal.style.display = 'flex';
+};
+
+window.doRestoreStreak = async function() {
+  const btn = document.querySelector('#streak-restore-modal button');
+  if (btn) btn.textContent = '...';
+  const { data, error } = await sb.rpc('restore_streak');
+  const errEl = document.getElementById('streak-restore-err');
+  if (error || !data?.ok) {
+    const reason = data?.reason;
+    const msg = reason === 'not_enough'
+      ? `Недостаточно нейронов (нужно ${data.need}, есть ${data.have})`
+      : reason === 'streak_active'
+      ? 'Серия уже активна!'
+      : 'Ошибка: ' + (error?.message || reason);
+    if (errEl) errEl.textContent = msg;
+    if (btn) btn.textContent = `Восстановить за 50 ⚡`;
+    return;
+  }
+  document.getElementById('streak-restore-modal')?.remove();
+  toast('🔥 Серия восстановлена!');
+  if (typeof window.updNeurons === 'function') window.updNeurons();
+  if (typeof window.loadUserNeurons === 'function') window.loadUserNeurons();
+};
 
 // ── Ticket Check-in (for organizers) ──────────────────────────────────
 window.openTicketCheckin = function() {
@@ -12244,6 +12293,7 @@ window.openClubDetail = async function(clubId) {
           <div style="font-size:11px;color:var(--muted)">Участников</div>
         </div>
       </div>
+      <button onclick="shareClubLink('${club.id}','${club.name.replace(/'/g,"\\'")}','${club.emoji||'🧠'}')" style="width:100%;background:rgba(108,99,255,.15);border:1px solid rgba(108,99,255,.3);border-radius:14px;padding:12px;font-size:14px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit;margin-bottom:10px">🔗 Поделиться ссылкой</button>
       ${!myMembership && club.member_count < 50 ? `<button onclick="joinClub('${club.id}')" style="width:100%;background:var(--accent);border:none;border-radius:14px;padding:14px;font-size:15px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit;margin-bottom:16px">Вступить в клуб</button>` : ''}
       ${myMembership ? `<button onclick="leaveClub('${club.id}')" style="width:100%;background:rgba(255,255,255,.07);border:0.5px solid var(--border);border-radius:14px;padding:12px;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit;margin-bottom:16px">Покинуть клуб</button>` : ''}
       <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--muted);margin-bottom:10px">🏅 УЧАСТНИКИ</div>
@@ -12312,6 +12362,50 @@ window.showCreateClubModal = function() {
   </div>`;
   modal.style.display = 'flex';
   setTimeout(() => document.getElementById('club-name-input')?.focus(), 100);
+};
+
+// Join club via invite link (?join_club=ID)
+window.joinClubFromLink = async function(clubId) {
+  if (!currentUser) return;
+  const { data: club } = await sb.from('clubs').select('id,name,emoji,member_count').eq('id', clubId).maybeSingle();
+  if (!club) { toast('Клуб не найден'); return; }
+  // Check if already a member
+  const { data: existing } = await sb.from('club_members').select('club_id').eq('club_id', clubId).eq('user_id', currentUser.id).maybeSingle();
+  if (existing) { window.openClubDetail?.(clubId); return; }
+
+  let modal = document.getElementById('join-club-invite-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'join-club-invite-modal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(10,10,20,.88);display:flex;align-items:center;justify-content:center;padding:20px';
+    modal.onclick = e => { if (e.target === modal) modal.remove(); };
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = `<div style="background:var(--bg2);border-radius:24px;padding:28px;width:100%;max-width:320px;text-align:center">
+    <div style="font-size:48px;margin-bottom:8px">${club.emoji||'🧠'}</div>
+    <div style="font-size:18px;font-weight:900;margin-bottom:4px">${club.name}</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:20px">${club.member_count} участников</div>
+    <button onclick="window.joinClub('${club.id}');document.getElementById('join-club-invite-modal').remove()"
+      style="width:100%;background:var(--accent);border:none;border-radius:14px;padding:14px;font-size:15px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit;margin-bottom:10px">
+      Вступить в клуб
+    </button>
+    <button onclick="document.getElementById('join-club-invite-modal').remove()"
+      style="width:100%;background:rgba(255,255,255,.07);border:0.5px solid var(--border);border-radius:14px;padding:12px;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit">
+      Не сейчас
+    </button>
+  </div>`;
+  modal.style.display = 'flex';
+  // Open clubs screen in background
+  window.openClubsScreen?.();
+};
+
+window.shareClubLink = function(clubId, name, emoji) {
+  const url = window.location.origin + '/?join_club=' + clubId;
+  if (navigator.share) {
+    navigator.share({ title: emoji + ' ' + name, text: 'Присоединяйся к клубу «' + name + '» в Brain Fight Club!', url });
+  } else {
+    navigator.clipboard.writeText(url).then(() => toast('🔗 Ссылка скопирована!')).catch(() => toast(url));
+  }
 };
 
 window.submitCreateClub = async function() {
