@@ -12123,6 +12123,7 @@ window.showOppProfile = async function(userId, displayName) {
       <div id="opp-profile-loading" style="font-size:13px;color:var(--muted);margin-top:4px">Загрузка...</div>
     </div>
     <div id="opp-profile-stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px"></div>
+    <div id="opp-friend-btn-wrap" style="margin-bottom:8px"></div>
     <button onclick="document.getElementById('opp-profile-modal').remove()" style="width:100%;background:rgba(255,255,255,.07);border:0.5px solid var(--border);border-radius:14px;padding:12px;font-size:14px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit">Закрыть</button>
   </div>`;
   modal.style.display = 'flex';
@@ -12149,6 +12150,22 @@ window.showOppProfile = async function(userId, displayName) {
       <div style="font-size:18px;font-weight:900;color:var(--accent2)">${s.v}</div>
       <div style="font-size:11px;color:var(--muted);margin-top:2px">${s.l}</div>
     </div>`).join('');
+
+    // Friend button — only for logged-in users viewing someone else
+    const friendBtnWrap = document.getElementById('opp-friend-btn-wrap');
+    const targetId = data.user_id || userId;
+    if (friendBtnWrap && currentUser && targetId && targetId !== currentUser.id) {
+      const { data: existing } = await sb.from('friendships')
+        .select('friend_id').eq('user_id', currentUser.id).eq('friend_id', targetId).maybeSingle();
+      if (existing) {
+        friendBtnWrap.innerHTML = `<div style="text-align:center;font-size:13px;color:#4ade80;font-weight:700;padding:10px 0">✅ Уже в друзьях</div>`;
+      } else {
+        friendBtnWrap.innerHTML = `<button onclick="addFriendFromProfile('${targetId}','${(data.display_name||displayName||'').replace(/'/g,"\\'")}',this)"
+          style="width:100%;background:rgba(108,99,255,.15);border:1px solid rgba(108,99,255,.3);border-radius:14px;padding:12px;font-size:14px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit;margin-bottom:0">
+          👥 Добавить в друзья
+        </button>`;
+      }
+    }
   } catch (e) {
     const loadEl = document.getElementById('opp-profile-loading');
     if (loadEl) loadEl.textContent = 'Нет данных';
@@ -12272,9 +12289,25 @@ window.openPublicProfile = async function(username, userId) {
           <div style="font-size:11px;color:var(--muted);margin-top:2px">${s.l}</div>
         </div>`).join('')}
       </div>
+      <div id="pub-friend-btn-wrap" style="margin-bottom:8px"></div>
       <button onclick="navigator.clipboard.writeText('${shareUrl}').then(()=>window.toast?.('🔗 Ссылка скопирована!'))" style="width:100%;background:rgba(108,99,255,.15);border:0.5px solid var(--accent2);border-radius:14px;padding:12px;font-size:14px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit;margin-bottom:8px">🔗 Поделиться профилем</button>
       <button onclick="document.getElementById('pub-profile-modal').remove()" style="width:100%;background:rgba(255,255,255,.07);border:0.5px solid var(--border);border-radius:14px;padding:12px;font-size:14px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit">Закрыть</button>
     `;
+    // Friend button in public profile
+    const pubFriendWrap = document.getElementById('pub-friend-btn-wrap');
+    const targetId = data.user_id || userId;
+    if (pubFriendWrap && currentUser && targetId && targetId !== currentUser.id) {
+      const { data: existing } = await sb.from('friendships')
+        .select('friend_id').eq('user_id', currentUser.id).eq('friend_id', targetId).maybeSingle();
+      if (existing) {
+        pubFriendWrap.innerHTML = `<div style="text-align:center;font-size:13px;color:#4ade80;font-weight:700;padding:10px 0">✅ Уже в друзьях</div>`;
+      } else {
+        pubFriendWrap.innerHTML = `<button onclick="addFriendFromProfile('${targetId}','${(data.display_name||'').replace(/'/g,"\\'")}',this)"
+          style="width:100%;background:rgba(108,99,255,.15);border:1px solid rgba(108,99,255,.3);border-radius:14px;padding:12px;font-size:14px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit">
+          👥 Добавить в друзья
+        </button>`;
+      }
+    }
   } catch (e) {
     const inner = document.getElementById('pub-profile-inner');
     if (inner) inner.innerHTML = '<div style="color:var(--muted)">Нет данных</div>';
@@ -12353,6 +12386,39 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }, 1000);
 });
+
+window.addFriendFromProfile = async function(targetId, targetName, btn) {
+  if (!currentUser) { toast('Войдите в аккаунт'); return; }
+  if (btn) { btn.textContent = '...'; btn.disabled = true; }
+
+  const { error } = await sb.from('friendships')
+    .insert({ user_id: currentUser.id, friend_id: targetId });
+
+  if (error && error.code !== '23505') {
+    toast('Ошибка: ' + error.message);
+    if (btn) { btn.textContent = '👥 Добавить в друзья'; btn.disabled = false; }
+    return;
+  }
+
+  // Update button
+  const wrap = btn?.closest('#opp-friend-btn-wrap, #pub-friend-btn-wrap');
+  if (wrap) wrap.innerHTML = `<div style="text-align:center;font-size:13px;color:#4ade80;font-weight:700;padding:10px 0">✅ Добавлен в друзья!</div>`;
+
+  toast('✅ ' + targetName + ' добавлен в друзья!');
+  loadFriends();
+
+  // Push notification to the new friend
+  const myName = currentUser.user_metadata?.full_name?.split(' ')[0]
+    || currentUser.email?.split('@')[0] || 'Игрок';
+  if (window.sendPushToUser) {
+    window.sendPushToUser(targetId, {
+      title: `👥 ${myName} добавил тебя в друзья`,
+      body: 'Зайди в Brain Fight Club и вызови на дуэль!',
+      url: `/?uid=${currentUser.id}`,
+      tag: 'friend-request',
+    });
+  }
+};
 
 window.showAddFriendModal = function() {
   let modal = document.getElementById('add-friend-modal');
