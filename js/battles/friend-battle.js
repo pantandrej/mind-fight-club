@@ -83,7 +83,7 @@ async function createDuel(){
 
   showDuelSection('d-waiting');
   startDuelPoll();
-  checkBadges('duel');renderBadges();
+  checkBadges('duel'); if (typeof window.renderBadges === 'function') window.renderBadges();
 }
 
 async function joinDuel(){
@@ -1088,7 +1088,7 @@ async function loadRemoteQuestions(){
 // ═══════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════
-renderBadges();
+if (typeof window.renderBadges === 'function') window.renderBadges();
 applyLang();
 // Default to Russian for all users
 setLang('ru');

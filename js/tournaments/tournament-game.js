@@ -102,7 +102,7 @@ async function createTournament(){
   document.getElementById('t-wait-txt').style.display  = 'none';
   showTournSection('t-waiting');
   tListenRoom();
-  checkBadges('tourn'); renderBadges();
+  checkBadges('tourn'); if (typeof window.renderBadges === 'function') window.renderBadges();
 }
 
 async function joinTournament(){

@@ -31,18 +31,22 @@ function _loadUserOnce(user) {
 
 // ── Entry point ───────────────────────────────────────────────────
 export async function initAuth() {
-  // Check for existing session first — skip landing if already logged in
   const { data: { session: existingSession } } = await sb.auth.getSession();
-  if (!existingSession) {
-    // Show landing for first-time / logged-out visitors
-    // Skip landing if deep-link params present (duel/tourn/official/join_club)
-    const p = new URLSearchParams(window.location.search);
-    const hasDeepLink = p.get('duel') || p.get('tourn') || p.get('official') || p.get('join_club') || p.get('u') || p.get('uid');
-    if (!hasDeepLink) {
-      _showLanding();
-      return; // landing will call initAuth() again after user clicks
-    }
+
+  // Detect OAuth callback in URL hash — must boot immediately to handle SIGNED_IN
+  const hash = window.location.hash;
+  const isOAuthCallback = hash.includes('access_token=') || hash.includes('code=') || hash.includes('error_description=');
+
+  const p = new URLSearchParams(window.location.search);
+  const hasDeepLink = p.get('duel') || p.get('tourn') || p.get('official') || p.get('join_club') || p.get('u') || p.get('uid');
+
+  if (!existingSession && !isOAuthCallback && !hasDeepLink) {
+    // Show landing for first-time visitors — but still boot auth listener in background
+    _showLanding();
+    _bootAuth(); // registers onAuthStateChange so OAuth callback is handled
+    return;
   }
+
   _bootAuth();
 }
 
@@ -70,7 +74,7 @@ async function _bootAuth() {
       case 'SIGNED_IN':
         if (!_authed && session?.user) {
           _authed = true;
-          await Promise.race([_loadUserOnce(session.user), _timeout(5000)]);
+          try { await Promise.race([_loadUserOnce(session.user), _timeout(5000)]); } catch(e) { console.warn('[auth] loadUser error', e); }
           _redirectAfterAuth();
         }
         break;
@@ -93,7 +97,7 @@ async function _bootAuth() {
   const { data: { session } } = await sb.auth.getSession();
   if (session?.user && !_authed) {
     _authed = true;
-    await Promise.race([_loadUserOnce(session.user), _timeout(5000)]);
+    try { await Promise.race([_loadUserOnce(session.user), _timeout(5000)]); } catch(e) { console.warn('[auth] loadUser error', e); }
     _redirectAfterAuth();
   }
 }
@@ -216,7 +220,9 @@ async function _onUserLoaded(user) {
   setTimeout(() => {
     if (typeof window.renderBadges       === 'function') window.renderBadges();
     if (typeof window.renderHomeNextGoal === 'function') window.renderHomeNextGoal();
-    if (typeof window.showOnboarding     === 'function') window.showOnboarding();
+    // Only show onboarding if not already done
+    if (typeof window.shouldShowOnboarding === 'function' && window.shouldShowOnboarding() &&
+        typeof window.showOnboarding === 'function') window.showOnboarding();
   }, 800);
 }
 
