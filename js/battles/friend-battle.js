@@ -345,8 +345,9 @@ async function startDuelBattle({ chargeSession = true, mode = 'friend_battle', q
           const pts = oppAnswers[i] ?? 0;
           const dot = document.getElementById('d-opp-dots-dot-' + i);
           if(!dot) continue;
-          const alreadyCorrect = dot.textContent && dot.textContent !== '✗';
-          if(!alreadyCorrect){ setOppDot(i, pts > 0, pts); }
+          // Only skip if already showing correct (+pts) — always overwrite active/miss/empty
+          const alreadyDone = dot.classList.contains('done');
+          if(!alreadyDone){ setOppDot(i, pts > 0, pts); }
         }
         // Show hint if opponent just answered a new question
         if(oppAnswers.length > _lastOppAnswersLen){
@@ -393,7 +394,8 @@ function loadDuelQ(){
   }
   _oppScoreAtQStart = duelOppScore;
   setDot('d-my-dots',duelIdx,'active');
-  setDot('d-opp-dots',duelIdx,'active');
+  // Don't set opp dot active here — opp progress is driven by DB polling
+  // so we only know their real state after they answer, not when WE advance
   renderDuelTimer();
   duelTimer=setInterval(duelTick,1000);
 

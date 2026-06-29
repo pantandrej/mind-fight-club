@@ -8,9 +8,10 @@ CREATE TABLE IF NOT EXISTS hype_games (
   description text,
   questions   jsonb       NOT NULL DEFAULT '[]',
   active      boolean     NOT NULL DEFAULT true,
-  synced      boolean     NOT NULL DEFAULT false,
   created_at  timestamptz NOT NULL DEFAULT now()
 );
+-- Add synced column if table already existed without it
+ALTER TABLE hype_games ADD COLUMN IF NOT EXISTS synced boolean NOT NULL DEFAULT false;
 
 ALTER TABLE hype_games ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "hype_games_public_read" ON hype_games;
