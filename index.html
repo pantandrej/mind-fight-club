@@ -533,6 +533,13 @@
       </div>
     </div>
     <div class="score-btns">
+      <!-- AI разбор после игры -->
+      <div id="sc-ai-review" style="display:none;background:rgba(108,99,255,.08);border:1px solid rgba(108,99,255,.25);border-radius:16px;padding:16px;margin:12px 0;text-align:left">
+        <div style="font-size:12px;font-weight:800;letter-spacing:1px;color:var(--accent2);margin-bottom:8px">🤖 AI-РАЗБОР</div>
+        <div id="sc-ai-review-text" style="font-size:13px;color:var(--text);line-height:1.6"></div>
+        <div id="sc-ai-cats" style="margin-top:10px;display:flex;flex-wrap:wrap;gap:6px"></div>
+      </div>
+      <button id="sc-ai-btn" onclick="window.requestAIReview?.()" style="display:none;width:100%;background:rgba(108,99,255,.15);border:1px solid rgba(108,99,255,.3);border-radius:14px;padding:12px;font-size:14px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit;margin-bottom:4px">🤖 AI-разбор игры</button>
       <button class="score-main-btn" id="sc-again-btn" onclick="restartQuiz()">⚡ Ещё раз</button>
       <button class="score-sec-btn" id="sc-share-btn" onclick="showShareScreen()">📤 Поделиться</button>
       <button class="score-sec-btn" id="sc-duel-btn" onclick="showScreen('duel')">⚔️ Дуэль</button>
@@ -1520,9 +1527,15 @@
           <option value="SPORTS">Спорт</option>
         </select>
       </div>
-      <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;cursor:pointer;font-size:13px;color:var(--text)">
+      <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;cursor:pointer;font-size:13px;color:var(--text)">
         <input type="checkbox" id="ot-new-private" style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer" />
         🔒 Приватный (только по QR-коду)
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;cursor:pointer;font-size:13px;color:var(--text)">
+        💰 Взнос (нейроны):
+        <input id="ot-new-fee" type="number" min="0" max="500" value="0" placeholder="0"
+          style="width:80px;background:var(--bg3);border:0.5px solid var(--border);border-radius:10px;padding:8px 10px;font-size:13px;color:var(--text);font-family:inherit;outline:none" />
+        <span style="color:var(--muted);font-size:12px">⚡ → победителю</span>
       </label>
       <button onclick="adminCreateOfficialTournament()" class="big-btn" style="font-size:13px;padding:12px">Создать турнир →</button>
       <div id="ot-admin-list" style="margin-top:12px">

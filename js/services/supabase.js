@@ -12,5 +12,6 @@ export const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 // legacy.js declares `let sb` and waits for window._sbReady setter.
 // ES modules load async — this fires after legacy.js runs but before
 // DOMContentLoaded, so the setter is already defined.
-window._sbReady = sb;   // triggers the setter in legacy.js
-window.sb       = sb;   // direct access for training.js and inline handlers
+window._sbReady         = sb;   // triggers the setter in legacy.js
+window.sb               = sb;   // direct access for training.js and inline handlers
+window._supabaseAnonKey = SUPA_KEY;

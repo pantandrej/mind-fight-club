@@ -231,6 +231,7 @@ function blockQuickPlayIfLocked(){
 
 // Flag to prevent showScore from running twice for the same round
 let _scoreShownForGame = false;
+let _roundAnswers = []; // tracks picked index per question for AI review
 // Session flag: once quick play finishes, any restart attempt → daily-limit
 let _quickPlayCompletedThisSession = false;
 
@@ -270,7 +271,7 @@ async function startQuickPlay(){
   currentGameType = 'quick';
   currentPackKey  = null;
   selectedCat = 'ALL';
-  _scoreShownForGame = false;
+  _scoreShownForGame = false; _roundAnswers = [];
   _quickPlayCompletedThisSession = false; // reset for fresh round
   // Do NOT lock yet — lock only after DB questions are loaded and standard is built.
   // _quickPlayStartInProgress lets startQuiz skip the lock-check on entry.
@@ -607,7 +608,7 @@ async function buyDBPack(packId, priceNeurons, isFree){
 async function playDBPack(importKey, packId){
   currentGameType = 'pack';
   currentPackKey  = importKey;
-  _scoreShownForGame = false;
+  _scoreShownForGame = false; _roundAnswers = [];
   toast(lang==='ru'?'⏳ Загружаем пак...':'⏳ Loading pack...', 1500);
 
   // Load pack meta — by packId (UUID) or importKey (string)
@@ -1115,6 +1116,7 @@ function pick(i){
     setDot('prog-dots',qIdx,'miss');
   }
   updStreak();
+  _roundAnswers[qIdx] = i;
   saveAnswerRow(i, q, pts, isCorrect, responseMs, false);
   document.getElementById('next-btn').className='next-btn show';
   _updateNextBtnLabel();
@@ -1320,6 +1322,54 @@ function showScore(){
   if(_roundScore > 0 && window._syncQuizScore) window._syncQuizScore(Math.round(_roundScore*0.5));
   showScreen('score');
   updateScoreScreenButtons(); // Fix 1: update "play again" based on limit
+
+  // Show AI review button if at least 5 questions played
+  const aiBtn = document.getElementById('sc-ai-btn');
+  if (aiBtn && Array.isArray(curQ) && curQ.length >= 5) {
+    aiBtn.style.display = '';
+    window._lastRoundQuestions = curQ;
+    window._lastRoundAnswers   = [..._roundAnswers];
+    window.requestAIReview = async function() {
+      aiBtn.style.display = 'none';
+      const reviewEl = document.getElementById('sc-ai-review');
+      const textEl   = document.getElementById('sc-ai-review-text');
+      const catsEl   = document.getElementById('sc-ai-cats');
+      if (!reviewEl || !textEl) return;
+      reviewEl.style.display = '';
+      textEl.textContent = '⏳ Анализируем...';
+      try {
+        const { data: { session } } = await window.sb.auth.getSession();
+        const res = await fetch('https://nhmidxkohjpcnhjucuuh.supabase.co/functions/v1/analyze-game', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + (session?.access_token || ''),
+            'apikey': window._supabaseAnonKey || '',
+          },
+          body: JSON.stringify({
+            questions: window._lastRoundQuestions,
+            answers:   window._lastRoundAnswers,
+            lang:      lang || 'ru',
+          }),
+        });
+        const json = await res.json();
+        if (json.ok) {
+          textEl.textContent = json.text;
+          if (catsEl && json.cats?.length > 1) {
+            catsEl.innerHTML = json.cats.map(c =>
+              `<span style="background:rgba(${c.pct>=70?'68,204,136':c.pct>=40?'255,193,7':'255,82,82'},.15);border:1px solid rgba(${c.pct>=70?'68,204,136':c.pct>=40?'255,193,7':'255,82,82'},.35);border-radius:20px;padding:4px 10px;font-size:11px;font-weight:700;color:var(--text)">${c.cat} ${c.pct}%</span>`
+            ).join('');
+          }
+        } else {
+          textEl.textContent = 'Не удалось получить разбор 😔';
+        }
+      } catch(e) {
+        textEl.textContent = 'Ошибка: ' + e.message;
+      }
+    };
+  } else if (aiBtn) {
+    aiBtn.style.display = 'none';
+  }
 }
 
 function restartQuiz(){

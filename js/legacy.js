@@ -2572,6 +2572,20 @@ async function loadOfficialTournament(code){
   document.getElementById('ot-title').textContent = data.title||'Официальный турнир';
   document.getElementById('ot-desc').textContent = data.description||'';
 
+  // Show prize pool banner if entry fee > 0
+  let prizeEl = document.getElementById('ot-prize-banner');
+  if (!prizeEl) {
+    prizeEl = document.createElement('div');
+    prizeEl.id = 'ot-prize-banner';
+    document.getElementById('ot-title')?.insertAdjacentElement('afterend', prizeEl);
+  }
+  if (data.entry_fee > 0) {
+    prizeEl.style.cssText = 'background:rgba(255,193,7,.12);border:1px solid rgba(255,193,7,.35);border-radius:12px;padding:10px 14px;margin:8px 0;text-align:center';
+    prizeEl.innerHTML = `<span style="font-size:13px;font-weight:800;color:#fbbf24">🏆 Призовой фонд: ${data.prize_pool} ⚡</span><span style="font-size:11px;color:var(--muted);margin-left:8px">Взнос: ${data.entry_fee} ⚡</span>`;
+  } else {
+    prizeEl.style.display = 'none';
+  }
+
   await refreshOTPlayers();
 
   if(data.status === 'finished'){
@@ -2630,6 +2644,24 @@ async function joinOfficialTournament(){
   if(!currentUser){ toast(lang==='ru'?'Войдите чтобы участвовать':'Sign in to join'); return; }
   if(!otData){ return; }
   if(otData.status==='finished'){ toast('Tournament is finished'); return; }
+
+  // Pay entry fee if tournament has one
+  if (otData.entry_fee > 0) {
+    const { data: feeRes } = await sb.rpc('pay_tournament_entry', { p_tournament_id: otData.id });
+    if (!feeRes?.ok && !feeRes?.already_paid) {
+      const reason = feeRes?.reason;
+      if (reason === 'not_enough') {
+        toast(`Недостаточно нейронов (нужно ${feeRes.need} ⚡, есть ${feeRes.have} ⚡)`);
+      } else {
+        toast('Ошибка оплаты: ' + (reason || 'unknown'));
+      }
+      return;
+    }
+    if (!feeRes?.already_paid) {
+      toast(`💰 Взнос ${otData.entry_fee} ⚡ в призовой фонд!`);
+      if (typeof window.updNeurons === 'function') window.updNeurons();
+    }
+  }
 
   const name = currentUser.user_metadata?.full_name?.split(' ')[0]||currentUser.email?.split('@')[0]||'Игрок';
   const {error} = await sb.from('official_tournament_players').insert({
@@ -2875,6 +2907,7 @@ async function adminCreateOfficialTournament(){
   const numQs   = parseInt(document.getElementById('ot-new-qs').value)||10;
   const cat     = document.getElementById('ot-new-cat').value;
   const isPrivate = document.getElementById('ot-new-private')?.checked || false;
+  const entryFee  = Math.max(0, parseInt(document.getElementById('ot-new-fee')?.value || '0') || 0);
   const code = randOTCode();
   const accessCode = isPrivate ? Math.random().toString(36).slice(2,8).toUpperCase() : null;
 
@@ -2885,6 +2918,7 @@ async function adminCreateOfficialTournament(){
   const {data:ot, error:otErr} = await sb.from('official_tournaments').insert({
     code, title, description:desc, status:'lobby',
     is_private: isPrivate, access_code: accessCode, org_name: orgName,
+    entry_fee: entryFee, prize_pool: 0,
     created_by: currentUser.id, created_at: new Date().toISOString()
   }).select().single();
   if(otErr){ toast('Ошибка: '+otErr.message); if(btn){btn.textContent='Create Tournament →';btn.disabled=false;} return; }

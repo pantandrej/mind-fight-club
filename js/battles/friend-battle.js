@@ -617,6 +617,22 @@ function endDuel(data){
   // Show post-game phrases for real (non-bot) duels
   const pgPhrases = document.getElementById('duel-postgame-phrases');
   if (pgPhrases) pgPhrases.style.display = window._isBotDuel ? 'none' : 'block';
+  // Rematch button (only for real, non-bot duels)
+  if (!window._isBotDuel && _duelOppUserId) {
+    setTimeout(() => {
+      const rematchEl = document.createElement('div');
+      rematchEl.id = 'rematch-hint';
+      rematchEl.style.cssText = 'margin-top:12px';
+      rematchEl.innerHTML = `
+        <button onclick="window.startRematch?.()" style="width:100%;background:${win?'rgba(255,255,255,.07)':'var(--accent)'};border:${win?'0.5px solid var(--border)':'none'};border-radius:14px;padding:14px;font-size:15px;font-weight:700;color:${win?'var(--muted)':'#fff'};cursor:pointer;font-family:inherit">
+          ⚔️ Реванш
+        </button>`;
+      document.getElementById('d-result')?.appendChild(rematchEl);
+      // Auto-hide after 60s (opponent may have left)
+      setTimeout(() => rematchEl.remove(), 60000);
+    }, 800);
+  }
+
   // After a win, gently prompt for push permission if not yet asked
   if (win && typeof Notification !== 'undefined' && Notification.permission === 'default') {
     setTimeout(() => {
@@ -1270,6 +1286,25 @@ async function openInviteLink(inviteId) {
 }
 
 
+// ── Rematch ───────────────────────────────────────────────────────
+async function startRematch() {
+  document.getElementById('rematch-hint')?.remove();
+  const oppUserId = _duelOppUserId;
+  const oppName   = duelOppNameStr;
+  // Create a fresh duel as host
+  await createDuel();
+  // Notify opponent via push
+  if (window.sendPushToUser && oppUserId && duelCode) {
+    window.sendPushToUser(oppUserId, {
+      title: `⚔️ ${duelMyName} предлагает реванш!`,
+      body: 'Открой Brain Fight Club — соперник ждёт',
+      url: '/?duel=' + duelCode,
+      tag: 'duel-rematch',
+    });
+  }
+  if (typeof window.toast === 'function') window.toast('⚔️ Реванш! Ждём ' + oppName + '…');
+}
+
 // ── Window exports ────────────────────────────────────────────────
 window.simulateBotAnswer     = simulateBotAnswer;
 window.showDuelSection       = showDuelSection;
@@ -1293,6 +1328,7 @@ window.duelCopyLink          = duelCopyLink;
 window.duelChallengeFriend   = duelChallengeFriend;
 window.resetDuel             = resetDuel;
 window.duelPlayAgain         = duelPlayAgain;
+window.startRematch          = startRematch;
 window.copyDuelLink          = copyDuelLink;
 window.tournShareTG          = tournShareTG;
 window.tournShareWA          = tournShareWA;
