@@ -70,7 +70,7 @@ async function createDuel(){
   duelMyName=currentUser?.user_metadata?.full_name?.split(' ')[0]||'Хост';
   duelMyScore=0;duelOppScore=0;duelQs=[];duelIdx=0;duelMyCorrect=0;
 
-  await sb.from('duel_rooms').upsert({code:duelCode,host_score:0,guest_score:0,status:'waiting',questions:null,created_at:new Date().toISOString()});
+  await sb.from('duel_rooms').upsert({code:duelCode,host_score:0,guest_score:0,status:'waiting',questions:null,host_user_id:currentUser?.id||null,created_at:new Date().toISOString()});
   track('duel_created', {code: duelCode});
   // NOTE: integrity starts in startDuelBattle(), not here (user needs to share invite link)
 
@@ -101,6 +101,15 @@ async function joinDuel(){
 
   await sb.from('duel_rooms').update({status:'ready'}).eq('code',code);
   track('duel_joined', {code});
+
+  // Notify host via push
+  if (data.host_user_id && window._sendPushToUser) {
+    window._sendPushToUser(data.host_user_id, {
+      title: `⚔️ ${duelMyName} принял твой вызов!`,
+      body:  'Заходи — дуэль готова начаться',
+      url:   `${location.origin}${location.pathname}?duel=${code}`,
+    });
+  }
 
   document.getElementById('d-code-display').textContent=code;
   const link=location.origin+location.pathname+'?duel='+code;
@@ -577,6 +586,7 @@ function endDuel(data){
   const _clubBattlePts = win ? 80 : tie ? 40 : 20;
   if(window._syncClubScore) window._syncClubScore(_clubBattlePts);
   if(window._syncQuizScore) window._syncQuizScore(Math.round(_clubBattlePts*0.5));
+  window.awardWeeklyNeurons?.(_clubBattlePts);
   document.getElementById('d-result-icon').textContent=win?'🏆':tie?'🤝':'😤';
   // Показываем клубные очки
   const _dClubEl = document.getElementById('d-club-bonus');

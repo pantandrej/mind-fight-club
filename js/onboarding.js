@@ -33,7 +33,8 @@ const STEPS = [
     icon: '📤',
     title: 'Делись результатами',
     text:  'После каждой игры — красивая карточка результата. Кидай в TG или сторис, вызывай друзей. Рефералка: друг зарегистрировался — оба +50 нейронов.',
-    btn:   'Начать играть 🚀',
+    btn:   'Сыграть первую дуэль ⚔️',
+    cta:   { label: 'Случайный бой (быстро)', action: "window.finishOnboarding();window.startMatchmaking?.()" },
   },
 ];
 
@@ -96,8 +97,19 @@ async function finishOnboarding() {
   if (window.requestPushPermission) {
     setTimeout(() => window.requestPushPermission(), 1000);
   }
+
+  // If no explicit CTA was clicked, navigate to duel screen
+  if (typeof window.showScreen === 'function') {
+    const current = document.querySelector('.screen.active')?.id;
+    if (!current || current === 'home') window.showScreen('duel');
+  }
 }
 
-window.startOnboarding    = startOnboarding;
-window.finishOnboarding   = finishOnboarding;
+window.startOnboarding      = startOnboarding;
+window.finishOnboarding     = finishOnboarding;
 window.shouldShowOnboarding = shouldShowOnboarding;
+
+// Override streak.js showOnboarding — this module's card flow is the canonical one.
+// streak.js registers its own showOnboarding synchronously during legacy.js parse,
+// but ES modules execute after, so this wins.
+window.showOnboarding = startOnboarding;

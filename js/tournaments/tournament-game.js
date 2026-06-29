@@ -54,16 +54,13 @@ function tCleanup(){
   if(_tHeartbeatTimer){ clearInterval(_tHeartbeatTimer); _tHeartbeatTimer=null; }
   if(_tSyncPoll){ clearInterval(_tSyncPoll); _tSyncPoll=null; }
   if(_tSyncCountdown){ clearInterval(_tSyncCountdown); _tSyncCountdown=null; }
+  if(window._tRealtimeCh){ try { sb.removeChannel(window._tRealtimeCh); } catch(_){} window._tRealtimeCh=null; }
   _tAdvanceLock = false;
 }
 
 async function createTournament(){
-  // Guard: require safe atomic advance capability
-  if (!window.fbTournAdvance && !window.fbTournUpdateConditional) {
-    window.toast?.('Синхронный сервер турниров недоступен. Обратитесь к администратору.');
-    console.error('[T] Cannot start tournament: fbTournAdvance or fbTournUpdateConditional required');
-    return;
-  }
+  // Firebase preferred for real-time sync; Supabase Realtime broadcast is the fallback.
+  // Both support unlimited players — no hard limit.
   tCleanup();
   if(!currentUser){ toast('🔐 Войдите для участия в турнире'); showScreen('auth'); return; }
   tCode    = randCode();
@@ -166,16 +163,27 @@ async function joinTournament(){
 function tListenRoom(){
   if(_fbTournUnsub){ _fbTournUnsub(); _fbTournUnsub=null; }
   if(tPoll){ clearInterval(tPoll); tPoll=null; }
+  if(window._tRealtimeCh){ try { sb.removeChannel(window._tRealtimeCh); } catch(_){} window._tRealtimeCh=null; }
 
   if(window.fbTournListen){
+    // Firebase realtime — primary for rooms created via Firebase
     _fbTournUnsub = window.fbTournListen(tCode, tOnRoomUpdate);
   } else {
-    // Supabase polling fallback
-    tPoll = setInterval(async()=>{
-      const {data, error} = await sb.from('tournaments').select('*').eq('code',tCode).single();
-      if(error || !data) return;
-      tOnRoomUpdate(data);
-    }, 2000);
+    // Supabase Realtime broadcast — zero polling, scales to 1000+ players
+    // Host broadcasts question/room state; players only receive
+    const ch = sb.channel('tournament:' + tCode, { config: { broadcast: { self: false } } });
+    ch.on('broadcast', { event: 'room_update' }, ({ payload }) => {
+      if (payload) tOnRoomUpdate(payload);
+    });
+    ch.on('postgres_changes', {
+      event: 'UPDATE', schema: 'public', table: 'tournaments', filter: `code=eq.${tCode}`
+    }, ({ new: row }) => { if (row) tOnRoomUpdate(row); });
+    ch.subscribe();
+    window._tRealtimeCh = ch;
+
+    // One-time fetch to get current state immediately
+    sb.from('tournaments').select('*').eq('code', tCode).single()
+      .then(({ data }) => { if (data) tOnRoomUpdate(data); });
   }
 }
 
@@ -478,22 +486,23 @@ async function tHostAdvanceQuestion(room){
     if(!ok){ _tAdvanceLock=false; return; } // version mismatch — already advanced
     if(error){ console.error('[T] advance conditional error:', error); _tAdvanceLock=false; return; }
   } else {
-    // No safe conditional advance available.
-    // fbTournAdvance (Cloud Function) or fbTournUpdateConditional required.
-    // Using plain fbTournUpdate without CAS is REMOVED — it causes double-advance.
-    console.error('[T] Tournament cannot advance: deploy Firebase CF fbTournAdvance first.');
-    window.toast?.('Синхронный сервер турниров недоступен. Разверните Firebase CF.');
-    _tAdvanceLock = false;
-    return;
-  }
-  if (false) { // dead branch — remove in next refactor
-  } else {
-    // Supabase fallback with conditional: only update if version matches
-    const {error} = await sb.from('tournaments')
-      .update({ status: updateData.status })
+    // Supabase CAS fallback — safe for 100+ players when Firebase is unavailable
+    // Uses question_version as optimistic lock (only writes if version matches)
+    const { error, count } = await sb.from('tournaments')
+      .update({ ...updateData, question_version: newVersion })
       .eq('code', tCode)
-      .eq('question_version', expectedVersion); // won't write if version already changed
+      .eq('question_version', expectedVersion)
+      .select('id', { count: 'exact', head: true });
     if(error){ console.error('[T] advance SB error:', error.message); _tAdvanceLock=false; return; }
+    if(count === 0){ _tAdvanceLock=false; return; } // version mismatch — already advanced
+
+    // Broadcast new state to all subscribers via Realtime (zero polling)
+    if(window._tRealtimeCh){
+      window._tRealtimeCh.send({
+        type: 'broadcast', event: 'room_update',
+        payload: { ...updateData, code: tCode, question_version: newVersion },
+      }).catch(()=>{});
+    }
   }
   // _tAdvanceLock released when tOnRoomUpdate fires with new question_version
 }

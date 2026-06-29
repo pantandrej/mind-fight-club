@@ -38,7 +38,7 @@ export async function initAuth() {
   const isOAuthCallback = hash.includes('access_token=') || hash.includes('code=') || hash.includes('error_description=');
 
   const p = new URLSearchParams(window.location.search);
-  const hasDeepLink = p.get('duel') || p.get('tourn') || p.get('official') || p.get('join_club') || p.get('u') || p.get('uid');
+  const hasDeepLink = p.get('duel') || p.get('tourn') || p.get('official') || p.get('join_club') || p.get('u') || p.get('uid') || p.get('challenge') || p.get('brand');
 
   if (!existingSession && !isOAuthCallback && !hasDeepLink) {
     // Show landing for first-time visitors — but still boot auth listener in background
@@ -262,6 +262,8 @@ export async function ensureProfile() {
   const city         = localStorage.getItem('mfc_city') || null;
   const display_name = currentUser.user_metadata?.full_name
     || currentUser.email?.split('@')[0] || 'Игрок';
+  // Make name available globally for share/challenge mechanics
+  window._currentUserName = display_name;
 
   const { data: existing } = await sb.from('profiles')
     .select('id,total_score,ref_code')
@@ -302,6 +304,88 @@ export async function ensureProfile() {
 }
 
 // ── Google OAuth ──────────────────────────────────────────────────
+// ── Phone OTP ─────────────────────────────────────────────────────
+export function togglePhoneAuth() {
+  const form = document.getElementById('auth-phone-form');
+  const emailForm = document.getElementById('auth-email-form');
+  if (form.style.display === 'none') {
+    form.style.display = 'block';
+    if (emailForm) emailForm.style.display = 'none';
+    document.getElementById('auth-phone-input')?.focus();
+  } else {
+    form.style.display = 'none';
+  }
+}
+
+export async function sendPhoneOTP() {
+  const raw = document.getElementById('auth-phone-input')?.value?.trim();
+  if (!raw) return;
+  // Normalize: ensure +7 prefix for RU numbers
+  const phone = raw.startsWith('+') ? raw : '+7' + raw.replace(/\D/g, '').slice(-10);
+
+  const btn = document.getElementById('auth-phone-send-btn');
+  btn.disabled = true; btn.textContent = 'Отправляем...';
+
+  const { error } = await sb.auth.signInWithOtp({ phone });
+
+  if (error) {
+    btn.disabled = false; btn.textContent = 'Получить код →';
+    const errEl = document.getElementById('auth-error');
+    if (errEl) { errEl.textContent = error.message; errEl.style.display = 'block'; }
+    return;
+  }
+
+  document.getElementById('auth-phone-display').textContent = phone;
+  document.getElementById('auth-phone-step1').style.display = 'none';
+  document.getElementById('auth-phone-step2').style.display = 'block';
+  document.getElementById('auth-otp-input')?.focus();
+  btn.disabled = false; btn.textContent = 'Получить код →';
+}
+
+export async function verifyPhoneOTP() {
+  const phone = document.getElementById('auth-phone-display')?.textContent?.trim();
+  const token = document.getElementById('auth-otp-input')?.value?.trim();
+  if (!phone || !token) return;
+
+  const btn = document.getElementById('auth-otp-verify-btn');
+  btn.disabled = true; btn.textContent = 'Проверяем...';
+
+  const { error } = await sb.auth.verifyOtp({ phone, token, type: 'sms' });
+
+  if (error) {
+    btn.disabled = false; btn.textContent = 'Подтвердить ✓';
+    const errEl = document.getElementById('auth-error');
+    if (errEl) { errEl.textContent = 'Неверный код: ' + error.message; errEl.style.display = 'block'; }
+    return;
+  }
+  // onAuthStateChange will handle the rest
+  btn.disabled = false;
+}
+
+export async function signInVK() {
+  const btn   = document.getElementById('vk-sign-in-btn');
+  const errEl = document.getElementById('auth-error');
+  if (errEl) errEl.style.display = 'none';
+  if (btn) { btn.style.opacity = '0.6'; btn.style.pointerEvents = 'none'; btn.querySelector('span').textContent = 'Открываем ВКонтакте...'; }
+  track('signup_started', { method: 'vk' });
+  try {
+    const p = new URLSearchParams(window.location.search);
+    if (p.get('duel'))  sessionStorage.setItem('mfc_pending_duel',  p.get('duel'));
+    if (p.get('tourn')) sessionStorage.setItem('mfc_pending_tourn', p.get('tourn'));
+    const redirectTo = window.location.origin + window.location.pathname + window.location.search;
+    const { error } = await sb.auth.signInWithOAuth({
+      provider: 'vk', options: { redirectTo, skipBrowserRedirect: false },
+    });
+    if (error) {
+      if (errEl) { errEl.textContent = 'VK error: ' + error.message; errEl.style.display = 'block'; }
+      if (btn) { btn.style.opacity = ''; btn.style.pointerEvents = ''; btn.querySelector('span').textContent = 'Войти через ВКонтакте'; }
+    }
+  } catch (e) {
+    if (errEl) { errEl.textContent = 'Exception: ' + (e.message || e); errEl.style.display = 'block'; }
+    if (btn) { btn.style.opacity = ''; btn.style.pointerEvents = ''; btn.querySelector('span').textContent = 'Войти через ВКонтакте'; }
+  }
+}
+
 export async function signInGoogle() {
   const { lang } = getState();
   const btn   = document.getElementById('google-sign-in-btn');
@@ -413,6 +497,7 @@ export function continueAsGuest() {
   const hypeSlug = p.get('hype') || window._hypeAutoSlug || null;
   if (p.get('duel')) { showScreen('duel'); document.getElementById('join-code-input').value = p.get('duel'); }
   else if (p.get('tourn')) { showScreen('tournament'); document.getElementById('t-join-code').value = p.get('tourn'); }
+  else if (p.get('challenge')) { showScreen('home'); setTimeout(_showChallengeModal, 500); }
   else showScreen('home');
   if (hypeSlug) setTimeout(() => window.openHypeGame?.(hypeSlug), 100);
 }
@@ -421,12 +506,41 @@ export async function signOut() {
   await sb.auth.signOut();
 }
 
+// ── Challenge deep-link modal ─────────────────────────────────────
+function _showChallengeModal() {
+  const existing = document.getElementById('challenge-modal');
+  if (existing) existing.remove();
+  const m = document.createElement('div');
+  m.id = 'challenge-modal';
+  m.style.cssText = 'position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.82);display:flex;align-items:flex-end;justify-content:center;padding:20px';
+  m.innerHTML = `
+    <div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:24px 24px 16px 16px;padding:28px 20px 24px;width:100%;max-width:420px;text-align:center">
+      <div style="font-size:48px;margin-bottom:12px">⚔️</div>
+      <div style="font-size:20px;font-weight:900;margin-bottom:8px">Тебя вызывают на бой!</div>
+      <div style="font-size:14px;color:var(--muted);margin-bottom:22px;line-height:1.5">Кто-то из Brain Fight Club бросил тебе вызов. Прими и докажи кто умнее.</div>
+      <button onclick="document.getElementById('challenge-modal').remove();window.startMatchmaking?.()"
+        style="width:100%;background:var(--accent);border:none;border-radius:14px;padding:15px;font-size:16px;font-weight:900;color:#fff;cursor:pointer;font-family:inherit;margin-bottom:10px">
+        ⚡ Принять вызов
+      </button>
+      <button onclick="document.getElementById('challenge-modal').remove()"
+        style="width:100%;background:none;border:0.5px solid var(--border);border-radius:14px;padding:12px;font-size:14px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit">
+        Не сейчас
+      </button>
+    </div>`;
+  document.body.appendChild(m);
+  m.addEventListener('click', e => { if (e.target === m) m.remove(); });
+}
+
 // ── Helpers ───────────────────────────────────────────────────────
 const _timeout = (ms) => new Promise(r => setTimeout(r, ms));
 
 // ── window exports ────────────────────────────────────────────────
 window.initAuth        = initAuth;
 window.signInGoogle    = signInGoogle;
+window.signInVK        = signInVK;
+window.togglePhoneAuth = togglePhoneAuth;
+window.sendPhoneOTP    = sendPhoneOTP;
+window.verifyPhoneOTP  = verifyPhoneOTP;
 window.signInEmail     = signInEmail;
 window.signUpEmail     = signUpEmail;
 window.continueAsGuest = continueAsGuest;

@@ -1289,6 +1289,8 @@ function showScore(){
     // Single idempotent RPC call
     activateReferral();
     updateDailyStreakOnQuickPlayComplete();
+    // Award weekly club neurons (fire-and-forget)
+    window.awardWeeklyNeurons?.(_roundScore || correctCount * 2);
     // Daily goal bonus — 50 ⚡ once per day for completing Quick Play
     const goalBonus = claimDailyGoalBonus();
     if(goalBonus > 0){
@@ -1440,6 +1442,9 @@ async function fetchCityRank(){
 
 async function showShareScreen(){
   track('share_screen_viewed', {score: _roundScore||neurons, correct: correctCount});
+  // Save for challenge-share mechanic
+  window._lastRoundScore = _roundScore || (correctCount * 20);
+  window._lastRoundAcc   = curQ.length > 0 ? Math.round(correctCount / curQ.length * 100) : 0;
   const city = localStorage.getItem('mfc_city')||'';
   const roundPts = _roundScore || (correctCount * 20);
   const accuracy = curQ.length>0?Math.round(correctCount/curQ.length*100):0;
@@ -1459,7 +1464,7 @@ async function showShareScreen(){
   document.getElementById('sh-wa').textContent = lang==='ru'?'Поделиться в WhatsApp':'Share to WhatsApp';
   document.getElementById('sh-copy').textContent = lang==='ru'?'Скопировать':'Copy';
   document.getElementById('sh-duel').textContent = lang==='ru'?'Вызвать на дуэль':'Challenge a friend';
-  document.getElementById('sh-team').textContent = lang==='ru'?'Вступить в команду':'Join / create team';
+  const shTeam = document.getElementById('sh-team'); if (shTeam) shTeam.textContent = lang==='ru'?'Вступить в клуб':'Join / create club';
   document.getElementById('sh-home').textContent = lang==='ru'?'← На главную':'← Back to home';
   showScreen('share');
 }

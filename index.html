@@ -118,12 +118,25 @@
       <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.548 0 9s.348 2.825.957 4.039l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"/></svg>
       <span id="auth-google-btn">Войти через Google</span>
     </button>
-    <!-- VK Login — hidden until VK_LOGIN_ENABLED=true -->
-    <button id="vk-login-btn" onclick="signInVK()" style="display:none;width:100%;align-items:center;justify-content:center;gap:10px;background:#0077FF;border:none;border-radius:14px;padding:15px 20px;font-size:15px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit;margin-bottom:12px">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M12.785 16.241s.288-.032.436-.194c.136-.148.132-.427.132-.427s-.02-1.304.586-1.496c.598-.19 1.365 1.26 2.179 1.815.615.418 1.083.326 1.083.326l2.175-.03s1.137-.071.598-1.122c-.044-.085-.314-.607-1.588-1.716-1.334-1.16-1.155-.972.452-2.977.981-1.306 1.373-2.104 1.25-2.446-.116-.325-.84-.24-.84-.24l-2.45.015s-.182-.025-.316.058c-.132.08-.217.272-.217.272s-.38 1.063-.886 1.966c-1.068 1.893-1.496 1.994-1.671 1.876-.407-.274-.305-1.066-.305-1.635 0-1.777.27-2.518-.524-2.712-.263-.065-.457-.108-1.13-.115-.864-.008-1.594.002-2.008.213-.276.14-.488.452-.358.47.16.02.521.1.713.367.248.346.239 1.12.239 1.12s.142 2.09-.332 2.35c-.325.176-.77-.184-1.726-1.832-.49-.883-.86-1.858-.86-1.858s-.072-.185-.202-.285c-.157-.12-.377-.158-.377-.158l-2.327.015s-.35.01-.478.168c-.113.14-.009.43-.009.43s1.821 4.418 3.883 6.645c1.892 2.042 4.043 1.906 4.043 1.906h.974z"/></svg>
-      <span id="auth-vk-btn">Войти через VK</span>
-    </button>
-    <button class="guest-btn" id="auth-email-toggle-btn" onclick="toggleEmailAuth()" style="font-size:13px;margin-top:6px">📧 <span id="auth-email-toggle-txt">Войти по Email</span></button>
+    <!-- Phone OTP login -->
+    <button class="guest-btn" id="auth-phone-toggle-btn" onclick="togglePhoneAuth()" style="font-size:13px;margin-top:0;margin-bottom:4px">📱 <span>Войти по номеру телефона</span></button>
+    <div id="auth-phone-form" style="display:none;width:100%;margin-bottom:8px">
+      <div id="auth-phone-step1">
+        <input id="auth-phone-input" type="tel" placeholder="+7 900 000 00 00" autocomplete="tel"
+          style="width:100%;background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:12px 14px;font-size:14px;color:var(--text);font-family:inherit;outline:none;margin-bottom:8px"
+          onkeydown="if(event.key==='Enter')sendPhoneOTP()"/>
+        <button onclick="sendPhoneOTP()" style="width:100%;background:var(--accent);border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit" id="auth-phone-send-btn">Получить код →</button>
+      </div>
+      <div id="auth-phone-step2" style="display:none">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:8px;text-align:center">Код отправлен на <span id="auth-phone-display"></span></div>
+        <input id="auth-otp-input" type="text" inputmode="numeric" maxlength="6" placeholder="000000" autocomplete="one-time-code"
+          style="width:100%;background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:14px;font-size:22px;font-weight:800;color:var(--text);font-family:inherit;outline:none;margin-bottom:8px;text-align:center;letter-spacing:8px"
+          onkeydown="if(event.key==='Enter')verifyPhoneOTP()"/>
+        <button onclick="verifyPhoneOTP()" style="width:100%;background:var(--accent);border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit" id="auth-otp-verify-btn">Подтвердить ✓</button>
+        <button onclick="document.getElementById('auth-phone-step2').style.display='none';document.getElementById('auth-phone-step1').style.display='block'" style="width:100%;background:none;border:none;color:var(--muted);font-size:12px;margin-top:6px;cursor:pointer;font-family:inherit">← Изменить номер</button>
+      </div>
+    </div>
+    <button class="guest-btn" id="auth-email-toggle-btn" onclick="toggleEmailAuth()" style="font-size:13px;margin-top:0">📧 <span id="auth-email-toggle-txt">Войти по Email</span></button>
     <div id="auth-email-form" style="display:none;width:100%;margin-top:8px">
       <input id="auth-email-input" type="email" placeholder="Email" autocomplete="email"
         style="width:100%;background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:12px 14px;font-size:14px;color:var(--text);font-family:inherit;outline:none;margin-bottom:8px"
@@ -240,9 +253,9 @@
         <div style="font-size:22px;flex-shrink:0">🔍</div>
         <div><div style="font-size:13px;font-weight:800;margin-bottom:2px">Случайный бой</div><div style="font-size:11px;color:var(--muted);line-height:1.3">Найди соперника онлайн</div></div>
       </div>
-      <div onclick="showMyPacks()" style="background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;padding:14px;cursor:pointer;display:flex;align-items:flex-start;gap:10px">
-        <div style="font-size:22px;flex-shrink:0">🔥</div>
-        <div><div style="font-size:13px;font-weight:800;margin-bottom:2px">Хайп-игры</div><div style="font-size:11px;color:var(--muted);line-height:1.3">Слово пацана, Кальмар и др.</div></div>
+      <div onclick="showScreen('dating');window.startDatingBattle?.()" style="background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;padding:14px;cursor:pointer;display:flex;align-items:flex-start;gap:10px">
+        <div style="font-size:22px;flex-shrink:0">💎</div>
+        <div><div style="font-size:13px;font-weight:800;margin-bottom:2px">BFC Match</div><div style="font-size:11px;color:var(--muted);line-height:1.3">Анонимный квиз-бой</div></div>
       </div>
       <div onclick="openPremiumScreen()" style="background:rgba(240,192,64,.08);border:0.5px solid rgba(240,192,64,.3);border-radius:14px;padding:14px;cursor:pointer;display:flex;align-items:flex-start;gap:10px">
         <div style="font-size:22px;flex-shrink:0">⭐</div>
@@ -256,6 +269,14 @@
       <div id="home-activity-list" style="display:flex;flex-direction:column;gap:4px"></div>
     </div>
 
+    <!-- Club Finder CTA -->
+    <div onclick="showScreen('club-finder');window.loadClubFinder?.()" style="background:rgba(74,222,128,.06);border:0.5px solid rgba(74,222,128,.2);border-radius:14px;padding:12px 14px;margin-bottom:10px;cursor:pointer;display:flex;align-items:center;gap:12px">
+      <div style="font-size:26px">🔎</div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:800;margin-bottom:1px">Ищешь клуб?</div>
+        <div style="font-size:11px;color:var(--muted)">Объявления о наборе · подай заявку онлайн →</div>
+      </div>
+    </div>
     <!-- Organizer CTA — subtle footer card -->
     <div onclick="showScreen('organizer-apply')" style="background:rgba(108,99,255,.06);border:0.5px solid rgba(108,99,255,.2);border-radius:14px;padding:12px 14px;margin-bottom:16px;cursor:pointer;display:flex;align-items:center;gap:12px">
       <div style="font-size:26px">🏟️</div>
@@ -663,11 +684,18 @@
     <div id="team-none" class="team-section">
       <div class="team-hero">
         <div style="font-size:48px;margin-bottom:12px">🏟️</div>
-        <div class="team-hero-title" id="th-title">Команды</div>
-        <div class="team-hero-sub" id="th-sub">Вступи в команду и соревнуйся вместе. Ваш XP влияет на городской рейтинг.</div>
+        <div class="team-hero-title" id="th-title">Клубы</div>
+        <div class="team-hero-sub" id="th-sub">Вступи в клуб и соревнуйся вместе. Ваши нейроны идут в клубный рейтинг.</div>
       </div>
-      <button class="big-btn" onclick="showCreateTeam()" id="t-create-team-btn">⚡ Создать команду</button>
-      <div class="divider-или" id="t-team-или">или вступить в существующую</div>
+      <button class="big-btn" onclick="showCreateTeam()" id="t-create-team-btn">⚡ Создать клуб</button>
+      <div onclick="showScreen('club-finder');window.loadClubFinder?.()" style="background:rgba(74,222,128,.06);border:0.5px solid rgba(74,222,128,.2);border-radius:14px;padding:11px 14px;margin-bottom:12px;cursor:pointer;display:flex;align-items:center;gap:10px">
+        <div style="font-size:20px">🔎</div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:800">Найти клуб</div>
+          <div style="font-size:11px;color:var(--muted)">Объявления о наборе участников →</div>
+        </div>
+      </div>
+      <div class="divider-или" id="t-team-или">или войти по коду</div>
       <div class="code-input-row">
         <input class="code-input" id="team-join-input" type="text" maxlength="6" placeholder="Код команды" oninput="this.value=this.value.toUpperCase()"/>
         <button class="join-btn" onclick="joinTeam()" id="t-join-team-btn">Войти →</button>
@@ -676,9 +704,9 @@
 
     <!-- Create team form -->
     <div id="team-create" class="team-section" style="display:none">
-      <div style="font-size:15px;font-weight:800;margin-bottom:4px" id="tc-title">Создать команду</div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:14px" id="tc-sub">Команда появится в городском рейтинге</div>
-      <input class="code-input" id="team-name-input" type="text" maxlength="24" placeholder="Название команды" style="width:100%;letter-spacing:0;font-size:14px;margin-bottom:10px"/>
+      <div style="font-size:15px;font-weight:800;margin-bottom:4px" id="tc-title">Создать клуб</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:14px" id="tc-sub">Клуб появится в городском рейтинге</div>
+      <input class="code-input" id="team-name-input" type="text" maxlength="24" placeholder="Название клуба" style="width:100%;letter-spacing:0;font-size:14px;margin-bottom:10px"/>
       <input class="city-input" id="team-city-input" type="text" maxlength="32" placeholder="Город" />
       <select class="code-input" id="team-emoji-select" style="letter-spacing:0;font-size:20px;cursor:pointer;margin-bottom:16px">
         <option>⚡</option><option>🧠</option><option>🔥</option><option>🏆</option>
@@ -706,9 +734,26 @@
         <div class="lb-hdr"><span id="tm-members-label">Участники</span><span id="my-team-count">0</span></div>
         <div id="team-members-list"></div>
       </div>
-      <button class="big-btn" style="margin-top:4px" onclick="copyTeamCode()" id="tm-invite-btn">🔗 Пригласить друзей</button>
-      <button class="big-btn" style="margin-top:8px;background:linear-gradient(135deg,#6c63ff,#a855f7)" onclick="openTeamChatPanel()" id="tm-chat-btn">💬 Чат команды</button>
-      <button class="score-sec-btn" style="margin-top:8px;color:var(--red);border-color:rgba(224,85,85,.3)" onclick="leaveTeam()" id="tm-leave-btn">Покинуть команду</button>
+      <button class="big-btn" style="margin-top:4px" onclick="copyTeamCode()" id="tm-invite-btn">🔗 Пригласить в клуб</button>
+      <button class="big-btn" style="margin-top:8px;background:linear-gradient(135deg,#6c63ff,#a855f7)" onclick="openTeamChatPanel()" id="tm-chat-btn">💬 Чат клуба</button>
+      <button class="score-sec-btn" style="margin-top:8px" onclick="showScreen('club-finder');window.loadClubFinder?.()" id="tm-recruit-btn">🔎 Найти участников →</button>
+      <button class="score-sec-btn" style="margin-top:8px;color:var(--red);border-color:rgba(224,85,85,.3)" onclick="leaveTeam()" id="tm-leave-btn">Покинуть клуб</button>
+    </div>
+
+    <!-- Weekly chest widget -->
+    <div id="weekly-chest-wrap" style="display:none;background:linear-gradient(135deg,rgba(240,192,64,.12),rgba(240,192,64,.04));border:0.5px solid rgba(240,192,64,.35);border-radius:16px;padding:14px 16px;margin-top:4px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <div style="font-size:28px">🏆</div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:800;color:var(--gold)">Недельный сундук</div>
+          <div style="font-size:11px;color:var(--muted)">Топ-3 клуба получат бонус в воскресенье</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:18px;font-weight:900;color:var(--gold)" id="wc-my-weekly">0</div>
+          <div style="font-size:9px;color:var(--muted)">нейронов</div>
+        </div>
+      </div>
+      <div id="wc-leaderboard" style="display:flex;flex-direction:column;gap:4px"></div>
     </div>
 
     <!-- Global leaderboard tabs -->
@@ -1172,18 +1217,39 @@
       </div>
     </div>
 
-    <!-- Stats -->
-    <div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;padding:14px">
-      <div style="font-size:12px;font-weight:800;margin-bottom:10px">📊 Статистика</div>
-      <div style="display:flex;gap:0">
-        <div style="flex:1;text-align:center;border-right:0.5px solid var(--border)">
+    <!-- Analytics dashboard -->
+    <div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:16px;padding:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div style="font-size:13px;font-weight:800">📊 Аналитика</div>
+        <button onclick="window.exportOrgCSV?.()" style="background:rgba(74,222,128,.12);border:0.5px solid rgba(74,222,128,.3);border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;color:#4ade80;cursor:pointer;font-family:inherit">↓ CSV</button>
+      </div>
+
+      <!-- KPI row -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">
+        <div style="text-align:center;background:var(--bg3);border-radius:10px;padding:10px 4px">
           <div style="font-size:20px;font-weight:800;color:var(--accent2)" id="org-stat-sold">0</div>
-          <div style="font-size:10px;color:var(--muted);margin-top:2px">Проходок продано</div>
+          <div style="font-size:9px;color:var(--muted);margin-top:2px">Продано</div>
         </div>
-        <div style="flex:1;text-align:center">
+        <div style="text-align:center;background:var(--bg3);border-radius:10px;padding:10px 4px">
           <div style="font-size:20px;font-weight:800;color:var(--gold)" id="org-stat-players">0</div>
-          <div style="font-size:10px;color:var(--muted);margin-top:2px">Новых клиентов</div>
+          <div style="font-size:9px;color:var(--muted);margin-top:2px">Клиентов</div>
         </div>
+        <div style="text-align:center;background:var(--bg3);border-radius:10px;padding:10px 4px">
+          <div style="font-size:20px;font-weight:800;color:#4ade80" id="org-stat-revenue">0</div>
+          <div style="font-size:9px;color:var(--muted);margin-top:2px">Нейронов</div>
+        </div>
+      </div>
+
+      <!-- Funnel -->
+      <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">Воронка по последней игре</div>
+      <div id="org-funnel" style="display:flex;flex-direction:column;gap:4px;margin-bottom:14px">
+        <div style="color:var(--muted);font-size:12px;text-align:center">Загрузка...</div>
+      </div>
+
+      <!-- Question heatmap -->
+      <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">Сложность вопросов</div>
+      <div id="org-heatmap" style="display:flex;flex-direction:column;gap:3px">
+        <div style="color:var(--muted);font-size:12px;text-align:center">Нет данных</div>
       </div>
     </div>
 
@@ -1325,9 +1391,36 @@
           <button onclick="saveProfileCity()" style="background:var(--accent);border:none;border-radius:10px;padding:8px 12px;font-size:12px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit;white-space:nowrap">Сохранить</button>
         </div>
       </div>
+      <!-- Bio -->
+      <div id="profile-bio-wrap" style="margin:10px 0 4px;width:100%;max-width:320px">
+        <div id="profile-bio-display" style="font-size:13px;color:var(--muted);text-align:center;line-height:1.5;cursor:pointer;min-height:20px" onclick="toggleBioEdit()">
+          <span id="profile-bio-text" style="display:none"></span>
+          <span id="profile-bio-placeholder" style="opacity:.5">+ Добавить о себе</span>
+        </div>
+        <div id="profile-bio-edit" style="display:none;margin-top:6px">
+          <textarea id="profile-bio-input" maxlength="160" placeholder="Расскажи о себе (до 160 символов)"
+            style="width:100%;background:var(--bg2);border:0.5px solid var(--border);border-radius:10px;padding:10px;font-size:13px;color:var(--text);font-family:inherit;resize:none;height:72px;box-sizing:border-box"></textarea>
+          <div style="display:flex;gap:6px;margin-top:4px">
+            <button onclick="saveBio()" style="flex:1;background:var(--accent);border:none;border-radius:10px;padding:8px;font-size:12px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit">Сохранить</button>
+            <button onclick="toggleBioEdit()" style="background:none;border:0.5px solid var(--border);border-radius:10px;padding:8px 12px;font-size:12px;color:var(--muted);cursor:pointer;font-family:inherit">Отмена</button>
+          </div>
+        </div>
+      </div>
+      <!-- Avatar URL -->
+      <div id="profile-avatar-edit" style="display:none;margin:6px 0;width:100%;max-width:320px">
+        <input id="profile-avatar-input" type="url" placeholder="URL аватара (jpg/png)"
+          style="width:100%;background:var(--bg2);border:0.5px solid var(--border);border-radius:10px;padding:10px;font-size:13px;color:var(--text);font-family:inherit;box-sizing:border-box"/>
+        <div style="display:flex;gap:6px;margin-top:4px">
+          <button onclick="saveAvatar()" style="flex:1;background:var(--accent);border:none;border-radius:10px;padding:8px;font-size:12px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit">Сохранить фото</button>
+          <button onclick="document.getElementById('profile-avatar-edit').style.display='none'" style="background:none;border:0.5px solid var(--border);border-radius:10px;padding:8px 12px;font-size:12px;color:var(--muted);cursor:pointer;font-family:inherit">Отмена</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap;justify-content:center">
+        <button onclick="toggleAvatarEdit()" style="background:none;border:0.5px solid var(--border);border-radius:8px;padding:4px 10px;font-size:11px;color:var(--muted);cursor:pointer;font-family:inherit">📸 Фото профиля</button>
+      </div>
       <div style="display:flex;gap:8px;margin-top:12px;justify-content:center">
-        <button class="profile-signout" onclick="showCharacterScreen()">🧙 Мой персонаж</button>
-        <button class="profile-signout" onclick="openAuthorBuilder()">✍️ Предложить вопрос</button>
+        <button class="profile-signout" onclick="showCharacterScreen()">🧙 Персонаж</button>
+        <button class="profile-signout" onclick="openAuthorBuilder()">✍️ Вопрос</button>
         <button class="profile-signout" onclick="signOut()" id="profile-signout-btn">Выйти</button>
       </div>
       <div style="margin-top:10px;text-align:center">
@@ -1946,6 +2039,21 @@
         <div class="play-menu-sub" id="pm-duel-sub">Победа даёт +80 нейронов клубу</div>
       </div>
     </div>
+    <div class="play-menu-item" onclick="showScreen('dating');window.startDatingBattle?.()">
+      <div class="play-menu-icon">💎</div>
+      <div class="play-menu-info">
+        <div class="play-menu-title">BFC Match</div>
+        <div class="play-menu-sub">Слепой квиз-бой с незнакомцем · анонимно</div>
+      </div>
+      <div class="play-menu-badge" style="background:rgba(168,85,247,.5)">NEW</div>
+    </div>
+    <div class="play-menu-item" onclick="showScreen('club-finder');window.loadClubFinder?.()">
+      <div class="play-menu-icon">🔎</div>
+      <div class="play-menu-info">
+        <div class="play-menu-title">Найти клуб</div>
+        <div class="play-menu-sub">Объявления о наборе · подай заявку</div>
+      </div>
+    </div>
     <!-- Задание дня — скрыто из основного UX, код сохранён -->
     <div class="play-menu-item" id="pm-daily-item" style="display:none" onclick="showScreen('shop')">
       <div class="play-menu-icon">🎯</div>
@@ -1956,6 +2064,13 @@
       <div class="play-menu-badge gold" id="pm-daily-badge">+50</div>
     </div>
     <!-- Предложить вопрос — перенесено в Профиль -->
+    <div class="play-menu-item" onclick="window.openHypeGame?.('logic-blitz')">
+      <div class="play-menu-icon">⚡</div>
+      <div class="play-menu-info">
+        <div class="play-menu-title">Логика-блиц</div>
+        <div class="play-menu-sub">7 вопросов · 10 сек на каждый</div>
+      </div>
+    </div>
     <div class="play-menu-item" style="display:none" onclick="openAuthorBuilder()">
       <div class="play-menu-icon">✍️</div>
       <div class="play-menu-info">
@@ -2603,6 +2718,8 @@ window.showClubScreen = function() {
   const nh = document.getElementById('n-teams');
   if (nh) nh.textContent = n;
   renderView();
+  // Load weekly chest leaderboard
+  setTimeout(() => window.loadWeeklyChest?.(), 600);
 };
 
 // ─── Render view ───
@@ -2962,14 +3079,81 @@ console.log('✅ Firebase Tournaments module loaded');
   import { shouldShowOnboarding, startOnboarding } from '/js/onboarding.js';
 
   // ── Profile extras: XP bar + achievements + referral ──────
+  window.toggleBioEdit = function() {
+    const edit = document.getElementById('profile-bio-edit');
+    const disp = document.getElementById('profile-bio-display');
+    const inp  = document.getElementById('profile-bio-input');
+    if (edit.style.display === 'none') {
+      inp.value = document.getElementById('profile-bio-text').textContent.trim();
+      edit.style.display = 'block';
+      disp.style.display = 'none';
+      inp.focus();
+    } else {
+      edit.style.display = 'none';
+      disp.style.display = 'block';
+    }
+  };
+
+  window.saveBio = async function() {
+    const { currentUser } = window._bfcState?.() || {};
+    if (!currentUser || !window.sb) return;
+    const bio = document.getElementById('profile-bio-input').value.trim();
+    await window.sb.from('profiles').update({ bio }).eq('id', currentUser.id);
+    document.getElementById('profile-bio-text').textContent = bio;
+    document.getElementById('profile-bio-text').style.display = bio ? 'inline' : 'none';
+    document.getElementById('profile-bio-placeholder').style.display = bio ? 'none' : 'inline';
+    document.getElementById('profile-bio-edit').style.display = 'none';
+    document.getElementById('profile-bio-display').style.display = 'block';
+    window.toast?.('Bio сохранено');
+  };
+
+  window.toggleAvatarEdit = function() {
+    const wrap = document.getElementById('profile-avatar-edit');
+    const av   = document.getElementById('profile-av');
+    wrap.style.display = wrap.style.display === 'none' ? 'block' : 'none';
+    if (wrap.style.display === 'block') {
+      document.getElementById('profile-avatar-input').value = av.dataset.url || '';
+    }
+  };
+
+  window.saveAvatar = async function() {
+    const { currentUser } = window._bfcState?.() || {};
+    if (!currentUser || !window.sb) return;
+    const url = document.getElementById('profile-avatar-input').value.trim();
+    if (!url) return;
+    await window.sb.from('profiles').update({ avatar_url: url }).eq('id', currentUser.id);
+    const av = document.getElementById('profile-av');
+    av.dataset.url = url;
+    av.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.parentNode.textContent='?'"/>`;
+    document.getElementById('profile-avatar-edit').style.display = 'none';
+    window.toast?.('Фото обновлено');
+  };
+
   window.loadProfileExtras = async function() {
     const { currentUser } = window._bfcState?.() || {};
     if (!currentUser || !window.sb) return;
 
     const { data: p } = await window.sb.from('profiles')
-      .select('xp,neurons,daily_streak,best_daily_streak,referral_code,referral_count')
+      .select('xp,neurons,daily_streak,best_daily_streak,referral_code,referral_count,bio,avatar_url')
       .eq('id', currentUser.id).single();
     if (!p) return;
+
+    // Bio
+    if (p.bio) {
+      const bioText = document.getElementById('profile-bio-text');
+      const bioPlaceholder = document.getElementById('profile-bio-placeholder');
+      if (bioText) { bioText.textContent = p.bio; bioText.style.display = 'inline'; }
+      if (bioPlaceholder) bioPlaceholder.style.display = 'none';
+    }
+
+    // Avatar
+    if (p.avatar_url) {
+      const av = document.getElementById('profile-av');
+      if (av) {
+        av.dataset.url = p.avatar_url;
+        av.innerHTML = `<img src="${p.avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.parentNode.innerHTML='?'"/>`;
+      }
+    }
 
     // XP bar
     const xp = p.xp || 0;

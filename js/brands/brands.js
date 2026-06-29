@@ -40,7 +40,10 @@ export async function openBrandPage(slug) {
     .eq('parent_id', brand.id)
     .order('name');
 
-  _renderBrand(brand, tournamentsFinal || [], children || []);
+  // Load partner quests for this brand
+  const { data: quests } = await sb.rpc('get_brand_quests', { p_brand_id: brand.id });
+
+  _renderBrand(brand, tournamentsFinal || [], children || [], quests || []);
 }
 
 function _pluck(field, slug) {
@@ -69,7 +72,7 @@ function _renderBrandNotFound() {
   </div>`;
 }
 
-function _renderBrand(brand, tournaments, children) {
+function _renderBrand(brand, tournaments, children, quests = []) {
   const inner = document.getElementById('brand-inner');
   if (!inner) return;
 
@@ -123,7 +126,123 @@ function _renderBrand(brand, tournaments, children) {
     ${linkBtns ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px">${linkBtns}</div>` : ''}
 
     ${childrenHtml}
+    ${_renderQuestsSection(quests, brand.id)}
     ${tournamentsHtml}`;
+}
+
+const _questTypeLabel = { geo_qr: '📍 QR в заведении', social_click: '📲 Подписка/шаринг', sponsored_quiz: '🧠 Брендовый квиз' };
+
+function _renderQuestsSection(quests, brandId) {
+  if (!quests.length) return '';
+  return `
+    <div style="margin-top:24px">
+      <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:10px">⚡ Задания бренда</div>
+      ${quests.map(q => {
+        const done   = q.completed;
+        const expire = q.expires_at ? new Date(q.expires_at).toLocaleDateString('ru', { day:'numeric', month:'short' }) : '';
+        return `
+          <div style="background:var(--bg2);border:0.5px solid ${done ? 'rgba(74,222,128,.25)' : 'var(--border)'};border-radius:14px;padding:14px;margin-bottom:8px">
+            <div style="display:flex;align-items:flex-start;gap:10px">
+              <div style="font-size:22px;flex-shrink:0">${done ? '✅' : '🎯'}</div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:13px;font-weight:800;margin-bottom:3px">${_esc(q.title)}</div>
+                ${q.description ? `<div style="font-size:11px;color:var(--muted);line-height:1.4;margin-bottom:6px">${_esc(q.description)}</div>` : ''}
+                <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                  <span style="font-size:11px;color:var(--muted)">${_questTypeLabel[q.quest_type] || q.quest_type}</span>
+                  ${expire ? `<span style="font-size:10px;color:var(--muted)">· до ${expire}</span>` : ''}
+                </div>
+              </div>
+              <div style="text-align:right;flex-shrink:0">
+                <div style="font-size:16px;font-weight:900;color:${done ? '#4ade80' : 'var(--gold)'}">${done ? '✓' : '+' + q.reward_neurons}</div>
+                ${!done ? `<div style="font-size:9px;color:var(--muted)">нейронов</div>` : ''}
+              </div>
+            </div>
+            ${!done ? `<button onclick="window._startQuest('${q.id}','${q.quest_type}')"
+              style="width:100%;margin-top:10px;background:${q.quest_type === 'geo_qr' ? 'rgba(108,99,255,.15)' : 'var(--accent)'};border:${q.quest_type === 'geo_qr' ? '1px solid rgba(108,99,255,.4)' : 'none'};border-radius:10px;padding:10px;font-size:13px;font-weight:800;color:${q.quest_type === 'geo_qr' ? 'var(--accent2)' : '#fff'};cursor:pointer;font-family:inherit">
+              ${q.quest_type === 'geo_qr' ? '📷 Сканировать QR' : q.quest_type === 'social_click' ? '📲 Выполнить' : '🧠 Играть'}
+            </button>` : ''}
+          </div>`;
+      }).join('')}
+    </div>`;
+}
+
+// ── Quest execution ───────────────────────────────────────────────
+window._startQuest = async function(questId, questType) {
+  const { currentUser } = getState();
+  if (!currentUser) { window.toast?.('Войдите для выполнения заданий'); return; }
+
+  if (questType === 'geo_qr') {
+    // Show QR scanner prompt — user enters secret from QR
+    _showQRSecretModal(questId);
+    return;
+  }
+
+  // social_click / sponsored_quiz — complete without secret
+  _completeQuest(questId, null);
+};
+
+function _showQRSecretModal(questId) {
+  const m = document.createElement('div');
+  m.id = 'qr-secret-modal';
+  m.style.cssText = 'position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.85);display:flex;align-items:flex-end;justify-content:center;padding:20px';
+  m.innerHTML = `
+    <div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:24px 24px 16px 16px;padding:28px 20px 24px;width:100%;max-width:420px">
+      <div style="font-size:20px;font-weight:900;margin-bottom:6px">📷 Введи код с QR</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:16px">Найди QR-код в заведении и введи код который на нём написан</div>
+      <input id="qr-secret-input" type="text" placeholder="Код с QR-кода" autofocus
+        style="width:100%;background:var(--bg3);border:0.5px solid var(--border);border-radius:12px;padding:14px;font-size:18px;font-weight:800;color:var(--text);font-family:inherit;outline:none;margin-bottom:12px;text-align:center;letter-spacing:3px;text-transform:uppercase;box-sizing:border-box"
+        onkeydown="if(event.key==='Enter')window._submitQRSecret('${questId}')"/>
+      <button onclick="window._submitQRSecret('${questId}')"
+        style="width:100%;background:var(--accent);border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit;margin-bottom:8px">
+        Проверить →
+      </button>
+      <button onclick="document.getElementById('qr-secret-modal').remove()"
+        style="width:100%;background:none;border:0.5px solid var(--border);border-radius:12px;padding:11px;font-size:13px;color:var(--muted);cursor:pointer;font-family:inherit">
+        Отмена
+      </button>
+    </div>`;
+  m.addEventListener('click', e => { if (e.target === m) m.remove(); });
+  document.body.appendChild(m);
+}
+
+window._submitQRSecret = function(questId) {
+  const secret = document.getElementById('qr-secret-input')?.value?.trim().toUpperCase();
+  if (!secret) return;
+  document.getElementById('qr-secret-modal')?.remove();
+  _completeQuest(questId, secret);
+};
+
+async function _completeQuest(questId, secret) {
+  const { data, error } = await sb.rpc('complete_partner_quest', {
+    p_quest_id: questId,
+    p_secret:   secret || null,
+  });
+
+  if (error || !data?.ok) {
+    const reason = data?.reason || error?.message || 'Ошибка';
+    const msg = reason === 'already_completed' ? 'Задание уже выполнено ✓'
+              : reason === 'invalid_secret'    ? 'Неверный код — проверь QR ещё раз'
+              : reason === 'quest_expired'      ? 'Задание истекло'
+              : 'Ошибка: ' + reason;
+    window.toast?.(msg);
+    return;
+  }
+
+  window.toast?.(`+${data.neurons_awarded} нейронов! Задание выполнено ✅`);
+  // Refresh neurons display
+  if (typeof window.loadUserNeurons === 'function') window.loadUserNeurons();
+  // Re-render quest as completed in place
+  const btns = document.querySelectorAll(`[onclick*="${questId}"]`);
+  btns.forEach(btn => {
+    const card = btn.closest('div[style*="border-radius:14px"]');
+    if (card) {
+      btn.remove();
+      card.style.borderColor = 'rgba(74,222,128,.25)';
+      const icon = card.querySelector('div[style*="font-size:22px"]');
+      if (icon) icon.textContent = '✅';
+    }
+  });
+  track('partner_quest_completed', { quest_id: questId, neurons: data.neurons_awarded });
 }
 
 function _renderTournamentCard(t) {

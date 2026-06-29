@@ -27,9 +27,18 @@ import { loadActivityFeed }  from './activity-feed.js';
 import './pwa.js';
 import { initDailyLogic, checkBrandRoute } from './brands/brands.js';
 import './battles/dating-battle.js';
-import { loadClubFinder, renderClubFinderFilters } from './club-finder.js';
+import { loadClubFinder } from './club-finder.js';
+import { sendPushToUser } from './pwa.js';
+import { loadOrgAnalytics, exportOrgCSV } from './organizer-analytics.js';
+import { loadWeeklyChest, awardWeeklyNeurons } from './weekly-chest.js';
 
 // ── Boot ──────────────────────────────────────────────────────────
+window._sendPushToUser    = sendPushToUser;
+window.loadOrgAnalytics   = loadOrgAnalytics;
+window.exportOrgCSV       = exportOrgCSV;
+window.loadWeeklyChest    = loadWeeklyChest;
+window.awardWeeklyNeurons = awardWeeklyNeurons;
+
 document.addEventListener('DOMContentLoaded', () => {
   trackPageView();
   initAuth();
@@ -57,16 +66,8 @@ async function registerServiceWorker() {
   }
 }
 
-// Called after successful login to request push permission
-window.requestPushPermission = async function() {
-  if (!window._swReg || !('PushManager' in window)) return;
-  try {
-    const perm = await Notification.requestPermission();
-    if (perm !== 'granted') return;
-    // VAPID public key needed for real push — placeholder for now
-    // const sub = await window._swReg.pushManager.subscribe({...});
-    // await sb.rpc('register_push_token', { p_token: JSON.stringify(sub) });
-  } catch(e) {
-    console.warn('[push]', e.message);
-  }
+// Called after successful login to request push permission — delegates to pwa.js
+window.requestPushPermission = async function(context = 'general') {
+  const { requestPushPermission } = await import('./pwa.js');
+  return requestPushPermission(context);
 };

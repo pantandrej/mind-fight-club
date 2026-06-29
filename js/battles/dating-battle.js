@@ -15,6 +15,8 @@ let _revealShown = false;
 const TOTAL_Q    = 5;
 
 // ── Entry point ───────────────────────────────────────────────────
+let _searchTimeout = null;
+
 export async function startDatingBattle() {
   const { currentUser } = getState();
   if (!currentUser) { window.toast?.('Войдите для BFC Match'); return; }
@@ -33,9 +35,36 @@ export async function startDatingBattle() {
   await _subscribeRoom(data.room_id);
 
   if (data.status === 'playing') {
+    if (_searchTimeout) { clearTimeout(_searchTimeout); _searchTimeout = null; }
     await _loadRoom();
+  } else {
+    // Waiting for opponent — show cancel button + timeout after 60s
+    _renderSearchingUI(data.room_id);
+    _searchTimeout = setTimeout(() => {
+      window.leaveDatingRoom?.();
+      window.toast?.('Соперник не найден — попробуй позже');
+      showScreen('home');
+    }, 60000);
   }
-  // if 'searching' — room subscription will fire when p2 joins
+}
+
+function _renderSearchingUI(roomId) {
+  const wrap = document.getElementById('dt-searching');
+  if (!wrap) return;
+  wrap.style.display = 'block';
+  // Add cancel button if not already there
+  if (!document.getElementById('dt-cancel-search')) {
+    const btn = document.createElement('button');
+    btn.id = 'dt-cancel-search';
+    btn.style.cssText = 'margin-top:20px;background:none;border:0.5px solid var(--border);border-radius:12px;padding:11px 24px;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit';
+    btn.textContent = 'Отменить поиск';
+    btn.onclick = () => {
+      if (_searchTimeout) { clearTimeout(_searchTimeout); _searchTimeout = null; }
+      window.leaveDatingRoom?.();
+      showScreen('home');
+    };
+    wrap.appendChild(btn);
+  }
 }
 
 // ── Realtime subscription ─────────────────────────────────────────
@@ -395,6 +424,7 @@ function _esc(s) {
 
 // ── Leave room ────────────────────────────────────────────────────
 export async function leaveDatingRoom() {
+  if (_searchTimeout) { clearTimeout(_searchTimeout); _searchTimeout = null; }
   if (_channel) { await _channel.unsubscribe(); _channel = null; }
   if (_room) {
     await sb.from('dating_rooms').update({ status: 'closed' }).eq('id', _room.id);

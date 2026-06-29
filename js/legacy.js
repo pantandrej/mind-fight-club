@@ -172,14 +172,11 @@ function setLang(l){
   applyLang();
 }
 function t(key){return T[lang][key]||T.en[key]||key;}
-// ─── Safe DOM helpers ────────────────────────────────────────────
-// [safeEl] → js/router.js
-
-// [setText] → js/router.js
-
-// [setHTML] → js/router.js
-
-// [setPlaceholder] → js/router.js
+// ─── Safe DOM helpers (inline shims — router.js ES-module registers real versions later) ──
+function safeEl(id){ return document.getElementById(id); }
+function setText(id,v){ const e=safeEl(id); if(e) e.textContent=v; }
+function setHTML(id,v){ const e=safeEl(id); if(e) e.innerHTML=v; }
+function setPlaceholder(id,v){ const e=safeEl(id); if(e) e.placeholder=v; }
 
 // [setDisplay] → js/router.js
 
@@ -11340,6 +11337,8 @@ async function showOrganizerCabinet(){
     loadOrgPasses();
     updateOrgRefLink();
     updateOrgStats();
+    // Load advanced analytics (new module)
+    setTimeout(() => window.loadOrgAnalytics?.(), 800);
   } catch(e){
     console.error('[Org] showOrganizerCabinet:', e.message);
     toast('Ошибка: ' + e.message);

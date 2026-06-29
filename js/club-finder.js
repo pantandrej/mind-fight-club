@@ -8,6 +8,20 @@ export async function loadClubFinder(filters = {}) {
   const wrap = document.getElementById('club-finder-list');
   if (!wrap) return;
 
+  // Initialize filters from DB if not done yet
+  if (!document.getElementById('cf-all')) {
+    const { data: cities } = await sb
+      .from('club_recruitment_board')
+      .select('city')
+      .eq('is_active', true)
+      .not('city', 'is', null);
+    const uniqueCities = [...new Set((cities || []).map(r => r.city).filter(Boolean))].slice(0, 8);
+    renderClubFinderFilters(
+      uniqueCities.length ? uniqueCities : ['Москва', 'Санкт-Петербург', 'Екатеринбург'],
+      ['Квиз', 'Спорт', 'Киберспорт', 'Образование']
+    );
+  }
+
   wrap.innerHTML = _skeleton();
 
   let query = sb
@@ -92,11 +106,11 @@ window.applyToClub = async function(postId, btn) {
   // Send push via send-push edge function
   if (data.creator_id && data.applicant) {
     const a = data.applicant;
-    window._sendPushToUser?.(data.creator_id,
-      `👥 ${a.name} хочет вступить в твой клуб`,
-      `${a.xp} XP · ${a.neurons} нейронов`,
-      `${location.origin}/?uid=${a.id}`
-    );
+    window._sendPushToUser?.(data.creator_id, {
+      title: `👥 ${a.name} хочет вступить в твой клуб`,
+      body:  `${a.xp} XP · ${a.neurons} нейронов`,
+      url:   `${location.origin}/?uid=${a.id}`
+    });
   }
 
   btn.textContent = '✅ Заявка отправлена';

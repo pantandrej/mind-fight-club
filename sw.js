@@ -1,4 +1,4 @@
-const CACHE = 'bfc-v2';
+const CACHE = 'bfc-v3';
 
 self.addEventListener('install', e => {
   self.skipWaiting();
@@ -37,8 +37,8 @@ self.addEventListener('push', e => {
   e.waitUntil(
     self.registration.showNotification(payload.title, {
       body:  payload.body,
-      icon:  '/icon-192.png',
-      badge: '/icon-192.png',
+      icon:  '/icon-192.svg',
+      badge: '/icon-192.svg',
       tag:   payload.tag || 'bfc-push',
       data:  { url: payload.url || '/' },
     })

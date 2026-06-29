@@ -490,8 +490,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function challengeFriendFromShare(){
   track('challenge_from_share', {});
-  showScreen('duel');
-  setTimeout(()=>createDuel(), 100);
+  // Generate a challenge link with the challenger's name
+  const name = window._currentUserName || localStorage.getItem('bfc_display_name') || 'Игрок';
+  const score = window._lastRoundScore || 0;
+  const acc   = window._lastRoundAcc   || 0;
+  const challengeText = encodeURIComponent(
+    `⚔️ ${name} бросает тебе вызов!\n🧠 ${score} очков · ${acc}% точность\nСможешь лучше? brainfight.club`
+  );
+  const url = encodeURIComponent(`${location.origin}${location.pathname}?challenge=1`);
+  // Try native share first
+  if (navigator.share) {
+    navigator.share({
+      title: '⚔️ Вызов в Brain Fight Club',
+      text: decodeURIComponent(challengeText),
+      url: decodeURIComponent(url),
+    }).catch(()=>{});
+  } else {
+    window.open(`https://t.me/share/url?url=${url}&text=${challengeText}`, '_blank');
+  }
 }
 
 // ═══════════════════════════════════════════
