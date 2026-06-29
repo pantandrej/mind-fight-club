@@ -25,16 +25,21 @@ import { refreshHomeBanner } from './tournaments/tournament-pack.js';
 import { loadDailyQuestion } from './daily-question.js';
 import { loadActivityFeed }  from './activity-feed.js';
 import './pwa.js';
+import { initDailyLogic, checkBrandRoute } from './brands/brands.js';
 
 // ── Boot ──────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   trackPageView();
   initAuth();
   registerServiceWorker();
+  // Brand page route ?brand=slug
+  checkBrandRoute();
   // Show tournament banner if any starts within 24h
   setTimeout(refreshHomeBanner, 2000);
   // Load daily question card on home
   setTimeout(loadDailyQuestion, 3000);
+  // Daily logic widget on home
+  setTimeout(initDailyLogic, 3500);
   // Activity feed — who's playing right now
   setTimeout(loadActivityFeed, 4000);
 });

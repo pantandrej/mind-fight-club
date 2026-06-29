@@ -163,6 +163,9 @@
         <span id="home-player-count-val">0</span> игроков зарегистрировано
       </div>
     </div>
+    <!-- Daily Logic Widget -->
+    <div id="daily-logic-wrap" style="margin-bottom:16px;display:none"></div>
+
     <!-- PWA install banner -->
     <div id="pwa-install-banner" style="display:none;background:rgba(108,99,255,.12);border:1px solid rgba(108,99,255,.3);border-radius:14px;padding:12px 14px;margin-bottom:12px;display:none;align-items:center;gap:12px">
       <div style="font-size:28px">📲</div>
@@ -1198,6 +1201,16 @@
 </div>
 
 <!-- PROFILE -->
+<!-- ── Brand Profile Screen ── -->
+<div class="screen" id="brand" style="justify-content:flex-start;padding:0">
+  <div class="hdr" style="position:sticky;top:0;z-index:10;backdrop-filter:blur(12px);background:rgba(10,10,20,.85)">
+    <button onclick="history.back()" style="background:none;border:none;color:var(--text);font-size:22px;cursor:pointer;padding:0 4px;line-height:1">‹</button>
+    <div class="logo">BFC</div>
+    <div style="width:30px"></div>
+  </div>
+  <div id="brand-inner" style="padding:16px 16px 40px"></div>
+</div>
+
 <div class="screen" id="profile">
   <div class="hdr">
     <div class="logo">BFC</div>
