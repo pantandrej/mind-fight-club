@@ -491,7 +491,7 @@ window.openTournamentsListScreen = async function() {
   const body = document.getElementById('trn-list-body');
   body.innerHTML = `<div style="text-align:center;color:var(--muted);padding:24px">Загрузка...</div>`;
 
-  sb.rpc('sync_tournament_statuses').catch(() => {});
+  sb.rpc('sync_tournament_statuses').then(null, () => {});
 
   const { data: rows } = await sb.from('tournaments')
     .select('*')
@@ -664,7 +664,7 @@ function _trnEndsAt(t) {
 
 export async function refreshHomeBanner() {
   // Sync statuses server-side first
-  sb.rpc('sync_tournament_statuses').catch(() => {});
+  sb.rpc('sync_tournament_statuses').then(null, () => {});
 
   const { data: rows } = await sb.from('tournaments')
     .select('*').in('status', ['upcoming', 'active'])

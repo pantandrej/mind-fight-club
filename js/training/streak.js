@@ -518,6 +518,7 @@ window.startObDemo                        = startObDemo;
 window.renderObQuestion                   = renderObQuestion;
 window.obPickAnswer                       = obPickAnswer;
 window.obNextQuestion                     = obNextQuestion;
+window.obNext                             = obNextQuestion; // alias used in HTML onclick
 window.showObResult                       = showObResult;
 window.shouldShowOnboarding               = shouldShowOnboarding;
 window.showOnboarding                     = showOnboarding;

@@ -89,7 +89,7 @@ async function finishOnboarding() {
 
   const { currentUser } = getState();
   if (currentUser) {
-    await sb.from('profiles').update({ onboarding_done: true }).eq('id', currentUser.id).catch(() => {});
+    await sb.from('profiles').update({ onboarding_done: true }).eq('id', currentUser.id);
   }
 
   // Ask for push permission after onboarding

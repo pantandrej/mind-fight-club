@@ -12172,8 +12172,6 @@ window.showOppProfile = async function(userId, displayName) {
   }
 };
 
-window.obNext = obNext;
-
 // ── THEME TOGGLE ──────────────────────────────────────────────────────────────
 function toggleTheme() {
   const current = document.documentElement.getAttribute('data-theme');
