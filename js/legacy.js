@@ -281,7 +281,7 @@ function applyLang(){
   setText('nav-duel-label',L.navDuel);
   setText('nav-cup-label',L.navCup||'Кубок');
   setText('nav-profile-label','Профиль');
-  setText('nav-teams-label','Команды');
+  setText('nav-teams-label','Клуб');
   const shopNav=safeEl('nav-shop-label');
   if(shopNav)shopNav.textContent=lang==='ru'?'Магазин':'Shop';
   // Play menu
@@ -301,9 +301,9 @@ function applyLang(){
   setText('pm-official',lang==='ru'?'Официальный турнир':'Официальный турнир');
   setText('pm-official-sub',lang==='ru'?'Идёт сейчас — успей присоединиться':'Live now — join before it starts');
   // Teams
-  setText('th-title',lang==='ru'?'Команды':'Teams');
-  setText('th-sub',lang==='ru'?'Вступи в команду и соревнуйся вместе. Ваш XP влияет на городской рейтинг.':'Join a team and compete together.');
-  setText('t-create-team-btn',lang==='ru'?'⚡ Создать команду':'⚡ Create a team');
+  setText('th-title',lang==='ru'?'Клубы':'Clubs');
+  setText('th-sub',lang==='ru'?'Вступи в клуб и соревнуйся вместе. Ваш XP влияет на городской рейтинг.':'Join a club and compete together.');
+  setText('t-create-team-btn',lang==='ru'?'⚡ Создать клуб':'⚡ Create a club');
   setText('t-team-или',lang==='ru'?'или вступить в существующую':'или вступить в существующую');
   setPlaceholder('team-join-input',lang==='ru'?'Код команды':'Team code');
   setText('tc-title',lang==='ru'?'Создать команду':'Create Team');
@@ -317,7 +317,7 @@ function applyLang(){
   setText('tm-members-label',lang==='ru'?'Участники':'Members');
   // City leaderboard
   setText('t-global-title',lang==='ru'?'🌆 Рейтинг городов':'🌆 City Leaderboard');
-  setText('city-tab-teams',lang==='ru'?'Команды':'Teams');
+  setText('city-tab-teams',lang==='ru'?'Клубы':'Clubs');
   setText('city-tab-players',lang==='ru'?'Игроки':'Players');
   setText('city-tab-week',lang==='ru'?'🏅 Неделя':'🏅 Week');
   // Matchmaking
@@ -5246,12 +5246,12 @@ function showTeamsScreen(){
 
 function renderTeamsScreen(){
   renderMyTeam();
-  document.getElementById('th-title').textContent = lang==='ru'?'Команды':'Teams';
-  document.getElementById('th-sub').textContent = lang==='ru'?'Создай команду с городом и соревнуйтесь в городской лиге.':'Create a city team and compete in the city league.';
-  document.getElementById('t-create-team-btn').textContent = lang==='ru'?'⚡ Создать команду':'⚡ Create a team';
-  document.getElementById('t-team-или').textContent = lang==='ru'?'или вступить в существующую':'или вступить в существующую';
+  document.getElementById('th-title').textContent = lang==='ru'?'Клубы':'Clubs';
+  document.getElementById('th-sub').textContent = lang==='ru'?'Создай клуб с городом и соревнуйтесь в городской лиге.':'Create a city club and compete in the city league.';
+  document.getElementById('t-create-team-btn').textContent = lang==='ru'?'⚡ Создать клуб':'⚡ Create a club';
+  document.getElementById('t-team-или').textContent = lang==='ru'?'или вступить в существующий':'или вступить в существующий';
   document.getElementById('t-join-team-btn').textContent = lang==='ru'?'Войти →':'Join →';
-  document.getElementById('team-join-input').placeholder = lang==='ru'?'Код команды':'Team code';
+  document.getElementById('team-join-input').placeholder = lang==='ru'?'Код клуба':'Club code';
   document.getElementById('tc-title').textContent = lang==='ru'?'Создать команду':'Create Team';
   const tcSub = document.getElementById('tc-sub');
   if(tcSub) tcSub.textContent = lang==='ru'?'Команда появится в городском рейтинге':'Team will appear in city leaderboard';
@@ -5263,9 +5263,9 @@ function renderTeamsScreen(){
   document.getElementById('tm-leave-btn').textContent = lang==='ru'?'Покинуть команду':'Leave team';
   document.getElementById('tm-members-label').textContent = lang==='ru'?'Участники':'Members';
   document.getElementById('t-global-title').textContent = lang==='ru'?'🌆 Городской рейтинг':'🌆 City Leaderboard';
-  document.getElementById('nav-teams-label').textContent = 'Команды';
+  document.getElementById('nav-teams-label').textContent = 'Клуб';
   document.getElementById('n-teams').textContent = neurons;
-  document.getElementById('city-tab-teams').textContent = lang==='ru'?'Команды':'Teams';
+  document.getElementById('city-tab-teams').textContent = lang==='ru'?'Клубы':'Clubs';
   document.getElementById('city-tab-players').textContent = lang==='ru'?'Игроки':'Players';
 
   // Render weekly competition banner

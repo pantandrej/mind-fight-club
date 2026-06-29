@@ -70,7 +70,21 @@ async function createDuel(){
   duelMyName=currentUser?.user_metadata?.full_name?.split(' ')[0]||'Хост';
   duelMyScore=0;duelOppScore=0;duelQs=[];duelIdx=0;duelMyCorrect=0;
 
-  await sb.from('duel_rooms').upsert({code:duelCode,host_score:0,guest_score:0,status:'waiting',questions:null,host_user_id:currentUser?.id||null,created_at:new Date().toISOString()});
+  const { error: createErr } = await sb.from('duel_rooms').upsert({
+    code: duelCode, host_score: 0, guest_score: 0,
+    status: 'waiting', questions: null,
+    host_user_id: currentUser?.id || null,
+    created_at: new Date().toISOString()
+  });
+  // host_user_id column may not exist yet — retry without it
+  if (createErr) {
+    const { error: retryErr } = await sb.from('duel_rooms').upsert({
+      code: duelCode, host_score: 0, guest_score: 0,
+      status: 'waiting', questions: null,
+      created_at: new Date().toISOString()
+    });
+    if (retryErr) { toast('Ошибка создания комнаты: ' + retryErr.message); return; }
+  }
   track('duel_created', {code: duelCode});
   // NOTE: integrity starts in startDuelBattle(), not here (user needs to share invite link)
 
@@ -90,9 +104,10 @@ async function joinDuel(){
   window._isBotDuel = false; window._botPlayer = null; window._pendingBot = null;
 
   const code=document.getElementById('join-code-input').value.trim().toUpperCase();
-  if(code.length!==6){toast('Enter 6-letter code');return;}
-  const {data,error}=await sb.from('duel_rooms').select('*').eq('code',code).single();
-  if(error||!data){toast('Room not found');return;}
+  if(code.length!==6){toast('Введи 6-значный код');return;}
+  const {data,error}=await sb.from('duel_rooms').select('*').eq('code',code).maybeSingle();
+  if(error){toast('Ошибка: ' + error.message);return;}
+  if(!data){toast('Комната не найдена — проверь код или попроси друга создать новую');return;}
   if(data.status==='started'){toast('Game already started');return;}
 
   duelCode=code;duelRole='guest';
