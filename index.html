@@ -12,17 +12,17 @@
 <meta name="description" content="Тематические квизы, онлайн-турниры в реальном времени и дуэли с друзьями. Отвечай быстрее — зарабатывай больше нейронов. Бесплатно, без скачивания.">
 <meta name="keywords" content="квиз, онлайн квиз, турнир по знаниям, интеллектуальная игра, Brain Fight Club">
 <meta property="og:type" content="website">
-<meta property="og:url" content="https://brain-fight-club.vercel.app/">
-<meta property="og:title" content="Brain Fight Club — живые квиз-турниры">
-<meta property="og:description" content="Тематические паки, онлайн-турниры и дуэли с друзьями. Чем быстрее отвечаешь — тем больше нейронов.">
-<meta property="og:image" content="https://brain-fight-club.vercel.app/og-image.svg">
+<meta property="og:url" content="https://brainfight.club/">
+<meta property="og:title" content="Brain Fight Club — живые квиз-битвы">
+<meta property="og:description" content="Дуэли с друзьями, онлайн-турниры и клубные чемпионаты. Отвечай быстрее — побеждай. Бесплатно, без скачивания.">
+<meta property="og:image" content="https://brainfight.club/og-image.svg">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Brain Fight Club — живые квиз-турниры">
-<meta name="twitter:description" content="Тематические паки, онлайн-турниры и дуэли с друзьями.">
-<meta name="twitter:image" content="https://brain-fight-club.vercel.app/og-image.svg">
-<link rel="canonical" href="https://brain-fight-club.vercel.app/">
+<meta name="twitter:title" content="Brain Fight Club — живые квиз-битвы">
+<meta name="twitter:description" content="Дуэли с друзьями, онлайн-турниры и клубные чемпионаты. Бесплатно, без скачивания.">
+<meta name="twitter:image" content="https://brainfight.club/og-image.svg">
+<link rel="canonical" href="https://brainfight.club/">
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"WebApplication","name":"Brain Fight Club","url":"https://brain-fight-club.vercel.app","description":"Онлайн-платформа для квизов, живых турниров и интеллектуальных дуэлей","applicationCategory":"Game","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"RUB"}}
+{"@context":"https://schema.org","@type":"WebApplication","name":"Brain Fight Club","url":"https://brainfight.club","description":"Онлайн-платформа для квизов, живых турниров и интеллектуальных дуэлей","applicationCategory":"Game","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"RUB"}}
 </script>
 
 <!-- CDN dependencies (must load before ES modules) -->
@@ -40,14 +40,81 @@
 </head>
 <body>
 
+<!-- LANDING — shown to first-time visitors before auth -->
+<div id="landing-overlay" style="display:none;position:fixed;inset:0;z-index:10000;background:var(--bg);overflow-y:auto;flex-direction:column;align-items:center;justify-content:center;padding:24px 20px">
+  <div style="max-width:400px;width:100%;margin:0 auto;text-align:center;padding-bottom:32px">
+    <!-- Logo -->
+    <div style="font-size:52px;font-weight:900;letter-spacing:-2px;background:linear-gradient(135deg,#6c63ff,#a855f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px">BFC</div>
+    <div style="font-size:13px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:28px">Brain Fight Club</div>
+
+    <!-- Hero -->
+    <div style="font-size:26px;font-weight:900;line-height:1.2;margin-bottom:10px">Квиз-битвы<br>в реальном времени</div>
+    <div style="font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:28px">Дуэли с друзьями, турниры в барах и офисах,<br>клубные чемпионаты — всё бесплатно</div>
+
+    <!-- Social proof -->
+    <div style="background:rgba(108,99,255,.08);border:1px solid rgba(108,99,255,.2);border-radius:16px;padding:14px;margin-bottom:24px;display:flex;align-items:center;justify-content:center;gap:8px">
+      <div style="display:flex;gap:-6px">
+        <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#6c63ff,#a855f7);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;border:2px solid var(--bg)">А</div>
+        <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#ef4444);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;border:2px solid var(--bg);margin-left:-8px">М</div>
+        <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#10b981,#06b6d4);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;border:2px solid var(--bg);margin-left:-8px">К</div>
+      </div>
+      <div style="font-size:13px;color:var(--text)"><b id="landing-player-count">...</b> игроков уже в игре</div>
+    </div>
+
+    <!-- Feature pills -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:28px;text-align:left">
+      <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px">
+        <div style="font-size:22px;margin-bottom:6px">⚔️</div>
+        <div style="font-size:13px;font-weight:800;margin-bottom:2px">Дуэли</div>
+        <div style="font-size:11px;color:var(--muted)">1 на 1 в реальном времени</div>
+      </div>
+      <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px">
+        <div style="font-size:22px;margin-bottom:6px">🏆</div>
+        <div style="font-size:13px;font-weight:800;margin-bottom:2px">Турниры</div>
+        <div style="font-size:11px;color:var(--muted)">До 100 человек одновременно</div>
+      </div>
+      <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px">
+        <div style="font-size:22px;margin-bottom:6px">🧠</div>
+        <div style="font-size:13px;font-weight:800;margin-bottom:2px">AI-вопросы</div>
+        <div style="font-size:11px;color:var(--muted)">Любая тема за 30 секунд</div>
+      </div>
+      <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px">
+        <div style="font-size:22px;margin-bottom:6px">🏟️</div>
+        <div style="font-size:13px;font-weight:800;margin-bottom:2px">Клубы</div>
+        <div style="font-size:11px;color:var(--muted)">Офис, бар, команда</div>
+      </div>
+    </div>
+
+    <!-- Primary CTA -->
+    <button onclick="window._landingPlayNow()" style="width:100%;background:linear-gradient(135deg,#6c63ff,#a855f7);border:none;border-radius:16px;padding:18px;font-size:17px;font-weight:900;color:#fff;cursor:pointer;font-family:inherit;margin-bottom:12px;letter-spacing:0.3px;box-shadow:0 8px 32px rgba(108,99,255,.4)">
+      ⚡ Играть бесплатно →
+    </button>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:20px">Без регистрации · без скачивания · работает с телефона</div>
+
+    <!-- Secondary CTA -->
+    <button onclick="window._landingSignIn()" style="width:100%;background:transparent;border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:13px;font-size:14px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit">
+      Войти в аккаунт
+    </button>
+  </div>
+</div>
+
 <!-- AUTH -->
 <div class="screen active" id="auth">
   <div class="auth-inner">
     <span class="auth-logo">BFC</span>
     <div class="auth-title">Brain Fight Club</div>
-    <div class="auth-sub" id="auth-sub">Тренируй эрудицию. Побеждай в баттлах. Соревнуйся за клуб.</div>
+    <div class="auth-sub" id="auth-sub">Тренируй эрудицию. Побеждай в баттлах.</div>
+
+    <!-- Primary: Guest play -->
+    <button class="google-btn" id="auth-guest-btn" onclick="continueAsGuest()" style="background:linear-gradient(135deg,#6c63ff,#a855f7);border:none;color:#fff;font-weight:900;font-size:16px;margin-bottom:8px">
+      ⚡ Играть без регистрации
+    </button>
+    <div class="auth-note" id="auth-note" style="margin-bottom:16px">Прогресс гостя не сохраняется</div>
+
+    <div class="auth-or">или сохрани прогресс</div>
+
     <div id="auth-error" style="display:none;background:rgba(224,85,85,.1);border:0.5px solid rgba(224,85,85,.3);border-radius:10px;padding:10px 14px;font-size:12px;color:#e06666;margin-bottom:12px;line-height:1.4;word-break:break-word"></div>
-    <button class="google-btn" id="google-sign-in-btn" onclick="signInGoogle()">
+    <button class="google-btn" id="google-sign-in-btn" onclick="signInGoogle()" style="background:var(--bg2);border:0.5px solid var(--border);color:var(--text)">
       <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.548 0 9s.348 2.825.957 4.039l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"/></svg>
       <span id="auth-google-btn">Войти через Google</span>
     </button>
@@ -56,8 +123,7 @@
       <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M12.785 16.241s.288-.032.436-.194c.136-.148.132-.427.132-.427s-.02-1.304.586-1.496c.598-.19 1.365 1.26 2.179 1.815.615.418 1.083.326 1.083.326l2.175-.03s1.137-.071.598-1.122c-.044-.085-.314-.607-1.588-1.716-1.334-1.16-1.155-.972.452-2.977.981-1.306 1.373-2.104 1.25-2.446-.116-.325-.84-.24-.84-.24l-2.45.015s-.182-.025-.316.058c-.132.08-.217.272-.217.272s-.38 1.063-.886 1.966c-1.068 1.893-1.496 1.994-1.671 1.876-.407-.274-.305-1.066-.305-1.635 0-1.777.27-2.518-.524-2.712-.263-.065-.457-.108-1.13-.115-.864-.008-1.594.002-2.008.213-.276.14-.488.452-.358.47.16.02.521.1.713.367.248.346.239 1.12.239 1.12s.142 2.09-.332 2.35c-.325.176-.77-.184-1.726-1.832-.49-.883-.86-1.858-.86-1.858s-.072-.185-.202-.285c-.157-.12-.377-.158-.377-.158l-2.327.015s-.35.01-.478.168c-.113.14-.009.43-.009.43s1.821 4.418 3.883 6.645c1.892 2.042 4.043 1.906 4.043 1.906h.974z"/></svg>
       <span id="auth-vk-btn">Войти через VK</span>
     </button>
-    <div class="auth-or">или</div>
-    <button class="guest-btn" id="auth-email-toggle-btn" onclick="toggleEmailAuth()" style="font-size:13px">📧 <span id="auth-email-toggle-txt">Войти по Email</span></button>
+    <button class="guest-btn" id="auth-email-toggle-btn" onclick="toggleEmailAuth()" style="font-size:13px;margin-top:6px">📧 <span id="auth-email-toggle-txt">Войти по Email</span></button>
     <div id="auth-email-form" style="display:none;width:100%;margin-top:8px">
       <input id="auth-email-input" type="email" placeholder="Email" autocomplete="email"
         style="width:100%;background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:12px 14px;font-size:14px;color:var(--text);font-family:inherit;outline:none;margin-bottom:8px"
@@ -71,9 +137,6 @@
       </div>
       <div id="auth-email-hint" style="font-size:11px;color:var(--muted);margin-top:8px;text-align:center;line-height:1.4"></div>
     </div>
-    <div class="auth-or" id="auth-or">или</div>
-    <button class="guest-btn" id="auth-guest-btn" onclick="continueAsGuest()">Продолжить как гость</button>
-    <div class="auth-note" id="auth-note">Прогресс гостя не сохраняется между сессиями</div>
   </div>
 </div>
 
@@ -95,6 +158,10 @@
       <div class="hero-title" id="h-title">Прокачай мозг в квиз-битвах</div>
       <div class="hero-sub" id="h-sub">Играй. Думай. Побеждай.</div>
       <button class="play-btn" id="h-play" onclick="showPlayMenu()" style="font-size:17px;padding:16px">⚡ Играть</button>
+      <div id="home-player-count" style="display:none;margin-top:10px;font-size:12px;color:var(--muted)">
+        <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#4ade80;margin-right:5px;vertical-align:middle"></span>
+        <span id="home-player-count-val">0</span> игроков зарегистрировано
+      </div>
     </div>
     <!-- PWA install banner -->
     <div id="pwa-install-banner" style="display:none;background:rgba(108,99,255,.12);border:1px solid rgba(108,99,255,.3);border-radius:14px;padding:12px 14px;margin-bottom:12px;display:none;align-items:center;gap:12px">

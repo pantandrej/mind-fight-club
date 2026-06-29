@@ -31,6 +31,22 @@ function _loadUserOnce(user) {
 
 // ── Entry point ───────────────────────────────────────────────────
 export async function initAuth() {
+  // Check for existing session first — skip landing if already logged in
+  const { data: { session: existingSession } } = await sb.auth.getSession();
+  if (!existingSession) {
+    // Show landing for first-time / logged-out visitors
+    // Skip landing if deep-link params present (duel/tourn/official/join_club)
+    const p = new URLSearchParams(window.location.search);
+    const hasDeepLink = p.get('duel') || p.get('tourn') || p.get('official') || p.get('join_club') || p.get('u') || p.get('uid');
+    if (!hasDeepLink) {
+      _showLanding();
+      return; // landing will call initAuth() again after user clicks
+    }
+  }
+  _bootAuth();
+}
+
+async function _bootAuth() {
   showScreen('auth');
   track('auth_screen_viewed', {});
 
@@ -80,6 +96,40 @@ export async function initAuth() {
     await Promise.race([_loadUserOnce(session.user), _timeout(5000)]);
     _redirectAfterAuth();
   }
+}
+
+// ── Landing page logic ────────────────────────────────────────────
+function _showLanding() {
+  const el = document.getElementById('landing-overlay');
+  if (!el) { _bootAuth(); return; }
+  el.style.display = 'flex';
+
+  // Load player count
+  sb.from('profiles').select('id', { count: 'exact', head: true }).then(({ count }) => {
+    const el = document.getElementById('landing-player-count');
+    if (el && count) el.textContent = count.toLocaleString('ru');
+  });
+
+  // Play now → guest + immediate bot duel
+  window._landingPlayNow = function() {
+    el.style.display = 'none';
+    // Go straight to matchmaking as guest
+    if (typeof window.continueAsGuest === 'function') window.continueAsGuest();
+    setTimeout(() => {
+      if (typeof window.showScreen === 'function') window.showScreen('duel');
+      setTimeout(() => {
+        if (typeof window.createDuel === 'function') window.createDuel();
+      }, 300);
+    }, 200);
+    track('landing_play_now', {});
+  };
+
+  // Sign in → hide landing, show auth
+  window._landingSignIn = function() {
+    el.style.display = 'none';
+    _bootAuth();
+    track('landing_sign_in', {});
+  };
 }
 
 // ── Post-auth navigation ──────────────────────────────────────────
