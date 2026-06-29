@@ -1,13 +1,14 @@
 CREATE TABLE IF NOT EXISTS clubs (
-  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  name        text NOT NULL UNIQUE,
-  description text,
-  emoji       text DEFAULT '🧠',
-  owner_id    uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  member_count int NOT NULL DEFAULT 1,
-  total_neurons bigint NOT NULL DEFAULT 0,
-  created_at  timestamptz NOT NULL DEFAULT now()
+  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name         text NOT NULL UNIQUE,
+  created_at   timestamptz NOT NULL DEFAULT now()
 );
+-- Idempotent: add all columns (safe if table already exists from a partial run)
+ALTER TABLE clubs ADD COLUMN IF NOT EXISTS description  text;
+ALTER TABLE clubs ADD COLUMN IF NOT EXISTS emoji        text DEFAULT '🧠';
+ALTER TABLE clubs ADD COLUMN IF NOT EXISTS owner_id     uuid REFERENCES profiles(id) ON DELETE CASCADE;
+ALTER TABLE clubs ADD COLUMN IF NOT EXISTS member_count int NOT NULL DEFAULT 1;
+ALTER TABLE clubs ADD COLUMN IF NOT EXISTS total_neurons bigint NOT NULL DEFAULT 0;
 CREATE INDEX IF NOT EXISTS idx_clubs_neurons ON clubs(total_neurons DESC);
 ALTER TABLE clubs ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "clubs public read" ON clubs FOR SELECT USING (true);
