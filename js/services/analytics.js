@@ -12,17 +12,23 @@ const MIXPANEL_TOKEN = '4b7f2c8a1d3e9f0b6a5c2d8e4f1b7a3c'; // replace with real 
 let _mpReady = false;
 
 function _initMixpanel() {
-  if (_mpReady || typeof window.mixpanel !== 'undefined') { _mpReady = true; return; }
-  // Lazy-load Mixpanel snippet
-  (function(c,a){window.mixpanel=window.mixpanel||[];var b=window.mixpanel;if(!b.__loaded){b.__loaded=!0;a=document.createElement('script');a.type='text/javascript';a.async=!0;a.src='https://cdn.mxpnl.com/libs/mixpanel-2-latest.min.js';var e=document.getElementsByTagName('script')[0];e.parentNode.insertBefore(a,e);b._i=[];b.init=function(f,g,d){function a(a,d){var c=d.split('.');2==c.length&&(a=a[c[0]],d=c[1]);a[d]=function(){a.push([d].concat(Array.prototype.slice.call(arguments,0)));};}var h=b;'disable time_event track track_pageview track_links track_forms track_with_groups add_group set_group remove_group register register_once alias unregister identify name_tag set_config reset opt_in_tracking opt_out_tracking has_opted_in_tracking has_opted_out_tracking clear_opt_in_out_tracking start_batch_senders people.set people.set_once people.unset people.increment people.append people.union people.track_charge people.clear_charges people.delete_user people.remove'.split(' '),function(c){a(h,c);});b._i.push([f,g,d]);};b.__SV=1.2;}})(document,window);
-  try {
-    window.mixpanel.init(MIXPANEL_TOKEN, {
-      persistence: 'localStorage',
-      ignore_dnt: true,
-      batch_requests: true,
-      loaded: () => { _mpReady = true; },
-    });
-  } catch(_) {}
+  if (_mpReady || window._mpLoading) return;
+  window._mpLoading = true;
+  // Load Mixpanel via script tag — avoids strict-mode IIFE issues in ES modules
+  const s = document.createElement('script');
+  s.src = 'https://cdn.mxpnl.com/libs/mixpanel-2-latest.min.js';
+  s.async = true;
+  s.onload = () => {
+    try {
+      window.mixpanel.init(MIXPANEL_TOKEN, {
+        persistence: 'localStorage',
+        ignore_dnt: true,
+        batch_requests: true,
+        loaded: () => { _mpReady = true; },
+      });
+    } catch(_) {}
+  };
+  document.head.appendChild(s);
 }
 
 // ── Key events to track for investor metrics ──────────────────────
