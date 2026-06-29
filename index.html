@@ -1201,6 +1201,82 @@
 </div>
 
 <!-- PROFILE -->
+<!-- ── BFC Match Screen ── -->
+<div class="screen" id="dating" style="justify-content:flex-start;padding:0">
+  <div class="hdr" style="position:sticky;top:0;z-index:10;backdrop-filter:blur(12px);background:rgba(10,10,20,.85)">
+    <button onclick="leaveDatingRoom();showScreen('home')" style="background:none;border:none;color:var(--text);font-size:22px;cursor:pointer;padding:0 4px">‹</button>
+    <div style="font-size:15px;font-weight:900">💎 BFC Match</div>
+    <div style="width:30px"></div>
+  </div>
+
+  <!-- Searching -->
+  <div id="dt-searching" style="display:none;text-align:center;padding:60px 24px">
+    <div style="font-size:52px;margin-bottom:16px;animation:pulse 1.5s ease-in-out infinite">🔍</div>
+    <div style="font-size:18px;font-weight:900;margin-bottom:8px">Ищем партнёра...</div>
+    <div style="font-size:13px;color:var(--muted)">Находим умного собеседника для интеллектуальной битвы</div>
+  </div>
+
+  <!-- Playing -->
+  <div id="dt-playing" style="display:none;padding:16px;display:flex;flex-direction:column;gap:12px">
+    <!-- Progress -->
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div style="font-size:12px;color:var(--muted)">Вопрос <span id="dt-progress">1 / 5</span></div>
+      <div style="font-size:11px;color:var(--accent2);font-weight:700">Анонимный режим 🕵️</div>
+    </div>
+    <!-- Players -->
+    <div style="display:flex;gap:10px;align-items:center">
+      <div style="flex:1;background:var(--bg2);border-radius:12px;padding:10px;text-align:center">
+        <div style="font-size:24px;margin-bottom:4px">🧠</div>
+        <div style="font-size:11px;font-weight:700">Игрок 1</div>
+      </div>
+      <div style="font-size:20px;font-weight:900;color:var(--accent2)">VS</div>
+      <div style="flex:1;background:var(--bg2);border-radius:12px;padding:10px;text-align:center">
+        <div style="font-size:24px;margin-bottom:4px">🧠</div>
+        <div style="font-size:11px;font-weight:700">Игрок 2</div>
+      </div>
+    </div>
+    <!-- Consensus flash -->
+    <div id="dt-consensus-flash" style="display:none"></div>
+    <!-- Opponent indicator -->
+    <div id="dt-opp-indicator" style="display:none;font-size:12px;color:var(--muted);text-align:center;padding:6px;background:var(--bg2);border-radius:8px"></div>
+    <!-- Question -->
+    <div id="dt-question-text" style="font-size:16px;font-weight:800;line-height:1.4;padding:4px 0"></div>
+    <!-- Options -->
+    <div id="dt-options"></div>
+    <!-- Chat -->
+    <div style="background:var(--bg2);border-radius:16px;overflow:hidden">
+      <div style="padding:10px 14px;font-size:11px;font-weight:700;color:var(--muted);border-bottom:0.5px solid var(--border)">Чат с партнёром</div>
+      <div id="dt-chat-messages" style="height:120px;overflow-y:auto;padding:10px 14px"></div>
+      <div style="display:flex;gap:8px;padding:10px 14px;border-top:0.5px solid var(--border)">
+        <input id="dt-chat-input" type="text" placeholder="Написать..." maxlength="120"
+          style="flex:1;background:rgba(255,255,255,.06);border:0.5px solid var(--border);border-radius:10px;padding:8px 12px;font-size:13px;color:var(--text);font-family:inherit;outline:none"
+          onkeydown="if(event.key==='Enter'){window.datingSendChat(this.value);this.value=''}">
+        <button onclick="window.datingSendChat(document.getElementById('dt-chat-input').value);document.getElementById('dt-chat-input').value=''"
+          style="background:var(--accent);border:none;border-radius:10px;padding:8px 14px;font-size:13px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit">→</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Post-game / Matched -->
+  <div id="dt-postgame" style="display:none;padding:16px"></div>
+
+  <!-- Error -->
+  <div id="dt-error" style="display:none;text-align:center;padding:60px 24px;color:var(--red);font-size:14px"></div>
+</div>
+
+<!-- ── Club Finder Screen ── -->
+<div class="screen" id="club-finder" style="justify-content:flex-start;padding:0">
+  <div class="hdr" style="position:sticky;top:0;z-index:10;backdrop-filter:blur(12px);background:rgba(10,10,20,.85)">
+    <button onclick="showScreen('home')" style="background:none;border:none;color:var(--text);font-size:22px;cursor:pointer;padding:0 4px">‹</button>
+    <div style="font-size:15px;font-weight:900">🔎 Найти клуб</div>
+    <div style="width:30px"></div>
+  </div>
+  <div style="padding:12px 16px 0">
+    <div id="club-finder-filters" style="margin-bottom:12px"></div>
+  </div>
+  <div id="club-finder-list" style="padding:0 16px 40px"></div>
+</div>
+
 <!-- ── Brand Profile Screen ── -->
 <div class="screen" id="brand" style="justify-content:flex-start;padding:0">
   <div class="hdr" style="position:sticky;top:0;z-index:10;backdrop-filter:blur(12px);background:rgba(10,10,20,.85)">

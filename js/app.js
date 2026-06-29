@@ -26,6 +26,8 @@ import { loadDailyQuestion } from './daily-question.js';
 import { loadActivityFeed }  from './activity-feed.js';
 import './pwa.js';
 import { initDailyLogic, checkBrandRoute } from './brands/brands.js';
+import './battles/dating-battle.js';
+import { loadClubFinder, renderClubFinderFilters } from './club-finder.js';
 
 // ── Boot ──────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
