@@ -330,11 +330,12 @@ async function startDuelBattle({ chargeSession = true, mode = 'friend_battle', q
     const oppScoreF   = duelRole==='host' ? 'guest_score'   : 'host_score';
     const oppAnswersF = duelRole==='host' ? 'guest_answers'  : 'host_answers';
     let _lastOppAnswersLen = 0;
+    let _lastPhraseSeen = null;
     _oppPollInterval = setInterval(async () => {
       if(window._isBotDuel){ clearInterval(_oppPollInterval); return; }
       try {
         const {data} = await sb.from('duel_rooms')
-          .select(`${oppScoreF},${oppAnswersF}`)
+          .select(`${oppScoreF},${oppAnswersF},last_phrase`)
           .eq('code',duelCode).single();
         if(!data) return;
         const newOppScore  = data[oppScoreF]   ?? 0;
@@ -360,6 +361,11 @@ async function startDuelBattle({ chargeSession = true, mode = 'friend_battle', q
           _lastOppAnswersLen = oppAnswers.length;
         }
         if(newOppScore !== duelOppScore){ duelOppScore = newOppScore; updateDuelScores(); }
+        // Post-game phrase via DB fallback
+        if(data.last_phrase && data.last_phrase !== _lastPhraseSeen){
+          _lastPhraseSeen = data.last_phrase;
+          _showPhraseToast(`${duelOppNameStr}: ${data.last_phrase}`);
+        }
       } catch(e) { /* silent */ }
     }, 1500);
   }
@@ -769,11 +775,18 @@ window.sendDuelReaction = function(emoji) {
 };
 
 window.sendDuelPhrase = function(text) {
-  if (window._isBotDuel) return;
+  _showPhraseToast(`Вы: ${text}`);
+  if (window._isBotDuel || !duelCode) return;
+  // Send via Realtime if channel is alive
   if (_duelChannel) {
     _duelChannel.send({ type: 'broadcast', event: 'msg', payload: { text, isReaction: false } });
+  } else {
+    // Channel closed — write to DB so opponent's poll picks it up
+    sb.from('duel_rooms').update({ last_phrase: text }).eq('code', duelCode).then(() => {});
   }
-  _showPhraseToast(`Вы: ${text}`);
+  // Disable the button briefly to prevent spam
+  const allBtns = document.querySelectorAll('.duel-phrase-btn');
+  allBtns.forEach(b => { b.disabled = true; setTimeout(() => { b.disabled = false; }, 2000); });
 };
 
 // ── Reset ────────────────────────────────────────────────────────────────────

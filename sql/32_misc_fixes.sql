@@ -32,7 +32,10 @@ INSERT INTO hype_games (slug, title, description, questions, synced) VALUES
 ]', false)
 ON CONFLICT (slug) DO NOTHING;
 
--- 1. Add host_user_id to duel_rooms so we can send push to the host
+-- 1a. Add last_phrase to duel_rooms for post-game chat fallback
+ALTER TABLE duel_rooms ADD COLUMN IF NOT EXISTS last_phrase text;
+
+-- 1b. Add host_user_id to duel_rooms so we can send push to the host
 --    when a guest joins.
 ALTER TABLE duel_rooms ADD COLUMN IF NOT EXISTS host_user_id uuid REFERENCES profiles(id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS idx_duel_rooms_host_user ON duel_rooms(host_user_id);
