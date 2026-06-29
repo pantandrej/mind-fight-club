@@ -3025,10 +3025,156 @@ async function loadAdminOTList(){
           ${ot.status==='lobby'?`<button onclick="adminStartOT('${ot.id}')" style="background:var(--green);border:none;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit">▶ Start</button>`:''}
           ${ot.status==='live'?`<button onclick="adminFinishOT('${ot.id}')" style="background:var(--red);border:none;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit">⏹ Finish</button>`:''}
           <button onclick="openOfficialTournament('${ot.code}')" style="background:var(--accent);border:none;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit">👁 View</button>
+          ${ot.status==='finished'?`<button onclick="showTournamentAnalytics('${ot.id}','${ot.title.replace(/'/g,"\\'")}') " style="background:rgba(108,99,255,.2);border:1px solid rgba(108,99,255,.4);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit">📊</button>`:''}
         </div>
       </div>
     </div>`).join('');
 }
+
+window.showTournamentAnalytics = async function(tournId, title) {
+  let modal = document.getElementById('tourn-analytics-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'tourn-analytics-modal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:800;background:var(--bg);overflow-y:auto;display:flex;flex-direction:column';
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = `<div style="padding:20px;max-width:600px;margin:0 auto;width:100%">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+      <button onclick="document.getElementById('tourn-analytics-modal').remove()" style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;padding:0">←</button>
+      <div>
+        <div style="font-size:18px;font-weight:900">📊 Аналитика</div>
+        <div style="font-size:12px;color:var(--muted)">${title}</div>
+      </div>
+    </div>
+    <div id="analytics-loading" style="text-align:center;padding:40px;color:var(--muted)">⏳ Загружаем данные...</div>
+  </div>`;
+  modal.style.display = 'flex';
+
+  const [playersRes, otRes] = await Promise.all([
+    sb.from('official_tournament_players')
+      .select('user_id,display_name,score,correct_count,total_count,disqualified,joined_at')
+      .eq('tournament_id', tournId),
+    sb.from('official_tournaments')
+      .select('title,status,entry_fee,prize_pool,created_at')
+      .eq('id', tournId).single(),
+  ]);
+
+  const players = playersRes.data || [];
+  const ot = otRes.data || {};
+  const total = players.length;
+  const completed = players.filter(p => p.total_count > 0).length;
+  const dq = players.filter(p => p.disqualified).length;
+  const avgScore = total ? Math.round(players.reduce((s,p) => s + (p.score||0), 0) / total) : 0;
+  const avgAcc = completed ? Math.round(players.filter(p=>p.total_count>0).reduce((s,p) => s + (p.correct_count||0) / (p.total_count||1), 0) / completed * 100) : 0;
+
+  // Funnel
+  const funnelSteps = [
+    { label: 'Зашли в лобби', val: total },
+    { label: 'Ответили хотя бы 1', val: completed },
+    { label: 'Дошли до конца', val: players.filter(p => (p.total_count||0) >= 5).length },
+    { label: 'Дисквалифицированы', val: dq },
+  ];
+  const funnelMax = total || 1;
+
+  const funnelHTML = funnelSteps.map(s => `
+    <div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+        <span>${s.label}</span><span style="font-weight:800">${s.val}</span>
+      </div>
+      <div style="height:8px;background:rgba(255,255,255,.08);border-radius:4px;overflow:hidden">
+        <div style="height:100%;border-radius:4px;background:var(--accent);width:${Math.round(s.val/funnelMax*100)}%"></div>
+      </div>
+    </div>`).join('');
+
+  // Per-question accuracy heatmap (from correct_count/total_count per player — aggregate)
+  // We don't have per-question per-player breakdown in DB yet, so show player accuracy distribution
+  const buckets = [0,0,0,0,0]; // 0-20, 20-40, 40-60, 60-80, 80-100
+  players.filter(p=>p.total_count>0).forEach(p => {
+    const pct = p.correct_count / p.total_count;
+    buckets[Math.min(4, Math.floor(pct * 5))]++;
+  });
+  const bucketLabels = ['0–20%','20–40%','40–60%','60–80%','80–100%'];
+  const bucketMax = Math.max(...buckets, 1);
+  const heatmapHTML = buckets.map((v,i) => `
+    <div style="text-align:center;flex:1">
+      <div style="height:${Math.max(4, Math.round(v/bucketMax*80))}px;background:${i<2?'rgba(255,82,82,.6)':i===2?'rgba(255,193,7,.6)':'rgba(74,222,128,.6)'};border-radius:4px 4px 0 0;margin-bottom:4px"></div>
+      <div style="font-size:10px;color:var(--muted)">${bucketLabels[i]}</div>
+      <div style="font-size:12px;font-weight:800">${v}</div>
+    </div>`).join('');
+
+  // Top players
+  const top = [...players].filter(p=>!p.disqualified).sort((a,b)=>(b.score||0)-(a.score||0)).slice(0,5);
+  const topHTML = top.map((p,i) => `
+    <div style="display:flex;align-items:center;gap:8px;padding:8px;background:rgba(255,255,255,.04);border-radius:10px;margin-bottom:4px">
+      <div style="font-size:14px;width:24px;text-align:center">${['🥇','🥈','🥉','4','5'][i]}</div>
+      <div style="flex:1;font-size:13px;font-weight:700">${p.display_name}</div>
+      <div style="font-size:12px;color:var(--muted)">${p.correct_count||0}/${p.total_count||0} · ${p.score||0}pts</div>
+    </div>`).join('');
+
+  const loadingEl = document.getElementById('analytics-loading');
+  if (!loadingEl) return;
+  loadingEl.outerHTML = `
+    <!-- Stats cards -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px">
+      <div style="background:rgba(255,255,255,.05);border-radius:12px;padding:12px;text-align:center">
+        <div style="font-size:24px;font-weight:900;color:var(--accent2)">${total}</div>
+        <div style="font-size:11px;color:var(--muted)">Участников</div>
+      </div>
+      <div style="background:rgba(255,255,255,.05);border-radius:12px;padding:12px;text-align:center">
+        <div style="font-size:24px;font-weight:900;color:var(--accent2)">${avgAcc}%</div>
+        <div style="font-size:11px;color:var(--muted)">Средняя точность</div>
+      </div>
+      <div style="background:rgba(255,255,255,.05);border-radius:12px;padding:12px;text-align:center">
+        <div style="font-size:24px;font-weight:900;color:var(--accent2)">${ot.prize_pool||0}⚡</div>
+        <div style="font-size:11px;color:var(--muted)">Призовой фонд</div>
+      </div>
+    </div>
+    <!-- Funnel -->
+    <div style="background:rgba(255,255,255,.04);border-radius:14px;padding:16px;margin-bottom:16px">
+      <div style="font-size:12px;font-weight:800;letter-spacing:1px;color:var(--muted);margin-bottom:12px">📉 ВОРОНКА УЧАСТИЯ</div>
+      ${funnelHTML}
+    </div>
+    <!-- Accuracy distribution -->
+    <div style="background:rgba(255,255,255,.04);border-radius:14px;padding:16px;margin-bottom:16px">
+      <div style="font-size:12px;font-weight:800;letter-spacing:1px;color:var(--muted);margin-bottom:12px">🔥 РАСПРЕДЕЛЕНИЕ ТОЧНОСТИ</div>
+      <div style="display:flex;align-items:flex-end;gap:6px;height:100px">${heatmapHTML}</div>
+    </div>
+    <!-- Top players -->
+    <div style="background:rgba(255,255,255,.04);border-radius:14px;padding:16px;margin-bottom:16px">
+      <div style="font-size:12px;font-weight:800;letter-spacing:1px;color:var(--muted);margin-bottom:12px">🏆 ТОП ИГРОКИ</div>
+      ${topHTML || '<div style="color:var(--muted);font-size:13px">Нет данных</div>'}
+    </div>
+    <!-- CSV Export -->
+    <button onclick="exportTournamentCSV('${tournId}','${title.replace(/'/g,"\\'")}') " style="width:100%;background:rgba(255,255,255,.07);border:0.5px solid var(--border);border-radius:14px;padding:13px;font-size:14px;font-weight:700;color:var(--text);cursor:pointer;font-family:inherit">
+      ⬇️ Скачать CSV
+    </button>`;
+};
+
+window.exportTournamentCSV = async function(tournId, title) {
+  const { data: players } = await sb.from('official_tournament_players')
+    .select('display_name,score,correct_count,total_count,disqualified,joined_at')
+    .eq('tournament_id', tournId)
+    .order('score', { ascending: false });
+  if (!players?.length) { toast('Нет данных'); return; }
+
+  const rows = [
+    ['Место','Имя','Очки','Правильно','Всего','Точность','Дисквалифицирован','Зашёл'],
+    ...players.map((p, i) => [
+      i + 1, p.display_name, p.score||0, p.correct_count||0, p.total_count||0,
+      p.total_count ? Math.round((p.correct_count||0)/(p.total_count)*100)+'%' : '—',
+      p.disqualified ? 'Да' : 'Нет',
+      p.joined_at ? new Date(p.joined_at).toLocaleString('ru') : '—',
+    ]),
+  ];
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `${title}_results.csv`; a.click();
+  URL.revokeObjectURL(url);
+  toast('✅ CSV скачан!');
+};
 
 function copyOTLink(code){
   const link = location.origin+location.pathname+'?official='+code;
@@ -12143,7 +12289,7 @@ async function loadFriends() {
   if (!el) return;
 
   const { data } = await sb.from('friendships')
-    .select('friend_id, profiles!friendships_friend_id_fkey(display_name, xp, neurons)')
+    .select('friend_id, profiles!friendships_friend_id_fkey(display_name, xp, neurons, last_seen)')
     .eq('user_id', currentUser.id)
     .limit(20);
 
@@ -12152,21 +12298,61 @@ async function loadFriends() {
     return;
   }
 
-  el.innerHTML = data.map(f => {
+  const ONLINE_MS = 5 * 60 * 1000; // 5 minutes
+  const now = Date.now();
+
+  // Sort: online first
+  const sorted = [...data].sort((a, b) => {
+    const aOnline = a.profiles?.last_seen && (now - new Date(a.profiles.last_seen).getTime()) < ONLINE_MS;
+    const bOnline = b.profiles?.last_seen && (now - new Date(b.profiles.last_seen).getTime()) < ONLINE_MS;
+    return (bOnline ? 1 : 0) - (aOnline ? 1 : 0);
+  });
+
+  el.innerHTML = sorted.map(f => {
     const p = f.profiles;
     const rank = window.getRank ? window.getRank(p?.xp || 0) : { icon: '🥉' };
-    return `<div onclick="window.showOppProfile('${f.friend_id}','${p?.display_name||''}')"
-      style="display:flex;align-items:center;gap:10px;padding:10px;background:rgba(255,255,255,.05);border-radius:12px;margin-bottom:6px;cursor:pointer">
-      <div style="width:36px;height:36px;border-radius:50%;background:rgba(108,99,255,.2);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:var(--accent2)">${(p?.display_name||'?')[0].toUpperCase()}</div>
-      <div style="flex:1">
-        <div style="font-size:13px;font-weight:700">${p?.display_name||'Игрок'} ${rank.icon}</div>
+    const isOnline = p?.last_seen && (now - new Date(p.last_seen).getTime()) < ONLINE_MS;
+    const onlineDot = isOnline
+      ? '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#4ade80;margin-left:4px;vertical-align:middle;box-shadow:0 0 6px #4ade80"></span>'
+      : '';
+    const challengeBtn = isOnline
+      ? `<button onclick="event.stopPropagation();challengeFriend('${f.friend_id}','${(p?.display_name||'').replace(/'/g,"\\'")}')
+          " style="background:var(--accent);border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit;animation:pulse 1.5s infinite">⚔️ Вызвать</button>`
+      : `<button onclick="event.stopPropagation();challengeFriend('${f.friend_id}','${(p?.display_name||'').replace(/'/g,"\\'")}')
+          " style="background:rgba(108,99,255,.15);border:1px solid rgba(108,99,255,.3);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit">⚔️</button>`;
+    return `<div onclick="window.showOppProfile('${f.friend_id}','${(p?.display_name||'').replace(/'/g,"\\'")}')
+      " style="display:flex;align-items:center;gap:10px;padding:10px;background:${isOnline?'rgba(74,222,128,.06)':'rgba(255,255,255,.05)'};border:1px solid ${isOnline?'rgba(74,222,128,.2)':'rgba(255,255,255,.06)'};border-radius:12px;margin-bottom:6px;cursor:pointer">
+      <div style="position:relative;width:36px;height:36px;flex-shrink:0">
+        <div style="width:36px;height:36px;border-radius:50%;background:rgba(108,99,255,.2);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:var(--accent2)">${(p?.display_name||'?')[0].toUpperCase()}</div>
+        ${isOnline ? '<span style="position:absolute;bottom:0;right:0;width:10px;height:10px;border-radius:50%;background:#4ade80;border:2px solid var(--bg);box-shadow:0 0 6px #4ade80"></span>' : ''}
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:700">${p?.display_name||'Игрок'} ${rank.icon} ${isOnline ? '<span style="font-size:10px;color:#4ade80;font-weight:800">● онлайн</span>' : ''}</div>
         <div style="font-size:11px;color:var(--muted)">${p?.neurons||0} ⚡</div>
       </div>
-      <button onclick="event.stopPropagation();challengeFriend('${f.friend_id}','${p?.display_name||''}')"
-        style="background:var(--accent);border:none;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit">⚔️</button>
+      ${challengeBtn}
     </div>`;
   }).join('');
 }
+
+// ── Presence ping — update last_seen every 60s ─────────────────────
+window._startPresencePing =
+function _startPresencePing() {
+  if (!currentUser) return;
+  sb.rpc('ping_presence').catch(() => {});
+  setInterval(() => {
+    if (currentUser) sb.rpc('ping_presence').catch(() => {});
+  }, 60_000);
+}
+// Called after user is loaded
+document.addEventListener('DOMContentLoaded', () => {
+  const _checkPresence = setInterval(() => {
+    if (window.currentUser || window.sb) {
+      clearInterval(_checkPresence);
+      if (window.currentUser) _startPresencePing();
+    }
+  }, 1000);
+});
 
 window.showAddFriendModal = function() {
   let modal = document.getElementById('add-friend-modal');

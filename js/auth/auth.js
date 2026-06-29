@@ -211,6 +211,8 @@ async function _onUserLoaded(user) {
     if (typeof window.updateTeamNeurons === 'function' && window.myTeam && getState().currentUser)
       window.updateTeamNeurons();
   }, 1500);
+  // Start presence ping
+  if (typeof window._startPresencePing === 'function') window._startPresencePing();
   setTimeout(() => {
     if (typeof window.renderBadges       === 'function') window.renderBadges();
     if (typeof window.renderHomeNextGoal === 'function') window.renderHomeNextGoal();

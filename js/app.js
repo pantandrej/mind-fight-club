@@ -6,6 +6,7 @@ import './services/analytics.js';
 import './state.js';
 import './router.js';
 import { initAuth } from './auth/auth.js';
+import { trackPageView } from './services/analytics.js';
 import './economy/wallet.js';
 
 // ── Iteration 2 ───────────────────────────────────────────────────
@@ -27,6 +28,7 @@ import './pwa.js';
 
 // ── Boot ──────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
+  trackPageView();
   initAuth();
   registerServiceWorker();
   // Show tournament banner if any starts within 24h
