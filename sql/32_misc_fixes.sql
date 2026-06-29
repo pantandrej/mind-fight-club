@@ -44,5 +44,20 @@ RETURNS void LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
 $$;
 GRANT EXECUTE ON FUNCTION ping_presence() TO authenticated;
 
--- 3. Drop stale policy name if re-running sql/30 again
--- (already handled in sql/30_partner_quests.sql via DROP POLICY IF EXISTS)
+-- 3. duel_rooms: ensure RLS allows anyone to read/write rooms by code
+--    (without this, guests who are not logged in get 400/403 on join)
+ALTER TABLE duel_rooms ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "duel_rooms_public_read"  ON duel_rooms;
+DROP POLICY IF EXISTS "duel_rooms_public_write" ON duel_rooms;
+-- Anyone can read rooms (needed to join by code, even as guest)
+CREATE POLICY "duel_rooms_public_read"
+  ON duel_rooms FOR SELECT USING (true);
+-- Only authenticated users can create/update rooms
+CREATE POLICY "duel_rooms_public_write"
+  ON duel_rooms FOR ALL USING (true) WITH CHECK (true);
+
+-- 4. pack_results: ensure public read policy exists (400 errors in activity feed)
+ALTER TABLE pack_results ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "pack_results_public_read" ON pack_results;
+CREATE POLICY "pack_results_public_read"
+  ON pack_results FOR SELECT USING (true);
