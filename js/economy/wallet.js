@@ -28,8 +28,14 @@ export function updNeurons() {
 // API: awardCurrency({ operationType, operationKey, guestPreviewAmount })
 //   operationType      — used by server to determine award amount
 //   operationKey       — idempotency key (prevents double-award)
-//   guestPreviewAmount — used ONLY for guest demo balance display
-// Server always determines the real amount for authenticated users.
+//   guestPreviewAmount — used for guest demo balance AND as the
+//                        client-reported amount for variable-reward
+//                        ops (quiz_reward, tournament_reward). The
+//                        server clamps this to a hard per-type ceiling
+//                        (see sql/35_economy_rework.sql) — a tampered
+//                        client can never mint more than the ceiling.
+//                        Fixed-reward ops (duel_win, streaks, etc.)
+//                        ignore this value entirely — server-determined.
 // Server returns: { neurons, xp, awarded_neurons, awarded_xp, already_processed }
 export async function awardCurrency({ operationType, operationKey, guestPreviewAmount = 0 }) {
   const { currentUser } = getState();
@@ -47,6 +53,7 @@ export async function awardCurrency({ operationType, operationKey, guestPreviewA
     const { data, error } = await sb.rpc('award_currency', {
       p_operation_type: operationType || 'generic_reward',
       p_operation_key:  operationKey  || null,
+      p_client_amount:  guestPreviewAmount || null,
     });
     if (error) {
       console.error('[wallet] award_currency RPC error:', error.message);
@@ -63,7 +70,8 @@ export async function awardCurrency({ operationType, operationKey, guestPreviewA
 }
 
 // Legacy alias — callers still use awardNeurons(amount, type, key)
-// Deprecated: migrate callers to awardCurrency({}) in Iteration 3+
+// `amount` is passed through as the clamped client-reported amount
+// for variable-reward operation types (see awardCurrency above).
 export async function awardNeurons(amount, operationType, operationKey) {
   return awardCurrency({ operationType, operationKey, guestPreviewAmount: amount });
 }

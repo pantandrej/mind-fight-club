@@ -566,9 +566,22 @@ async function _saveDuelStats(myS, oppS, win) {
   } else {
     localStorage.setItem(_streakKey, '0');
   }
-  // Award duel win via economy
+  // Award duel win via economy — fixed 50 neurons, server-determined.
+  // Per-question score (myS/oppS) is purely the in-battle comparison
+  // metric; it never gets converted to currency.
   if (win) {
-    try { await window.sb.rpc('award_currency', { p_event_type: 'duel_win', p_idempotency_key: 'duel_win:' + duelCode }); } catch(e) {}
+    try {
+      const res = await window.sb.rpc('award_currency', {
+        p_operation_type: 'duel_win',
+        p_operation_key:  'duel_win:' + duelCode,
+      });
+      if (res.error) {
+        console.error('[duel] award_currency failed:', res.error.message);
+      } else if (res.data?.ok) {
+        setState({ neurons: res.data.neurons, xp: res.data.xp });
+        updNeurons();
+      }
+    } catch(e) { console.error('[duel] award_currency exception:', e.message); }
   }
   // Check achievements async
   if (window.checkAchievements) {
