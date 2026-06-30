@@ -11339,11 +11339,75 @@ async function showOrganizerCabinet(){
     updateOrgStats();
     // Load advanced analytics (new module)
     setTimeout(() => window.loadOrgAnalytics?.(), 800);
+    // Populate master-franchise dropdown for branch registration
+    loadMasterFranchiseOptions();
   } catch(e){
     console.error('[Org] showOrganizerCabinet:', e.message);
     toast('Ошибка: ' + e.message);
   }
 }
+
+// ── Franchise: load master brands into dropdown ───────────────────
+async function loadMasterFranchiseOptions(){
+  const sel = document.getElementById('org-branch-parent');
+  if(!sel) return;
+  const { data, error } = await sb.from('brand_profiles')
+    .select('id,name')
+    .is('parent_id', null)
+    .order('name');
+  if(error || !data) return;
+  const opts = data.map(b => `<option value="${b.id}">${b.name.replace(/</g,'&lt;')}</option>`).join('');
+  sel.innerHTML = '<option value="">— Самостоятельный бренд (без франшизы) —</option>' + opts;
+}
+
+// ── Franchise: register a new city branch ──────────────────────────
+async function registerCityBranch(){
+  const statusEl = document.getElementById('org-branch-status');
+  const parentId = document.getElementById('org-branch-parent')?.value || null;
+  const city     = document.getElementById('org-branch-city')?.value.trim();
+  const slug     = document.getElementById('org-branch-slug')?.value.trim();
+
+  if(parentId && !city){
+    if(statusEl) statusEl.textContent = '⚠️ Укажите город для филиала франшизы';
+    return;
+  }
+  if(!slug){
+    if(statusEl) statusEl.textContent = '⚠️ Укажите slug бренда';
+    return;
+  }
+
+  if(statusEl) statusEl.textContent = '⏳ Регистрация...';
+
+  try {
+    if(parentId){
+      // Branch registration via RPC (validates parent is a master brand)
+      const { data, error } = await sb.rpc('register_city_branch', {
+        p_parent_brand_id: parentId,
+        p_city: city,
+        p_slug: slug,
+        p_country_code: 'RU',
+      });
+      if(error) throw error;
+      if(statusEl) statusEl.textContent = '✅ Филиал «' + (data?.name || '') + ' ' + city + '» зарегистрирован';
+    } else {
+      // Standalone master brand — direct insert (owner_id RLS-scoped)
+      const { error } = await sb.from('brand_profiles').insert({
+        owner_id: currentUser.id,
+        slug,
+        name: slug,
+        city: city || null,
+      });
+      if(error) throw error;
+      if(statusEl) statusEl.textContent = '✅ Бренд зарегистрирован';
+    }
+    document.getElementById('org-branch-city').value = '';
+    document.getElementById('org-branch-slug').value = '';
+  } catch(e){
+    if(statusEl) statusEl.textContent = '❌ Ошибка: ' + e.message;
+  }
+}
+window.registerCityBranch = registerCityBranch;
+window.loadMasterFranchiseOptions = loadMasterFranchiseOptions;
 
 async function submitOrgApplication(){
   if(!currentUser){ toast('Войдите для подачи заявки'); return; }

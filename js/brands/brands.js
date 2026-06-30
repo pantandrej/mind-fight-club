@@ -1,6 +1,7 @@
 import { sb } from '../services/supabase.js';
 import { getState } from '../state.js';
 import { track } from '../services/analytics.js';
+import { getBrandDisplayNames } from '../services/brand-names.js';
 
 // ── Brand Profile Page (?brand=slug) ──────────────────────────────
 
@@ -25,6 +26,11 @@ export async function openBrandPage(slug) {
 
   if (!brand) { _renderBrandNotFound(); return; }
 
+  // Resolve franchise-aware display name (e.g. "Liga Indigo Tver")
+  // instead of raw brand_profiles.name — always source from v_city_branches
+  const nameMap = await getBrandDisplayNames([brand.id, brand.parent_id].filter(Boolean));
+  brand.display_name = nameMap[brand.id] || brand.name;
+
   // Re-fetch tournaments now that we have the real brand.id
   const { data: tournamentsFinal } = await sb
     .from('official_tournaments')
@@ -34,11 +40,12 @@ export async function openBrandPage(slug) {
     .limit(20);
 
   // Fetch child brands (e.g. Liga Indigo SPb, Liga Indigo Perm)
+  // via v_city_branches so display_name is pre-resolved
   const { data: children } = await sb
-    .from('brand_profiles')
-    .select('id,slug,name,city,logo_url')
+    .from('v_city_branches')
+    .select('id,slug,display_name,city,logo_url')
     .eq('parent_id', brand.id)
-    .order('name');
+    .order('display_name');
 
   // Load partner quests for this brand
   const { data: quests } = await sb.rpc('get_brand_quests', { p_brand_id: brand.id });
@@ -96,7 +103,7 @@ function _renderBrand(brand, tournaments, children, quests = []) {
           <div onclick="openBrandPage('${c.slug}')" style="background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;padding:10px 14px;cursor:pointer;display:flex;align-items:center;gap:8px">
             ${c.logo_url ? `<img src="${c.logo_url}" style="width:24px;height:24px;border-radius:6px;object-fit:cover">` : `<div style="font-size:20px">🏙️</div>`}
             <div>
-              <div style="font-size:12px;font-weight:800">${_esc(c.name)}</div>
+              <div style="font-size:12px;font-weight:800">${_esc(c.display_name)}</div>
               ${c.city ? `<div style="font-size:10px;color:var(--muted)">${_esc(c.city)}</div>` : ''}
             </div>
           </div>`).join('')}
@@ -116,7 +123,7 @@ function _renderBrand(brand, tournaments, children, quests = []) {
         : `<div style="width:64px;height:64px;border-radius:16px;background:var(--bg2);border:0.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:28px">🏆</div>`}
       <div style="flex:1;min-width:0">
         ${parentChip}
-        <div style="font-size:20px;font-weight:900;margin-top:4px;line-height:1.2">${_esc(brand.name)}</div>
+        <div style="font-size:20px;font-weight:900;margin-top:4px;line-height:1.2">${_esc(brand.display_name || brand.name)}</div>
         ${brand.city ? `<div style="font-size:12px;color:var(--muted);margin-top:2px">📍 ${_esc(brand.city)}</div>` : ''}
       </div>
     </div>
@@ -281,12 +288,18 @@ export async function initDailyLogic() {
   const today = new Date().toISOString().slice(0, 10);
   const { data: q } = await sb
     .from('daily_logic_questions')
-    .select('*, brand:brand_id(name,slug,logo_url)')
+    .select('*, brand:brand_id(slug,logo_url)')
     .eq('active_date', today)
     .maybeSingle();
 
   if (!q) { wrap.style.display = 'none'; return; }
   wrap.style.display = '';
+
+  // Resolve franchise-aware display name via v_city_branches
+  if (q.brand_id) {
+    const nameMap = await getBrandDisplayNames([q.brand_id]);
+    if (q.brand) q.brand.name = nameMap[q.brand_id] || '';
+  }
 
   const { currentUser } = getState();
   let attempt = null;

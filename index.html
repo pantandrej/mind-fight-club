@@ -1181,6 +1181,23 @@
       </div>
     </button>
 
+    <!-- Franchise branch registration -->
+    <div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:10px">
+      <div style="font-size:13px;font-weight:800;margin-bottom:2px">🏙️ Зарегистрировать филиал</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Если ты представляешь городской филиал франшизы (напр. «Liga Indigo») — выбери мастер-бренд и укажи город. Если у тебя самостоятельный бренд — оставь поле пустым.</div>
+      <select id="org-branch-parent" style="width:100%;background:var(--bg3);border:0.5px solid var(--border);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--text);font-family:inherit;outline:none">
+        <option value="">— Самостоятельный бренд (без франшизы) —</option>
+      </select>
+      <input id="org-branch-city" placeholder="Город (обязательно для филиала)"
+        style="width:100%;background:var(--bg3);border:0.5px solid var(--border);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--text);font-family:inherit;outline:none"/>
+      <input id="org-branch-slug" placeholder="Уникальный slug (напр. liga-indigo-tver)"
+        style="width:100%;background:var(--bg3);border:0.5px solid var(--border);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--text);font-family:inherit;outline:none"/>
+      <button onclick="registerCityBranch()" style="background:var(--accent2);border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit">
+        🏙️ Зарегистрировать филиал
+      </button>
+      <div id="org-branch-status" style="font-size:12px;color:var(--muted);text-align:center"></div>
+    </div>
+
     <!-- Add quiz pass form -->
     <div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:10px">
       <div style="font-size:13px;font-weight:800;margin-bottom:2px">➕ Добавить проходку</div>
