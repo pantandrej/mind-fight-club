@@ -60,7 +60,7 @@ function checkQuestionLimit(){
   if(_isLimitExempt()) return false;
   const used = getDailyQuestionsUsed();
   if(used >= FREE_QUESTIONS_PER_DAY){
-    showDailyLimitScreen();
+    showDailyLimitScreen('training');
     return true;
   }
   return false;
@@ -83,24 +83,44 @@ function getDailyLimitDisplayUsed(){
   return Math.min(FREE_QUESTIONS_PER_DAY, Math.max(0, used || 0));
 }
 
-function showDailyLimitScreen(){
-  stopIntegrity(); // guard: no false violations after the game ends
+// type: 'training' | 'battle'
+function showDailyLimitScreen(type){
+  stopIntegrity();
   showScreen('daily-limit');
   const L = lang === 'ru';
-  const used = getDailyLimitDisplayUsed();
-  document.getElementById('dl-title').textContent = L ? '🧠 Бесплатные вопросы закончились!' : '🧠 Daily questions used up!';
-  document.getElementById('dl-sub').textContent = L
-    ? `Сегодня вы уже сыграли ${used} из ${FREE_QUESTIONS_PER_DAY} бесплатных вопросов. Возвращайтесь завтра или продолжайте в паках и вопросах участников.`
-    : `You've played ${used} of ${FREE_QUESTIONS_PER_DAY} free questions today. Come back tomorrow or continue with packs.`;
   const now = new Date();
   const midnight = new Date(now); midnight.setHours(24,0,0,0);
   const hoursLeft = Math.ceil((midnight - now) / 3600000);
-  document.getElementById('dl-next').textContent = L ? `Сброс через ~${hoursLeft} ч` : `Resets in ~${hoursLeft}h`;
-  // Update localizable button labels
-  const packBtn = document.getElementById('dl-packs-btn');
-  if(packBtn) packBtn.textContent = L ? '📦 Открыть паки' : '📦 Open packs';
+
+  const isBattle = type === 'battle';
+  const icon  = document.getElementById('dl-icon');
+  const title = document.getElementById('dl-title');
+  const sub   = document.getElementById('dl-sub');
+  const pro   = document.getElementById('dl-pro-desc');
+  const next  = document.getElementById('dl-next');
+
+  if(icon)  icon.textContent  = isBattle ? '⚔️' : '🧠';
+  if(title) title.textContent = L
+    ? (isBattle ? 'Баттлы на сегодня закончились!' : 'Тренировка на сегодня закончилась!')
+    : (isBattle ? 'No battles left today!'         : 'Daily training limit reached!');
+  if(sub) sub.textContent = L
+    ? (isBattle
+        ? 'Ты провёл 3 бесплатных баттла сегодня. Возвращайся завтра — лимит обновится в полночь.'
+        : 'Ты ответил на 10 бесплатных вопросов сегодня. Возвращайся завтра — лимит обновится в полночь.')
+    : (isBattle
+        ? 'You played 3 free battles today. Come back tomorrow — limit resets at midnight.'
+        : 'You answered 10 free questions today. Come back tomorrow — limit resets at midnight.');
+  if(pro) pro.textContent = L
+    ? (isBattle
+        ? '10 баттлов в день, неограниченные тренировки и ранний доступ к турнирам'
+        : 'Неограниченные тренировки, 10 баттлов в день и эксклюзивные паки')
+    : (isBattle
+        ? '10 battles/day, unlimited training and early tournament access'
+        : 'Unlimited training, 10 battles/day and exclusive packs');
+  if(next) next.textContent = L ? `Сброс через ~${hoursLeft} ч` : `Resets in ~${hoursLeft}h`;
+
   const inviteBtn = document.getElementById('dl-invite-btn');
-  if(inviteBtn) inviteBtn.textContent = L ? '🔗 Пригласить друга' : '🔗 Invite a friend';
+  if(inviteBtn) inviteBtn.textContent = L ? '🔗 Позвать друга играть' : '🔗 Invite a friend';
   const homeBtn = document.getElementById('dl-tomorrow-btn');
   if(homeBtn) homeBtn.textContent = L ? '🏠 На главную' : '🏠 Back to home';
 }

@@ -1,0 +1,277 @@
+/* ══════════════════════════════════════════════════════════════
+   DESKTOP LAYOUT — ≥ 960px
+   Sidebar nav + wide content area with two-column grids
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── Sidebar width token ───────────────────────────────────── */
+:root { --sidebar-w: 220px; }
+
+@media (min-width: 960px) {
+
+  /* ── Body offset ─────────────────────────────────────────── */
+  body { padding-left: var(--sidebar-w); }
+
+  /* ── SIDEBAR NAV ─────────────────────────────────────────── */
+  .nav {
+    position: fixed;
+    top: 0; left: 0;
+    width: var(--sidebar-w);
+    height: 100vh;
+    bottom: unset; right: unset;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    border-top: none;
+    border-right: 0.5px solid var(--border);
+    padding: 0 10px 20px;
+    overflow-y: auto;
+    background: var(--bg);
+  }
+
+  .nav-inner {
+    flex-direction: column;
+    max-width: none;
+    width: 100%;
+    gap: 2px;
+    padding-top: 8px;
+  }
+
+  /* Sidebar logo */
+  .nav-inner::before {
+    content: '🧠 BFC';
+    display: block;
+    font-size: 15px;
+    font-weight: 900;
+    letter-spacing: 2px;
+    color: var(--accent2);
+    padding: 18px 10px 16px;
+    text-transform: uppercase;
+    border-bottom: 0.5px solid var(--border);
+    margin-bottom: 8px;
+  }
+
+  .nav-item {
+    flex: none;
+    flex-direction: row;
+    justify-content: flex-start;
+    padding: 10px 12px;
+    border-radius: 10px;
+    gap: 10px;
+    transition: background .15s;
+    width: 100%;
+  }
+  .nav-item:hover { background: rgba(108,99,255,.1); }
+  .nav-item.active { background: rgba(108,99,255,.18); }
+
+  .nav-icon { font-size: 18px; width: 22px; text-align: center; flex-shrink: 0; }
+  .nav-label { font-size: 13px; font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--muted); }
+  .nav-item.active .nav-label { color: var(--accent2); }
+
+  /* Theme btn at bottom */
+  .nav-theme-btn { display: flex; margin-top: auto; border-top: 0.5px solid var(--border); padding-top: 14px; }
+
+  /* ── HEADER ──────────────────────────────────────────────── */
+  .hdr { max-width: none; padding: 12px 32px; }
+
+  /* ── SCREEN: no more narrow centered column ──────────────── */
+  .screen { align-items: stretch; }
+
+  /* ── PLAY MENU ───────────────────────────────────────────── */
+  .play-menu-grid {
+    max-width: none;
+    padding: 24px 40px 60px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    align-content: start;
+  }
+
+  /* Title spans full width */
+  .play-menu-grid > div:first-child { grid-column: 1 / -1; font-size: 28px !important; }
+
+  .play-menu-item {
+    border-radius: 16px;
+    padding: 20px 18px;
+    gap: 16px;
+  }
+  .play-menu-icon { font-size: 32px; width: 44px; }
+  .play-menu-title { font-size: 16px; }
+  .play-menu-sub { font-size: 12px; }
+
+  /* ── HOME ────────────────────────────────────────────────── */
+  .home-inner {
+    max-width: none;
+    padding: 24px 40px 60px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto;
+    gap: 16px;
+    align-content: start;
+  }
+
+  /* Hero spans full width */
+  .home-hero {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 40px;
+    text-align: left;
+    padding: 32px 36px;
+  }
+  .home-hero > * { flex: 1; }
+  .home-hero::after { content: '🧠'; font-size: 90px; flex: 0 0 auto; line-height: 1; }
+  .home-hero::before { display: none; }
+
+  .hero-title { font-size: 32px; margin-bottom: 10px; }
+  .hero-sub { font-size: 15px; margin-bottom: 24px; }
+  .play-btn { max-width: 280px; }
+
+  /* Mode grid 4 columns */
+  .mode-grid { grid-template-columns: repeat(4,1fr); gap: 12px; grid-column: 1 / -1; }
+
+  /* Category chips full row */
+  .cat-chips { grid-column: 1 / -1; }
+
+  /* Section title full row */
+  .section-title { grid-column: 1 / -1; }
+
+  /* Achievements row full width */
+  .achievements-row { grid-column: 1 / -1; }
+
+  /* Streak card full width */
+  .streak-card { grid-column: 1 / -1; }
+
+  /* ── PROFILE ─────────────────────────────────────────────── */
+  .profile-inner {
+    max-width: none;
+    padding: 24px 40px 60px;
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 20px;
+    align-content: start;
+  }
+
+  .profile-hero { grid-column: 1; grid-row: 1 / 4; align-self: start; }
+  .profile-stats-grid { grid-column: 2; grid-row: 1; grid-template-columns: repeat(3,1fr); }
+  .profile-badges-grid { grid-column: 2; grid-row: 2; grid-template-columns: repeat(5,1fr); }
+
+  /* ── SHOP ────────────────────────────────────────────────── */
+  .shop-inner {
+    max-width: none;
+    padding: 24px 40px 60px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    align-content: start;
+  }
+  .shop-inner > .shop-title { grid-column: 1 / -1; }
+  .daily-card { grid-column: 1 / -1; }
+  .ref-card { grid-column: 1; }
+  .streak-card { grid-column: 2; }
+  .packs-grid { grid-column: 1 / -1; grid-template-columns: repeat(3,1fr); }
+
+  /* ── QUIZ ────────────────────────────────────────────────── */
+  .quiz-inner {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 24px 40px 60px;
+  }
+  .q-text { font-size: 22px; }
+  .answers { grid-template-columns: 1fr 1fr; gap: 10px; display: grid; }
+
+  /* ── DUEL ────────────────────────────────────────────────── */
+  .duel-inner {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 24px 40px 60px;
+  }
+  .duel-section { max-width: 700px; margin: 0 auto; }
+  .ds-score { font-size: 36px; }
+
+  /* ── TEAMS ───────────────────────────────────────────────── */
+  .teams-inner {
+    max-width: none;
+    padding: 24px 40px 60px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    align-content: start;
+  }
+  .team-section { grid-column: 1 / -1; }
+  .team-hero { grid-column: 1 / -1; }
+
+  /* ── CHAR / INVENTORY ────────────────────────────────────── */
+  .char-inner {
+    max-width: none;
+    padding: 24px 40px 60px;
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 20px;
+    align-content: start;
+  }
+  .char-preview-card { grid-column: 1; grid-row: 1 / 4; align-self: start; }
+  .preset-grid { grid-template-columns: repeat(5,1fr); }
+  .shop-items-grid { grid-template-columns: repeat(3,1fr); }
+
+  /* ── TOURNAMENT / RULES ──────────────────────────────────── */
+  .tourn-inner, .rules-inner {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 24px 40px 60px;
+  }
+
+  /* ── Remove bottom padding (no bottom nav on desktop) ────── */
+  #home, #quiz, #duel, #shop, #profile, #teams, #character,
+  #char-shop, #char-inventory, #tournament, #rules {
+    padding-bottom: 0;
+  }
+
+  /* ── Sticky next btn: offset without bottom nav ──────────── */
+  .next-btn.show { bottom: 20px; }
+
+  /* ── Modals: center with sidebar offset ──────────────────── */
+  .streak-modal-overlay,
+  .report-modal-overlay { padding-left: var(--sidebar-w); }
+
+  /* ── Toast: offset from sidebar ─────────────────────────── */
+  .toast { left: calc(50% + calc(var(--sidebar-w) / 2)); }
+
+  /* ── Auth: centered ──────────────────────────────────────── */
+  .auth-inner { max-width: 460px; padding: 48px 40px; }
+
+  /* ── Score / result ──────────────────────────────────────── */
+  .score-inner, .limit-inner { max-width: 600px; }
+
+  /* ── Theme btn in header hidden on desktop (in sidebar) ──── */
+  #theme-toggle-hdr { display: none; }
+}
+
+/* ── 1400px+ ───────────────────────────────────────────────── */
+@media (min-width: 1400px) {
+  :root { --sidebar-w: 240px; }
+
+  .play-menu-grid { padding: 32px 60px 60px; gap: 14px; }
+  .home-inner { padding: 32px 60px 60px; }
+  .profile-inner { padding: 32px 60px 60px; grid-template-columns: 340px 1fr; }
+  .shop-inner { padding: 32px 60px 60px; }
+  .teams-inner { padding: 32px 60px 60px; }
+  .char-inner { padding: 32px 60px 60px; }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   LIGHT THEME — applied via [data-theme="light"] on <html>
+   Base colors defined in variables.css, extra overrides here
+   ══════════════════════════════════════════════════════════════ */
+
+[data-theme="light"] .nav { background: var(--bg); }
+[data-theme="light"] .hdr { background: var(--bg); }
+[data-theme="light"] .home-hero { background: linear-gradient(135deg,#e8e8f0,#f0f0f8); }
+[data-theme="light"] .auth-inner { background: #ffffff; border-color: rgba(0,0,0,.1); }
+[data-theme="light"] .play-menu-item:hover { background: rgba(108,99,255,.06); }
+[data-theme="light"] .nav-item.active { background: rgba(108,99,255,.12); }
+[data-theme="light"] .neurons-pill { background: rgba(108,99,255,.1); border-color: rgba(108,99,255,.25); }
+[data-theme="light"] .mode-card:hover { background: rgba(108,99,255,.08); }
+[data-theme="light"] .ans { background: rgba(0,0,0,.03); border-color: rgba(0,0,0,.1); color: var(--text); }
+[data-theme="light"] .ans:hover:not(:disabled) { background: rgba(108,99,255,.06); }
+[data-theme="light"] .streak-modal { background: var(--bg2); }
+[data-theme="light"] .toast { background: var(--bg2); border-color: var(--border); color: var(--text); }

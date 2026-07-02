@@ -244,7 +244,7 @@ async function startDuelBattle({ chargeSession = true, mode = 'friend_battle', q
       const plan = _sd.plan || 'free';
       if (window.track) window.track('battle_limit_reached', { plan, used: _sd.used, limit: _sd.limit });
       if (window.track) window.track('premium_paywall_viewed', { trigger: 'battle_limit', plan });
-      window.toast?.('Дневной лимит баттлов исчерпан');
+      window.showDailyLimitScreen?.('battle');
       return;
     }
     window._currentSessionId     = _sd.session_id || null;
@@ -319,7 +319,7 @@ async function startDuelBattle({ chargeSession = true, mode = 'friend_battle', q
     } else {
       document.removeEventListener('visibilitychange', window._duelTabWarn);
       clearInterval(duelTimer); clearInterval(duelPoll);
-      endDuel({ host_score: duelRole==='host'?0:999, guest_score: duelRole==='guest'?0:999 });
+      endDuel({ host_score: duelRole==='host'?0:999, guest_score: duelRole==='guest'?0:999, _forfeit: true });
     }
   };
   document.addEventListener('visibilitychange', window._duelTabWarn);
@@ -487,6 +487,9 @@ async function duelNextQ(){
   if(window._botAnswerTimeout){ clearTimeout(window._botAnswerTimeout); window._botAnswerTimeout = null; }
   duelIdx++;
   if(duelIdx>=duelQs.length){
+    // Player finished all questions — remove tab-forfeit listener so waiting screen
+    // doesn't accidentally trigger a 999-score forfeit when switching tabs
+    document.removeEventListener('visibilitychange', window._duelTabWarn);
     clearInterval(duelTimer);
     document.getElementById('d-next-btn').className='next-btn';
     document.getElementById('d-fb').textContent='';
@@ -640,8 +643,9 @@ function endDuel(data){
   }
   document.getElementById('d-result-title').textContent=win?t('dWin'):tie?t('dTie'):t('dLose');
   document.getElementById('d-result-sub').textContent=win?t('dWinSub'):tie?t('dTieSub'):t('dLoseSub');
-  document.getElementById('d-res-me-score').textContent=myS;
-  document.getElementById('d-res-opp-score').textContent=oppS;
+  const _forfeit = data?._forfeit;
+  document.getElementById('d-res-me-score').textContent = _forfeit ? '0' : myS;
+  document.getElementById('d-res-opp-score').textContent = _forfeit ? '🏳️' : oppS;
   document.getElementById('d-res-me-box').className='result-box'+(win?' winner':'');
   document.getElementById('d-res-opp-box').className='result-box'+(oppS>myS?' winner':'');
   showDuelSection('d-result');

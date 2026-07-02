@@ -36,6 +36,7 @@
 <link rel="stylesheet" href="/css/screens.css">
 <link rel="stylesheet" href="/css/admin.css">
 <link rel="stylesheet" href="/css/mvp_flags.css">
+<link rel="stylesheet" href="/css/desktop.css">
 
 </head>
 <body>
@@ -158,6 +159,7 @@
   <div class="hdr">
     <div class="logo">BFC</div>
     <div class="hdr-right">
+      <button id="theme-toggle-hdr" onclick="toggleTheme()" title="Сменить тему" style="background:transparent;border:0.5px solid var(--border);border-radius:20px;padding:4px 10px;font-size:14px;cursor:pointer;color:var(--muted);line-height:1;transition:border-color .15s">🌙</button>
       <div class="lang-toggle">
         <button class="lang-btn" onclick="setLang('en')">EN</button>
         <button class="lang-btn active" onclick="setLang('ru')">RU</button>
@@ -2026,99 +2028,54 @@
   </div>
   <div class="play-menu-grid" style="padding-top:16px">
     <div style="font-size:22px;font-weight:800;padding:4px 0 8px" id="pm-title">Играть</div>
+
+    <!-- ТРЕНИРОВКА -->
     <div class="play-menu-item" onclick="startQuickPlay()">
       <div class="play-menu-icon">⚡</div>
       <div class="play-menu-info">
         <div class="play-menu-title" id="pm-quick">Тренировка</div>
-        <div class="play-menu-sub" id="pm-quick-sub">10 вопросов в день · идёт в клуб</div>
+        <div class="play-menu-sub" id="pm-quick-sub">10 вопросов в день · за скорость</div>
       </div>
-      <div class="play-menu-badge green" id="pm-quick-badge">→ Клуб</div>
+      <div class="play-menu-badge green" id="pm-quick-badge">Бесплатно</div>
     </div>
-    <div class="play-menu-item" onclick="showPlayTopics()">
-      <div class="play-menu-icon">🗂️</div>
-      <div class="play-menu-info">
-        <div class="play-menu-title" id="pm-topics">Выбор темы</div>
-        <div class="play-menu-sub" id="pm-topics-sub">Наука, кино, спорт и другие</div>
-      </div>
-    </div>
+
+    <!-- БАТТЛЫ -->
     <div class="play-menu-item" onclick="startMatchmaking()">
       <div class="play-menu-icon">🔍</div>
       <div class="play-menu-info">
         <div class="play-menu-title" id="pm-random">Случайный бой</div>
-        <div class="play-menu-sub" id="pm-random-sub">Победа даёт +80 нейронов клубу</div>
+        <div class="play-menu-sub" id="pm-random-sub">Найти соперника онлайн · 3 боя в день</div>
       </div>
-      <div class="play-menu-badge" style="background:var(--red)" id="pm-random-badge">+80 ⚡</div>
+      <div class="play-menu-badge" style="background:var(--red)" id="pm-random-badge">+50 ⚡</div>
     </div>
     <div class="play-menu-item" onclick="showScreen('duel')">
       <div class="play-menu-icon">⚔️</div>
       <div class="play-menu-info">
         <div class="play-menu-title" id="pm-duel">Дуэль с другом</div>
-        <div class="play-menu-sub" id="pm-duel-sub">Победа даёт +80 нейронов клубу</div>
+        <div class="play-menu-sub" id="pm-duel-sub">Отправь ссылку и играйте вместе</div>
       </div>
     </div>
-    <div class="play-menu-item" onclick="showScreen('dating');window.startDatingBattle?.()">
-      <div class="play-menu-icon">💎</div>
+    <div class="play-menu-item" onclick="window.startBotDuel?.()">
+      <div class="play-menu-icon">🤖</div>
       <div class="play-menu-info">
-        <div class="play-menu-title">BFC Match</div>
-        <div class="play-menu-sub">Слепой квиз-бой с незнакомцем · анонимно</div>
-      </div>
-      <div class="play-menu-badge" style="background:rgba(168,85,247,.5)">NEW</div>
-    </div>
-    <div class="play-menu-item" onclick="showScreen('club-finder');window.loadClubFinder?.()">
-      <div class="play-menu-icon">🔎</div>
-      <div class="play-menu-info">
-        <div class="play-menu-title">Найти клуб</div>
-        <div class="play-menu-sub">Объявления о наборе · подай заявку</div>
+        <div class="play-menu-title">Бой с ботом</div>
+        <div class="play-menu-sub">Потренируйся против AI-соперника</div>
       </div>
     </div>
-    <!-- Задание дня — скрыто из основного UX, код сохранён -->
-    <div class="play-menu-item" id="pm-daily-item" style="display:none" onclick="showScreen('shop')">
-      <div class="play-menu-icon">🎯</div>
-      <div class="play-menu-info">
-        <div class="play-menu-title" id="pm-daily">Задание дня</div>
-        <div class="play-menu-sub" id="pm-daily-sub">Выполни задание и получи бонусные нейроны</div>
-      </div>
-      <div class="play-menu-badge gold" id="pm-daily-badge">+50</div>
-    </div>
-    <!-- Предложить вопрос — перенесено в Профиль -->
-    <div class="play-menu-item" onclick="window.openHypeGame?.('logic-blitz')">
-      <div class="play-menu-icon">⚡</div>
-      <div class="play-menu-info">
-        <div class="play-menu-title">Логика-блиц</div>
-        <div class="play-menu-sub">7 вопросов · 10 сек на каждый</div>
-      </div>
-    </div>
-    <div class="play-menu-item" style="display:none" onclick="openAuthorBuilder()">
-      <div class="play-menu-icon">✍️</div>
-      <div class="play-menu-info">
-        <div class="play-menu-title">Предложить вопрос</div>
-        <div class="play-menu-sub">Стань автором — отправь свой вопрос на проверку</div>
-      </div>
-    </div>
-    <div class="play-menu-item" onclick="openSlidePack('videogames_v2')">
-      <div class="play-menu-icon">🎮</div>
-      <div class="play-menu-info">
-        <div class="play-menu-title">Видеоигры v2</div>
-        <div class="play-menu-sub">3 вопроса · новый формат с правилами</div>
-      </div>
-      <div class="play-menu-badge" style="background:rgba(108,99,255,.4)">NEW</div>
-    </div>
-    <div class="play-menu-item" onclick="openSlidePack('videogames')">
-      <div class="play-menu-icon">🕹️</div>
-      <div class="play-menu-info">
-        <div class="play-menu-title">Видеоигры (15 вопросов)</div>
-        <div class="play-menu-sub">15 вопросов с картинками · тематический квиз</div>
-      </div>
-    </div>
+
+    <!-- ХАЙП-ПАКИ -->
     <div class="play-menu-item" onclick="showMyPacks()">
       <div class="play-menu-icon">📦</div>
       <div class="play-menu-info">
-        <div class="play-menu-title" id="pm-packs">Активности</div>
-        <div class="play-menu-sub" id="pm-packs-sub">Тематические паки по 10 вопросов</div>
+        <div class="play-menu-title" id="pm-packs">Тематические паки</div>
+        <div class="play-menu-sub" id="pm-packs-sub">Кино, наука, спорт и другие темы</div>
       </div>
       <div class="play-menu-badge" id="pm-packs-count" style="display:none;background:var(--accent)">0</div>
     </div>
-    <div class="play-menu-item" id="pm-official-item" style="display:none" onclick="showOfficialFromMenu()">
+
+    <!-- Скрытые пункты — код сохранён, не показываются -->
+    <div style="display:none" id="pm-daily-item"></div>
+        <div class="play-menu-item" id="pm-official-item" style="display:none" onclick="showOfficialFromMenu()">
       <div class="play-menu-icon">🏆</div>
       <div class="play-menu-info">
         <div class="play-menu-title" id="pm-official">Официальный турнир</div>
@@ -2223,24 +2180,16 @@
 <!-- DAILY LIMIT SCREEN -->
 <div class="screen" id="daily-limit">
   <div class="limit-inner">
-    <div class="limit-icon">🧠</div>
-    <div class="limit-title" id="dl-title">Бесплатные вопросы закончились!</div>
-    <div class="limit-sub" id="dl-sub">Сегодня вы уже сыграли 10 бесплатных вопросов. Возвращайтесь завтра или откройте Premium для расширенного лимита.</div>
+    <div class="limit-icon" id="dl-icon">🧠</div>
+    <div class="limit-title" id="dl-title">На сегодня всё!</div>
+    <div class="limit-sub" id="dl-sub">Ты использовал все бесплатные попытки на сегодня. Возвращайся завтра — вопросы обновятся в полночь.</div>
+    <div style="background:rgba(108,99,255,.1);border:0.5px solid rgba(108,99,255,.3);border-radius:16px;padding:16px;text-align:center;margin-bottom:8px">
+      <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent2);margin-bottom:6px">Скоро — Brain Fight PRO</div>
+      <div id="dl-pro-desc" style="font-size:13px;color:var(--muted);line-height:1.5">10 баттлов и неограниченные тренировки в день, эксклюзивные паки и ранний доступ к турнирам</div>
+    </div>
     <div class="limit-actions">
-      <button onclick="openPremiumScreen()" style="width:100%;background:var(--gold);border:none;border-radius:14px;padding:14px;font-size:15px;font-weight:800;color:#1a1a00;cursor:pointer;font-family:inherit;margin-bottom:10px">⭐ Получить Premium — 299 ₽/мес</button>
-      <button class="big-btn" onclick="startCommunityFeed()" id="dl-community-btn"
-        style="display:none;background:rgba(108,99,255,.15);border:1px solid var(--accent2)">
-        🌐 Вопросы участников
-      </button>
-      <button class="big-btn" onclick="showMyPacks()" id="dl-packs-btn"
-        style="background:rgba(240,192,64,.15);border:1px solid var(--gold);color:var(--gold)">
-        📦 Открыть активности
-      </button>
-      <button class="big-btn" onclick="showCreateQuestion()" id="dl-create-btn" style="display:none">
-        ✏️ Создать свой вопрос
-      </button>
-      <button class="score-sec-btn" onclick="copyRefLinkAndToast()" id="dl-invite-btn">🔗 Пригласить друга</button>
-      <button class="score-sec-btn" onclick="showScreen('home')" id="dl-tomorrow-btn">🏠 На главную</button>
+      <button class="big-btn" onclick="showScreen('home')" id="dl-tomorrow-btn">🏠 На главную</button>
+      <button class="score-sec-btn" onclick="copyRefLinkAndToast()" id="dl-invite-btn">🔗 Позвать друга играть</button>
     </div>
     <div class="limit-next" id="dl-next">Сброс в полночь</div>
   </div>
@@ -2671,6 +2620,7 @@
     <button class="nav-item" id="nav-teams" onclick="showClubScreen()"><div class="nav-icon">🏟️</div><div class="nav-label" id="nav-teams-label">Клуб</div></button>
     <button class="nav-item" id="nav-tournament" onclick="showCupScreen()"><div class="nav-icon">🏆</div><div class="nav-label" id="nav-cup-label">Кубок</div></button>
     <button class="nav-item" id="nav-profile" onclick="showScreen('profile')"><div class="nav-icon">👤</div><div class="nav-label" id="nav-profile-label">Профиль</div></button>
+    <button class="nav-item nav-theme-btn" id="nav-theme-btn" onclick="toggleTheme()"><div class="nav-icon" id="nav-theme-icon">🌙</div><div class="nav-label">Тема</div></button>
   </div>
 </nav>
 <div class="toast" id="toast"></div>

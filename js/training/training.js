@@ -216,14 +216,14 @@ function blockQuickPlayIfLocked(){
   const _localRemaining = getRemainingFreeQuestions();
   if(_localLocked && _localRemaining <= 0 && !window._appState?.getState().currentUser){
     // Guest with local lock — no server to override
-    if (typeof showDailyLimitScreen === 'function') showDailyLimitScreen();
+    if (typeof showDailyLimitScreen === 'function') showDailyLimitScreen('training');
     else if (window.showScreen) window.showScreen('daily-limit');
     return;
   }
   // For authenticated users, the RPC call below is authoritative.
   // Do NOT return early here — let the server decide.
   if(!window._appState?.getState().currentUser && _localLocked){
-    showDailyLimitScreen();
+    showDailyLimitScreen('training');
     return true;
   }
   return false;
@@ -258,7 +258,7 @@ async function startQuickPlay(){
         window.track('training_limit_reached', { plan, used, limit });
         window.track('premium_paywall_viewed', { trigger: 'training_limit', plan });
       }
-      if (typeof window.showDailyLimitScreen === 'function') window.showDailyLimitScreen();
+      if (typeof window.showDailyLimitScreen === 'function') window.showDailyLimitScreen('training');
       else if (typeof window.showScreen === 'function') window.showScreen('daily-limit');
       return;
     }
@@ -799,7 +799,7 @@ async function loadPublishedQuickQuestionsFromDB(){
 // Shows a friendly "no new questions" state on the daily-limit screen.
 function showNoFreshQuickQuestionsScreen(){
   if(typeof stopIntegrity === 'function') stopIntegrity();
-  showDailyLimitScreen(); // sets up the screen structure
+  showDailyLimitScreen('training'); // sets up the screen structure
   const L = lang === 'ru';
   const title = document.getElementById('dl-title');
   const sub   = document.getElementById('dl-sub');
@@ -1377,7 +1377,7 @@ function showScore(){
 function restartQuiz(){
   // Triple guard: game type, session flag, and persistent daily lock
   if(currentGameType === 'quick' || _quickPlayCompletedThisSession || isQuickPlayLocked()){
-    showDailyLimitScreen();
+    showDailyLimitScreen('training');
     return;
   }
   if(currentGameType === 'pack' && currentPackKey){
@@ -1388,7 +1388,7 @@ function restartQuiz(){
     playDailyChallenge();
   } else {
     // unknown — safe default
-    showDailyLimitScreen();
+    showDailyLimitScreen('training');
   }
 }
 
@@ -1407,7 +1407,7 @@ function updateScoreScreenButtons(){
 
   if(isQuickLocked){
     scAgainBtn.textContent = lang==='ru' ? '🔒 Лимит на сегодня исчерпан' : '🔒 Daily limit reached';
-    scAgainBtn.onclick = function(e){ e.preventDefault(); showDailyLimitScreen(); return false; };
+    scAgainBtn.onclick = function(e){ e.preventDefault(); showDailyLimitScreen('training'); return false; };
   } else if(currentGameType === 'pack' && currentPackKey){
     scAgainBtn.textContent = lang==='ru' ? '🔄 Играть пак снова' : '🔄 Play pack again';
     scAgainBtn.onclick = function(e){ e.preventDefault(); playDBPack(currentPackKey); return false; };
@@ -1419,7 +1419,7 @@ function updateScoreScreenButtons(){
     scAgainBtn.onclick = function(e){ e.preventDefault(); playDailyChallenge(); return false; };
   } else {
     scAgainBtn.textContent = lang==='ru' ? '🔒 Лимит на сегодня исчерпан' : '🔒 Daily limit reached';
-    scAgainBtn.onclick = function(e){ e.preventDefault(); showDailyLimitScreen(); return false; };
+    scAgainBtn.onclick = function(e){ e.preventDefault(); showDailyLimitScreen('training'); return false; };
   }
 }
 

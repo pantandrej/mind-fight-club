@@ -131,8 +131,7 @@ async function startMatchmaking(){
   const _preLC = await checkBattleLimitBeforeQueue();
   if (!_preLC.allowed) {
     track('battle_limit_reached', { used: _preLC.used, limit: _preLC.limit, plan: _preLC.plan, trigger: 'matchmaking_pre' });
-    toast(lang === 'ru' ? 'Дневной лимит баттлов исчерпан' : 'Daily battle limit reached', 3500);
-    showScreen('premium');
+    window.showDailyLimitScreen?.('battle');
     return;
   }
 
@@ -273,7 +272,7 @@ async function matchFound(duelCode, myName, oppName){
       const plan = _sd.plan || 'free';
       if (window.track) window.track('battle_limit_reached', { plan, used: _sd.used, limit: _sd.limit });
       if (window.track) window.track('premium_paywall_viewed', { trigger: 'battle_limit', plan });
-      window.toast?.('Дневной лимит баттлов исчерпан');
+      window.showDailyLimitScreen?.('battle');
       return;
     }
     // Mark session as already started — startDuelBattle will skip its own RPC call
@@ -336,8 +335,7 @@ async function playWithBot(){
   const _botLC = await checkBattleLimitBeforeQueue();
   if (!_botLC.allowed) {
     track('battle_limit_reached', { used: _botLC.used, limit: _botLC.limit, plan: _botLC.plan, trigger: 'bot_pre' });
-    toast(lang === 'ru' ? 'Дневной лимит баттлов исчерпан' : 'Daily battle limit reached', 3500);
-    showScreen('premium');
+    window.showDailyLimitScreen?.('battle');
     return;
   }
 
@@ -376,7 +374,7 @@ async function startBotDuel(botName){
       const plan = _sd.plan || 'free';
       if (window.track) window.track('battle_limit_reached', { plan, used: _sd.used, limit: _sd.limit });
       if (window.track) window.track('premium_paywall_viewed', { trigger: 'battle_limit', plan });
-      window.toast?.('Дневной лимит баттлов исчерпан');
+      window.showDailyLimitScreen?.('battle');
       return;
     }
     // Mark session started — startDuelBattle called later will skip its own RPC

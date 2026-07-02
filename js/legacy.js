@@ -6168,12 +6168,12 @@ async function startQuiz(packId, skipLimitCheck){
   if(!skipLimitCheck && !packId){
     // Hard daily lock check — skip only when startQuickPlay is in progress
     if(isQuickPlayLocked() && !_quickPlayStartInProgress){
-      showDailyLimitScreen();
+      showDailyLimitScreen('training');
       return;
     }
     const remaining = getRemainingFreeQuestions();
     if(remaining <= 0 && !_quickPlayStartInProgress){
-      showDailyLimitScreen();
+      showDailyLimitScreen('training');
       return;
     }
     // NOTE: lockQuickPlayStarted() is NOT called here.
@@ -12245,8 +12245,17 @@ function toggleTheme() {
     document.documentElement.removeAttribute('data-theme');
   }
   localStorage.setItem('bfc_theme', next);
+  _applyThemeButtons(next);
+}
+function _applyThemeButtons(theme) {
+  const isLight = theme === 'light';
+  const icon = isLight ? '☀️' : '🌙';
   const btn = document.getElementById('theme-toggle-btn');
-  if (btn) btn.textContent = next === 'light' ? '☀️ Светлая тема' : '🌙 Тёмная тема';
+  if (btn) btn.textContent = isLight ? '☀️ Светлая тема' : '🌙 Тёмная тема';
+  const hdrBtn = document.getElementById('theme-toggle-hdr');
+  if (hdrBtn) hdrBtn.textContent = icon;
+  const navIcon = document.getElementById('nav-theme-icon');
+  if (navIcon) navIcon.textContent = icon;
 }
 window.toggleTheme = toggleTheme;
 window.updatePushBtn = updatePushBtn;
@@ -12256,10 +12265,7 @@ window.updatePushBtn = updatePushBtn;
   const saved = localStorage.getItem('bfc_theme');
   if (saved === 'light') {
     document.documentElement.setAttribute('data-theme', 'light');
-    window.addEventListener('DOMContentLoaded', () => {
-      const btn = document.getElementById('theme-toggle-btn');
-      if (btn) btn.textContent = '☀️ Светлая тема';
-    });
+    window.addEventListener('DOMContentLoaded', () => { _applyThemeButtons('light'); });
   }
 })();
 
