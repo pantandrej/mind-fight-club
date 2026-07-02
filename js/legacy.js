@@ -301,9 +301,9 @@ function applyLang(){
   setText('pm-official',lang==='ru'?'Официальный турнир':'Официальный турнир');
   setText('pm-official-sub',lang==='ru'?'Идёт сейчас — успей присоединиться':'Live now — join before it starts');
   // Teams
-  setText('th-title',lang==='ru'?'Клубы':'Clubs');
-  setText('th-sub',lang==='ru'?'Вступи в клуб и соревнуйся вместе. Ваш XP влияет на городской рейтинг.':'Join a club and compete together.');
-  setText('t-create-team-btn',lang==='ru'?'⚡ Создать клуб':'⚡ Create a club');
+  setText('th-title',lang==='ru'?'Команды':'Teams');
+  setText('th-sub',lang==='ru'?'Вступи в команду и соревнуйся вместе. Ваш XP влияет на городской рейтинг.':'Join a team and compete together.');
+  setText('t-create-team-btn',lang==='ru'?'⚡ Создать команду':'⚡ Create a team');
   setText('t-team-или',lang==='ru'?'или вступить в существующую':'или вступить в существующую');
   setPlaceholder('team-join-input',lang==='ru'?'Код команды':'Team code');
   setText('tc-title',lang==='ru'?'Создать команду':'Create Team');
@@ -5246,9 +5246,9 @@ function showTeamsScreen(){
 
 function renderTeamsScreen(){
   renderMyTeam();
-  document.getElementById('th-title').textContent = lang==='ru'?'Клубы':'Clubs';
-  document.getElementById('th-sub').textContent = lang==='ru'?'Создай клуб с городом и соревнуйтесь в городской лиге.':'Create a city club and compete in the city league.';
-  document.getElementById('t-create-team-btn').textContent = lang==='ru'?'⚡ Создать клуб':'⚡ Create a club';
+  document.getElementById('th-title').textContent = lang==='ru'?'Команды':'Teams';
+  document.getElementById('th-sub').textContent = lang==='ru'?'Создай команду с городом и соревнуйтесь в городской лиге.':'Create a city team and compete in the city league.';
+  document.getElementById('t-create-team-btn').textContent = lang==='ru'?'⚡ Создать команду':'⚡ Create a team';
   document.getElementById('t-team-или').textContent = lang==='ru'?'или вступить в существующий':'или вступить в существующий';
   document.getElementById('t-join-team-btn').textContent = lang==='ru'?'Войти →':'Join →';
   document.getElementById('team-join-input').placeholder = lang==='ru'?'Код клуба':'Club code';
