@@ -275,7 +275,7 @@
       </div>
       <div class="mode-card" onclick="showCupScreen()">
         <div class="mode-icon">🏆</div>
-        <div class="mode-name">Кубок</div>
+        <div class="mode-name">Турнир</div>
         <div class="mode-desc">Официальный турнир</div>
       </div>
     </div>
@@ -289,10 +289,6 @@
       <div onclick="startMatchmaking()" style="background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;padding:14px;cursor:pointer;display:flex;align-items:flex-start;gap:10px">
         <div style="font-size:22px;flex-shrink:0">🔍</div>
         <div><div style="font-size:13px;font-weight:800;margin-bottom:2px">Случайный бой</div><div style="font-size:11px;color:var(--muted);line-height:1.3">Найди соперника онлайн</div></div>
-      </div>
-      <div onclick="showScreen('dating');window.startDatingBattle?.()" style="background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;padding:14px;cursor:pointer;display:flex;align-items:flex-start;gap:10px">
-        <div style="font-size:22px;flex-shrink:0">💎</div>
-        <div><div style="font-size:13px;font-weight:800;margin-bottom:2px">BFC Match</div><div style="font-size:11px;color:var(--muted);line-height:1.3">Анонимный квиз-бой</div></div>
       </div>
       <div onclick="openPremiumScreen()" style="background:rgba(240,192,64,.08);border:0.5px solid rgba(240,192,64,.3);border-radius:14px;padding:14px;cursor:pointer;display:flex;align-items:flex-start;gap:10px">
         <div style="font-size:22px;flex-shrink:0">⭐</div>
@@ -2650,10 +2646,10 @@
 <nav class="nav">
   <div class="nav-inner">
     <button class="nav-item active" id="nav-home" onclick="showScreen('home')"><div class="nav-icon">🏠</div><div class="nav-label" id="nav-home-label">Главная</div></button>
-    <button class="nav-item" id="nav-quiz" onclick="showPlayMenu()"><div class="nav-icon">⚡</div><div class="nav-label" id="nav-play-label">Играть</div></button>
+    <button class="nav-item" id="nav-quiz" onclick="showPlayMenu()"><div class="nav-icon">⚡</div><div class="nav-label" id="nav-play-label">Режимы игры</div></button>
     <button class="nav-item" id="nav-duel" onclick="showScreen('duel')"><div class="nav-icon">⚔️</div><div class="nav-label" id="nav-duel-label">Дуэль</div></button>
-    <button class="nav-item" id="nav-teams" onclick="showClubScreen()"><div class="nav-icon">🏟️</div><div class="nav-label" id="nav-teams-label">Клуб</div></button>
-    <button class="nav-item" id="nav-tournament" onclick="showCupScreen()"><div class="nav-icon">🏆</div><div class="nav-label" id="nav-cup-label">Кубок</div></button>
+    <button class="nav-item" id="nav-teams" onclick="showClubScreen()"><div class="nav-icon">🏟️</div><div class="nav-label" id="nav-teams-label">Команда</div></button>
+    <button class="nav-item" id="nav-tournament" onclick="showCupScreen()"><div class="nav-icon">🏆</div><div class="nav-label" id="nav-cup-label">Турнир</div></button>
     <button class="nav-item" id="nav-profile" onclick="showScreen('profile')"><div class="nav-icon">👤</div><div class="nav-label" id="nav-profile-label">Профиль</div></button>
     <button class="nav-item nav-theme-btn" id="nav-theme-btn" onclick="toggleTheme()"><div class="nav-icon" id="nav-theme-icon">🌙</div><div class="nav-label">Тема</div></button>
   </div>

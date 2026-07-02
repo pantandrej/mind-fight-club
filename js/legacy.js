@@ -115,7 +115,7 @@ const T={
     wlCount:'Joined:',wlCountSuffix:'people from 38 countries',
     scLabel:'Round complete',scSub:'neurons earned',scCorrectLabel:'Correct',scStreakLabel:'Best streak',scAccLabel:'Accuracy',
     scAgain:'⚡ Play again',scDuel:'⚔️ Live Duel',scTourn:'🏆 Tournament',scJoin:'📧 Join waitlist',
-    next:'Далее →',navHome:'Главная',navPlay:'Играть',navDuel:'Дуэль',navCup:'Кубок',navJoin:'Войти',
+    next:'Далее →',navHome:'Главная',navPlay:'Режимы игры',navDuel:'Дуэль',navCup:'Турнир',navJoin:'Войти',
     badgeEarned:'🏆 Badge earned:',oppAnswered:'✓ Opponent answered',
     statsTitle:'Statistics',statsGames:'Games',statsCorrect:'Correct',statsAcc:'Accuracy',statsStreak:'Best streak',
     achievTitle:'Achievements',rulesTitle:'How it works',freeVsPrem:'Free vs Premium',
@@ -151,7 +151,7 @@ const T={
     wlCount:'Присоединились:',wlCountSuffix:'человек из 38 стран',
     scLabel:'Раунд завершён',scSub:'нейронов заработано',scCorrectLabel:'Верных',scStreakLabel:'Лучшая серия',scAccLabel:'Точность',
     scAgain:'⚡ Играть снова',scDuel:'⚔️ Дуэль',scTourn:'🏆 Турнир',scJoin:'📧 Вступить',
-    next:'Далее →',navHome:'Главная',navPlay:'Играть',navDuel:'Дуэль',navCup:'Кубок',navJoin:'Войти',
+    next:'Далее →',navHome:'Главная',navPlay:'Режимы игры',navDuel:'Дуэль',navCup:'Турнир',navJoin:'Войти',
     badgeEarned:'🏆 Достижение:',oppAnswered:'✓ Соперник ответил',
     statsTitle:'Статистика',statsGames:'Игры',statsCorrect:'Верных',statsAcc:'Точность',statsStreak:'Лучшая серия',
     achievTitle:'Достижения',rulesTitle:'Как это работает',freeVsPrem:'Бесплатно и Premium',
@@ -159,7 +159,7 @@ const T={
     playMenu:'Играть',quickPlay:'Быстрая игра',chooseTopic:'Выбрать тему',myPacks:'Мои паки',
     dailyChallenge:'Задание дня',randomBattle:'Случайный бой',duelFriend:'Дуэль с другом',
     scAgain:'⚡ Играть снова',scDuel:'⚔️ Дуэль',scTourn:'🏆 Турнир',scJoin:'📧 Присоединиться',
-    next:'Далее →',navHome:'Главная',navPlay:'Играть',navDuel:'Дуэль',navCup:'Кубок',navJoin:'Войти',
+    next:'Далее →',navHome:'Главная',navPlay:'Режимы игры',navDuel:'Дуэль',navCup:'Турнир',navJoin:'Войти',
     badgeEarned:'🏆 Достижение:',
     oppAnswered:'✓ Соперник ответил',
   }
@@ -279,13 +279,13 @@ function applyLang(){
   setText('nav-home-label',L.navHome);
   setText('nav-play-label',L.navPlay);
   setText('nav-duel-label',L.navDuel);
-  setText('nav-cup-label',L.navCup||'Кубок');
+  setText('nav-cup-label',L.navCup||'Турнир');
   setText('nav-profile-label','Профиль');
-  setText('nav-teams-label','Клуб');
+  setText('nav-teams-label','Команда');
   const shopNav=safeEl('nav-shop-label');
   if(shopNav)shopNav.textContent=lang==='ru'?'Магазин':'Shop';
   // Play menu
-  setText('pm-title',L.playMenu||'Играть');
+  setText('pm-title',L.playMenu||'Режимы игры');
   setText('pm-quick',L.quickPlay||'Быстрая игра');
   setText('pm-quick-sub',lang==='ru'?'10 бесплатных вопросов в день':'10 free questions per day');
   setText('pm-topics',L.chooseTopic||'Выбор темы');
@@ -3394,7 +3394,7 @@ function showPlayMenu(){
   showScreen('play-menu');
   document.getElementById('n-play-menu').textContent = neurons;
   const L = lang === 'ru';
-  document.getElementById('pm-title').textContent = L ? 'Играть' : 'Play';
+  document.getElementById('pm-title').textContent = L ? 'Режимы игры' : 'Play';
 
   // Quick Play — show lock state if today's round is spent
   const quickLocked = isQuickPlayLocked();
@@ -5263,7 +5263,7 @@ function renderTeamsScreen(){
   document.getElementById('tm-leave-btn').textContent = lang==='ru'?'Покинуть команду':'Leave team';
   document.getElementById('tm-members-label').textContent = lang==='ru'?'Участники':'Members';
   document.getElementById('t-global-title').textContent = lang==='ru'?'🌆 Городской рейтинг':'🌆 City Leaderboard';
-  document.getElementById('nav-teams-label').textContent = 'Клуб';
+  document.getElementById('nav-teams-label').textContent = 'Команда';
   document.getElementById('n-teams').textContent = neurons;
   document.getElementById('city-tab-teams').textContent = lang==='ru'?'Клубы':'Clubs';
   document.getElementById('city-tab-players').textContent = lang==='ru'?'Игроки':'Players';
