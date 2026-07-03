@@ -91,8 +91,8 @@ const T={
     authSub:'Войдите, чтобы сохранить нейроны и соревноваться глобально',
     authGoogle:'Войти через Google',authOr:'или',
     authGuest:'Continue as guest',authNote:"Guest progress won't be saved",
-    hLabel:'Beta',hTitle:'Train your brain in quiz battles',
-    hSub:'Play. Think. Win.',
+    hLabel:'Beta',hTitle:'Fight with your mind. Win with your heart.',
+    hSub:'Real-time quiz duels — with a friend, a random rival, or in a tournament.',
     hPlay:'⚡ Играть',hMode:'Режим',hTopic:'Тема',hBadges:'Achievements',
     mFeedName:'Quick Play',mFeedDesc:'10 questions per day — free',
     mDuelName:'Live Duel',mDuelDesc:'Real-time battle with a friend',
@@ -127,8 +127,8 @@ const T={
     authSub:'Войдите чтобы сохранить нейроны и соревноваться глобально',
     authGoogle:'Войти через Google',authOr:'или',
     authGuest:'Продолжить как гость',authNote:'Прогресс гостя не сохраняется',
-    hLabel:'Бета-версия',hTitle:'Прокачай мозг в квиз-битвах',
-    hSub:'Играй. Думай. Побеждай.',
+    hLabel:'Бета-версия',hTitle:'Сражайся умом. Побеждай сердцем.',
+    hSub:'Квиз-дуэли в реальном времени — с другом, со случайным соперником или на турнире.',
     hPlay:'⚡ Играть',hMode:'Режим',hTopic:'Тема',hBadges:'Достижения',
     mFeedName:'Быстрая игра',mFeedDesc:'10 вопросов в день — бесплатно',
     mDuelName:'Дуэль',mDuelDesc:'Бой в реальном времени с другом',
@@ -317,7 +317,7 @@ function applyLang(){
   setText('tm-members-label',lang==='ru'?'Участники':'Members');
   // City leaderboard
   setText('t-global-title',lang==='ru'?'🌆 Рейтинг городов':'🌆 City Leaderboard');
-  setText('city-tab-teams',lang==='ru'?'Клубы':'Clubs');
+  setText('city-tab-teams',lang==='ru'?'Команды':'Teams');
   setText('city-tab-players',lang==='ru'?'Игроки':'Players');
   setText('city-tab-week',lang==='ru'?'🏅 Неделя':'🏅 Week');
   // Matchmaking
@@ -5251,7 +5251,7 @@ function renderTeamsScreen(){
   document.getElementById('t-create-team-btn').textContent = lang==='ru'?'⚡ Создать команду':'⚡ Create a team';
   document.getElementById('t-team-или').textContent = lang==='ru'?'или вступить в существующий':'или вступить в существующий';
   document.getElementById('t-join-team-btn').textContent = lang==='ru'?'Войти →':'Join →';
-  document.getElementById('team-join-input').placeholder = lang==='ru'?'Код клуба':'Club code';
+  document.getElementById('team-join-input').placeholder = lang==='ru'?'Код команды':'Team code';
   document.getElementById('tc-title').textContent = lang==='ru'?'Создать команду':'Create Team';
   const tcSub = document.getElementById('tc-sub');
   if(tcSub) tcSub.textContent = lang==='ru'?'Команда появится в городском рейтинге':'Team will appear in city leaderboard';
@@ -5265,7 +5265,7 @@ function renderTeamsScreen(){
   document.getElementById('t-global-title').textContent = lang==='ru'?'🌆 Городской рейтинг':'🌆 City Leaderboard';
   document.getElementById('nav-teams-label').textContent = 'Команда';
   document.getElementById('n-teams').textContent = neurons;
-  document.getElementById('city-tab-teams').textContent = lang==='ru'?'Клубы':'Clubs';
+  document.getElementById('city-tab-teams').textContent = lang==='ru'?'Команды':'Teams';
   document.getElementById('city-tab-players').textContent = lang==='ru'?'Игроки':'Players';
 
   // Render weekly competition banner
