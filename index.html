@@ -205,8 +205,8 @@
   <div class="home-inner">
     <div class="home-hero">
       <div class="hero-label" id="h-label">Бета-версия</div>
-      <div class="hero-title" id="h-title">Прокачай мозг в квиз-битвах</div>
-      <div class="hero-sub" id="h-sub">Играй. Думай. Побеждай.</div>
+      <div class="hero-title" id="h-title">Бейся умом.<br>Побеждай первым.</div>
+      <div class="hero-sub" id="h-sub">Квиз-дуэли в реальном времени — с другом, со случайным соперником или на турнире.</div>
       <button class="play-btn" id="h-play" onclick="showPlayMenu()" style="font-size:17px;padding:16px">⚡ Играть</button>
       <div id="home-player-count" style="display:none;margin-top:10px;font-size:12px;color:var(--muted)">
         <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#4ade80;margin-right:5px;vertical-align:middle"></span>
@@ -247,14 +247,20 @@
       </div>
       <div style="font-size:20px;color:var(--gold)" id="home-daily-reward">+50 ⚡</div>
     </div>
-    <!-- Daily streak card -->
-    <div class="streak-card" id="home-streak-card" style="display:none;margin-bottom:16px" onclick="showPlayMenu()">
-      <div class="streak-card-left">
-        <div class="sc-label">🔥 Серия дней</div>
-        <div class="sc-value" id="home-streak-value">0 дней</div>
-        <div class="sc-sub" id="home-streak-sub">Сыграй Быструю игру, чтобы продолжить</div>
+    <!-- Streak widget (Duolingo-style) -->
+    <div id="home-streak-widget" style="margin-bottom:20px;background:linear-gradient(135deg,rgba(240,192,64,.12),rgba(240,150,0,.08));border:1px solid rgba(240,192,64,.3);border-radius:20px;padding:18px 20px;display:flex;align-items:center;gap:16px;cursor:pointer" onclick="showPlayMenu()">
+      <!-- Flame icon with count -->
+      <div style="position:relative;flex-shrink:0">
+        <div style="font-size:48px;line-height:1;filter:drop-shadow(0 2px 8px rgba(240,150,0,.5))" id="home-streak-flame">🔥</div>
+        <div id="home-streak-badge" style="position:absolute;bottom:-4px;right:-8px;background:var(--gold);color:#fff;font-size:11px;font-weight:900;border-radius:20px;padding:2px 7px;min-width:22px;text-align:center;box-shadow:0 2px 6px rgba(0,0,0,.3)">0</div>
       </div>
-      <div class="streak-icon-big">🔥</div>
+      <!-- Text -->
+      <div style="flex:1;min-width:0">
+        <div style="font-size:16px;font-weight:900;color:var(--text)" id="home-streak-title">Серия: 0 дней 🔥</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:3px" id="home-streak-sub">Играй каждый день — не прерывай серию!</div>
+        <!-- Week dots -->
+        <div id="home-streak-dots" style="display:flex;gap:6px;margin-top:10px"></div>
+      </div>
     </div>
     <div class="section-title" id="h-mode-title">Режим</div>
     <div class="mode-grid">
@@ -289,10 +295,6 @@
       <div onclick="startMatchmaking()" style="background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;padding:14px;cursor:pointer;display:flex;align-items:flex-start;gap:10px">
         <div style="font-size:22px;flex-shrink:0">🔍</div>
         <div><div style="font-size:13px;font-weight:800;margin-bottom:2px">Случайный бой</div><div style="font-size:11px;color:var(--muted);line-height:1.3">Найди соперника онлайн</div></div>
-      </div>
-      <div onclick="openPremiumScreen()" style="background:rgba(240,192,64,.08);border:0.5px solid rgba(240,192,64,.3);border-radius:14px;padding:14px;cursor:pointer;display:flex;align-items:flex-start;gap:10px">
-        <div style="font-size:22px;flex-shrink:0">⭐</div>
-        <div><div style="font-size:13px;font-weight:800;margin-bottom:2px;color:var(--gold)">Premium</div><div style="font-size:11px;color:var(--muted);line-height:1.3">Больше баттлов и тренировок</div></div>
       </div>
     </div>
 
@@ -1400,14 +1402,50 @@
 <!-- ── Club Finder Screen ── -->
 <div class="screen" id="club-finder" style="justify-content:flex-start;padding:0">
   <div class="hdr" style="position:sticky;top:0;z-index:10;backdrop-filter:blur(12px);background:rgba(10,10,20,.85)">
-    <button onclick="showScreen('home')" style="background:none;border:none;color:var(--text);font-size:22px;cursor:pointer;padding:0 4px">‹</button>
-    <div style="font-size:15px;font-weight:900">🔎 Найти клуб</div>
+    <button onclick="history.back()" style="background:none;border:none;color:var(--text);font-size:22px;cursor:pointer;padding:0 4px">‹</button>
+    <div style="font-size:15px;font-weight:900">🔎 Найти команду</div>
     <div style="width:30px"></div>
   </div>
-  <div style="padding:12px 16px 0">
-    <div id="club-finder-filters" style="margin-bottom:12px"></div>
+
+  <!-- Tabs: Browse / Post -->
+  <div style="display:flex;gap:0;border-bottom:1px solid var(--border);padding:0 16px;position:sticky;top:52px;background:var(--bg);z-index:9">
+    <button id="cf-tab-browse" onclick="window._cfTab('browse')" style="flex:1;background:none;border:none;border-bottom:2px solid var(--accent);padding:12px 0;font-size:13px;font-weight:800;color:var(--accent);cursor:pointer;font-family:inherit">Объявления</button>
+    <button id="cf-tab-post" onclick="window._cfTab('post')" style="flex:1;background:none;border:none;border-bottom:2px solid transparent;padding:12px 0;font-size:13px;font-weight:800;color:var(--muted);cursor:pointer;font-family:inherit">Подать заявку</button>
   </div>
-  <div id="club-finder-list" style="padding:0 16px 40px"></div>
+
+  <!-- Browse tab -->
+  <div id="cf-browse-panel">
+    <div style="padding:12px 16px 0">
+      <div id="club-finder-filters" style="margin-bottom:12px"></div>
+    </div>
+    <div id="club-finder-list" style="padding:0 16px 40px"></div>
+  </div>
+
+  <!-- Post tab -->
+  <div id="cf-post-panel" style="display:none;padding:16px">
+    <div style="font-size:15px;font-weight:800;margin-bottom:4px">Опубликовать объявление</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:16px">Расскажи о себе или о своей команде — другие игроки увидят тебя здесь</div>
+
+    <!-- Type toggle -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
+      <button id="cf-type-player" onclick="window._cfSetType('player')" style="background:var(--accent);border:none;border-radius:12px;padding:10px;font-size:13px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit">👤 Ищу команду</button>
+      <button id="cf-type-team" onclick="window._cfSetType('team')" style="background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:10px;font-size:13px;font-weight:800;color:var(--muted);cursor:pointer;font-family:inherit">🏟️ Набор в команду</button>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <input id="cf-post-name" type="text" placeholder="Твоё имя или название команды" maxlength="40"
+        style="background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:12px 14px;font-size:14px;color:var(--text);font-family:inherit;outline:none"/>
+      <textarea id="cf-post-text" placeholder="Расскажи о себе: уровень, любимые темы, цели..." maxlength="200" rows="3"
+        style="background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:12px 14px;font-size:13px;color:var(--text);font-family:inherit;resize:none;outline:none"></textarea>
+      <input id="cf-post-city" type="text" placeholder="Город (необязательно)" maxlength="30"
+        style="background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:12px 14px;font-size:14px;color:var(--text);font-family:inherit;outline:none"/>
+      <button onclick="window._cfSubmitPost()" style="background:linear-gradient(135deg,#6c63ff,#a855f7);border:none;border-radius:14px;padding:14px;font-size:15px;font-weight:900;color:#fff;cursor:pointer;font-family:inherit">
+        📢 Опубликовать
+      </button>
+    </div>
+
+    <div id="cf-post-result" style="margin-top:12px;text-align:center;font-size:13px;color:var(--muted)"></div>
+  </div>
 </div>
 
 <!-- ── Brand Profile Screen ── -->
@@ -2379,6 +2417,16 @@
       <button class="mm-bot-btn" onclick="playWithBot()" id="mm-bot-btn">🤖 Никого нет онлайн — сыграть с ботом</button>
     </div>
     <button onclick="cancelMatchmaking()" class="score-sec-btn" style="margin-top:4px" id="mm-cancel-btn">Отмена</button>
+
+    <!-- Found confirmation -->
+    <div id="mm-confirm-wrap" style="display:none;width:100%;text-align:center;margin-top:8px">
+      <div style="font-size:36px;margin-bottom:8px">⚔️</div>
+      <div style="font-size:18px;font-weight:900;color:var(--text);margin-bottom:4px">Соперник найден!</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:16px" id="mm-confirm-opp">Готов к бою?</div>
+      <button id="mm-ready-btn" onclick="window._mmConfirmReady?.()" style="width:100%;max-width:280px;background:linear-gradient(135deg,#6c63ff,#a855f7);border:none;border-radius:16px;padding:16px;font-size:16px;font-weight:900;color:#fff;cursor:pointer;font-family:inherit">
+        ⚡ Начать бой! <span id="mm-ready-countdown">(3)</span>
+      </button>
+    </div>
   </div>
 </div>
 
@@ -3525,6 +3573,58 @@ console.log('✅ Firebase Tournaments module loaded');
 <script>
 window._showDuelFriend = function() {
   document.getElementById('d-friend-form').style.display = 'block';
+};
+
+// ── Club finder tabs ──────────────────────────────────────
+let _cfPostType = 'player';
+window._cfTab = function(tab) {
+  const browse = document.getElementById('cf-browse-panel');
+  const post   = document.getElementById('cf-post-panel');
+  const btnB   = document.getElementById('cf-tab-browse');
+  const btnP   = document.getElementById('cf-tab-post');
+  if (tab === 'browse') {
+    browse.style.display = ''; post.style.display = 'none';
+    btnB.style.borderBottomColor = 'var(--accent)'; btnB.style.color = 'var(--accent)';
+    btnP.style.borderBottomColor = 'transparent';   btnP.style.color = 'var(--muted)';
+  } else {
+    browse.style.display = 'none'; post.style.display = '';
+    btnP.style.borderBottomColor = 'var(--accent)'; btnP.style.color = 'var(--accent)';
+    btnB.style.borderBottomColor = 'transparent';   btnB.style.color = 'var(--muted)';
+  }
+};
+window._cfSetType = function(type) {
+  _cfPostType = type;
+  const pBtn = document.getElementById('cf-type-player');
+  const tBtn = document.getElementById('cf-type-team');
+  const accent = 'background:var(--accent);border:none;border-radius:12px;padding:10px;font-size:13px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit';
+  const muted  = 'background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:10px;font-size:13px;font-weight:800;color:var(--muted);cursor:pointer;font-family:inherit';
+  pBtn.style.cssText = type === 'player' ? accent : muted;
+  tBtn.style.cssText = type === 'team'   ? accent : muted;
+};
+window._cfSubmitPost = async function() {
+  const name = document.getElementById('cf-post-name').value.trim();
+  const text = document.getElementById('cf-post-text').value.trim();
+  const city = document.getElementById('cf-post-city').value.trim();
+  const res  = document.getElementById('cf-post-result');
+  if (!name || !text) { res.textContent = 'Заполни имя и описание'; res.style.color = 'var(--red)'; return; }
+  if (!window.currentUser) { res.textContent = 'Войди в аккаунт чтобы публиковать'; res.style.color = 'var(--red)'; return; }
+  res.textContent = '⏳ Публикуем...'; res.style.color = 'var(--muted)';
+  try {
+    await window.sb.from('club_listings').insert({
+      user_id: window.currentUser.id,
+      type: _cfPostType,
+      name, text, city,
+      created_at: new Date().toISOString()
+    });
+    res.textContent = '✅ Объявление опубликовано!'; res.style.color = 'var(--green)';
+    document.getElementById('cf-post-name').value = '';
+    document.getElementById('cf-post-text').value = '';
+    document.getElementById('cf-post-city').value = '';
+    window.track?.('club_listing_posted', { type: _cfPostType });
+  } catch(e) {
+    res.textContent = 'Ошибка: ' + (e.message || 'попробуй снова');
+    res.style.color = 'var(--red)';
+  }
 };
 </script>
 </body>

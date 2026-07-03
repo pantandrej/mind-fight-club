@@ -286,12 +286,35 @@ async function matchFound(duelCode, myName, oppName){
   document.getElementById('mm-av-opp').className = 'mm-av found';
   document.getElementById('mm-name-opp').textContent = opp;
   document.getElementById('mm-ring').style.display = 'none';
-  document.getElementById('mm-status').textContent = lang==='ru'?'Соперник найден! 🎉':'Opponent found! 🎉';
-  document.getElementById('mm-sub').textContent = lang==='ru'?'Начинаем дуэль...':'Starting duel...';
+  document.getElementById('mm-status').style.display = 'none';
+  document.getElementById('mm-sub').style.display = 'none';
   document.getElementById('mm-bot-wrap').style.display = 'none';
   document.getElementById('mm-cancel-btn').style.display = 'none';
+  const confirmWrap = document.getElementById('mm-confirm-wrap');
+  const confirmOpp  = document.getElementById('mm-confirm-opp');
+  const countdown   = document.getElementById('mm-ready-countdown');
+  if(confirmOpp) confirmOpp.textContent = lang==='ru'?`Соперник: ${opp} — готов к бою?`:`Opponent: ${opp} — ready to fight?`;
+  if(confirmWrap) confirmWrap.style.display = 'block';
   track('matchmaking_matched', {code: duelCode});
-  await new Promise(r=>setTimeout(r,1200));
+
+  // Countdown 3s → auto-start if no tap
+  let secs = 3;
+  if(countdown) countdown.textContent = `(${secs})`;
+  const cdInterval = setInterval(()=>{
+    secs--;
+    if(countdown) countdown.textContent = secs > 0 ? `(${secs})` : '';
+    if(secs <= 0) { clearInterval(cdInterval); window._mmConfirmReady?.(); }
+  }, 1000);
+
+  // Ready button handler
+  await new Promise(resolve => {
+    window._mmConfirmReady = ()=>{
+      clearInterval(cdInterval);
+      if(confirmWrap) confirmWrap.style.display = 'none';
+      window._mmConfirmReady = null;
+      resolve();
+    };
+  });
 
   if (oppName) {
     // This player found the match — act as host: load questions and start game

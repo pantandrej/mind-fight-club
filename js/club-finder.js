@@ -43,8 +43,11 @@ export async function loadClubFinder(filters = {}) {
   if (error || !posts?.length) {
     wrap.innerHTML = `<div style="text-align:center;padding:40px 20px;color:var(--muted)">
       <div style="font-size:36px;margin-bottom:10px">🔍</div>
-      <div style="font-size:14px;font-weight:700">Пока нет активных объявлений</div>
-      <div style="font-size:12px;margin-top:6px">Будь первым — создай пост для своего клуба</div>
+      <div style="font-size:14px;font-weight:700">Объявлений пока нет</div>
+      <div style="font-size:12px;margin-top:6px;margin-bottom:16px">Будь первым — расскажи о себе или своей команде</div>
+      <button onclick="window._cfTab?.('post')" style="background:var(--accent);border:none;border-radius:14px;padding:12px 24px;font-size:14px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit">
+        📢 Подать объявление
+      </button>
     </div>`;
     return;
   }

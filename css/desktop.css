@@ -178,6 +178,8 @@
   }
   .q-text { font-size: 22px; }
   .answers { grid-template-columns: 1fr 1fr; gap: 10px; display: grid; }
+  /* Odd last answer: center it spanning both columns */
+  .answers .ans:last-child:nth-child(odd) { grid-column: 1 / -1; max-width: calc(50% - 5px); margin: 0 auto; width: 100%; }
 
   /* ── DUEL ────────────────────────────────────────────────── */
   .duel-inner {
@@ -232,6 +234,14 @@
   /* ── Modals: center with sidebar offset ──────────────────── */
   .streak-modal-overlay,
   .report-modal-overlay { padding-left: var(--sidebar-w); }
+
+  /* ── Full-screen overlays: offset for sidebar ────────────── */
+  #tournament-screen,
+  #tournament-lobby-screen,
+  #tournaments-list-screen,
+  #matchmaking,
+  #club-finder,
+  #dating { padding-left: var(--sidebar-w); }
 
   /* ── Toast: offset from sidebar ─────────────────────────── */
   .toast { left: calc(50% + calc(var(--sidebar-w) / 2)); }

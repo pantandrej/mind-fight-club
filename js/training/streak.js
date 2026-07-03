@@ -206,22 +206,92 @@ function renderDailyStreakUI(){
   const card   = document.getElementById('home-streak-card');
   const valEl  = document.getElementById('home-streak-value');
   const subEl  = document.getElementById('home-streak-sub');
-  if(!card) return;
-
-  if(_dailyStreak > 0){
-    card.style.display = 'flex';
-    valEl.textContent  = '🔥 ' + _dailyStreak + (lang==='ru'?' дн.':' days');
-    const today      = getTodayDateKey();
-    const doneToday  = (_lastQuickPlayDate === today);
-    const hasFrz     = hasStreakFreeze();
-    subEl.innerHTML  = doneToday
-      ? (lang==='ru'?'✅ Серия сохранена сегодня':'✅ Streak saved today')
-      : hasFrz
-        ? (lang==='ru'?'❄️ Заморозка активна — серия защищена':'❄️ Freeze active — streak protected')
-        : `${lang==='ru'?'Сыграй Quick Play чтобы продолжить · ':'Play Quick Play to continue · '}<span style="color:var(--accent2);cursor:pointer;font-weight:800" onclick="buyStreakFreeze()">❄️ Заморозить за ${STREAK_FREEZE_PRICE}⚡</span>`;
-  } else {
-    card.style.display = 'none';
+  if(card) {
+    if(_dailyStreak > 0){
+      card.style.display = 'flex';
+      if(valEl) valEl.textContent  = '🔥 ' + _dailyStreak + (lang==='ru'?' дн.':' days');
+      const today2     = getTodayDateKey();
+      const doneToday2 = (_lastQuickPlayDate === today2);
+      const hasFrz2    = hasStreakFreeze();
+      if(subEl) subEl.innerHTML = doneToday2
+        ? (lang==='ru'?'✅ Серия сохранена сегодня':'✅ Streak saved today')
+        : hasFrz2
+          ? (lang==='ru'?'❄️ Заморозка активна — серия защищена':'❄️ Freeze active — streak protected')
+          : `${lang==='ru'?'Сыграй Quick Play чтобы продолжить · ':'Play Quick Play to continue · '}<span style="color:var(--accent2);cursor:pointer;font-weight:800" onclick="buyStreakFreeze()">❄️ Заморозить за ${STREAK_FREEZE_PRICE}⚡</span>`;
+    } else {
+      card.style.display = 'none';
+    }
   }
+
+  // ── New Duolingo-style streak widget ──
+  const widget = document.getElementById('home-streak-widget');
+  if(!widget) return;
+  const today      = getTodayDateKey();
+  const doneToday  = (_lastQuickPlayDate === today);
+  const hasFrz     = hasStreakFreeze();
+  const streak     = _dailyStreak || 0;
+
+  // Badge count
+  const badge = document.getElementById('home-streak-badge');
+  if(badge) badge.textContent = streak;
+
+  // Flame animation when active
+  const flame = document.getElementById('home-streak-flame');
+  if(flame) flame.style.filter = streak > 0
+    ? 'drop-shadow(0 2px 12px rgba(240,150,0,.7))'
+    : 'grayscale(1) opacity(0.4)';
+
+  // Title
+  const title = document.getElementById('home-streak-title');
+  if(title) {
+    if(streak === 0) title.textContent = lang==='ru'?'Начни серию сегодня 🔥':'Start your streak today 🔥';
+    else if(doneToday) title.textContent = lang==='ru'?`Серия: ${streak} ${_daysWord(streak)} ✅`:`${streak}-day streak ✅`;
+    else title.textContent = lang==='ru'?`Серия: ${streak} ${_daysWord(streak)} 🔥`:`${streak}-day streak 🔥`;
+  }
+
+  // Sub
+  const sub = document.getElementById('home-streak-sub');
+  if(sub) {
+    if(doneToday) sub.textContent = lang==='ru'?'Отлично! Заходи завтра чтобы не прерывать.':'Great! Come back tomorrow to keep it going.';
+    else if(hasFrz) sub.innerHTML = lang==='ru'?'❄️ Заморозка активна — серия защищена':'❄️ Freeze active — streak protected';
+    else if(streak > 0) sub.textContent = lang==='ru'?'Сыграй сегодня, чтобы не потерять серию!':'Play today to keep your streak alive!';
+    else sub.textContent = lang==='ru'?'Играй каждый день — не прерывай серию!':'Play every day — don\'t break the chain!';
+  }
+
+  // Week dots (Mon–Sun)
+  const dotsEl = document.getElementById('home-streak-dots');
+  if(dotsEl) {
+    const now = new Date();
+    const dayOfWeek = (now.getDay() + 6) % 7; // 0=Mon
+    dotsEl.innerHTML = '';
+    const days = lang==='ru'
+      ? ['Пн','Вт','Ср','Чт','Пт','Сб','Вс']
+      : ['Mo','Tu','We','Th','Fr','Sa','Su'];
+    for(let i = 0; i <= dayOfWeek; i++){
+      const isPast = i < dayOfWeek;
+      const isToday = i === dayOfWeek;
+      // Estimate: if streak covers this day
+      const daysAgo = dayOfWeek - i;
+      const active = (doneToday && daysAgo === 0) || (streak > daysAgo && daysAgo > 0);
+      const dot = document.createElement('div');
+      dot.style.cssText = `display:flex;flex-direction:column;align-items:center;gap:3px`;
+      dot.innerHTML = `
+        <div style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;
+          ${active ? 'background:var(--gold);box-shadow:0 2px 8px rgba(240,150,0,.4)' :
+            isToday && !doneToday ? 'background:rgba(240,192,64,.15);border:2px dashed var(--gold)' :
+            'background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1)'
+          }">${active ? '🔥' : isToday ? '⬜' : '·'}</div>
+        <div style="font-size:9px;color:var(--muted);font-weight:700">${days[i]}</div>
+      `;
+      dotsEl.appendChild(dot);
+    }
+  }
+}
+
+function _daysWord(n){
+  if(n % 10 === 1 && n % 100 !== 11) return 'день';
+  if([2,3,4].includes(n%10) && ![12,13,14].includes(n%100)) return 'дня';
+  return 'дней';
 }
 
 function showStreakCelebration(streakCount, isRecord){
