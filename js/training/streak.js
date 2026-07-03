@@ -116,21 +116,40 @@ function consumeStreakFreezeIfNeeded(lastPlayDate, today, yesterday){
 }
 
 async function loadDailyStreakData(){
-  if(!currentUser) return;
+  // Always try localStorage first as fast path / guest fallback
+  try {
+    const cached = localStorage.getItem('mfc_streak');
+    if(cached){
+      const c = JSON.parse(cached);
+      if(c.streak > 0 || c.date){
+        _dailyStreak       = c.streak || 0;
+        _bestDailyStreak   = Math.max(_bestDailyStreak, c.best || 0);
+        _lastQuickPlayDate = c.date || null;
+        _streakPlayedToday = (_lastQuickPlayDate === getTodayDateKey());
+      }
+    }
+  }catch(e){}
+
+  if(!currentUser){ renderDailyStreakUI(); return; }
   try{
     const {data} = await sb.from('profiles')
       .select('daily_streak,best_daily_streak,last_quick_play_date')
       .eq('id', currentUser.id).single();
     if(data){
-      _dailyStreak         = data.daily_streak || 0;
-      _bestDailyStreak     = data.best_daily_streak || 0;
-      _lastQuickPlayDate   = data.last_quick_play_date || null;
-      const today          = getTodayDateKey();
-      _streakPlayedToday   = (_lastQuickPlayDate === today);
+      // Use DB value but only if it's >= local (prevents regression on race)
+      const dbStreak = data.daily_streak || 0;
+      const dbDate   = data.last_quick_play_date || null;
+      if(dbStreak >= _dailyStreak || dbDate > (_lastQuickPlayDate||'')){
+        _dailyStreak       = dbStreak;
+        _bestDailyStreak   = data.best_daily_streak || 0;
+        _lastQuickPlayDate = dbDate;
+        const today        = getTodayDateKey();
+        _streakPlayedToday = (_lastQuickPlayDate === today);
+      }
     }
   }catch(e){ /* profiles may not have streak columns yet — silent */ }
   renderDailyStreakUI();
-  scheduleDailyStreakReminder(); // set tab-away reminder if streak at risk
+  scheduleDailyStreakReminder();
 }
 
 async function updateDailyStreakOnQuickPlayComplete(){

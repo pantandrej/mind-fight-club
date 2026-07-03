@@ -649,6 +649,8 @@ function endDuel(data){
   document.getElementById('d-res-me-box').className='result-box'+(win?' winner':'');
   document.getElementById('d-res-opp-box').className='result-box'+(oppS>myS?' winner':'');
   showDuelSection('d-result');
+  // Update daily streak — duels count too
+  setTimeout(()=>{ window.updateDailyStreakOnQuickPlayComplete?.(); }, 800);
   // Show win streak badge if >= 2 wins in a row
   if (win) {
     const _streak = parseInt(localStorage.getItem('bfc_duel_win_streak') || '0', 10);
