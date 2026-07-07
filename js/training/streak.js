@@ -133,16 +133,16 @@ async function loadDailyStreakData(){
   if(!currentUser){ renderDailyStreakUI(); return; }
   try{
     const {data} = await sb.from('profiles')
-      .select('daily_streak,best_daily_streak,last_quick_play_date')
+      .select('daily_streak,best_daily_streak,streak_last_date')
       .eq('id', currentUser.id).single();
     if(data){
       // Use DB value but only if it's >= local (prevents regression on race)
       const dbStreak = data.daily_streak || 0;
-      const dbDate   = data.last_quick_play_date || null;
+      const dbDate   = data.streak_last_date || null;
       if(dbStreak >= _dailyStreak || dbDate > (_lastQuickPlayDate||'')){
         _dailyStreak       = dbStreak;
         _bestDailyStreak   = data.best_daily_streak || 0;
-        _lastQuickPlayDate = dbDate;
+        _lastQuickPlayDate = dbDate; // streak_last_date from DB
         const today        = getTodayDateKey();
         _streakPlayedToday = (_lastQuickPlayDate === today);
       }
@@ -209,7 +209,7 @@ async function updateDailyStreakOnQuickPlayComplete(){
       } else {
         // Fallback: direct update if RPC not deployed yet
         await sb.from('profiles').update({
-          daily_streak: newStreak, best_daily_streak: newBest, last_quick_play_date: today
+          daily_streak: newStreak, best_daily_streak: newBest, streak_last_date: today
         }).eq('id', currentUser.id);
       }
     }catch(e){ console.warn('[MFC] streak save error:', e.message); }
