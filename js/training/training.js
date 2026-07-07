@@ -781,6 +781,7 @@ async function loadPublishedQuickQuestionsFromDB(){
       .from('questions')
       .select('*')
       .eq('status', 'published')
+      .eq('source_type', 'official_general')
       .order('created_at', {ascending: false})
       .limit(1000);
     if(error) throw error;
