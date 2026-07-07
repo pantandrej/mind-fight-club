@@ -149,6 +149,12 @@ async function startMatchmaking(){
   document.getElementById('mm-bot-wrap').style.display = 'none';
   document.getElementById('mm-cancel-btn').style.display = '';
 
+  // Start battle board polling
+  const boardWrap = document.getElementById('mm-board-wrap');
+  if (boardWrap) boardWrap.style.display = '';
+  _renderBattleBoard();
+  _boardInterval = setInterval(_renderBattleBoard, 5000);
+
   // Insert into matchmaking queue
   const {data:qRow, error} = await sb.from('matchmaking_queue').insert({
     user_id: currentUser.id,
@@ -224,6 +230,7 @@ async function startMatchmaking(){
     // Auto-start bot after 30s — don't leave user stranded
     if(elapsed >= 30){
       clearInterval(mmInterval); mmInterval = null;
+      clearInterval(_boardInterval); _boardInterval = null;
       // Auto-launch the pre-selected bot
       if(window._pendingBot){
         window._botPlayer = window._pendingBot;
@@ -255,6 +262,9 @@ async function startMatchmaking(){
 }
 
 async function matchFound(duelCode, myName, oppName){
+  clearInterval(_boardInterval); _boardInterval = null;
+  const boardWrap = document.getElementById('mm-board-wrap');
+  if (boardWrap) boardWrap.style.display = 'none';
   // ── Charge session when match is actually found ──────────────────
   if (window.sb && window._appState?.getState().currentUser) {
     const { data: _sd, error: _se } = await window.sb.rpc('start_game_session', {
@@ -290,31 +300,9 @@ async function matchFound(duelCode, myName, oppName){
   document.getElementById('mm-sub').style.display = 'none';
   document.getElementById('mm-bot-wrap').style.display = 'none';
   document.getElementById('mm-cancel-btn').style.display = 'none';
-  const confirmWrap = document.getElementById('mm-confirm-wrap');
-  const confirmOpp  = document.getElementById('mm-confirm-opp');
-  const countdown   = document.getElementById('mm-ready-countdown');
-  if(confirmOpp) confirmOpp.textContent = lang==='ru'?`Соперник: ${opp} — готов к бою?`:`Opponent: ${opp} — ready to fight?`;
-  if(confirmWrap) confirmWrap.style.display = 'block';
   track('matchmaking_matched', {code: duelCode});
 
-  // Countdown 10s → auto-start if no tap
-  let secs = 10;
-  if(countdown) countdown.textContent = `(${secs})`;
-  const cdInterval = setInterval(()=>{
-    secs--;
-    if(countdown) countdown.textContent = secs > 0 ? `(${secs})` : '';
-    if(secs <= 0) { clearInterval(cdInterval); window._mmConfirmReady?.(); }
-  }, 1000);
-
-  // Ready button handler
-  await new Promise(resolve => {
-    window._mmConfirmReady = ()=>{
-      clearInterval(cdInterval);
-      if(confirmWrap) confirmWrap.style.display = 'none';
-      window._mmConfirmReady = null;
-      resolve();
-    };
-  });
+  await _showMatchConfirmation(opp);
 
   if (oppName) {
     // This player found the match — act as host: load questions and start game
@@ -366,14 +354,12 @@ async function playWithBot(){
   document.getElementById('mm-av-opp').className = 'mm-av found';
   document.getElementById('mm-name-opp').textContent = `${bot.flag} ${bot.name}`;
   document.getElementById('mm-ring').style.display = 'none';
-  document.getElementById('mm-status').textContent =
-    lang==='ru' ? `${bot.flag} ${bot.name} из ${bot.city} принял вызов!` : `${bot.flag} ${bot.name} from ${bot.city} accepted!`;
-  document.getElementById('mm-sub').textContent =
-    lang==='ru' ? 'Начинаем дуэль...' : 'Starting duel...';
   document.getElementById('mm-bot-wrap').style.display = 'none';
   document.getElementById('mm-cancel-btn').style.display = 'none';
   track('bot_battle_started', {bot: bot.name, city: bot.city});
-  setTimeout(()=>{ startBotDuel(bot.name); }, 1000);
+  // Show the same confirmation screen as real matches
+  await _showMatchConfirmation(`${bot.flag} ${bot.name} из ${bot.city}`);
+  startBotDuel(bot.name);
 }
 
 async function startBotDuel(botName){
@@ -459,6 +445,7 @@ async function startBotDuel(botName){
 function cancelMatchmaking(){
   clearInterval(mmInterval); mmInterval = null;
   clearTimeout(mmTimeout);   mmTimeout  = null;
+  clearInterval(_boardInterval); _boardInterval = null;
   window._pendingBot = null;
   if(mmQueueId){
     sb.from('matchmaking_queue').update({status:'cancelled'}).eq('id',mmQueueId).then(()=>{}).catch(()=>{});
@@ -485,6 +472,137 @@ function toggleRulesSection(id){
     if(arrow) arrow.classList.add('open');
   }
 }
+
+// ── Shared confirmation screen ────────────────────────────────────
+// Shows "Соперник найден!" with 10s countdown. Resolves when user taps
+// "Начать бой!" or countdown expires. Used for both real matches and bots.
+async function _showMatchConfirmation(oppLabel) {
+  const confirmWrap = document.getElementById('mm-confirm-wrap');
+  const confirmOpp  = document.getElementById('mm-confirm-opp');
+  const countdown   = document.getElementById('mm-ready-countdown');
+  if (confirmOpp) confirmOpp.textContent = lang === 'ru'
+    ? `Соперник: ${oppLabel} — готов к бою?`
+    : `Opponent: ${oppLabel} — ready to fight?`;
+  if (confirmWrap) confirmWrap.style.display = 'block';
+
+  let secs = 10;
+  if (countdown) countdown.textContent = `(${secs})`;
+  const cdInterval = setInterval(() => {
+    secs--;
+    if (countdown) countdown.textContent = secs > 0 ? `(${secs})` : '';
+    if (secs <= 0) { clearInterval(cdInterval); window._mmConfirmReady?.(); }
+  }, 1000);
+
+  await new Promise(resolve => {
+    window._mmConfirmReady = () => {
+      clearInterval(cdInterval);
+      if (confirmWrap) confirmWrap.style.display = 'none';
+      window._mmConfirmReady = null;
+      resolve();
+    };
+  });
+}
+
+// ── Battle Board: live list of open challenges ─────────────────────
+let _boardInterval = null;
+
+async function _renderBattleBoard() {
+  const list = document.getElementById('mm-board-list');
+  if (!list) return;
+  try {
+    const { data } = await sb.from('matchmaking_queue')
+      .select('id,display_name,created_at')
+      .eq('status', 'waiting')
+      .neq('user_id', currentUser?.id || '')
+      .order('created_at', { ascending: false })
+      .limit(5);
+
+    const rows = data || [];
+    // Add bots to fill up to 5 slots
+    const bots = [];
+    const needed = Math.max(0, 3 - rows.length);
+    for (let i = 0; i < needed; i++) {
+      const b = BOT_PLAYERS[(Math.floor(Date.now() / 15000) + i * 7) % BOT_PLAYERS.length];
+      bots.push({ id: 'bot:' + b.name, display_name: `${b.flag} ${b.name} (${b.city})`, isBot: true, bot: b });
+    }
+
+    const all = [...rows.map(r => ({ ...r, isBot: false })), ...bots];
+    list.innerHTML = all.map(r => `
+      <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg2);border-radius:14px;padding:10px 14px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:36px;height:36px;border-radius:50%;background:rgba(108,99,255,.2);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:var(--accent2)">
+            ${r.isBot ? r.bot.avatar : r.display_name[0].toUpperCase()}
+          </div>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--text)">${r.display_name}</div>
+            <div style="font-size:11px;color:var(--muted)">${r.isBot ? '🤖 Бот' : '🟢 Онлайн'}</div>
+          </div>
+        </div>
+        <button onclick="window._acceptChallenge('${r.id}','${r.display_name.replace(/'/g,"\\'")}',${r.isBot},${r.isBot ? JSON.stringify(r.bot || null).replace(/</g,'') : 'null'})"
+          style="background:linear-gradient(135deg,#6c63ff,#a855f7);border:none;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit">
+          ⚔️ Принять
+        </button>
+      </div>
+    `).join('');
+  } catch(e) { /* silent */ }
+}
+
+window._acceptChallenge = async function(rowId, oppDisplayName, isBot, botData) {
+  clearInterval(_boardInterval); _boardInterval = null;
+  clearInterval(mmInterval); mmInterval = null;
+  if (mmQueueId) {
+    sb.from('matchmaking_queue').update({status:'cancelled'}).eq('id',mmQueueId).then(()=>{}).catch(()=>{});
+    mmQueueId = null;
+  }
+
+  if (isBot) {
+    const bot = botData || pickRandomBot();
+    window._botPlayer = bot;
+    window._pendingBot = bot;
+    window._isBotDuel = true;
+    document.getElementById('mm-av-opp').textContent = bot.avatar;
+    document.getElementById('mm-av-opp').className = 'mm-av found';
+    document.getElementById('mm-name-opp').textContent = `${bot.flag} ${bot.name}`;
+    document.getElementById('mm-ring').style.display = 'none';
+    document.getElementById('mm-bot-wrap').style.display = 'none';
+    document.getElementById('mm-cancel-btn').style.display = 'none';
+    document.getElementById('mm-sub').style.display = 'none';
+    document.getElementById('mm-board-wrap').style.display = 'none';
+    const _botLC = await checkBattleLimitBeforeQueue();
+    if (!_botLC.allowed) { window.showDailyLimitScreen?.('battle'); return; }
+    await _showMatchConfirmation(`${bot.flag} ${bot.name} из ${bot.city}`);
+    startBotDuel(bot.name);
+    return;
+  }
+
+  // Real player: create duel room and match
+  const myName = currentUser?.user_metadata?.full_name?.split(' ')[0] || currentUser?.email?.split('@')[0] || 'You';
+  const duelCode = randCode();
+  await sb.from('duel_rooms').insert({
+    code: duelCode, host_score:0, guest_score:0, status:'waiting',
+    created_at: new Date().toISOString(), host_name: myName, guest_name: oppDisplayName
+  });
+  await sb.from('matchmaking_queue').update({status:'matched', matched_duel_id:duelCode}).eq('id',rowId);
+
+  const opp = oppDisplayName;
+  document.getElementById('mm-av-opp').textContent = opp[0].toUpperCase();
+  document.getElementById('mm-av-opp').className = 'mm-av found';
+  document.getElementById('mm-name-opp').textContent = opp;
+  document.getElementById('mm-ring').style.display = 'none';
+  document.getElementById('mm-bot-wrap').style.display = 'none';
+  document.getElementById('mm-cancel-btn').style.display = 'none';
+  document.getElementById('mm-board-wrap').style.display = 'none';
+
+  const _preLC = await checkBattleLimitBeforeQueue();
+  if (!_preLC.allowed) { window.showDailyLimitScreen?.('battle'); return; }
+
+  await _showMatchConfirmation(opp);
+
+  window._mmDuelCode = duelCode;
+  window._mmDuelRole = 'host';
+  window._mmDuelMyName = myName;
+  window.mmStartAsHost?.(duelCode, myName);
+};
 
 // Also update showProfile to translate new elements
 const _origShowProfile = typeof showProfile === 'function' ? showProfile : null;
