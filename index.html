@@ -263,31 +263,16 @@
       </div>
     </div>
     <div class="section-title" id="h-mode-title">Режим</div>
-    <div class="mode-grid">
-      <div class="mode-card active-mode" id="mode-feed" onclick="startQuickPlay()">
-        <div class="mode-icon">📱</div>
-        <div class="mode-name" id="m-feed-name">Тренировка</div>
-        <div class="mode-desc" id="m-feed-desc">10 вопросов · очки идут клубу</div>
+    <!-- Unified 2×2 mode grid -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+      <div onclick="startQuickPlay()" style="background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;padding:14px;cursor:pointer;display:flex;align-items:flex-start;gap:10px">
+        <div style="font-size:22px;flex-shrink:0">⚡</div>
+        <div><div style="font-size:13px;font-weight:800;margin-bottom:2px" id="m-feed-name">Быстрая игра</div><div style="font-size:11px;color:var(--muted);line-height:1.3" id="m-feed-desc">10 вопросов в день — бесплатно</div></div>
       </div>
-      <div class="mode-card" id="mode-duel" onclick="showScreen('duel')" style="display:none">
-        <div class="mode-icon">⚔️</div>
-        <div class="mode-name" id="m-duel-name">Дуэль</div>
-        <div class="mode-desc" id="m-duel-desc">Бой в реальном времени с другом</div>
+      <div onclick="showCupScreen()" style="background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;padding:14px;cursor:pointer;display:flex;align-items:flex-start;gap:10px">
+        <div style="font-size:22px;flex-shrink:0">🏆</div>
+        <div><div style="font-size:13px;font-weight:800;margin-bottom:2px">Турнир</div><div style="font-size:11px;color:var(--muted);line-height:1.3">Официальный турнир</div></div>
       </div>
-      <div class="mode-card" onclick="startMatchmaking()" style="display:none">
-        <div class="mode-icon">🔍</div>
-        <div class="mode-name">Случайный бой</div>
-        <div class="mode-desc">Найди соперника онлайн</div>
-      </div>
-      <div class="mode-card" onclick="showCupScreen()">
-        <div class="mode-icon">🏆</div>
-        <div class="mode-name">Турнир</div>
-        <div class="mode-desc">Официальный турнир</div>
-      </div>
-    </div>
-
-    <!-- MVP quick-action grid -->
-    <div id="mvp-action-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px">
       <div onclick="showScreen('duel')" style="background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;padding:14px;cursor:pointer;display:flex;align-items:flex-start;gap:10px">
         <div style="font-size:22px;flex-shrink:0">⚔️</div>
         <div><div style="font-size:13px;font-weight:800;margin-bottom:2px">Дуэль с другом</div><div style="font-size:11px;color:var(--muted);line-height:1.3">Пригласи по коду или ссылке</div></div>
@@ -304,20 +289,15 @@
       <div id="home-activity-list" style="display:flex;flex-direction:column;gap:4px"></div>
     </div>
 
-    <!-- Club Finder CTA -->
-    <div onclick="showScreen('club-finder');window.loadClubFinder?.()" style="background:rgba(74,222,128,.06);border:0.5px solid rgba(74,222,128,.2);border-radius:14px;padding:12px 14px;margin-bottom:10px;cursor:pointer;display:flex;align-items:center;gap:12px">
-      <div style="font-size:26px">🔎</div>
-      <div style="flex:1">
-        <div style="font-size:13px;font-weight:800;margin-bottom:1px">Ищешь команду?</div>
-        <div style="font-size:11px;color:var(--muted)">Объявления о наборе · подай заявку онлайн →</div>
+    <!-- CTA row -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+      <div onclick="showScreen('club-finder');window.loadClubFinder?.()" style="background:rgba(74,222,128,.06);border:0.5px solid rgba(74,222,128,.2);border-radius:14px;padding:12px 14px;cursor:pointer;display:flex;align-items:center;gap:10px">
+        <div style="font-size:22px;flex-shrink:0">🔎</div>
+        <div><div style="font-size:13px;font-weight:800;margin-bottom:1px">Ищешь команду?</div><div style="font-size:11px;color:var(--muted)">Объявления о наборе →</div></div>
       </div>
-    </div>
-    <!-- Organizer CTA — subtle footer card -->
-    <div onclick="showScreen('organizer-apply')" style="background:rgba(108,99,255,.06);border:0.5px solid rgba(108,99,255,.2);border-radius:14px;padding:12px 14px;margin-bottom:16px;cursor:pointer;display:flex;align-items:center;gap:12px">
-      <div style="font-size:26px">🏟️</div>
-      <div style="flex:1">
-        <div style="font-size:13px;font-weight:800;margin-bottom:1px">Проводишь живые квизы?</div>
-        <div style="font-size:11px;color:var(--muted)">Стань организатором на платформе — подать заявку →</div>
+      <div onclick="showScreen('organizer-apply')" style="background:rgba(108,99,255,.06);border:0.5px solid rgba(108,99,255,.2);border-radius:14px;padding:12px 14px;cursor:pointer;display:flex;align-items:center;gap:10px">
+        <div style="font-size:22px;flex-shrink:0">🏟️</div>
+        <div><div style="font-size:13px;font-weight:800;margin-bottom:1px">Проводишь квизы?</div><div style="font-size:11px;color:var(--muted)">Стать организатором →</div></div>
       </div>
     </div>
     <div class="section-title" id="h-topic-title">Тема</div>
