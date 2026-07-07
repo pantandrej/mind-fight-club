@@ -211,8 +211,9 @@ async function _onUserLoaded(user) {
   // Start presence ping
   if (typeof window._startPresencePing === 'function') window._startPresencePing();
   setTimeout(() => {
-    if (typeof window.renderBadges       === 'function') window.renderBadges();
-    if (typeof window.renderHomeNextGoal === 'function') window.renderHomeNextGoal();
+    if (typeof window.renderBadges         === 'function') window.renderBadges();
+    if (typeof window.renderHomeNextGoal   === 'function') window.renderHomeNextGoal();
+    if (typeof window.loadDailyStreakData  === 'function') window.loadDailyStreakData();
     // Only show onboarding if not already done
     if (typeof window.shouldShowOnboarding === 'function' && window.shouldShowOnboarding() &&
         typeof window.showOnboarding === 'function') window.showOnboarding();
