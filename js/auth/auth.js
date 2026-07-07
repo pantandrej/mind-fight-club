@@ -114,17 +114,10 @@ function _showLanding() {
     if (el && count) el.textContent = count.toLocaleString('ru');
   });
 
-  // Play now → guest + immediate bot duel
+  // Play now → show auth screen (register/login)
   window._landingPlayNow = function() {
     el.style.display = 'none';
-    // Go straight to matchmaking as guest
-    if (typeof window.continueAsGuest === 'function') window.continueAsGuest();
-    setTimeout(() => {
-      if (typeof window.showScreen === 'function') window.showScreen('duel');
-      setTimeout(() => {
-        if (typeof window.createDuel === 'function') window.createDuel();
-      }, 300);
-    }, 200);
+    _bootAuth();
     track('landing_play_now', {});
   };
 
