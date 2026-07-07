@@ -297,8 +297,8 @@ async function matchFound(duelCode, myName, oppName){
   if(confirmWrap) confirmWrap.style.display = 'block';
   track('matchmaking_matched', {code: duelCode});
 
-  // Countdown 3s → auto-start if no tap
-  let secs = 3;
+  // Countdown 10s → auto-start if no tap
+  let secs = 10;
   if(countdown) countdown.textContent = `(${secs})`;
   const cdInterval = setInterval(()=>{
     secs--;
