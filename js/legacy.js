@@ -5016,7 +5016,13 @@ function renderMyTeam(){
     return;
   }
   document.getElementById('team-mine').style.display='flex';
-  document.getElementById('my-team-emoji').textContent = myTeam.avatar_emoji||myTeam.emoji||'⚡';
+  // Update emoji without destroying the ✏️ edit badge child
+  const _emojiEl = document.getElementById('my-team-emoji');
+  if(_emojiEl){
+    const _badge = _emojiEl.querySelector('div');
+    _emojiEl.textContent = myTeam.avatar_emoji||myTeam.emoji||'⚡';
+    if(_badge) _emojiEl.appendChild(_badge);
+  }
   document.getElementById('my-team-name').textContent = myTeam.name;
   document.getElementById('my-team-code').textContent = 'Code: '+myTeam.code;
   const cityEl = document.getElementById('my-team-city');

@@ -751,25 +751,45 @@
 
     <!-- My team -->
     <div id="team-mine" class="team-section" style="display:none">
-      <div class="team-card" id="team-card-header">
-        <div class="team-card-top">
-          <div class="team-emoji" id="my-team-emoji">⚡</div>
-          <div style="flex:1">
-            <div class="team-name" id="my-team-name">Название команды</div>
-            <div class="team-code-small" id="my-team-code">Код: ——</div>
-            <div class="team-code-small" id="my-team-city" style="color:var(--accent2);margin-top:2px"></div>
+      <!-- Team header card -->
+      <div style="background:linear-gradient(135deg,rgba(108,99,255,.12),rgba(168,85,247,.08));border:0.5px solid rgba(108,99,255,.25);border-radius:20px;padding:18px;margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
+          <!-- Logo/emoji — tap to change -->
+          <div id="my-team-emoji" onclick="window._showTeamEmojiPicker?.()" style="width:56px;height:56px;border-radius:16px;background:rgba(108,99,255,.15);border:0.5px solid rgba(108,99,255,.3);display:flex;align-items:center;justify-content:center;font-size:28px;cursor:pointer;flex-shrink:0;position:relative" title="Изменить лого">⚡<div style="position:absolute;bottom:-4px;right:-4px;background:var(--accent);border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:10px">✏️</div></div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:18px;font-weight:900;line-height:1.2" id="my-team-name">Команда</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:3px" id="my-team-code">Код: ——</div>
+            <div style="font-size:12px;color:var(--accent2);margin-top:2px" id="my-team-city"></div>
           </div>
-          <div class="team-total-score"><div id="my-team-score">0</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">нейроны</div></div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:22px;font-weight:900;color:var(--gold)" id="my-team-score">0</div>
+            <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">нейроны</div>
+          </div>
+        </div>
+        <!-- Action buttons row -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <button onclick="copyTeamCode()" id="tm-invite-btn" style="background:var(--accent);border:none;border-radius:12px;padding:11px;font-size:13px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit">🔗 Пригласить</button>
+          <button onclick="openTeamChatPanel()" id="tm-chat-btn" style="background:linear-gradient(135deg,#6c63ff,#a855f7);border:none;border-radius:12px;padding:11px;font-size:13px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit">💬 Чат</button>
         </div>
       </div>
+
+      <!-- Members list -->
       <div class="lb-box">
         <div class="lb-hdr"><span id="tm-members-label">Участники</span><span id="my-team-count">0</span></div>
         <div id="team-members-list"></div>
       </div>
-      <button class="big-btn" style="margin-top:4px" onclick="copyTeamCode()" id="tm-invite-btn">🔗 Пригласить в команду</button>
-      <button class="big-btn" style="margin-top:8px;background:linear-gradient(135deg,#6c63ff,#a855f7)" onclick="openTeamChatPanel()" id="tm-chat-btn">💬 Чат команды</button>
+
+      <!-- Secondary actions -->
       <button class="score-sec-btn" style="margin-top:8px" onclick="showScreen('club-finder');window.loadClubFinder?.()" id="tm-recruit-btn">🔎 Найти участников →</button>
       <button class="score-sec-btn" style="margin-top:8px;color:var(--red);border-color:rgba(224,85,85,.3)" onclick="leaveTeam()" id="tm-leave-btn">Покинуть команду</button>
+
+      <!-- Emoji picker popover -->
+      <div id="team-emoji-picker" style="display:none;background:var(--bg2);border:0.5px solid var(--border);border-radius:16px;padding:16px;margin-top:8px">
+        <div style="font-size:12px;font-weight:800;margin-bottom:10px;color:var(--muted)">ВЫБЕРИ ЛОГО КОМАНДЫ</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          ${['⚡','🧠','🔥','🏆','🎯','🚀','💎','👑','🐐','🦁','🐉','🦅','🌊','⚔️','🛡️','🎮','🧬','🔬','🎲','🌟'].map(e=>`<button onclick="window._pickTeamEmoji('${e}')" style="width:40px;height:40px;border-radius:10px;background:var(--bg3);border:0.5px solid var(--border);font-size:20px;cursor:pointer">${e}</button>`).join('')}
+        </div>
+      </div>
     </div>
 
     <!-- Weekly chest widget -->
@@ -794,7 +814,7 @@
       <div class="city-tabs">
         <button class="city-tab active" id="lb-tab-players" onclick="switchLbTab('players')">Всё время</button>
         <button class="city-tab" id="lb-tab-week" onclick="switchLbTab('week')">Эта неделя</button>
-        <button class="city-tab" id="lb-tab-clubs" onclick="switchLbTab('clubs')">Клубы</button>
+        <button class="city-tab" id="lb-tab-clubs" onclick="switchLbTab('clubs')">Команды</button>
       </div>
       <div id="lb-list" style="margin-top:8px"><div style="padding:16px;text-align:center;color:var(--muted);font-size:13px">Загрузка...</div></div>
       <div id="lb-my-row" class="lb-row lb-me lb-sticky" style="display:none"></div>
@@ -3606,6 +3626,32 @@ window._cfSubmitPost = async function() {
   } catch(e) {
     res.textContent = 'Ошибка: ' + (e.message || 'попробуй снова');
     res.style.color = 'var(--red)';
+  }
+};
+
+// ── Team emoji picker ─────────────────────────────────────────
+window._showTeamEmojiPicker = function() {
+  const picker = document.getElementById('team-emoji-picker');
+  if(picker) picker.style.display = picker.style.display === 'none' ? 'block' : 'none';
+};
+
+window._pickTeamEmoji = async function(emoji) {
+  const picker = document.getElementById('team-emoji-picker');
+  if(picker) picker.style.display = 'none';
+  const myTeam = JSON.parse(localStorage.getItem('mfc_team') || 'null');
+  if(!myTeam?.id) return;
+  myTeam.avatar_emoji = emoji;
+  localStorage.setItem('mfc_team', JSON.stringify(myTeam));
+  // Restore emoji without destroying badge
+  const el = document.getElementById('my-team-emoji');
+  if(el){ const b = el.querySelector('div'); el.textContent = emoji; if(b) el.appendChild(b); }
+  // Save to DB
+  try {
+    await window.sb.from('teams').update({ emoji }).eq('id', myTeam.id);
+    window.toast?.('✅ Лого обновлено');
+  } catch(e) {
+    try { await window.sb.from('teams_v2').update({ avatar_emoji: emoji }).eq('id', myTeam.id); }
+    catch(e2) { console.warn('emoji save:', e2.message); }
   }
 };
 </script>

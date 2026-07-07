@@ -25,9 +25,28 @@ export async function loadLeaderboard(tab = 'players') {
     } else if (tab === 'week') {
       await renderWeekLeaderboard(listEl, myRowEl);
     } else {
-      const { data, error } = await sb.from('leaderboard_clubs').select('*');
-      if (error) throw error;
-      renderClubLeaderboard(data || [], listEl);
+      // Try leaderboard_clubs view first; fall back to direct teams query
+      let rows = [];
+      const { data: viewData, error: viewErr } = await sb.from('leaderboard_clubs').select('*');
+      if (!viewErr && viewData) {
+        rows = viewData;
+      } else {
+        const { data: teamsData, error: teamsErr } = await sb
+          .from('teams')
+          .select('id, name, emoji, city, total_neurons')
+          .order('total_neurons', { ascending: false })
+          .limit(50);
+        if (teamsErr) throw teamsErr;
+        rows = (teamsData || []).map((t, i) => ({
+          rank: i + 1,
+          name: t.name,
+          avatar_emoji: t.emoji,
+          city: t.city,
+          members_count: '?',
+          total_xp: t.total_neurons || 0,
+        }));
+      }
+      renderClubLeaderboard(rows, listEl);
     }
   } catch(e) {
     console.error('[lb]', e.message);
