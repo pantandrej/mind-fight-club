@@ -112,11 +112,11 @@ function showDailyLimitScreen(type){
         : 'You answered 10 free questions today. Come back tomorrow — limit resets at midnight.');
   if(pro) pro.textContent = L
     ? (isBattle
-        ? '10 баттлов в день, неограниченные тренировки и ранний доступ к турнирам'
-        : 'Неограниченные тренировки, 10 баттлов в день и эксклюзивные паки')
+        ? '10 баттлов в день, 50 вопросов тренировки и ранний доступ к турнирам'
+        : '50 вопросов в день, 10 баттлов в день и эксклюзивные паки')
     : (isBattle
-        ? '10 battles/day, unlimited training and early tournament access'
-        : 'Unlimited training, 10 battles/day and exclusive packs');
+        ? '10 battles/day, 50 training questions and early tournament access'
+        : '50 questions/day, 10 battles/day and exclusive packs');
   if(next) next.textContent = L ? `Сброс через ~${hoursLeft} ч` : `Resets in ~${hoursLeft}h`;
 
   const inviteBtn = document.getElementById('dl-invite-btn');
