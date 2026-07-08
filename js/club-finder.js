@@ -26,11 +26,7 @@ export async function loadClubFinder(filters = {}) {
 
   let query = sb
     .from('club_recruitment_board')
-    .select(`
-      id, title, description, category, city, slots_open, created_at,
-      club:club_id(id, name, emoji, total_neurons),
-      creator:creator_id(id, display_name, neurons, xp)
-    `)
+    .select('id, title, description, category, city, slots_open, created_at, creator_id, club_id')
     .eq('is_active', true)
     .order('created_at', { ascending: false })
     .limit(30);
@@ -56,30 +52,25 @@ export async function loadClubFinder(filters = {}) {
 }
 
 function _renderPost(p) {
-  const club    = p.club    || {};
-  const creator = p.creator || {};
-  const age     = _timeAgo(p.created_at);
+  const age = _timeAgo(p.created_at);
   return `
     <div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:16px;padding:16px;margin-bottom:10px">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
         <div style="width:42px;height:42px;border-radius:12px;background:rgba(108,99,255,.15);border:0.5px solid rgba(108,99,255,.3);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">
-          ${club.emoji || '🧠'}
+          🧠
         </div>
         <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_esc(club.name || 'Клуб')}</div>
-          <div style="font-size:11px;color:var(--muted)">${_esc(creator.display_name || '')} · ${age}</div>
+          <div style="font-size:13px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_esc(p.title)}</div>
+          <div style="font-size:11px;color:var(--muted)">${age}</div>
         </div>
         ${p.slots_open > 0 ? `<div style="background:rgba(74,222,128,.15);border:0.5px solid rgba(74,222,128,.4);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:800;color:#4ade80;flex-shrink:0">${p.slots_open} место${p.slots_open > 1 ? 'а' : ''}</div>` : ''}
       </div>
 
-      <div style="font-size:14px;font-weight:800;margin-bottom:6px">${_esc(p.title)}</div>
       ${p.description ? `<div style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:10px">${_esc(p.description)}</div>` : ''}
 
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
-        ${p.city     ? `<span style="${_chipStyle()}"">📍 ${_esc(p.city)}</span>` : ''}
-        ${p.category ? `<span style="${_chipStyle()}"">🏷 ${_esc(p.category)}</span>` : ''}
-        ${creator.xp ? `<span style="${_chipStyle()}"">⚡ ${creator.xp} XP</span>` : ''}
-        ${(club.total_neurons||0) > 0 ? `<span style="${_chipStyle()}"">🧠 ${club.total_neurons} нейронов</span>` : ''}
+        ${p.city     ? `<span style="${_chipStyle()}">📍 ${_esc(p.city)}</span>` : ''}
+        ${p.category ? `<span style="${_chipStyle()}">🏷 ${_esc(p.category)}</span>` : ''}
       </div>
 
       <button onclick="window.applyToClub('${p.id}', this)"

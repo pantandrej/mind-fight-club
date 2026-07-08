@@ -251,7 +251,15 @@ async function startMatchmaking(){
           mmQueueId = null;
         }
         track('bot_battle_auto', {bot: bot.name});
-        setTimeout(()=>startBotDuel(bot.name), 1000);
+        // Show confirmation before auto-starting (async, no await in setInterval — use IIFE)
+        (async () => {
+          document.getElementById('mm-bot-wrap').style.display = 'none';
+          document.getElementById('mm-cancel-btn').style.display = 'none';
+          document.getElementById('mm-status').style.display = 'none';
+          document.getElementById('mm-sub').style.display = 'none';
+          await _showMatchConfirmation(`${bot.flag} ${bot.name} из ${bot.city}`);
+          startBotDuel(bot.name);
+        })();
       } else {
         document.getElementById('mm-ring').style.display = 'none';
         document.getElementById('mm-status').textContent = lang==='ru'?'Соперников не найдено':'No opponents found';
