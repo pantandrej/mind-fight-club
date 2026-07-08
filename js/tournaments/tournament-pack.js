@@ -411,6 +411,8 @@ window.closeTournamentsList = function() {
   clearInterval(_listRefreshTimer);
   _listRefreshTimer = null;
   document.getElementById('tournaments-list-screen').style.display = 'none';
+  if (typeof window.showPlayMenu === 'function') window.showPlayMenu();
+  else if (typeof window.showScreen === 'function') window.showScreen('home');
 };
 
 let _listRows = [];
