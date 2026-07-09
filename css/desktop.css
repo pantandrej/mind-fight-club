@@ -236,7 +236,7 @@
   .streak-modal-overlay,
   .report-modal-overlay { padding-left: var(--sidebar-w); }
 
-  /* ── Full-screen overlays: offset for sidebar ────────────── */
+  /* ── Full-screen overlays: start after sidebar (override inset:0) ── */
   #tournament-screen,
   #tournament-lobby-screen,
   #tournaments-list-screen,
@@ -244,7 +244,7 @@
   #club-finder,
   #clubs-screen,
   #team-chat-panel,
-  #dating { padding-left: var(--sidebar-w); }
+  #dating { left: var(--sidebar-w) !important; padding-left: 0; }
 
   /* ── Toast: offset from sidebar ─────────────────────────── */
   .toast { left: calc(50% + calc(var(--sidebar-w) / 2)); }
