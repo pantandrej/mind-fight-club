@@ -2460,6 +2460,20 @@
       </button>
     </div>
 
+    <!-- Bot offer: shown when timer expires, no live opponent found -->
+    <div id="mm-bot-offer" style="display:none;width:100%;text-align:center;margin-top:8px">
+      <div style="font-size:36px;margin-bottom:8px">🤖</div>
+      <div style="font-size:18px;font-weight:900;color:var(--text);margin-bottom:4px">Соперник не найден</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:16px" id="mm-bot-offer-label">Сыграть с ботом?</div>
+      <button onclick="window._confirmBotMatch?.()" style="width:100%;max-width:280px;background:linear-gradient(135deg,#6c63ff,#a855f7);border:none;border-radius:16px;padding:16px;font-size:16px;font-weight:900;color:#fff;cursor:pointer;font-family:inherit;margin-bottom:10px">
+        🤖 Играть с ботом
+      </button>
+      <br>
+      <button onclick="cancelMatchmaking()" style="width:100%;max-width:280px;background:transparent;border:1px solid var(--border);border-radius:16px;padding:12px;font-size:14px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit">
+        ← Назад
+      </button>
+    </div>
+
     <!-- Battle board: live list of open challenges -->
     <div id="mm-board-wrap" style="width:100%;max-width:420px;margin-top:20px">
       <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--muted);margin-bottom:10px;text-align:center">⚔️ ОТКРЫТЫЕ ВЫЗОВЫ</div>

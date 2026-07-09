@@ -147,6 +147,9 @@ async function startMatchmaking(){
   document.getElementById('mm-status').textContent = lang==='ru'?'Ищем соперника...':'Ищем соперника...';
   document.getElementById('mm-ring').style.display = '';
   document.getElementById('mm-bot-wrap').style.display = 'none';
+  document.getElementById('mm-bot-offer').style.display = 'none';
+  document.getElementById('mm-confirm-wrap').style.display = 'none';
+  window._confirmBotMatch = null;
   document.getElementById('mm-cancel-btn').style.display = '';
 
   // Start battle board polling
@@ -227,45 +230,15 @@ async function startMatchmaking(){
           ? `🤖 Играть с ${bot.flag} ${bot.name} (${bot.city})`
           : `🤖 Play vs ${bot.flag} ${bot.name} (${bot.city})`;
     }
-    // Auto-start bot after 30s — don't leave user stranded
+    // Timer expired — offer bot, do NOT auto-start
     if(elapsed >= 30){
       clearInterval(mmInterval); mmInterval = null;
       clearInterval(_boardInterval); _boardInterval = null;
-      // Auto-launch the pre-selected bot
-      if(window._pendingBot){
-        window._botPlayer = window._pendingBot;
-        window._isBotDuel = true;
-        const bot = window._pendingBot;
-        document.getElementById('mm-av-opp').textContent = bot.avatar;
-        document.getElementById('mm-av-opp').className = 'mm-av found';
-        document.getElementById('mm-name-opp').textContent = `${bot.flag} ${bot.name}`;
-        document.getElementById('mm-ring').style.display = 'none';
-        document.getElementById('mm-status').textContent =
-          lang==='ru' ? `Нашли соперника: ${bot.flag} ${bot.name} из ${bot.city}` : `Found: ${bot.flag} ${bot.name} from ${bot.city}`;
-        document.getElementById('mm-sub').textContent =
-          lang==='ru' ? 'Начинаем...' : 'Starting...';
-        document.getElementById('mm-bot-wrap').style.display = 'none';
-        document.getElementById('mm-cancel-btn').style.display = 'none';
-        if(mmQueueId){
-          sb.from('matchmaking_queue').update({status:'cancelled'}).eq('id',mmQueueId).then(()=>{}).catch(()=>{});
-          mmQueueId = null;
-        }
-        track('bot_battle_auto', {bot: bot.name});
-        // Show confirmation before auto-starting (async, no await in setInterval — use IIFE)
-        (async () => {
-          document.getElementById('mm-bot-wrap').style.display = 'none';
-          document.getElementById('mm-cancel-btn').style.display = 'none';
-          document.getElementById('mm-status').style.display = 'none';
-          document.getElementById('mm-sub').style.display = 'none';
-          const confirmed = await _showMatchConfirmation(`${bot.flag} ${bot.name} из ${bot.city}`);
-          if (!confirmed) { showPlayMenu(); return; }
-          startBotDuel(bot.name);
-        })();
-      } else {
-        document.getElementById('mm-ring').style.display = 'none';
-        document.getElementById('mm-status').textContent = lang==='ru'?'Соперников не найдено':'No opponents found';
-        document.getElementById('mm-sub').textContent = lang==='ru'?'Попробуй сыграть с ботом':'Try playing with a bot';
+      if(mmQueueId){
+        sb.from('matchmaking_queue').update({status:'cancelled'}).eq('id',mmQueueId).then(()=>{}).catch(()=>{});
+        mmQueueId = null;
       }
+      _showBotOffer(window._pendingBot || pickRandomBot());
     }
   }, 1000);
 }
@@ -378,9 +351,6 @@ async function playWithBot(){
   document.getElementById('mm-sub').style.display = 'none';
   document.getElementById('mm-board-wrap').style.display = 'none';
   track('bot_battle_started', {bot: bot.name, city: bot.city});
-  // Show the same confirmation screen as real matches
-  const confirmed = await _showMatchConfirmation(`${bot.flag} ${bot.name} из ${bot.city}`);
-  if (!confirmed) { showPlayMenu(); return; }
   startBotDuel(bot.name);
 }
 
@@ -493,6 +463,52 @@ function toggleRulesSection(id){
     body.classList.add('open');
     if(arrow) arrow.classList.add('open');
   }
+}
+
+// ── Bot offer screen ─────────────────────────────────────────────
+// Called when timer expires with no live opponent. Shows "play vs bot?"
+// and waits for explicit user confirmation. Never auto-starts.
+function _showBotOffer(bot) {
+  window._pendingBot = bot;
+  window._botPlayer  = bot;
+  window._isBotDuel  = true;
+
+  // Hide search UI
+  document.getElementById('mm-ring').style.display        = 'none';
+  document.getElementById('mm-status').style.display      = 'none';
+  document.getElementById('mm-sub').style.display         = 'none';
+  document.getElementById('mm-bot-wrap').style.display    = 'none';
+  document.getElementById('mm-cancel-btn').style.display  = 'none';
+  document.getElementById('mm-board-wrap').style.display  = 'none';
+  document.getElementById('mm-confirm-wrap').style.display= 'none';
+
+  // Show bot avatar in VS row
+  document.getElementById('mm-av-opp').textContent  = bot.avatar;
+  document.getElementById('mm-av-opp').className    = 'mm-av found';
+  document.getElementById('mm-name-opp').textContent= `${bot.flag} ${bot.name}`;
+
+  // Update offer label
+  const label = document.getElementById('mm-bot-offer-label');
+  if (label) label.textContent = lang === 'ru'
+    ? `${bot.flag} ${bot.name} из ${bot.city} готов к бою!`
+    : `${bot.flag} ${bot.name} from ${bot.city} is ready!`;
+
+  // Show offer, wiring confirm button
+  document.getElementById('mm-bot-offer').style.display = 'block';
+
+  window._confirmBotMatch = async function() {
+    document.getElementById('mm-bot-offer').style.display = 'none';
+    window._confirmBotMatch = null;
+
+    const lc = await checkBattleLimitBeforeQueue();
+    if (!lc.allowed) {
+      track('battle_limit_reached', { used: lc.used, limit: lc.limit, plan: lc.plan, trigger: 'bot_offer' });
+      window.showDailyLimitScreen?.('battle');
+      return;
+    }
+    track('bot_battle_started', { bot: bot.name, city: bot.city, via: 'offer' });
+    startBotDuel(bot.name);
+  };
 }
 
 // ── Shared confirmation screen ────────────────────────────────────
