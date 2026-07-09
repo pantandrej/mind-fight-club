@@ -120,7 +120,7 @@ const T={
     statsTitle:'Statistics',statsGames:'Games',statsCorrect:'Correct',statsAcc:'Accuracy',statsStreak:'Best streak',
     achievTitle:'Achievements',rulesTitle:'How it works',freeVsPrem:'Free vs Premium',
     neuronsExplTitle:'What are Neurons?',tracksTitle:'Tracks',packsTitle:'Question Packs',
-    playMenu:'Play',quickPlay:'Быстрая игра',chooseTopic:'Choose Topic',myPacks:'Shop',
+    playMenu:'Play',quickPlay:'Быстрая игра',chooseTopic:'Choose Topic',myPacks:'Bonuses',
     dailyChallenge:'Daily Challenge',randomBattle:'Random Battle',duelFriend:'Duel a Friend',
   },
   ru:{
@@ -156,7 +156,7 @@ const T={
     statsTitle:'Статистика',statsGames:'Игры',statsCorrect:'Верных',statsAcc:'Точность',statsStreak:'Лучшая серия',
     achievTitle:'Достижения',rulesTitle:'Как это работает',freeVsPrem:'Бесплатно и Premium',
     neuronsExplTitle:'Что такое нейроны?',tracksTitle:'Треки',packsTitle:'Активности',
-    playMenu:'Играть',quickPlay:'Быстрая игра',chooseTopic:'Выбрать тему',myPacks:'Магазин',
+    playMenu:'Играть',quickPlay:'Быстрая игра',chooseTopic:'Выбрать тему',myPacks:'Бонусы',
     dailyChallenge:'Задание дня',randomBattle:'Случайный бой',duelFriend:'Дуэль с другом',
     scAgain:'⚡ Играть снова',scDuel:'⚔️ Дуэль',scTourn:'🏆 Турнир',scJoin:'📧 Присоединиться',
     next:'Далее →',navHome:'Главная',navPlay:'Режимы игры',navDuel:'Дуэль',navCup:'Турнир',navJoin:'Войти',
@@ -283,7 +283,7 @@ function applyLang(){
   setText('nav-profile-label','Профиль');
   setText('nav-teams-label','Команда');
   const shopNav=safeEl('nav-shop-label');
-  if(shopNav)shopNav.textContent=lang==='ru'?'Магазин':'Shop';
+  if(shopNav)shopNav.textContent=lang==='ru'?'Бонусы':'Bonuses';
   // Play menu
   setText('pm-title',L.playMenu||'Режимы игры');
   setText('pm-quick',L.quickPlay||'Быстрая игра');
@@ -3409,7 +3409,7 @@ function showPlayMenu(){
 
   document.getElementById('pm-topics').textContent = L ? 'Выбрать тему' : 'Choose Topic';
   document.getElementById('pm-topics-sub').textContent = L ? 'Наука, кино, спорт и другое' : 'Science, Cinema, Sports and more';
-  document.getElementById('pm-packs').textContent = L ? 'Магазин' : 'Shop';
+  document.getElementById('pm-packs').textContent = L ? 'Бонусы' : 'Bonuses';
   document.getElementById('pm-packs-sub').textContent = L ? 'Призы, паки и бонусы за нейроны' : 'Prizes, packs and bonuses for neurons';
   document.getElementById('pm-daily').textContent = L ? 'Дневное задание' : 'Daily Challenge';
   document.getElementById('pm-daily-sub').textContent = L ? 'Бонусные нейроны за задание' : 'Bonus neurons for today\'s task';

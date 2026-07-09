@@ -219,11 +219,13 @@ async function startMatchmaking(){
       return;
     }
 
-    // Show bot option after 10s
+    // Show bot option after 10s — hide board to avoid duplication
     if(elapsed === 10){
       const bot = pickRandomBot();
       window._pendingBot = bot;
       document.getElementById('mm-bot-wrap').style.display = '';
+      const boardWrap = document.getElementById('mm-board-wrap');
+      if (boardWrap) boardWrap.style.display = 'none';
       const botBtn = document.getElementById('mm-bot-btn');
       if(botBtn) botBtn.textContent =
         lang==='ru'
@@ -589,7 +591,7 @@ async function _renderBattleBoard() {
           </div>
           <div>
             <div style="font-size:13px;font-weight:700;color:var(--text)">${r.display_name}</div>
-            <div style="font-size:11px;color:var(--muted)">${r.isBot ? '🤖 Бот' : '🟢 Онлайн'}</div>
+            <div style="font-size:11px;color:var(--muted)">🟢 Онлайн</div>
           </div>
         </div>
         <button onclick="window._acceptChallenge('${r.id}','${r.display_name.replace(/'/g,"\\'")}',${r.isBot},${r.isBot ? JSON.stringify(r.bot || null).replace(/</g,'') : 'null'})"
