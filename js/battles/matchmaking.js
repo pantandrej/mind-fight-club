@@ -257,7 +257,8 @@ async function startMatchmaking(){
           document.getElementById('mm-cancel-btn').style.display = 'none';
           document.getElementById('mm-status').style.display = 'none';
           document.getElementById('mm-sub').style.display = 'none';
-          await _showMatchConfirmation(`${bot.flag} ${bot.name} из ${bot.city}`);
+          const confirmed = await _showMatchConfirmation(`${bot.flag} ${bot.name} из ${bot.city}`);
+          if (!confirmed) { showPlayMenu(); return; }
           startBotDuel(bot.name);
         })();
       } else {
@@ -310,7 +311,16 @@ async function matchFound(duelCode, myName, oppName){
   document.getElementById('mm-cancel-btn').style.display = 'none';
   track('matchmaking_matched', {code: duelCode});
 
-  await _showMatchConfirmation(opp);
+  const confirmed = await _showMatchConfirmation(opp);
+  if (!confirmed) {
+    // User declined or timer expired — cancel this match and return to play menu
+    if (mmQueueId) {
+      sb.from('matchmaking_queue').update({status:'cancelled'}).eq('id',mmQueueId).then(()=>{}).catch(()=>{});
+      mmQueueId = null;
+    }
+    showPlayMenu();
+    return;
+  }
 
   if (oppName) {
     // This player found the match — act as host: load questions and start game
@@ -369,7 +379,8 @@ async function playWithBot(){
   document.getElementById('mm-board-wrap').style.display = 'none';
   track('bot_battle_started', {bot: bot.name, city: bot.city});
   // Show the same confirmation screen as real matches
-  await _showMatchConfirmation(`${bot.flag} ${bot.name} из ${bot.city}`);
+  const confirmed = await _showMatchConfirmation(`${bot.flag} ${bot.name} из ${bot.city}`);
+  if (!confirmed) { showPlayMenu(); return; }
   startBotDuel(bot.name);
 }
 
@@ -498,18 +509,34 @@ async function _showMatchConfirmation(oppLabel) {
 
   let secs = 10;
   if (countdown) countdown.textContent = `(${secs})`;
-  const cdInterval = setInterval(() => {
-    secs--;
-    if (countdown) countdown.textContent = secs > 0 ? `(${secs})` : '';
-    if (secs <= 0) { clearInterval(cdInterval); window._mmConfirmReady?.(); }
-  }, 1000);
 
-  await new Promise(resolve => {
+  return new Promise(resolve => {
+    const cdInterval = setInterval(() => {
+      secs--;
+      if (countdown) countdown.textContent = secs > 0 ? `(${secs})` : '';
+      if (secs <= 0) {
+        clearInterval(cdInterval);
+        // Timer expired = auto-decline, go back
+        if (confirmWrap) confirmWrap.style.display = 'none';
+        window._mmConfirmReady   = null;
+        window._mmConfirmDecline = null;
+        resolve(false);
+      }
+    }, 1000);
+
     window._mmConfirmReady = () => {
       clearInterval(cdInterval);
       if (confirmWrap) confirmWrap.style.display = 'none';
-      window._mmConfirmReady = null;
-      resolve();
+      window._mmConfirmReady   = null;
+      window._mmConfirmDecline = null;
+      resolve(true);
+    };
+    window._mmConfirmDecline = () => {
+      clearInterval(cdInterval);
+      if (confirmWrap) confirmWrap.style.display = 'none';
+      window._mmConfirmReady   = null;
+      window._mmConfirmDecline = null;
+      resolve(false);
     };
   });
 }
@@ -581,7 +608,8 @@ window._acceptChallenge = async function(rowId, oppDisplayName, isBot, botData) 
     document.getElementById('mm-board-wrap').style.display = 'none';
     const _botLC = await checkBattleLimitBeforeQueue();
     if (!_botLC.allowed) { window.showDailyLimitScreen?.('battle'); return; }
-    await _showMatchConfirmation(`${bot.flag} ${bot.name} из ${bot.city}`);
+    const confirmedBot = await _showMatchConfirmation(`${bot.flag} ${bot.name} из ${bot.city}`);
+    if (!confirmedBot) { showPlayMenu(); return; }
     startBotDuel(bot.name);
     return;
   }
@@ -607,7 +635,8 @@ window._acceptChallenge = async function(rowId, oppDisplayName, isBot, botData) 
   const _preLC = await checkBattleLimitBeforeQueue();
   if (!_preLC.allowed) { window.showDailyLimitScreen?.('battle'); return; }
 
-  await _showMatchConfirmation(opp);
+  const confirmedReal = await _showMatchConfirmation(opp);
+  if (!confirmedReal) { showPlayMenu(); return; }
 
   window._mmDuelCode = duelCode;
   window._mmDuelRole = 'host';
