@@ -120,7 +120,7 @@ const T={
     statsTitle:'Statistics',statsGames:'Games',statsCorrect:'Correct',statsAcc:'Accuracy',statsStreak:'Best streak',
     achievTitle:'Achievements',rulesTitle:'How it works',freeVsPrem:'Free vs Premium',
     neuronsExplTitle:'What are Neurons?',tracksTitle:'Tracks',packsTitle:'Question Packs',
-    playMenu:'Play',quickPlay:'Быстрая игра',chooseTopic:'Choose Topic',myPacks:'My Packs',
+    playMenu:'Play',quickPlay:'Быстрая игра',chooseTopic:'Choose Topic',myPacks:'Packs',
     dailyChallenge:'Daily Challenge',randomBattle:'Random Battle',duelFriend:'Duel a Friend',
   },
   ru:{
@@ -156,7 +156,7 @@ const T={
     statsTitle:'Статистика',statsGames:'Игры',statsCorrect:'Верных',statsAcc:'Точность',statsStreak:'Лучшая серия',
     achievTitle:'Достижения',rulesTitle:'Как это работает',freeVsPrem:'Бесплатно и Premium',
     neuronsExplTitle:'Что такое нейроны?',tracksTitle:'Треки',packsTitle:'Активности',
-    playMenu:'Играть',quickPlay:'Быстрая игра',chooseTopic:'Выбрать тему',myPacks:'Мои паки',
+    playMenu:'Играть',quickPlay:'Быстрая игра',chooseTopic:'Выбрать тему',myPacks:'Паки',
     dailyChallenge:'Задание дня',randomBattle:'Случайный бой',duelFriend:'Дуэль с другом',
     scAgain:'⚡ Играть снова',scDuel:'⚔️ Дуэль',scTourn:'🏆 Турнир',scJoin:'📧 Присоединиться',
     next:'Далее →',navHome:'Главная',navPlay:'Режимы игры',navDuel:'Дуэль',navCup:'Турнир',navJoin:'Войти',
@@ -3409,7 +3409,7 @@ function showPlayMenu(){
 
   document.getElementById('pm-topics').textContent = L ? 'Выбрать тему' : 'Choose Topic';
   document.getElementById('pm-topics-sub').textContent = L ? 'Наука, кино, спорт и другое' : 'Science, Cinema, Sports and more';
-  document.getElementById('pm-packs').textContent = L ? 'Активности' : 'Activities';
+  document.getElementById('pm-packs').textContent = L ? 'Паки' : 'Packs';
   document.getElementById('pm-packs-sub').textContent = L ? 'Тематические паки по 10 вопросов' : 'Themed packs of 10 questions';
   document.getElementById('pm-daily').textContent = L ? 'Дневное задание' : 'Daily Challenge';
   document.getElementById('pm-daily-sub').textContent = L ? 'Бонусные нейроны за задание' : 'Bonus neurons for today\'s task';

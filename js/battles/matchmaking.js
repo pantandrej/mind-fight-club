@@ -364,6 +364,9 @@ async function playWithBot(){
   document.getElementById('mm-ring').style.display = 'none';
   document.getElementById('mm-bot-wrap').style.display = 'none';
   document.getElementById('mm-cancel-btn').style.display = 'none';
+  document.getElementById('mm-status').style.display = 'none';
+  document.getElementById('mm-sub').style.display = 'none';
+  document.getElementById('mm-board-wrap').style.display = 'none';
   track('bot_battle_started', {bot: bot.name, city: bot.city});
   // Show the same confirmation screen as real matches
   await _showMatchConfirmation(`${bot.flag} ${bot.name} из ${bot.city}`);
