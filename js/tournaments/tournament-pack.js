@@ -410,7 +410,6 @@ let _listRefreshTimer = null;
 window.closeTournamentsList = function() {
   clearInterval(_listRefreshTimer);
   _listRefreshTimer = null;
-  document.getElementById('tournaments-list-screen').style.display = 'none';
   if (typeof window.showPlayMenu === 'function') window.showPlayMenu();
   else if (typeof window.showScreen === 'function') window.showScreen('home');
 };
@@ -485,8 +484,7 @@ function _renderTournamentList() {
 }
 
 window.openTournamentsListScreen = async function() {
-  const screen = document.getElementById('tournaments-list-screen');
-  screen.style.display = 'flex';
+  if (typeof window.showScreen === 'function') window.showScreen('tournaments-list-screen');
   clearInterval(_listRefreshTimer);
   _listRefreshTimer = setInterval(_renderTournamentList, 1000);
 
@@ -513,7 +511,6 @@ window.openTournamentsListScreen = async function() {
 };
 
 window.openTournamentAndClose = function(id) {
-  document.getElementById('tournaments-list-screen').style.display = 'none';
   openTournament(id);
 };
 
@@ -638,7 +635,6 @@ window.closeTournamentLobby = function() {
 
 window.openLobbyAndPlay = function(id) {
   window.closeTournamentLobby();
-  document.getElementById('tournaments-list-screen').style.display = 'none';
   openTournament(id);
 };
 
