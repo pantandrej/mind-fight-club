@@ -3410,7 +3410,7 @@ function showPlayMenu(){
   document.getElementById('pm-topics').textContent = L ? 'Выбрать тему' : 'Choose Topic';
   document.getElementById('pm-topics-sub').textContent = L ? 'Наука, кино, спорт и другое' : 'Science, Cinema, Sports and more';
   document.getElementById('pm-packs').textContent = L ? 'Магазин' : 'Shop';
-  document.getElementById('pm-packs-sub').textContent = L ? 'Тематические паки по 10 вопросов' : 'Themed packs of 10 questions';
+  document.getElementById('pm-packs-sub').textContent = L ? 'Призы, паки и бонусы за нейроны' : 'Prizes, packs and bonuses for neurons';
   document.getElementById('pm-daily').textContent = L ? 'Дневное задание' : 'Daily Challenge';
   document.getElementById('pm-daily-sub').textContent = L ? 'Бонусные нейроны за задание' : 'Bonus neurons for today\'s task';
   document.getElementById('pm-random').textContent = L ? 'Случайный бой' : 'Random Battle';
