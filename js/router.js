@@ -6,6 +6,12 @@ import { getState }         from './state.js';
 
 // ── Screen navigation ─────────────────────────────────────────────
 export function showScreen(name) {
+  // Close fixed tournament overlays when navigating away
+  ['tournament-screen', 'tournament-lobby-screen'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   const screen = document.getElementById(name);
   if (!screen) { console.warn('[router] unknown screen:', name); return; }
