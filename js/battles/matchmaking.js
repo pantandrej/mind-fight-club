@@ -152,11 +152,9 @@ async function startMatchmaking(){
   window._confirmBotMatch = null;
   document.getElementById('mm-cancel-btn').style.display = '';
 
-  // Start battle board polling
+  // Battle board: show after 15s so real match has time to form
   const boardWrap = document.getElementById('mm-board-wrap');
-  if (boardWrap) boardWrap.style.display = '';
-  _renderBattleBoard();
-  _boardInterval = setInterval(_renderBattleBoard, 5000);
+  if (boardWrap) boardWrap.style.display = 'none';
 
   // Insert into matchmaking queue
   const {data:qRow, error} = await sb.from('matchmaking_queue').insert({
@@ -219,18 +217,12 @@ async function startMatchmaking(){
       return;
     }
 
-    // Show bot option after 10s — hide board to avoid duplication
-    if(elapsed === 10){
-      const bot = pickRandomBot();
-      window._pendingBot = bot;
-      document.getElementById('mm-bot-wrap').style.display = '';
+    // Show board after 15s (give real match time to form)
+    if(elapsed === 15){
       const boardWrap = document.getElementById('mm-board-wrap');
-      if (boardWrap) boardWrap.style.display = 'none';
-      const botBtn = document.getElementById('mm-bot-btn');
-      if(botBtn) botBtn.textContent =
-        lang==='ru'
-          ? `🤖 Играть с ${bot.flag} ${bot.name} (${bot.city})`
-          : `🤖 Play vs ${bot.flag} ${bot.name} (${bot.city})`;
+      if (boardWrap) boardWrap.style.display = '';
+      _renderBattleBoard();
+      _boardInterval = setInterval(_renderBattleBoard, 5000);
     }
     // Timer expired — offer bot, do NOT auto-start
     if(elapsed >= 30){
@@ -583,7 +575,10 @@ async function _renderBattleBoard() {
     }
 
     const all = [...rows.map(r => ({ ...r, isBot: false })), ...bots];
-    list.innerHTML = all.map(r => `
+    window._boardDataMap = {};
+    list.innerHTML = all.map((r, idx) => {
+      window._boardDataMap[idx] = r;
+      return `
       <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg2);border-radius:14px;padding:10px 14px">
         <div style="display:flex;align-items:center;gap:10px">
           <div style="width:36px;height:36px;border-radius:50%;background:rgba(108,99,255,.2);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:var(--accent2)">
@@ -594,14 +589,20 @@ async function _renderBattleBoard() {
             <div style="font-size:11px;color:var(--muted)">🟢 Онлайн</div>
           </div>
         </div>
-        <button onclick="window._acceptChallenge('${r.id}','${r.display_name.replace(/'/g,"\\'")}',${r.isBot},${r.isBot ? JSON.stringify(r.bot || null).replace(/</g,'') : 'null'})"
+        <button onclick="window._acceptBoardRow(${idx})"
           style="background:linear-gradient(135deg,#6c63ff,#a855f7);border:none;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit">
           ⚔️ Принять
         </button>
-      </div>
-    `).join('');
+      </div>`;
+    }).join('');
   } catch(e) { /* silent */ }
 }
+
+window._acceptBoardRow = function(idx) {
+  const r = window._boardDataMap?.[idx];
+  if (!r) return;
+  window._acceptChallenge(r.id, r.display_name, r.isBot, r.isBot ? r.bot : null);
+};
 
 window._acceptChallenge = async function(rowId, oppDisplayName, isBot, botData) {
   clearInterval(_boardInterval); _boardInterval = null;
