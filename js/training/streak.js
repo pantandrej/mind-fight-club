@@ -186,31 +186,30 @@ async function updateDailyStreakOnQuickPlayComplete(){
   _lastQuickPlayDate = today;
   _streakPlayedToday = true;
 
-  // Save to DB — use server RPC (handles freeze auto-apply, idempotent)
+  // Save to DB — always write the locally-calculated value first (direct update),
+  // then call RPC for milestone bonuses and freeze handling.
+  // We don't trust RPC streak value because DB may have stale/null starting state.
   if(currentUser){
     try{
-      const { data: rpcData, error: rpcErr } = await sb.rpc('record_daily_activity');
-      if(!rpcErr && rpcData?.ok){
-        // Server is authoritative — sync its values
-        newStreak = rpcData.streak ?? newStreak;
-        if(rpcData.freeze_used){
-          toast(lang==='ru'?'❄️ Заморозка сработала — серия сохранена!':'❄️ Freeze used — streak saved!', 3000);
-        }
-        if(rpcData.milestone){
-          const bonuses = {7:50, 30:200, 100:500};
-          const b = bonuses[rpcData.milestone] || '';
-          const msg = lang==='ru'
-            ? `🔥 ${rpcData.milestone} дней подряд! +${b} ⚡ нейронов`
-            : `🔥 ${rpcData.milestone}-day streak! +${b} ⚡ neurons`;
-          setTimeout(()=>toast(msg, 5000), 1500);
-        }
-        _dailyStreak = newStreak;
-        _bestDailyStreak = Math.max(_bestDailyStreak, newStreak);
-      } else {
-        // Fallback: direct update if RPC not deployed yet
-        await sb.from('profiles').update({
-          daily_streak: newStreak, best_daily_streak: newBest, streak_last_date: today
-        }).eq('id', currentUser.id);
+      // Direct update: always authoritative based on local state
+      await sb.from('profiles').update({
+        daily_streak: newStreak,
+        best_daily_streak: newBest,
+        streak_last_date: today
+      }).eq('id', currentUser.id);
+
+      // Call RPC for milestones + freeze side-effects only (ignore its streak value)
+      const { data: rpcData } = await sb.rpc('record_daily_activity');
+      if(rpcData?.freeze_used){
+        toast(lang==='ru'?'❄️ Заморозка сработала — серия сохранена!':'❄️ Freeze used — streak saved!', 3000);
+      }
+      if(rpcData?.milestone){
+        const bonuses = {7:50, 30:200, 100:500};
+        const b = bonuses[rpcData.milestone] || '';
+        const msg = lang==='ru'
+          ? `🔥 ${rpcData.milestone} дней подряд! +${b} ⚡ нейронов`
+          : `🔥 ${rpcData.milestone}-day streak! +${b} ⚡ neurons`;
+        setTimeout(()=>toast(msg, 5000), 1500);
       }
     }catch(e){ console.warn('[MFC] streak save error:', e.message); }
   }
