@@ -291,7 +291,7 @@ function applyLang(){
   setText('pm-topics',L.chooseTopic||'Выбор темы');
   setText('pm-topics-sub',lang==='ru'?'Наука, кино, спорт и другие':'Science, Cinema, Sports and more');
   setText('pm-packs',L.myPacks||'Активности');
-  setText('pm-packs-sub',lang==='ru'?'Призы, паки и проходки за нейроны':'Prizes, packs and passes for neurons');
+  setText('pm-packs-sub',lang==='ru'?'Призы, паки и бонусы за нейроны':'Prizes, packs and bonuses for neurons');
   setText('pm-daily',L.dailyChallenge||'Задание дня');
   setText('pm-daily-sub',lang==='ru'?'Выполни задание и получи бонусные нейроны':"Complete today's task for bonus neurons");
   setText('pm-random',L.randomBattle||'Случайный бой');
