@@ -242,6 +242,8 @@
   #tournaments-list-screen,
   #matchmaking,
   #club-finder,
+  #clubs-screen,
+  #team-chat-panel,
   #dating { padding-left: var(--sidebar-w); }
 
   /* ── Toast: offset from sidebar ─────────────────────────── */

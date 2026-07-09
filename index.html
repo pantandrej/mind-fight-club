@@ -842,10 +842,10 @@
 </div>
 
 <!-- ONBOARDING OVERLAY -->
-<div id="onboarding-overlay" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.85);align-items:center;justify-content:center;padding:20px"></div>
+<div id="onboarding-overlay" style="display:none;position:fixed;inset:0;z-index:700;background:rgba(0,0,0,.85);align-items:center;justify-content:center;padding:20px"></div>
 
 <!-- TEAM CHAT PANEL (overlay) -->
-<div id="team-chat-panel" style="display:none;position:fixed;inset:0;z-index:200;flex-direction:column;background:var(--bg)">
+<div id="team-chat-panel" style="display:none;position:fixed;inset:0;z-index:700;flex-direction:column;background:var(--bg)">
   <div class="hdr">
     <button class="back-btn" onclick="closeTeamChat()">←</button>
     <div style="font-weight:800;font-size:15px" id="chat-team-name">Чат команды</div>
@@ -928,7 +928,7 @@
 </div>
 
 <!-- CREATE TOURNAMENT MODAL -->
-<div id="create-trn-modal" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.7);align-items:flex-end">
+<div id="create-trn-modal" style="display:none;position:fixed;inset:0;z-index:700;background:rgba(0,0,0,.7);align-items:flex-end">
   <div style="background:var(--bg);border-radius:20px 20px 0 0;padding:20px 16px 40px;width:100%;max-height:90vh;overflow-y:auto">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
       <div style="font-size:17px;font-weight:900">➕ Создать турнир</div>
@@ -2740,7 +2740,7 @@
 </div>
 
 <!-- NAV -->
-<nav class="nav">
+<nav class="nav" style="z-index:600">
   <div class="nav-inner">
     <button class="nav-item active" id="nav-home" onclick="showScreen('home')"><div class="nav-icon">🏠</div><div class="nav-label" id="nav-home-label">Главная</div></button>
     <button class="nav-item" id="nav-quiz" onclick="showPlayMenu()"><div class="nav-icon">⚡</div><div class="nav-label" id="nav-play-label">Режимы игры</div></button>
