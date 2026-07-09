@@ -2704,9 +2704,11 @@ async function startOTGameplay(){
       a: Array.isArray(lang_a) ? lang_a : [],
       c: q.correct_index,
       t: 20,
-      img:   q.media_type==='image' ? (q.image_url||null) : null,
-      audio: q.media_type==='audio' ? q.audio_url : null,
-      video: q.media_type==='video' ? q.video_url : null,
+      img:          q.media_type==='image' ? (q.image_url||null) : null,
+      audio:        q.media_type==='audio' ? q.audio_url : null,
+      video:        q.media_type==='video' ? q.video_url : null,
+      answer_img:   q.answer_image_url||null,
+      answer_video: q.answer_video_url||null,
       explanation_ru: q.explanation_ru||null,
     };
   }).filter(Boolean);
@@ -2726,6 +2728,8 @@ function otLoadQ(){
   document.getElementById('ot-q-text').textContent = q.q;
   document.getElementById('ot-fb').className = 'fb';
   document.getElementById('ot-next-btn').className = 'next-btn';
+  const ansMedia = document.getElementById('ot-answer-media');
+  if (ansMedia) { ansMedia.style.display = 'none'; ansMedia.innerHTML = ''; }
 
   renderQMedia('ot-q-media', q);
 
@@ -2770,6 +2774,7 @@ function otPick(i){
     created_at: new Date().toISOString()
   }).then(()=>{}).catch(()=>{});
 
+  _otShowAnswerMedia(q);
   document.getElementById('ot-next-btn').className='next-btn show';
 }
 
@@ -2779,7 +2784,20 @@ function otExpire(){
   const q = otQs[otQIdx];
   document.querySelectorAll('#ot-answers .ans').forEach((b,i)=>{ b.disabled=true; if(i===q.c)b.className='ans correct'; });
   showFb('ot-fb','⏱ '+q.a[q.c], false);
+  _otShowAnswerMedia(q);
   document.getElementById('ot-next-btn').className='next-btn show';
+}
+
+function _otShowAnswerMedia(q){
+  const el = document.getElementById('ot-answer-media');
+  if (!el) return;
+  if (q.answer_video) {
+    el.innerHTML = `<video src="${q.answer_video}" controls autoplay style="width:100%;max-height:280px;border-radius:14px"></video>`;
+    el.style.display = 'block';
+  } else if (q.answer_img) {
+    el.innerHTML = `<img src="${q.answer_img}" alt="" style="width:100%;max-height:280px;object-fit:contain;background:#0a0a0f;border-radius:14px">`;
+    el.style.display = 'block';
+  }
 }
 
 function otNextQ(){
