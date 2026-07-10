@@ -151,6 +151,14 @@ function _redirectAfterAuth() {
 
   const p = new URLSearchParams(window.location.search);
   if (p.get('official') && typeof window.openOfficialTournament === 'function') {
+    // Guest finished — save their result instead of restarting the game
+    const guestResult = sessionStorage.getItem('_otGuestResult');
+    if (guestResult && typeof window._saveGuestTournamentResult === 'function') {
+      window._saveGuestTournamentResult(p.get('official'), JSON.parse(guestResult));
+      return;
+    }
+    // Game already in progress or finished — don't restart
+    if (window._otFinished) return;
     window.openOfficialTournament(p.get('official'), p.get('ac')); return;
   }
   const hypeSlug  = p.get('hype')  || sessionStorage.getItem('mfc_pending_hype') || window._hypeAutoSlug || null;

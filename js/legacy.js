@@ -2694,7 +2694,7 @@ async function joinOfficialTournament(){
 async function startOTGameplay(){
   if(!otData) return;
   clearInterval(otPollInt);
-  startIntegrity('tournament');
+  // No integrity check for live tournaments — switching screens is normal
   document.getElementById('ot-lobby-section').style.display='none';
   document.getElementById('ot-play-section').style.display='block';
 
@@ -2728,18 +2728,83 @@ async function startOTGameplay(){
   }).filter(Boolean);
 
   otQIdx=0; otScore=0; otCorrect=0; otRoundScore=0; otDisqualified=false;
-  otLoadQ();
+  window._otFinished = false;
+
+  // Show org slides before starting if tournament has them
+  const orgSlides = otData.org_slides_json;
+  if (orgSlides && orgSlides.length) {
+    _showOrgSlidesSequence(orgSlides, 0, () => otLoadQ());
+  } else {
+    otLoadQ();
+  }
+}
+
+function _showOrgSlidesSequence(slides, idx, onDone) {
+  if (idx >= slides.length) { onDone(); return; }
+  const slide = slides[idx];
+  if (slide.before_q !== 1 && (otQIdx + 1) !== slide.before_q) {
+    _showOrgSlidesSequence(slides, idx + 1, onDone);
+    return;
+  }
+  _showOrgSlideOverlay(slide.url, slide.duration || 10000, () => {
+    _showOrgSlidesSequence(slides, idx + 1, onDone);
+  });
+}
+
+function _showOrgSlideOverlay(url, duration, onDone) {
+  let overlay = document.getElementById('ot-org-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'ot-org-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:9990;background:#000;display:flex;align-items:center;justify-content:center;flex-direction:column';
+    document.body.appendChild(overlay);
+  }
+  overlay.innerHTML = `
+    <img src="${url}" style="max-width:100%;max-height:90vh;object-fit:contain">
+    <div id="ot-org-bar-wrap" style="width:80%;max-width:500px;height:4px;background:rgba(255,255,255,.2);border-radius:2px;margin-top:16px">
+      <div id="ot-org-bar" style="height:4px;background:var(--accent);border-radius:2px;width:100%;transition:width ${duration}ms linear"></div>
+    </div>`;
+  overlay.style.display = 'flex';
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    const bar = document.getElementById('ot-org-bar');
+    if (bar) bar.style.width = '0%';
+  }));
+  setTimeout(() => {
+    overlay.style.display = 'none';
+    onDone();
+  }, duration);
 }
 
 function otLoadQ(){
   const q = otQs[otQIdx];
   if(!q){ otFinish(); return; }
+
+  // Check if there's an org slide to show before this question
+  const orgSlides = otData?.org_slides_json;
+  if (orgSlides && otQIdx > 0) {
+    const slide = orgSlides.find(s => s.before_q === otQIdx + 1);
+    if (slide) {
+      _showOrgSlideOverlay(slide.url, slide.duration || 10000, () => _doLoadQ(q));
+      return;
+    }
+  }
+  _doLoadQ(q);
+}
+
+function _doLoadQ(q){
   otAnswered = false;
   clearInterval(otTimerInt);
 
   document.getElementById('ot-cat-pill').textContent = q.cat||'';
   document.getElementById('ot-counter').textContent = (otQIdx+1)+'/'+otQs.length;
-  document.getElementById('ot-q-text').textContent = q.q;
+  // Hide text when slide image carries the question
+  const qtextEl = document.getElementById('ot-q-text');
+  if (q.img) {
+    qtextEl.style.display = 'none';
+  } else {
+    qtextEl.style.display = '';
+    qtextEl.textContent = q.q;
+  }
   document.getElementById('ot-fb').className = 'fb';
   document.getElementById('ot-next-btn').className = 'next-btn';
   const ansMedia = document.getElementById('ot-answer-media');
@@ -2825,7 +2890,7 @@ function otNextQ(){
 async function otFinish(){
   stopMedia();
   clearInterval(otTimerInt);
-  stopIntegrity();
+  window._otFinished = true;
   if(currentUser && otData){
     await sb.from('official_tournament_players').update({
       score: otDisqualified ? 0 : otScore,
@@ -2834,6 +2899,15 @@ async function otFinish(){
       finished_at: new Date().toISOString(),
       disqualified: otDisqualified
     }).eq('tournament_id', otData.id).eq('user_id', currentUser.id);
+  } else if(!currentUser && otData) {
+    // Save guest result so it can be claimed after login
+    sessionStorage.setItem('_otGuestResult', JSON.stringify({
+      tournament_id: otData.id,
+      score: otDisqualified ? 0 : otScore,
+      correct_count: otDisqualified ? 0 : otCorrect,
+      total_count: otQs.length,
+      disqualified: otDisqualified
+    }));
   }
   track('official_tournament_completed', {code: otData?.code, score: otDisqualified ? 0 : otScore, disqualified: otDisqualified});
   showOTFinished();
@@ -2894,6 +2968,36 @@ async function showOTFinished(){
     </div>`;
   }).join('') || '<div style="padding:14px;text-align:center;color:var(--muted)">No results yet</div>';
 }
+
+// Save guest tournament result after login
+window._saveGuestTournamentResult = async function(code, result) {
+  const name = currentUser?.user_metadata?.full_name?.split(' ')[0] || currentUser?.email?.split('@')[0] || 'Игрок';
+  // Join first (upsert)
+  await sb.from('official_tournament_players').upsert({
+    tournament_id: result.tournament_id,
+    user_id: currentUser.id,
+    display_name: name,
+    score: result.score,
+    correct_count: result.correct_count,
+    total_count: result.total_count,
+    finished_at: new Date().toISOString(),
+    disqualified: result.disqualified,
+    joined_at: new Date().toISOString()
+  }, { onConflict: 'tournament_id,user_id' });
+
+  sessionStorage.removeItem('_otGuestResult');
+  // Restore tournament finish screen with updated leaderboard
+  const {data: t} = await sb.from('official_tournaments').select('*').eq('id', result.tournament_id).single();
+  if (t) {
+    otData = t;
+    otScore = result.score;
+    otCorrect = result.correct_count;
+    otQs = { length: result.total_count };
+    otDisqualified = result.disqualified;
+    showScreen('official-tournament');
+    showOTFinished();
+  }
+};
 
 // ─── ADMIN: AI QUESTION GENERATION ───────────────────────
 window._aiGeneratedQuestions = null;
