@@ -47,12 +47,23 @@ export async function initAuth() {
     return;
   }
 
+  // Official tournament deep link — open tournament immediately without auth screen
+  if (!existingSession && !isOAuthCallback && p.get('official')) {
+    _bootAuth(false); // register listener but skip auth screen
+    if (typeof window.openOfficialTournament === 'function') {
+      window.openOfficialTournament(p.get('official'), p.get('ac') || null);
+    }
+    return;
+  }
+
   _bootAuth();
 }
 
-async function _bootAuth() {
-  showScreen('auth');
-  track('auth_screen_viewed', {});
+async function _bootAuth(showAuth = true) {
+  if (showAuth) {
+    showScreen('auth');
+    track('auth_screen_viewed', {});
+  }
 
   console.count('[auth] listener registered');
 

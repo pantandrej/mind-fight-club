@@ -2589,7 +2589,11 @@ async function loadOfficialTournament(code){
     showOTFinished();
     return;
   }
-  if(data.status === 'live' && otJoined){
+  if(data.status === 'live'){
+    if(!otJoined) {
+      // Auto-join for guests or unjoined users when tournament is already live
+      await joinOfficialTournament();
+    }
     startOTGameplay();
     return;
   }
@@ -2628,52 +2632,62 @@ async function refreshOTPlayers(){
       ${otData.status!=='lobby'?`<div class="lb-score">${p.score}</div>`:''}
     </div>`).join('');
 
+  const joinBtn = document.getElementById('ot-join-btn');
+  const joinedMsg = document.getElementById('ot-joined-msg');
   if(currentUser){
-    otJoined = list.some(p => p.user_id === currentUser.id); // Fix 6: use user_id
-    const joinBtn = document.getElementById('ot-join-btn');
-    const joinedMsg = document.getElementById('ot-joined-msg');
+    otJoined = list.some(p => p.user_id === currentUser.id);
     if(otJoined){ if(joinBtn)joinBtn.style.display='none'; if(joinedMsg)joinedMsg.style.display='block'; }
     else { if(joinBtn)joinBtn.style.display=''; if(joinedMsg)joinedMsg.style.display='none'; }
+  } else if(otJoined) {
+    // Guest already pressed join — keep the joined state visible
+    if(joinBtn)joinBtn.style.display='none';
+    if(joinedMsg)joinedMsg.style.display='block';
   }
 }
 
 async function joinOfficialTournament(){
-  if(!currentUser){ toast(lang==='ru'?'Войдите чтобы участвовать':'Sign in to join'); return; }
   if(!otData){ return; }
   if(otData.status==='finished'){ toast('Tournament is finished'); return; }
 
-  // Pay entry fee if tournament has one
-  if (otData.entry_fee > 0) {
-    const { data: feeRes } = await sb.rpc('pay_tournament_entry', { p_tournament_id: otData.id });
-    if (!feeRes?.ok && !feeRes?.already_paid) {
-      const reason = feeRes?.reason;
-      if (reason === 'not_enough') {
-        toast(`Недостаточно нейронов (нужно ${feeRes.need} ⚡, есть ${feeRes.have} ⚡)`);
-      } else {
-        toast('Ошибка оплаты: ' + (reason || 'unknown'));
+  if(currentUser) {
+    // Pay entry fee if tournament has one
+    if (otData.entry_fee > 0) {
+      const { data: feeRes } = await sb.rpc('pay_tournament_entry', { p_tournament_id: otData.id });
+      if (!feeRes?.ok && !feeRes?.already_paid) {
+        const reason = feeRes?.reason;
+        if (reason === 'not_enough') {
+          toast(`Недостаточно нейронов (нужно ${feeRes.need} ⚡, есть ${feeRes.have} ⚡)`);
+        } else {
+          toast('Ошибка оплаты: ' + (reason || 'unknown'));
+        }
+        return;
       }
-      return;
+      if (!feeRes?.already_paid) {
+        toast(`💰 Взнос ${otData.entry_fee} ⚡ в призовой фонд!`);
+        if (typeof window.updNeurons === 'function') window.updNeurons();
+      }
     }
-    if (!feeRes?.already_paid) {
-      toast(`💰 Взнос ${otData.entry_fee} ⚡ в призовой фонд!`);
-      if (typeof window.updNeurons === 'function') window.updNeurons();
-    }
+
+    const name = currentUser.user_metadata?.full_name?.split(' ')[0]||currentUser.email?.split('@')[0]||'Игрок';
+    const {error} = await sb.from('official_tournament_players').insert({
+      tournament_id: otData.id,
+      user_id: currentUser.id,
+      display_name: name,
+      score: 0, correct_count: 0, total_count: 0,
+      joined_at: new Date().toISOString()
+    });
+    if(error && !error.message.includes('duplicate')){ toast('Error joining: '+error.message); return; }
+    track('official_tournament_joined', {code: otData.code});
   }
 
-  const name = currentUser.user_metadata?.full_name?.split(' ')[0]||currentUser.email?.split('@')[0]||'Игрок';
-  const {error} = await sb.from('official_tournament_players').insert({
-    tournament_id: otData.id,
-    user_id: currentUser.id,
-    display_name: name,
-    score: 0, correct_count: 0, total_count: 0,
-    joined_at: new Date().toISOString()
-  });
-  if(error && !error.message.includes('duplicate')){ toast('Error joining: '+error.message); return; }
   otJoined = true;
-  track('official_tournament_joined', {code: otData.code});
   document.getElementById('ot-join-btn').style.display='none';
   document.getElementById('ot-joined-msg').style.display='block';
-  toast('✅ '+(lang==='ru'?'Вы в турнире! Ожидайте старта.':'Joined! Waiting for start...'));
+  if(!currentUser){
+    toast('✅ '+(lang==='ru'?'Начинаем! Войди после игры чтобы сохранить результат.':'Starting! Sign in after to save results.'));
+  } else {
+    toast('✅ '+(lang==='ru'?'Вы в турнире! Ожидайте старта.':'Joined! Waiting for start...'));
+  }
   refreshOTPlayers();
 }
 
@@ -2848,6 +2862,18 @@ async function showOTFinished(){
   }
 
   // Fix 1: include user_id and disqualified in select
+  // Guest prompt — show after result
+  const existingSavePrompt = document.getElementById('ot-guest-save-prompt');
+  if(existingSavePrompt) existingSavePrompt.remove();
+  if(!currentUser){
+    const prompt = document.createElement('div');
+    prompt.id = 'ot-guest-save-prompt';
+    prompt.style.cssText = 'margin:12px 0;padding:14px 16px;background:rgba(108,99,255,.15);border:1px solid var(--accent);border-radius:14px;text-align:center';
+    prompt.innerHTML = `<div style="font-size:14px;font-weight:700;margin-bottom:8px">${lang==='ru'?'Войдите чтобы сохранить результат':'Sign in to save your result'}</div>
+      <button onclick="showScreen('auth')" style="background:var(--accent);border:none;border-radius:10px;padding:10px 24px;font-size:14px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit">${lang==='ru'?'Войти / Зарегистрироваться':'Sign in / Register'}</button>`;
+    document.getElementById('ot-my-result').insertAdjacentElement('afterend', prompt);
+  }
+
   const {data: players} = await sb.from('official_tournament_players')
     .select('user_id,display_name,score,correct_count,total_count,disqualified')
     .eq('tournament_id', otData?.id||'')
