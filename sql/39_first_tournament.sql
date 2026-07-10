@@ -119,16 +119,16 @@ BEGIN
 
   FOR i IN 1..15 LOOP
     INSERT INTO questions (
-      question_text, question_ru, answers_ru, correct_index,
+      question_text, question_ru, question_en,
+      answers_ru, answers_json, correct_index,
       image_url, audio_url, video_url,
       answer_image_url, answer_video_url,
-      explanation_ru, media_type,
-      category, status, source_type,
+      explanation_ru, media_type, question_type,
+      category, difficulty, status, source_type,
       created_at
     ) VALUES (
-      q_texts[i],
-      q_texts[i],
-      answers_list[i],
+      q_texts[i], q_texts[i], q_texts[i],
+      answers_list[i], answers_list[i],
       correct_indices[i],
       CASE WHEN image_urls[i] IS NOT NULL THEN base || image_urls[i] ELSE NULL END,
       CASE WHEN audio_urls[i] IS NOT NULL THEN base || audio_urls[i] ELSE NULL END,
@@ -136,8 +136,8 @@ BEGIN
       CASE WHEN answer_image_urls[i] IS NOT NULL THEN base || answer_image_urls[i] ELSE NULL END,
       CASE WHEN answer_video_urls[i] IS NOT NULL THEN base || answer_video_urls[i] ELSE NULL END,
       explanations[i],
-      media_types[i],
-      'general', 'published', 'official_general',
+      media_types[i], 'multiple_choice',
+      'general', 1, 'published', 'official_general',
       now()
     )
     RETURNING id INTO new_id;
