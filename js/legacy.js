@@ -2752,34 +2752,58 @@ function _showOrgSlidesSequence(slides, idx, onDone) {
   });
 }
 
+let _orgSlideTimer = null;
 function _showOrgSlideOverlay(url, duration, onDone) {
-  const playSection = document.getElementById('ot-play-section');
-  let overlay = document.getElementById('ot-org-overlay');
-  if (!overlay) {
-    overlay = document.createElement('div');
-    overlay.id = 'ot-org-overlay';
-    overlay.style.cssText = 'position:absolute;inset:0;z-index:10;background:var(--bg);display:flex;align-items:center;justify-content:center;flex-direction:column;padding:16px;box-sizing:border-box';
-    if (playSection) {
-      playSection.style.position = 'relative';
-      playSection.appendChild(overlay);
-    } else {
-      document.body.appendChild(overlay);
-    }
+  clearTimeout(_orgSlideTimer);
+  stopMedia();
+
+  // Reuse the exact same question UI — same layout as question slides
+  const qMedia = document.getElementById('ot-q-media');
+  const answersEl = document.getElementById('ot-answers');
+  const timerBar = document.getElementById('ot-timer-bar');
+  const qtextEl = document.getElementById('ot-q-text');
+  const catPill = document.getElementById('ot-cat-pill');
+  const counter = document.getElementById('ot-counter');
+  const nextBtn = document.getElementById('ot-next-btn');
+  const fb = document.getElementById('ot-fb');
+  const ansMedia = document.getElementById('ot-answer-media');
+
+  // Hide question-specific UI
+  if (qtextEl) qtextEl.style.display = 'none';
+  if (catPill) catPill.style.display = 'none';
+  if (counter) counter.style.display = 'none';
+  if (timerBar) { timerBar.parentElement.style.display = 'none'; }
+  if (fb) fb.className = 'fb';
+  if (ansMedia) { ansMedia.style.display = 'none'; ansMedia.innerHTML = ''; }
+  if (nextBtn) nextBtn.className = 'next-btn';
+
+  // Show slide in same media container
+  if (qMedia) qMedia.innerHTML = `<img src="${url}" alt="" style="width:100%;border-radius:12px;display:block">`;
+
+  // Replace answers with progress bar + "Далее" button
+  if (answersEl) {
+    answersEl.innerHTML = `
+      <div style="margin-bottom:10px;height:4px;background:rgba(255,255,255,.15);border-radius:2px;overflow:hidden">
+        <div id="ot-org-bar" style="height:4px;background:var(--accent);border-radius:2px;width:100%;transition:width ${duration}ms linear"></div>
+      </div>
+      <button id="ot-org-next-btn" onclick="window._orgSlideNext()" style="width:100%;background:var(--accent);border:none;border-radius:14px;padding:14px;font-size:16px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit">Далее →</button>`;
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const bar = document.getElementById('ot-org-bar');
+      if (bar) bar.style.width = '0%';
+    }));
   }
-  overlay.innerHTML = `
-    <img src="${url}" alt="" style="width:100%;max-height:calc(100vh - 80px);object-fit:contain;border-radius:12px">
-    <div style="width:100%;height:4px;background:rgba(255,255,255,.15);border-radius:2px;margin-top:12px">
-      <div id="ot-org-bar" style="height:4px;background:var(--accent);border-radius:2px;width:100%;transition:width ${duration}ms linear"></div>
-    </div>`;
-  overlay.style.display = 'flex';
-  requestAnimationFrame(() => requestAnimationFrame(() => {
-    const bar = document.getElementById('ot-org-bar');
-    if (bar) bar.style.width = '0%';
-  }));
-  setTimeout(() => {
-    overlay.style.display = 'none';
+
+  const finish = () => {
+    clearTimeout(_orgSlideTimer);
+    // Restore UI visibility
+    if (catPill) catPill.style.display = '';
+    if (counter) counter.style.display = '';
+    if (timerBar) timerBar.parentElement.style.display = '';
     onDone();
-  }, duration);
+  };
+
+  window._orgSlideNext = finish;
+  _orgSlideTimer = setTimeout(finish, duration);
 }
 
 function otLoadQ(){
@@ -2813,7 +2837,11 @@ function _doLoadQ(q){
     qtextEl.textContent = q.q;
   }
   document.getElementById('ot-fb').className = 'fb';
-  document.getElementById('ot-next-btn').className = 'next-btn';
+  const nextBtn = document.getElementById('ot-next-btn');
+  nextBtn.className = 'next-btn';
+  nextBtn.textContent = lang==='ru' ? 'Далее →' : 'Next →';
+  nextBtn.style.pointerEvents = '';
+  nextBtn.style.opacity = '';
   const ansMedia = document.getElementById('ot-answer-media');
   if (ansMedia) { ansMedia.style.display = 'none'; ansMedia.innerHTML = ''; }
 
@@ -2851,8 +2879,12 @@ function _doLoadQ(q){
 function otPick(i){
   if(otAnswered || otDisqualified) return;
   otAnswered = true;
-  clearInterval(otTimerInt);
   const q = otQs[otQIdx];
+  const isSync = !!otData?.sync_mode;
+
+  // In sync mode keep timer running — auto-advance on expire
+  if (!isSync) clearInterval(otTimerInt);
+
   document.querySelectorAll('#ot-answers .ans').forEach(b=>b.disabled=true);
   const pts = getFixedPoints(q.a.length);
   if(i===q.c){
@@ -2874,17 +2906,40 @@ function otPick(i){
   }).then(()=>{}).catch(()=>{});
 
   _otShowAnswerMedia(q);
-  document.getElementById('ot-next-btn').className='next-btn show';
+
+  if (isSync) {
+    // Show waiting message instead of Next button
+    const nb = document.getElementById('ot-next-btn');
+    if (nb) {
+      nb.className = 'next-btn show';
+      nb.textContent = lang==='ru' ? '⏳ Ваш ответ принят, ждём всех...' : '⏳ Answer saved, waiting...';
+      nb.style.pointerEvents = 'none';
+      nb.style.opacity = '0.7';
+    }
+  } else {
+    document.getElementById('ot-next-btn').className='next-btn show';
+  }
 }
 
 function otExpire(){
-  if(otAnswered) return;
+  const isSync = !!otData?.sync_mode;
+  if(otAnswered) {
+    // Sync mode: time's up, auto-advance
+    if (isSync) { stopMedia(); otQIdx++; if(otQIdx>=otQs.length) otFinish(); else otLoadQ(); }
+    return;
+  }
   otAnswered = true;
   const q = otQs[otQIdx];
   document.querySelectorAll('#ot-answers .ans').forEach((b,i)=>{ b.disabled=true; if(i===q.c)b.className='ans correct'; });
   showFb('ot-fb','⏱ '+q.a[q.c], false);
   _otShowAnswerMedia(q);
-  document.getElementById('ot-next-btn').className='next-btn show';
+
+  if (isSync) {
+    // Auto-advance after brief pause to show correct answer
+    setTimeout(() => { stopMedia(); otQIdx++; if(otQIdx>=otQs.length) otFinish(); else otLoadQ(); }, 2000);
+  } else {
+    document.getElementById('ot-next-btn').className='next-btn show';
+  }
 }
 
 function _otShowAnswerMedia(q){
