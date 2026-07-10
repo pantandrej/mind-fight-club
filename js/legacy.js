@@ -2718,6 +2718,7 @@ async function startOTGameplay(){
       a: Array.isArray(lang_a) ? lang_a : [],
       c: q.correct_index,
       t: 20,
+      slide_img:    q.image_url||null,
       img:          q.media_type==='image' ? (q.image_url||null) : null,
       audio:        q.media_type==='audio' ? q.audio_url : null,
       video:        q.media_type==='video' ? q.video_url : null,
@@ -2752,16 +2753,22 @@ function _showOrgSlidesSequence(slides, idx, onDone) {
 }
 
 function _showOrgSlideOverlay(url, duration, onDone) {
+  const playSection = document.getElementById('ot-play-section');
   let overlay = document.getElementById('ot-org-overlay');
   if (!overlay) {
     overlay = document.createElement('div');
     overlay.id = 'ot-org-overlay';
-    overlay.style.cssText = 'position:fixed;inset:0;z-index:9990;background:#000;display:flex;align-items:center;justify-content:center;flex-direction:column';
-    document.body.appendChild(overlay);
+    overlay.style.cssText = 'position:absolute;inset:0;z-index:10;background:var(--bg);display:flex;align-items:center;justify-content:center;flex-direction:column;padding:16px;box-sizing:border-box';
+    if (playSection) {
+      playSection.style.position = 'relative';
+      playSection.appendChild(overlay);
+    } else {
+      document.body.appendChild(overlay);
+    }
   }
   overlay.innerHTML = `
-    <img src="${url}" style="max-width:100%;max-height:90vh;object-fit:contain">
-    <div id="ot-org-bar-wrap" style="width:80%;max-width:500px;height:4px;background:rgba(255,255,255,.2);border-radius:2px;margin-top:16px">
+    <img src="${url}" alt="" style="width:100%;max-height:calc(100vh - 80px);object-fit:contain;border-radius:12px">
+    <div style="width:100%;height:4px;background:rgba(255,255,255,.15);border-radius:2px;margin-top:12px">
       <div id="ot-org-bar" style="height:4px;background:var(--accent);border-radius:2px;width:100%;transition:width ${duration}ms linear"></div>
     </div>`;
   overlay.style.display = 'flex';
@@ -2799,7 +2806,7 @@ function _doLoadQ(q){
   document.getElementById('ot-counter').textContent = (otQIdx+1)+'/'+otQs.length;
   // Hide text when slide image carries the question
   const qtextEl = document.getElementById('ot-q-text');
-  if (q.img) {
+  if (q.slide_img) {
     qtextEl.style.display = 'none';
   } else {
     qtextEl.style.display = '';
@@ -2810,7 +2817,20 @@ function _doLoadQ(q){
   const ansMedia = document.getElementById('ot-answer-media');
   if (ansMedia) { ansMedia.style.display = 'none'; ansMedia.innerHTML = ''; }
 
-  renderQMedia('ot-q-media', q);
+  // Always show slide image first, then add audio/video below if present
+  const qMedia = document.getElementById('ot-q-media');
+  if (q.slide_img) {
+    qMedia.innerHTML = `<img src="${q.slide_img}" alt="" style="width:100%;border-radius:12px;display:block">`;
+    if (q.audio) {
+      qMedia.insertAdjacentHTML('beforeend',
+        `<audio src="${q.audio}" controls autoplay style="width:100%;margin-top:8px"></audio>`);
+    } else if (q.video) {
+      qMedia.insertAdjacentHTML('beforeend',
+        `<video src="${q.video}" controls autoplay style="width:100%;border-radius:8px;margin-top:8px"></video>`);
+    }
+  } else {
+    renderQMedia('ot-q-media', q);
+  }
 
   const answersEl = document.getElementById('ot-answers');
   answersEl.innerHTML = q.a.map((a,i)=>
