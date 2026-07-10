@@ -2934,20 +2934,25 @@ function otPick(i){
 
 function otExpire(){
   const isSync = !!otData?.sync_mode;
-  if(otAnswered) {
-    // Sync mode: time's up, auto-advance
-    if (isSync) { stopMedia(); otQIdx++; if(otQIdx>=otQs.length) otFinish(); else otLoadQ(); }
-    return;
-  }
-  otAnswered = true;
   const q = otQs[otQIdx];
+
+  // Reveal correct answer for everyone (whether they answered or not)
   document.querySelectorAll('#ot-answers .ans').forEach((b,i)=>{ b.disabled=true; if(i===q.c)b.className='ans correct'; });
-  showFb('ot-fb','⏱ '+q.a[q.c], false);
+  if(!otAnswered){
+    otAnswered = true;
+    showFb('ot-fb','⏱ '+q.a[q.c], false);
+  } else {
+    // Show whether they were right
+    const myBtn = document.getElementById('ot-answers')?.querySelectorAll('.ans');
+    if(myBtn) showFb('ot-fb', q.a[q.c], true);
+  }
   _otShowAnswerMedia(q);
 
   if (isSync) {
-    // Auto-advance after brief pause to show correct answer
-    setTimeout(() => { stopMedia(); otQIdx++; if(otQIdx>=otQs.length) otFinish(); else otLoadQ(); }, 2000);
+    const nb = document.getElementById('ot-next-btn');
+    if(nb){ nb.className='next-btn show'; nb.textContent=lang==='ru'?'Далее →':'Next →'; nb.style.pointerEvents=''; nb.style.opacity=''; }
+    // Auto-advance after 4s so everyone can see the answer
+    setTimeout(() => { stopMedia(); otQIdx++; if(otQIdx>=otQs.length) otFinish(); else otLoadQ(); }, 4000);
   } else {
     document.getElementById('ot-next-btn').className='next-btn show';
   }
