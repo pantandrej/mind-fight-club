@@ -2893,8 +2893,9 @@ function otPick(i){
   const correct = i===q.c;
   if(correct){ otScore+=pts; otCorrect++; otRoundScore+=pts; }
   if(isSync){
-    // Don't reveal correct answer until timer ends
-    showFb('ot-fb', correct ? '✓ +'+pts : '✗', correct);
+    // Hide all feedback until timer ends — don't reveal correctness
+    const fb = document.getElementById('ot-fb');
+    if (fb) { fb.textContent = ''; fb.className = 'fb'; }
   } else {
     if(correct){
       document.querySelectorAll('#ot-answers .ans')[i].className='ans correct';
