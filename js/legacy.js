@@ -2908,7 +2908,8 @@ function otPick(i){
     created_at: new Date().toISOString()
   }).then(()=>{}).catch(()=>{});
 
-  _otShowAnswerMedia(q);
+  // In sync mode don't reveal answer slide until timer expires
+  if (!isSync) _otShowAnswerMedia(q);
 
   if (isSync) {
     // Show waiting message instead of Next button
