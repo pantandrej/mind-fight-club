@@ -2890,14 +2890,20 @@ function otPick(i){
 
   document.querySelectorAll('#ot-answers .ans').forEach(b=>b.disabled=true);
   const pts = getFixedPoints(q.a.length);
-  if(i===q.c){
-    document.querySelectorAll('#ot-answers .ans')[i].className='ans correct';
-    otScore+=pts; otCorrect++; otRoundScore+=pts;
-    showFb('ot-fb','✓ +'+pts, true);
+  const correct = i===q.c;
+  if(correct){ otScore+=pts; otCorrect++; otRoundScore+=pts; }
+  if(isSync){
+    // Don't reveal correct answer until timer ends
+    showFb('ot-fb', correct ? '✓ +'+pts : '✗', correct);
   } else {
-    document.querySelectorAll('#ot-answers .ans')[i].className='ans wrong';
-    document.querySelectorAll('#ot-answers .ans')[q.c].className='ans correct';
-    showFb('ot-fb','✗ '+q.a[q.c], false);
+    if(correct){
+      document.querySelectorAll('#ot-answers .ans')[i].className='ans correct';
+      showFb('ot-fb','✓ +'+pts, true);
+    } else {
+      document.querySelectorAll('#ot-answers .ans')[i].className='ans wrong';
+      document.querySelectorAll('#ot-answers .ans')[q.c].className='ans correct';
+      showFb('ot-fb','✗ '+q.a[q.c], false);
+    }
   }
   // Save answer
   sb.from('official_tournament_answers').insert({
