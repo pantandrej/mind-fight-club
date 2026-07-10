@@ -2868,10 +2868,13 @@ function _doLoadQ(q){
   // Timer
   otTimeLeft = q.t;
   const bar = document.getElementById('ot-timer-bar');
+  const secsEl = document.getElementById('ot-timer-secs');
   if(bar) bar.style.width='100%';
+  if(secsEl) secsEl.textContent = otTimeLeft;
   otTimerInt = setInterval(()=>{
     otTimeLeft--;
     if(bar) bar.style.width=(otTimeLeft/q.t*100)+'%';
+    if(secsEl) secsEl.textContent = otTimeLeft > 0 ? otTimeLeft : '';
     if(otTimeLeft<=0){ clearInterval(otTimerInt); otExpire(); }
   },1000);
 }
