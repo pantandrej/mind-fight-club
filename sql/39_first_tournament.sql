@@ -119,13 +119,14 @@ BEGIN
 
   FOR i IN 1..15 LOOP
     INSERT INTO questions (
-      question_ru, answers_ru, correct_index,
+      question_text, question_ru, answers_ru, correct_index,
       image_url, audio_url, video_url,
       answer_image_url, answer_video_url,
       explanation_ru, media_type,
       category, status, source_type,
       created_at
     ) VALUES (
+      q_texts[i],
       q_texts[i],
       answers_list[i],
       correct_indices[i],
