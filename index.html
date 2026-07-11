@@ -1688,198 +1688,45 @@
     <a href="https://supabase.com/dashboard/project/nhmidxkohjpcnhjucuuh/editor" target="_blank"
        style="font-size:11px;color:var(--accent2);text-decoration:none;font-weight:700">DB →</a>
   </div>
+  <!-- hidden elements kept for JS compatibility -->
+  <div style="display:none">
+    <div id="admin-org-alert"></div>
+    <div id="admin-org-applications"><div id="admin-org-list"></div></div>
+    <div id="admin-kpi-wrap"><div id="admin-kpi-content"></div></div>
+    <div id="admin-packs-list"></div>
+    <div id="admin-health-list"></div>
+    <div id="admin-reports-list"></div>
+    <div id="admin-analytics-content"></div>
+    <div id="admin-community-list"></div>
+    <input id="ai-topic-input"><select id="ai-count"><option value="10">10</option></select>
+    <select id="ai-lang"><option value="ru">ru</option></select>
+    <div id="ai-gen-result"></div>
+    <input id="ot-new-title"><input id="ot-new-org">
+    <select id="ot-new-qs"><option value="15">15</option></select>
+    <select id="ot-new-cat"><option value="ALL">ALL</option></select>
+    <input type="checkbox" id="ot-new-private">
+    <input id="ot-new-fee" type="number" value="0">
+    <div id="admin-kpis"></div><div id="admin-events"></div>
+  </div>
+
   <div style="width:100%;max-width:600px;padding:12px 16px 100px;display:flex;flex-direction:column;gap:10px">
 
-    <!-- Organizer applications alert -->
-    <div id="admin-org-alert" style="display:none;background:rgba(240,192,64,.1);border:1px solid rgba(240,192,64,.35);border-radius:14px;padding:12px 14px;margin-bottom:10px;cursor:pointer" onclick="loadAdminOrgApplications()">
-      <div style="display:flex;align-items:center;gap:10px">
-        <div style="font-size:22px">🏟️</div>
-        <div style="flex:1">
-          <div style="font-size:13px;font-weight:800;color:var(--gold)" id="admin-org-alert-text">Новые заявки организаторов</div>
-          <div style="font-size:11px;color:var(--muted)">Нажми чтобы просмотреть →</div>
-        </div>
-      </div>
-    </div>
-    <div id="admin-org-applications" style="display:none;background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px">
-      <div style="font-size:12px;font-weight:800;margin-bottom:10px">🏟️ Заявки организаторов</div>
-      <div id="admin-org-list"><div style="color:var(--muted);font-size:12px">Загрузка...</div></div>
-    </div>
-
-    <!-- Section: KPI Dashboard -->
-    <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--muted);margin:4px 0 8px">📊 КЛЮЧЕВЫЕ МЕТРИКИ</div>
-    <div id="admin-kpi-wrap" style="background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;padding:14px;margin-bottom:4px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <span style="font-size:12px;color:var(--muted)">Последние 30 дней</span>
-        <button onclick="loadAdminKPI()" style="background:var(--accent);border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit">↺ Загрузить</button>
-      </div>
-      <div id="admin-kpi-content">
-        <div style="color:var(--muted);font-size:12px;text-align:center;padding:8px 0">Нажми Загрузить →</div>
-      </div>
-    </div>
-
-    <!-- Section: Tester -->
-    <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--muted);margin:4px 0 2px">🧪 ТЕСТИРОВАНИЕ</div>
-    <button onclick="startTesterMode()" style="width:100%;background:rgba(240,192,64,.1);border:1px solid var(--gold);border-radius:14px;padding:14px;font-size:14px;font-weight:800;color:var(--gold);cursor:pointer;font-family:inherit;text-align:left">
-      🧪 Режим тестирования<br><span style="font-size:11px;font-weight:400;opacity:.7">Проверить и одобрить вопросы перед публикацией</span>
-    </button>
-    <button onclick="showAllQuestionsAdmin()" style="width:100%;background:rgba(108,99,255,.1);border:1px solid var(--accent);border-radius:14px;padding:14px;font-size:14px;font-weight:800;color:var(--accent2);cursor:pointer;font-family:inherit;text-align:left">
-      🗂 Все вопросы<br><span style="font-size:11px;font-weight:400;opacity:.7">Просмотр, тестирование, скрытие и удаление вопросов из базы</span>
+    <!-- Game Creator -->
+    <button onclick="showScreen('game-creator')"
+      style="width:100%;background:linear-gradient(135deg,rgba(108,99,255,.15),rgba(108,99,255,.05));border:1.5px solid var(--accent);border-radius:16px;padding:18px;font-size:15px;font-weight:800;color:var(--accent2);cursor:pointer;font-family:inherit;text-align:left">
+      🎮 Конструктор игр<br>
+      <span style="font-size:12px;font-weight:400;opacity:.7">Загрузи game.json → расставь ответы → опубликуй турнир</span>
     </button>
 
-    <!-- Section: Import -->
-    <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--muted);margin:8px 0 2px">📥 ИМПОРТ ВОПРОСОВ</div>
-    <button onclick="showAdminImportWizard()"
-      style="width:100%;background:rgba(108,99,255,.1);border:1px solid var(--accent);border-radius:14px;padding:14px;font-size:14px;font-weight:800;color:var(--accent2);cursor:pointer;font-family:inherit;text-align:left">
-      📥 Мастер импорта<br>
-      <span style="font-size:11px;font-weight:400;opacity:.7">CSV · TXT · ZIP+медиа · предпросмотр → Tester</span>
-    </button>
-    <button onclick="showAdminImports()"
-      style="width:100%;background:rgba(74,222,128,.08);border:1px solid var(--green);border-radius:14px;padding:14px;font-size:14px;font-weight:800;color:var(--green);cursor:pointer;font-family:inherit;text-align:left">
-      📋 Импорты вопросов<br>
-      <span style="font-size:11px;font-weight:400;opacity:.7">Просмотр, публикация и управление загруженными импортами</span>
-    </button>
-
-    <!-- Section: Admins -->
-    <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--muted);margin:8px 0 2px">👤 УПРАВЛЕНИЕ АДМИНАМИ</div>
-    <button onclick="showAdminUsersPanel()"
-      style="width:100%;background:rgba(240,192,64,.08);border:1px solid var(--gold);border-radius:14px;padding:14px;font-size:14px;font-weight:800;color:var(--gold);cursor:pointer;font-family:inherit;text-align:left">
-      👤 Админы и модераторы<br>
-      <span style="font-size:11px;font-weight:400;opacity:.7">Добавить, деактивировать, управлять ролями</span>
-    </button>
-
-    <!-- Section: Packs -->
-    <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--muted);margin:8px 0 2px">📦 ПАКИ</div>
-    <div id="admin-packs-list" style="background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;padding:14px;font-size:13px;color:var(--muted)">
-      <button onclick="loadAdminPacks()" style="background:var(--accent);border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit">Загрузить паки</button>
-    </div>
-
-    <!-- Section: Health Check -->
-    <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--muted);margin:8px 0 2px">🏥 HEALTH CHECK</div>
-    <div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;padding:14px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <span style="font-size:12px;color:var(--muted)">Проверка целостности базы</span>
-        <div style="display:flex;gap:6px;flex-wrap:wrap">
-          <button onclick="runHealthCheck();runLocalHealthCheck()" style="background:var(--accent);border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit">🔍 Проверить базу</button>
-          <button onclick="downloadHealthReport()" style="background:var(--bg3);border:0.5px solid var(--border);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit">⬇ JSON</button>
-          <button onclick="adminClearQuestions()" style="background:rgba(224,85,85,.1);border:0.5px solid rgba(224,85,85,.3);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;color:var(--red);cursor:pointer;font-family:inherit">🧹 Очистить локальный кэш</button>
-        </div>
-      </div>
-      <div id="admin-health-list" style="font-size:12px">
-        <div style="color:var(--muted);font-size:12px">Нажми Проверить →</div>
-      </div>
-    </div>
-
-    <!-- Section: Reports -->
-    <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--muted);margin:12px 0 2px">⚠️ ЖАЛОБЫ</div>
-    <div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;padding:14px;margin-bottom:8px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <span style="font-size:12px;color:var(--muted)">Жалобы на вопросы</span>
-        <button onclick="loadAdminReports()" style="background:var(--accent);border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit">Загрузить</button>
-      </div>
-      <div id="admin-reports-list" style="font-size:12px">
-        <div style="color:var(--muted);font-size:12px">Нажми Загрузить →</div>
-      </div>
-    </div>
-
-    <!-- Section: Analytics -->
-    <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--muted);margin:12px 0 2px">📊 АНАЛИТИКА (7 ДНЕЙ)</div>
-    <div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;padding:14px;margin-bottom:8px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <span style="font-size:12px;color:var(--muted)">Технические события</span>
-        <button onclick="loadAdminAnalytics()" style="background:var(--accent);border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit">Загрузить</button>
-      </div>
-      <div id="admin-analytics-content" style="font-size:12px">
-        <div style="color:var(--muted);font-size:12px">Нажми Загрузить →</div>
-      </div>
-    </div>
-
-    <!-- Section: Community review -->
-    <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--muted);margin:8px 0 2px">🌐 СООБЩЕСТВО</div>
-    <div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;padding:14px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <span style="font-size:12px;color:var(--muted)">Вопросы участников</span>
-        <button onclick="loadAdminCommunity()" style="background:var(--accent);border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit">Загрузить</button>
-      </div>
-      <div id="admin-community-list" style="font-size:12px;color:var(--muted)">—</div>
-    </div>
-
-    <!-- Section: Tournaments -->
-    <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--muted);margin:8px 0 2px">🏆 ТУРНИРЫ</div>
+    <!-- Active tournaments -->
+    <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--muted);margin:4px 0 2px">🏆 АКТИВНЫЕ ТУРНИРЫ</div>
     <div style="background:var(--bg2);border:0.5px solid rgba(240,192,64,.25);border-radius:14px;padding:14px">
-      <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">Создать турнир</div>
-
-      <!-- AI Question Generator -->
-      <div style="background:rgba(108,99,255,.08);border:1px solid rgba(108,99,255,.25);border-radius:12px;padding:12px;margin-bottom:12px">
-        <div style="font-size:12px;font-weight:800;color:var(--accent2);margin-bottom:8px">✨ AI-генерация вопросов</div>
-        <input id="ai-topic-input" placeholder="Тема (напр. История России, Марвел, Формула-1)"
-          style="width:100%;background:var(--bg3);border:0.5px solid var(--border);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--text);font-family:inherit;outline:none;margin-bottom:8px;box-sizing:border-box" />
-        <div style="display:flex;gap:6px;margin-bottom:8px">
-          <select id="ai-count" style="flex:1;background:var(--bg3);border:0.5px solid var(--border);border-radius:10px;padding:8px 10px;font-size:12px;color:var(--text);font-family:inherit;outline:none">
-            <option value="5">5 вопросов</option>
-            <option value="10" selected>10 вопросов</option>
-            <option value="15">15 вопросов</option>
-            <option value="20">20 вопросов</option>
-          </select>
-          <select id="ai-lang" style="flex:1;background:var(--bg3);border:0.5px solid var(--border);border-radius:10px;padding:8px 10px;font-size:12px;color:var(--text);font-family:inherit;outline:none">
-            <option value="ru">🇷🇺 Русский</option>
-            <option value="en">🇺🇸 English</option>
-          </select>
-        </div>
-        <button onclick="adminGenerateAIQuestions()" id="ai-gen-btn"
-          style="width:100%;background:linear-gradient(135deg,#6c63ff,#a78bfa);border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit;margin-bottom:6px">✨ Сгенерировать вопросы</button>
-        <div id="ai-gen-result" style="font-size:12px;color:var(--muted)"></div>
-      </div>
-
-      <input id="ot-new-title" placeholder="Название (напр. Кубок умов)"
-        style="width:100%;background:var(--bg3);border:0.5px solid var(--border);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--text);font-family:inherit;outline:none;margin-bottom:8px;box-sizing:border-box" />
-      <input id="ot-new-org" placeholder="Организация (необязательно, напр. Яндекс)"
-        style="width:100%;background:var(--bg3);border:0.5px solid var(--border);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--text);font-family:inherit;outline:none;margin-bottom:8px;box-sizing:border-box" />
-      <div style="display:flex;gap:6px;margin-bottom:8px">
-        <select id="ot-new-qs" style="flex:1;background:var(--bg3);border:0.5px solid var(--border);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--text);font-family:inherit;outline:none">
-          <option value="10">10 вопросов</option>
-          <option value="20">20 вопросов</option>
-          <option value="30">30 вопросов</option>
-        </select>
-        <select id="ot-new-cat" style="flex:1;background:var(--bg3);border:0.5px solid var(--border);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--text);font-family:inherit;outline:none">
-          <option value="ALL">Все категории</option>
-          <option value="SCIENCE">Наука</option>
-          <option value="HISTORY">История</option>
-          <option value="GEOGRAPHY">География</option>
-          <option value="CINEMA">Кино</option>
-          <option value="SPORTS">Спорт</option>
-        </select>
-      </div>
-      <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;cursor:pointer;font-size:13px;color:var(--text)">
-        <input type="checkbox" id="ot-new-private" style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer" />
-        🔒 Приватный (только по QR-коду)
-      </label>
-      <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;cursor:pointer;font-size:13px;color:var(--text)">
-        💰 Взнос (нейроны):
-        <input id="ot-new-fee" type="number" min="0" max="500" value="0" placeholder="0"
-          style="width:80px;background:var(--bg3);border:0.5px solid var(--border);border-radius:10px;padding:8px 10px;font-size:13px;color:var(--text);font-family:inherit;outline:none" />
-        <span style="color:var(--muted);font-size:12px">⚡ → победителю</span>
-      </label>
-      <button onclick="adminCreateOfficialTournament()" class="big-btn" style="font-size:13px;padding:12px">Создать турнир →</button>
-      <div id="ot-admin-list" style="margin-top:12px">
-        <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px">Активные турниры</div>
+      <div id="ot-admin-list">
         <div id="ot-admin-items" style="font-size:12px;color:var(--muted)">—</div>
       </div>
     </div>
 
-    <!-- Game Creator shortcut -->
-    <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--muted);margin:8px 0 2px">🎮 КОНСТРУКТОР ИГР</div>
-    <div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;padding:14px">
-      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Загрузи game.json после запуска <code>scripts/upload_game.py</code>, расставь правильные ответы и опубликуй.</div>
-      <button onclick="showScreen('game-creator')" class="big-btn" style="font-size:13px;padding:12px">Открыть конструктор →</button>
-    </div>
-
-    <!-- Analytics -->
-    <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--muted);margin:8px 0 2px">📊 АНАЛИТИКА</div>
-    <div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;padding:14px">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px" id="admin-kpis"></div>
-      <div id="admin-events" style="font-size:12px"></div>
-      <button onclick="loadAdminDashboard()" style="width:100%;background:var(--bg3);border:0.5px solid var(--border);border-radius:10px;padding:8px;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit;margin-top:8px">↺ Обновить</button>
-    </div>
+  </div>
 
   </div>
 </div>
