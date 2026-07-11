@@ -1966,7 +1966,7 @@ function isAdmin(){
   // Hardcoded fallback always works
   if(currentUser && ADMIN_EMAILS.includes(currentUser.email)) return true;
   // Dynamic role from admin_users table
-  return currentUserRole === 'owner' || currentUserRole === 'admin';
+  return currentUserRole === 'owner' || currentUserRole === 'admin' || currentUserRole === 'superadmin';
 }
 
 function isModerator(){
