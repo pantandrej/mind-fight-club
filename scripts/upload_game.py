@@ -225,7 +225,14 @@ def _extract_options(texts: list[str]) -> list[str]:
             if not (len(t) > 25 or t.endswith('?')):
                 options.append(t)
 
-    return options
+    # If mix of multi-char and single-digit — single digits are layout artifacts, drop them.
+    # Exception: if ALL options are single digits (e.g. Q10 "which Fabrika Zvezd: 1,2,3,4,5")
+    multi = [o for o in options if not (o.strip().lstrip('-').isdigit() and len(o.strip()) <= 2)]
+    single_only = [o for o in options if o.strip().lstrip('-').isdigit() and len(o.strip()) <= 2]
+    if multi and single_only:
+        options = multi  # drop single digits — they're visual slide labels, not answer options
+
+    return options[:8]  # cap at 8 to avoid runaway cases
 
 
 def _extract_question_text(texts: list[str], answers: list[str]) -> str:
