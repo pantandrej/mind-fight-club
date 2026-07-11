@@ -321,23 +321,18 @@ def export_slides_keynote(pptx_path: Path, out_dir: Path):
     shutil.copy(pptx_path, safe_path)
     script = f'''
 tell application "Keynote"
-  open POSIX file "{safe_path}"
-  set tries to 0
-  repeat while (count of documents) is 0 and tries < 30
-    delay 1
-    set tries to tries + 1
-  end repeat
-  delay 3
   set theDoc to document 1
   export theDoc to POSIX file "{out_dir}" as slide images with properties {{image format:JPEG, compression factor:0.9}}
-  delay 2
   close theDoc saving no
 end tell
 '''
-    print("⏳ Launching Keynote...")
-    subprocess.run(["open", "-a", "Keynote"], check=True)
-    time.sleep(5)  # wait for Keynote to start
-    print("⏳ Exporting slides (takes ~30s)...")
+    # Step 1: open file via shell and wait for Keynote to fully load it
+    print("⏳ Opening file in Keynote...")
+    subprocess.run(["open", "-a", "Keynote", str(safe_path)], check=True)
+    time.sleep(15)  # wait for PPTX conversion to complete
+
+    # Step 2: export via AppleScript (document already open)
+    print("⏳ Exporting slides...")
     result = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
     if result.returncode != 0:
         print(f"❌ Keynote error:\n{result.stderr}")
