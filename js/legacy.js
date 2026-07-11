@@ -1979,9 +1979,8 @@ async function loadCurrentUserRole(){
   if(ADMIN_EMAILS.includes(currentUser.email)){ currentUserRole = 'owner'; return; }
   try{
     const {data} = await sb.from('admin_users')
-      .select('role,is_active')
-      .eq('email', currentUser.email)
-      .eq('is_active', true)
+      .select('role')
+      .eq('user_id', currentUser.id)
       .maybeSingle();
     currentUserRole = data ? data.role : null;
   }catch(e){ currentUserRole = null; }
