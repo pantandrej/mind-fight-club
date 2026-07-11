@@ -324,7 +324,10 @@ tell application "Keynote"
   close theDoc saving no
 end tell
 '''
-    print("⏳ Exporting slides via Keynote (takes ~30s)...")
+    print("⏳ Launching Keynote...")
+    subprocess.run(["open", "-a", "Keynote"], check=True)
+    time.sleep(5)  # wait for Keynote to start
+    print("⏳ Exporting slides (takes ~30s)...")
     result = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
     if result.returncode != 0:
         print(f"❌ Keynote error:\n{result.stderr}")
