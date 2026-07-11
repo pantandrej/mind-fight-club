@@ -1958,7 +1958,7 @@ async function tournamentPreflight(tournamentId){
 
 // ADMIN DASHBOARD
 // ═══════════════════════════════════════════
-const ADMIN_EMAILS = ['pantandrej@yandex.ru']; // fallback — never remove
+const ADMIN_EMAILS = ['pantandrej@yandex.ru', 'mozgokvest.intop@gmail.com']; // fallback — never remove
 
 let currentUserRole = null; // 'owner' | 'admin' | 'moderator' | null
 
