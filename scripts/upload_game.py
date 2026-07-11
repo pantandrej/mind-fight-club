@@ -314,47 +314,31 @@ def parse_answers_from_texts(texts: list[str]) -> tuple[str, list[str]]:
 
 # ── Keynote slide export ────────────────────────────────────────
 
-def export_slides_keynote(pptx_path: Path, out_dir: Path):
+def export_slides_pdf(pdf_path: Path, out_dir: Path):
+    """Render PDF pages to JPEG using PyMuPDF (no Keynote needed)."""
+    import fitz  # PyMuPDF
     out_dir.mkdir(parents=True, exist_ok=True)
-    # Keynote fails on non-ASCII paths — copy to a safe temp path first
-    safe_path = Path("/tmp/bfc_upload_safe_input.pptx")
-    shutil.copy(pptx_path, safe_path)
-    script = f'''
-tell application "Keynote"
-  set theDoc to document 1
-  export theDoc to POSIX file "{out_dir}" as slide images with properties {{image format:JPEG, compression factor:0.9}}
-  close theDoc saving no
-end tell
-'''
-    # Step 1: open file via shell and wait for Keynote to fully load it
-    print("⏳ Opening file in Keynote...")
-    subprocess.run(["open", "-a", "Keynote", str(safe_path)], check=True)
-    time.sleep(15)  # wait for PPTX conversion to complete
-
-    # Step 2: export via AppleScript (document already open)
-    print("⏳ Exporting slides...")
-    result = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
-    if result.returncode != 0:
-        print(f"❌ Keynote error:\n{result.stderr}")
-        raise RuntimeError("Keynote export failed")
-    time.sleep(2)
+    doc = fitz.open(str(pdf_path))
+    print(f"⏳ Rendering {len(doc)} slides from PDF...")
+    for i, page in enumerate(doc, 1):
+        mat = fitz.Matrix(2.0, 2.0)  # 2x = ~144dpi, good quality
+        pix = page.get_pixmap(matrix=mat)
+        out_path = out_dir / f"Slide.{i:03d}.jpg"
+        pix.save(str(out_path))
+    doc.close()
+    print(f"✅ Rendered {len(list(out_dir.glob('*.jpg')))} slides")
 
 
 def build_slide_map(slide_dir: Path) -> dict[int, Path]:
-    """Slide number → JPEG path, handling invisible unicode chars in Keynote filenames."""
+    """Slide number → JPEG path. Handles both Keynote and PyMuPDF naming."""
     result = {}
     for f in slide_dir.iterdir():
         if f.suffix.lower() not in ('.jpg', '.jpeg'):
             continue
-        parts = f.stem.split('.')
-        num_str = parts[-1].strip().strip('‎‏​﻿')
-        try:
-            result[int(num_str)] = f
-        except ValueError:
-            # Try stripping all non-digits
-            digits = re.sub(r'\D', '', num_str)
-            if digits:
-                result[int(digits)] = f
+        # Extract any number from filename
+        digits = re.findall(r'\d+', f.stem)
+        if digits:
+            result[int(digits[-1])] = f
     return result
 
 
@@ -434,9 +418,15 @@ def main():
         pptx_path = input_path
         pptx_dir = pptx_path.parent
 
-    # Export slides
+    # Export slides — prefer PDF (fast, no Keynote needed)
     slide_out = SCRATCHPAD / folder / "slides"
-    export_slides_keynote(pptx_path, slide_out)
+    pdf_files = [f for f in pptx_dir.rglob("*.pdf") if not f.name.startswith('._')]
+    if pdf_files:
+        print(f"📄 Found PDF: {pdf_files[0].name} — using it instead of Keynote")
+        export_slides_pdf(pdf_files[0], slide_out)
+    else:
+        print("⚠️  No PDF found — falling back to Keynote export")
+        export_slides_keynote_fallback(pptx_path, slide_out)
     slide_map = build_slide_map(slide_out)
     print(f"   Slide map: {len(slide_map)} slides ({min(slide_map)} - {max(slide_map)})")
 
