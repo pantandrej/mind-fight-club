@@ -13047,3 +13047,194 @@ window.submitCreateClub = async function() {
   loadMyClub();
   openClubDetail(club.id);
 };
+
+// ═══════════════════════════════════════════════════════════════
+// GAME CREATOR
+// ═══════════════════════════════════════════════════════════════
+
+let _gcData = null; // loaded game.json
+
+function _gcShowLoaded() {
+  document.getElementById('gc-meta').style.display = '';
+  document.getElementById('gc-questions-wrap').style.display = '';
+  document.getElementById('gc-publish-wrap').style.display = '';
+
+  const code = (_gcData.folder || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  document.getElementById('gc-code').value = code;
+
+  const questionsEl = document.getElementById('gc-questions');
+  questionsEl.innerHTML = '';
+  _gcData.questions.forEach((q, qi) => {
+    const div = document.createElement('div');
+    div.style.cssText = 'background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;padding:14px';
+
+    const slideImg = q.slide_q_url
+      ? `<img src="${q.slide_q_url}" style="width:100%;border-radius:10px;margin-bottom:10px;display:block">`
+      : '';
+
+    const answersHtml = (q.answers || []).map((a, ai) => {
+      const selected = q.correct === ai;
+      return `<button onclick="gcPickAnswer(${qi},${ai})"
+        data-qi="${qi}" data-ai="${ai}"
+        style="text-align:left;width:100%;background:${selected ? 'rgba(82,196,136,.2)' : 'var(--bg3)'};
+          border:1.5px solid ${selected ? 'var(--green)' : 'var(--border)'};
+          border-radius:10px;padding:8px 12px;font-size:13px;color:var(--text);
+          cursor:pointer;font-family:inherit;margin-bottom:6px">
+        ${ai+1}. ${a}
+      </button>`;
+    }).join('');
+
+    const correct = q.correct !== null && q.correct !== undefined
+      ? `<div style="font-size:11px;color:var(--green);margin-top:4px">✅ Правильный: ${q.answers[q.correct] || '?'}</div>`
+      : `<div style="font-size:11px;color:var(--red);margin-top:4px">⚠️ Выбери правильный ответ</div>`;
+
+    div.innerHTML = `
+      <div style="font-size:11px;font-weight:800;color:var(--muted);margin-bottom:6px">ВОПРОС ${qi+1}</div>
+      ${slideImg}
+      <div style="font-size:13px;font-weight:700;margin-bottom:8px">${q.question_text || '(без текста)'}</div>
+      <div id="gc-ans-${qi}">${answersHtml}</div>
+      ${correct}
+    `;
+    div.querySelector('div:last-child').id = `gc-correct-label-${qi}`;
+    questionsEl.appendChild(div);
+  });
+}
+
+window.gcPickAnswer = function(qi, ai) {
+  _gcData.questions[qi].correct = ai;
+  // Update buttons
+  const container = document.getElementById(`gc-ans-${qi}`);
+  if (container) {
+    container.querySelectorAll('button').forEach((btn, i) => {
+      const sel = i === ai;
+      btn.style.background = sel ? 'rgba(82,196,136,.2)' : 'var(--bg3)';
+      btn.style.border = `1.5px solid ${sel ? 'var(--green)' : 'var(--border)'}`;
+    });
+  }
+  const label = document.getElementById(`gc-correct-label-${qi}`);
+  if (label) {
+    label.innerHTML = `<div style="font-size:11px;color:var(--green);margin-top:4px">✅ Правильный: ${_gcData.questions[qi].answers[ai]}</div>`;
+  }
+};
+
+window.gcLoadFromUrl = async function() {
+  const url = document.getElementById('gc-json-url').value.trim();
+  if (!url) return;
+  try {
+    const res = await fetch(url);
+    _gcData = await res.json();
+    _gcShowLoaded();
+    toast('✅ game.json загружен');
+  } catch(e) {
+    toast('❌ Ошибка загрузки: ' + e.message);
+  }
+};
+
+window.gcLoadFromFile = function(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      _gcData = JSON.parse(e.target.result);
+      _gcShowLoaded();
+      toast('✅ Файл загружен');
+    } catch(err) {
+      toast('❌ Неверный JSON');
+    }
+  };
+  reader.readAsText(file);
+};
+
+window.gcPublish = async function() {
+  if (!_gcData) return;
+  const name = document.getElementById('gc-name').value.trim();
+  const code = document.getElementById('gc-code').value.trim().toUpperCase();
+  const type = document.getElementById('gc-type').value;
+  const time = parseInt(document.getElementById('gc-time').value) || 20;
+  const sync = document.getElementById('gc-sync').checked;
+  const statusEl = document.getElementById('gc-publish-status');
+
+  if (!name) { toast('Введи название'); return; }
+  if (!code) { toast('Введи код'); return; }
+
+  const unanswered = _gcData.questions.filter(q => q.correct === null || q.correct === undefined);
+  if (unanswered.length) {
+    toast(`⚠️ Выбери правильный ответ для ${unanswered.length} вопросов`);
+    return;
+  }
+
+  statusEl.textContent = '⏳ Публикация...';
+
+  try {
+    if (type === 'tournament') {
+      // Build org_slides_json from game.json org slides
+      const orgSlides = (_gcData.org_slides || []).map((org, i) => {
+        // Try to figure out before_q: org slides appear before rounds
+        // Org 0 = rules (before Q1), Org 1 = Round1 (before Q1), Org N = Round N (before Q(N*questions_per_round+1))
+        // Simple heuristic: evenly distribute
+        const qCount = _gcData.questions.length;
+        const qPerRound = Math.round(qCount / Math.max(1, _gcData.org_slides.length - 1));
+        let beforeQ = i === 0 ? 1 : Math.min(i * qPerRound + 1, qCount + 1);
+        return { before_q: beforeQ, url: org.url, duration: 10000 };
+      });
+
+      // 1. Insert tournament
+      const { data: t, error: te } = await sb.from('official_tournaments').insert({
+        name, code, status: 'lobby', sync_mode: sync, is_private: false,
+        org_slides_json: orgSlides.length ? orgSlides : null
+      }).select().single();
+      if (te) throw new Error(te.message);
+
+      // 2. Insert questions
+      for (let i = 0; i < _gcData.questions.length; i++) {
+        const q = _gcData.questions[i];
+        // Insert into questions table
+        const { data: qRow, error: qe } = await sb.from('questions').insert({
+          q: q.question_text || `Вопрос ${i+1}`,
+          a: q.answers,
+          c: q.correct,
+          t: time,
+          image_url: q.slide_q_url || null,
+          answer_image_url: q.slide_a_url || null,
+          audio_url: q.audio || null,
+          video_url: q.video || null,
+          answer_audio_url: q.answer_audio || null,
+          answer_video_url: q.answer_video || null,
+          media_type: q.audio ? 'audio' : q.video ? 'video' : q.slide_q_url ? 'image' : 'text',
+          lang: 'ru', cat: 'general'
+        }).select().single();
+        if (qe) throw new Error(qe.message);
+
+        // Link to tournament
+        await sb.from('official_tournament_questions').insert({
+          tournament_id: t.id, question_id: qRow.id, order_index: i + 1
+        });
+      }
+
+      statusEl.textContent = `✅ Турнир «${name}» создан! Код: ${code}`;
+      toast(`🎮 Турнир создан: ${code}`);
+
+    } else {
+      // Pack: insert questions with a tag
+      for (let i = 0; i < _gcData.questions.length; i++) {
+        const q = _gcData.questions[i];
+        await sb.from('questions').insert({
+          q: q.question_text || `Вопрос ${i+1}`,
+          a: q.answers, c: q.correct, t: time,
+          image_url: q.slide_q_url || null,
+          answer_image_url: q.slide_a_url || null,
+          audio_url: q.audio || null,
+          video_url: q.video || null,
+          media_type: q.audio ? 'audio' : q.video ? 'video' : q.slide_q_url ? 'image' : 'text',
+          lang: 'ru', cat: code.toLowerCase()
+        });
+      }
+      statusEl.textContent = `✅ ${_gcData.questions.length} вопросов добавлено в категорию «${code}»`;
+      toast(`✅ Пак опубликован`);
+    }
+  } catch(err) {
+    statusEl.textContent = '❌ Ошибка: ' + err.message;
+    toast('❌ ' + err.message);
+  }
+};
