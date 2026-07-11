@@ -322,7 +322,10 @@ tell application "Keynote"
 end tell
 '''
     print("⏳ Exporting slides via Keynote (takes ~30s)...")
-    subprocess.run(["osascript", "-e", script], check=True, capture_output=True)
+    result = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
+    if result.returncode != 0:
+        print(f"❌ Keynote error:\n{result.stderr}")
+        raise RuntimeError("Keynote export failed")
     time.sleep(2)
 
 
