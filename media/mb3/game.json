@@ -1,0 +1,389 @@
+{
+  "folder": "mb3",
+  "format": "A",
+  "base_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/",
+  "total_slides": 38,
+  "org_slides": [
+    {
+      "slide": 1,
+      "texts": [],
+      "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/org_01.jpg",
+      "filename": "org_01.jpg"
+    },
+    {
+      "slide": 2,
+      "texts": [
+        "Правила игры",
+        "Вас ждут 5 раундов по 3 вопроса в каждом. В первом раунде нужно выбрать из 2 вариантов ответа,",
+        "во 2-м из трёх, в 3-м из четырёх,",
+        "в 4-м из пяти и в 5-м из шести.",
+        "Максимум за игру – 15 баллов"
+      ],
+      "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/org_02.jpg",
+      "filename": "org_02.jpg"
+    },
+    {
+      "slide": 3,
+      "texts": [
+        "ПО 30 СЕКУНД",
+        "3 ВОПРОСА",
+        "ПЕРВЫЙ РАУНД",
+        "2 ВАРИАНТА ОТВЕТА"
+      ],
+      "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/org_03.jpg",
+      "filename": "org_03.jpg"
+    },
+    {
+      "slide": 7,
+      "texts": [
+        "ПО 30 СЕКУНД",
+        "3 ВОПРОСА",
+        "ВТОРОЙ РАУНД",
+        "3 ВАРИАНТА ОТВЕТА"
+      ],
+      "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/org_04.jpg",
+      "filename": "org_04.jpg"
+    },
+    {
+      "slide": 14,
+      "texts": [
+        "ПО 30 СЕКУНД",
+        "3 ВОПРОСА",
+        "ЧЕТВЁРТЫЙ РАУНД",
+        "5 ВАРИАНТОВ ОТВЕТА"
+      ],
+      "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/org_05.jpg",
+      "filename": "org_05.jpg"
+    },
+    {
+      "slide": 18,
+      "texts": [
+        "ПО 30 СЕКУНД",
+        "3 ВОПРОСА",
+        "ПЯТЫЙ РАУНД",
+        "6 ВАРИАНТОВ ОТВЕТА"
+      ],
+      "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/org_06.jpg",
+      "filename": "org_06.jpg"
+    },
+    {
+      "slide": 38,
+      "texts": [
+        "ПИШИТЕ В КОММЕНТАРИИ СКОЛЬКО БАЛЛОВ НАБРАЛИ ВЫ",
+        "СПАСИБО",
+        "ЗА ИГРУ!"
+      ],
+      "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/org_07.jpg",
+      "filename": "org_07.jpg"
+    }
+  ],
+  "questions": [
+    {
+      "n": 1,
+      "question_text": "Назовите цвет персонажа справа",
+      "answers": [
+        "Жёлтый",
+        "Красный"
+      ],
+      "correct": null,
+      "slides": {
+        "question": 4,
+        "answer": 23
+      },
+      "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/q01_sq.jpg",
+      "slide_a_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/q01_sa.jpg",
+      "audio": null,
+      "video": null,
+      "answer_audio": null,
+      "answer_video": null
+    },
+    {
+      "n": 2,
+      "question_text": "Назовите локацию, где происходит диалог из аудиофрагмента",
+      "answers": [
+        "Шир",
+        "Ривенделл"
+      ],
+      "correct": 1,
+      "slides": {
+        "question": 5,
+        "answer": 24
+      },
+      "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/q02_sq.jpg",
+      "slide_a_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/q02_sa.jpg",
+      "audio": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/2.mp3",
+      "video": null,
+      "answer_audio": null,
+      "answer_video": null
+    },
+    {
+      "n": 3,
+      "question_text": "После премии Оскар в 2013 году, правая нога актрисы стала мемом. Назовите её.",
+      "answers": [
+        "Анджелина Джоли",
+        "Сальма Хайек"
+      ],
+      "correct": null,
+      "slides": {
+        "question": 6,
+        "answer": 25
+      },
+      "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/q03_sq.jpg",
+      "slide_a_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/q03_sa.jpg",
+      "audio": null,
+      "video": null,
+      "answer_audio": null,
+      "answer_video": null
+    },
+    {
+      "n": 4,
+      "question_text": "Назовите страну происхождения супа по его описанию: готовится на основе измельченных помидоров, можно заменить густым томатным соком, с добавлением лимонного сока или уксуса, чеснока и оливкового масла, а также гренок из пшеничного хлеба",
+      "answers": [
+        "Испания",
+        "Грузия",
+        "Франция"
+      ],
+      "correct": null,
+      "slides": {
+        "question": 8,
+        "answer": 26
+      },
+      "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/q04_sq.jpg",
+      "slide_a_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/q04_sa.jpg",
+      "audio": null,
+      "video": null,
+      "answer_audio": null,
+      "answer_video": null
+    },
+    {
+      "n": 5,
+      "question_text": "Кого мы закрыли на видеофрагменте?",
+      "answers": [
+        "Тереза",
+        "Фрида",
+        "Коко"
+      ],
+      "correct": 1,
+      "slides": {
+        "question": 9,
+        "answer": 27
+      },
+      "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/q05_sq.jpg",
+      "slide_a_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/q05_sa.jpg",
+      "audio": null,
+      "video": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/5.mp4",
+      "answer_audio": null,
+      "answer_video": null
+    },
+    {
+      "n": 6,
+      "question_text": "Назовите насекомое по его звуку",
+      "answers": [
+        "Стрекоза",
+        "Майский жук",
+        "Кузнечик"
+      ],
+      "correct": 1,
+      "slides": {
+        "question": 10,
+        "answer": 28
+      },
+      "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/q06_sq.jpg",
+      "slide_a_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/q06_sa.jpg",
+      "audio": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/6.mp3",
+      "video": null,
+      "answer_audio": null,
+      "answer_video": null
+    },
+    {
+      "n": 7,
+      "question_text": "Его высота составляла порядка 120-150 метров. На протяжении многих веков он был одним из самых высоких искусственных сооружений в мире. Был единственным из Семи чудес, имевшим практическое предназначение. Выберите его.",
+      "answers": [
+        "Храм Артемиды",
+        "Колосс Родосский",
+        "Мавзолей в Галикарнасе",
+        "Александрийский маяк"
+      ],
+      "correct": 3,
+      "slides": {
+        "question": 11,
+        "answer": 29
+      },
+      "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/q07_sq.jpg",
+      "slide_a_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/q07_sa.jpg",
+      "audio": null,
+      "video": null,
+      "answer_audio": null,
+      "answer_video": null
+    },
+    {
+      "n": 8,
+      "question_text": "Что рекламируется?",
+      "answers": [
+        "Унитаз",
+        "Кофе",
+        "Зубная паста",
+        "Каша"
+      ],
+      "correct": 1,
+      "slides": {
+        "question": 12,
+        "answer": 30
+      },
+      "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/q08_sq.jpg",
+      "slide_a_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/q08_sa.jpg",
+      "audio": null,
+      "video": null,
+      "answer_audio": null,
+      "answer_video": null
+    },
+    {
+      "n": 9,
+      "question_text": "Какая Римская достопримеча-тельность закрыта на фото?",
+      "answers": [
+        "Пантеон",
+        "Колизей",
+        "Фонтан Треви",
+        "Римский форум"
+      ],
+      "correct": null,
+      "slides": {
+        "question": 13,
+        "answer": 31
+      },
+      "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/q09_sq.jpg",
+      "slide_a_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/q09_sa.jpg",
+      "audio": null,
+      "video": null,
+      "answer_audio": null,
+      "answer_video": null
+    },
+    {
+      "n": 10,
+      "question_text": "Песня участника какой «Фабрики Звёзд» загадана картинкой?",
+      "answers": [],
+      "correct": null,
+      "slides": {
+        "question": 15,
+        "answer": 32
+      },
+      "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/q10_sq.jpg",
+      "slide_a_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/q10_sa.jpg",
+      "audio": null,
+      "video": null,
+      "answer_audio": null,
+      "answer_video": null
+    },
+    {
+      "n": 11,
+      "question_text": "Расставьте имена Богов в алфавитном порядке",
+      "answers": [],
+      "correct": null,
+      "slides": {
+        "question": 16,
+        "answer": 33
+      },
+      "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/q11_sq.jpg",
+      "slide_a_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/q11_sa.jpg",
+      "audio": null,
+      "video": null,
+      "answer_audio": null,
+      "answer_video": null
+    },
+    {
+      "n": 12,
+      "question_text": "Назовите игру по видеофрагменту",
+      "answers": [
+        "Far Cry",
+        "Project I.G.I.: I’m Going In",
+        "Half-Life 2",
+        "Doom",
+        "Call of Duty"
+      ],
+      "correct": null,
+      "slides": {
+        "question": 17,
+        "answer": 34
+      },
+      "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/q12_sq.jpg",
+      "slide_a_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/q12_sa.jpg",
+      "audio": null,
+      "video": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/12.mp4",
+      "answer_audio": null,
+      "answer_video": null
+    },
+    {
+      "n": 13,
+      "question_text": "Фразы из какого фильма загаданы анаграммами?",
+      "answers": [
+        "Служебный роман",
+        "Бриллиантовая рука",
+        "Афоня",
+        "Гараж",
+        "Иван Васильевич меняет профессию",
+        "Любовь и голуби",
+        "А ТЕПЛО",
+        "ТИТЕ ВЫ ЧЕЛЯБА ВУЦ ЕСТ ТАНЮ"
+      ],
+      "correct": null,
+      "slides": {
+        "question": 19,
+        "answer": null
+      },
+      "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/q13_sq.jpg",
+      "slide_a_url": null,
+      "audio": null,
+      "video": null,
+      "answer_audio": null,
+      "answer_video": null
+    },
+    {
+      "n": 14,
+      "question_text": "Заставку какого сериала вы слышите",
+      "answers": [
+        "Игра в кальмара",
+        "Доктор Хаус",
+        "Во все тяжкие",
+        "Дом дракона",
+        "Игра Престолов",
+        "Очень странные дела"
+      ],
+      "correct": null,
+      "slides": {
+        "question": 20,
+        "answer": 36
+      },
+      "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/q14_sq.jpg",
+      "slide_a_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/q14_sa.jpg",
+      "audio": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/14.mp3",
+      "video": null,
+      "answer_audio": null,
+      "answer_video": null
+    },
+    {
+      "n": 15,
+      "question_text": "Вставьте пропущенное слово:",
+      "answers": [
+        "Выключается свет, я куда-то лечу\u000bБез тебя меня нет, ничего не хочу\u000bЭто медленный «….», это сводит с ума\u000bА они говорят: «Виновата сама»",
+        "Яд",
+        "Пульс",
+        "Счёт",
+        "Час",
+        "Сон",
+        "Дождь"
+      ],
+      "correct": 1,
+      "slides": {
+        "question": 21,
+        "answer": 37
+      },
+      "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/q15_sq.jpg",
+      "slide_a_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/q15_sa.jpg",
+      "audio": null,
+      "video": null,
+      "answer_audio": null,
+      "answer_video": null
+    }
+  ],
+  "published": false
+}
