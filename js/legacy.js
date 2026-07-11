@@ -13215,10 +13215,20 @@ window.gcPublish = async function() {
       toast(`🎮 Турнир создан: ${code}`);
 
     } else {
-      // Pack: insert questions with a tag
+      // Pack: create game_packs entry (draft = not visible in store) + link questions
+      const { data: packRow, error: pe } = await sb.from('game_packs').insert({
+        title_ru: name,
+        import_key: code.toLowerCase(),
+        status: 'draft',
+        pack_type: 'standard',
+        source_type: 'official_pack',
+      }).select().single();
+      if (pe) throw new Error(pe.message);
+
+      const packId = packRow.id;
       for (let i = 0; i < _gcData.questions.length; i++) {
         const q = _gcData.questions[i];
-        await sb.from('questions').insert({
+        const { data: qRow, error: qe } = await sb.from('questions').insert({
           q: q.question_text || `Вопрос ${i+1}`,
           a: q.answers, c: q.correct, t: time,
           image_url: q.slide_q_url || null,
@@ -13227,10 +13237,14 @@ window.gcPublish = async function() {
           video_url: q.video || null,
           media_type: q.audio ? 'audio' : q.video ? 'video' : q.slide_q_url ? 'image' : 'text',
           lang: 'ru', cat: code.toLowerCase()
-        });
+        }).select().single();
+        if (qe) throw new Error(qe.message);
+        await sb.from('game_pack_questions').insert({ game_pack_id: packId, question_id: qRow.id, order_index: i + 1 });
       }
-      statusEl.textContent = `✅ ${_gcData.questions.length} вопросов добавлено в категорию «${code}»`;
-      toast(`✅ Пак опубликован`);
+      statusEl.innerHTML = `✅ Пак создан как <b>черновик</b> (не виден в магазине)<br>
+        ID: <code>${packId}</code><br>
+        <span style="font-size:11px;color:var(--muted)">Чтобы опубликовать в магазине — измени статус на published в Supabase или добавь кнопку.</span>`;
+      toast(`✅ Пак «${name}» создан (draft)`);
     }
   } catch(err) {
     statusEl.textContent = '❌ Ошибка: ' + err.message;
