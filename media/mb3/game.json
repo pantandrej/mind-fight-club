@@ -6,9 +6,7 @@
   "org_slides": [
     {
       "slide": 1,
-      "texts": [],
-      "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/org_01.jpg",
-      "filename": "org_01.jpg"
+      "texts": []
     },
     {
       "slide": 2,
@@ -62,9 +60,7 @@
         "3 ВОПРОСА",
         "ПЯТЫЙ РАУНД",
         "6 ВАРИАНТОВ ОТВЕТА"
-      ],
-      "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/org_06.jpg",
-      "filename": "org_06.jpg"
+      ]
     },
     {
       "slide": 38,
@@ -272,7 +268,7 @@
         "answer": 32
       },
       "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/q10_sq.jpg",
-      "slide_a_url": null,
+      "slide_a_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/q10_sa.jpg",
       "audio": null,
       "video": null,
       "answer_audio": null,
@@ -388,7 +384,7 @@
         "answer": 37
       },
       "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/q15_sq.jpg",
-      "slide_a_url": null,
+      "slide_a_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/q15_sa.jpg",
       "audio": null,
       "video": null,
       "answer_audio": null,
