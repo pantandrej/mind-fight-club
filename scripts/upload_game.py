@@ -201,24 +201,27 @@ def _extract_options(texts: list[str]) -> list[str]:
             q_idx = i
             break
 
-    # Everything after question that's not a standalone integer
-    options = []
-    for t in texts[q_idx + 1:]:
+    # The LAST standalone integer in the slide is the question number — skip only that.
+    # All other numbers can be valid answer options (e.g. "1","2","3","4","5").
+    last_int_idx = None
+    for i, t in enumerate(texts):
         try:
             int(t.strip())
-            continue  # skip standalone numbers
+            last_int_idx = i
         except ValueError:
             pass
+
+    options = []
+    for i, t in enumerate(texts[q_idx + 1:], start=q_idx + 1):
+        if i == last_int_idx:
+            continue  # skip question number
         options.append(t)
 
-    # If nothing found, try all non-number non-question lines
+    # If nothing found, include all lines except question text and last number
     if not options:
-        for t in texts:
-            try:
-                int(t.strip())
+        for i, t in enumerate(texts):
+            if i == last_int_idx:
                 continue
-            except ValueError:
-                pass
             if not (len(t) > 25 or t.endswith('?')):
                 options.append(t)
 
@@ -226,15 +229,20 @@ def _extract_options(texts: list[str]) -> list[str]:
 
 
 def _extract_question_text(texts: list[str], answers: list[str]) -> str:
-    """Extract question text (not in answers, not a number)."""
+    """Extract question text (not in answers, not the trailing question number)."""
     ans_set = set(answers)
-    q_lines = []
-    for t in texts:
+    # Last standalone int = question number, skip it
+    last_int_idx = None
+    for i, t in enumerate(texts):
         try:
             int(t.strip())
-            continue
+            last_int_idx = i
         except ValueError:
             pass
+    q_lines = []
+    for i, t in enumerate(texts):
+        if i == last_int_idx:
+            continue
         if t not in ans_set:
             q_lines.append(t)
     return ' '.join(q_lines).strip()
