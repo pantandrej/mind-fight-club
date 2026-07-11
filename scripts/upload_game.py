@@ -309,9 +309,12 @@ def parse_answers_from_texts(texts: list[str]) -> tuple[str, list[str]]:
 
 def export_slides_keynote(pptx_path: Path, out_dir: Path):
     out_dir.mkdir(parents=True, exist_ok=True)
+    # Keynote fails on non-ASCII paths — copy to a safe temp path first
+    safe_path = Path("/tmp/bfc_upload_safe_input.pptx")
+    shutil.copy(pptx_path, safe_path)
     script = f'''
 tell application "Keynote"
-  open POSIX file "{pptx_path}"
+  open POSIX file "{safe_path}"
   delay 4
   set theDoc to front document
   export theDoc to POSIX file "{out_dir}" as slide images with properties {{image format:JPEG, compression factor:0.9}}
