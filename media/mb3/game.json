@@ -72,9 +72,7 @@
         "ПИШИТЕ В КОММЕНТАРИИ СКОЛЬКО БАЛЛОВ НАБРАЛИ ВЫ",
         "СПАСИБО",
         "ЗА ИГРУ!"
-      ],
-      "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/org_07.jpg",
-      "filename": "org_07.jpg"
+      ]
     }
   ],
   "questions": [
@@ -274,7 +272,7 @@
         "answer": 32
       },
       "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/q10_sq.jpg",
-      "slide_a_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/q10_sa.jpg",
+      "slide_a_url": null,
       "audio": null,
       "video": null,
       "answer_audio": null,
@@ -282,18 +280,13 @@
     },
     {
       "n": 11,
-      "question_text": "Расставьте имена Богов в алфавитном порядке",
+      "question_text": "Расставьте имена Богов в алфавитном порядке 4 5 1 2 3",
       "answers": [
         "25314",
         "13254",
         "12534",
         "31524",
-        "12354",
-        "4",
-        "5",
-        "1",
-        "2",
-        "3"
+        "12354"
       ],
       "correct": 2,
       "slides": {
@@ -301,7 +294,7 @@
         "answer": 33
       },
       "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/q11_sq.jpg",
-      "slide_a_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/q11_sa.jpg",
+      "slide_a_url": null,
       "audio": null,
       "video": null,
       "answer_audio": null,
@@ -323,7 +316,7 @@
         "answer": 34
       },
       "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/q12_sq.jpg",
-      "slide_a_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/q12_sa.jpg",
+      "slide_a_url": null,
       "audio": null,
       "video": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/12.mp4",
       "answer_audio": null,
@@ -371,7 +364,7 @@
         "answer": 36
       },
       "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/q14_sq.jpg",
-      "slide_a_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/q14_sa.jpg",
+      "slide_a_url": null,
       "audio": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/14.mp3",
       "video": null,
       "answer_audio": null,
@@ -395,7 +388,7 @@
         "answer": 37
       },
       "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/q15_sq.jpg",
-      "slide_a_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb3/q15_sa.jpg",
+      "slide_a_url": null,
       "audio": null,
       "video": null,
       "answer_audio": null,
