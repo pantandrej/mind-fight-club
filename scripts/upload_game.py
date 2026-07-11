@@ -321,8 +321,14 @@ def export_slides_keynote(pptx_path: Path, out_dir: Path):
     shutil.copy(pptx_path, safe_path)
     script = f'''
 tell application "Keynote"
-  set theDoc to open POSIX file "{safe_path}"
-  delay 10
+  open POSIX file "{safe_path}"
+  set tries to 0
+  repeat while (count of documents) is 0 and tries < 30
+    delay 1
+    set tries to tries + 1
+  end repeat
+  delay 3
+  set theDoc to document 1
   export theDoc to POSIX file "{out_dir}" as slide images with properties {{image format:JPEG, compression factor:0.9}}
   delay 2
   close theDoc saving no
