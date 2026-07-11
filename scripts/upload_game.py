@@ -314,19 +314,59 @@ def parse_answers_from_texts(texts: list[str]) -> tuple[str, list[str]]:
 
 # ── Keynote slide export ────────────────────────────────────────
 
-def export_slides_pdf(pdf_path: Path, out_dir: Path):
-    """Render PDF pages to JPEG using PyMuPDF (no Keynote needed)."""
-    import fitz  # PyMuPDF
+def export_slides_pdf(pdf_path: Path, out_dir: Path, prs: 'Presentation') -> dict[int, Path]:
+    """
+    Render PDF pages to JPEG and return {pptx_slide_1indexed: jpg_path}.
+    Matches PDF pages to PPTX slides by text content to handle hidden slides.
+    """
+    import fitz
     out_dir.mkdir(parents=True, exist_ok=True)
     doc = fitz.open(str(pdf_path))
-    print(f"⏳ Rendering {len(doc)} slides from PDF...")
+    print(f"⏳ Rendering {len(doc)} PDF pages...")
+
+    # Render all pages
+    pdf_pages = []  # [(page_idx_1based, path, text)]
     for i, page in enumerate(doc, 1):
-        mat = fitz.Matrix(2.0, 2.0)  # 2x = ~144dpi, good quality
+        mat = fitz.Matrix(2.0, 2.0)
         pix = page.get_pixmap(matrix=mat)
-        out_path = out_dir / f"Slide.{i:03d}.jpg"
+        out_path = out_dir / f"page_{i:03d}.jpg"
         pix.save(str(out_path))
+        text = page.get_text().strip()
+        pdf_pages.append((i, out_path, text))
     doc.close()
-    print(f"✅ Rendered {len(list(out_dir.glob('*.jpg')))} slides")
+    print(f"✅ Rendered {len(pdf_pages)} pages")
+
+    # Match each PDF page to a PPTX slide by text overlap
+    pptx_texts = []
+    for slide in prs.slides:
+        t = ' '.join(
+            para.text.strip()
+            for shape in slide.shapes if shape.has_text_frame
+            for para in shape.text_frame.paragraphs
+        ).strip()
+        pptx_texts.append(t)
+
+    slide_map: dict[int, Path] = {}  # pptx_slide_1indexed → path
+    used_pages = set()
+    for pptx_idx, pptx_text in enumerate(pptx_texts):
+        if not pptx_text:
+            continue
+        words = set(pptx_text.split())
+        best_score, best_page = 0, None
+        for page_idx, path, page_text in pdf_pages:
+            if page_idx in used_pages:
+                continue
+            page_words = set(page_text.split())
+            common = len(words & page_words)
+            if common > best_score:
+                best_score = common
+                best_page = (page_idx, path)
+        if best_page and best_score >= 1:
+            slide_map[pptx_idx + 1] = best_page[1]
+            used_pages.add(best_page[0])
+
+    print(f"   Matched {len(slide_map)}/{len(pptx_texts)} PPTX slides to PDF pages")
+    return slide_map
 
 
 def build_slide_map(slide_dir: Path) -> dict[int, Path]:
@@ -418,24 +458,24 @@ def main():
         pptx_path = input_path
         pptx_dir = pptx_path.parent
 
-    # Export slides — prefer PDF (fast, no Keynote needed)
-    slide_out = SCRATCHPAD / folder / "slides"
-    pdf_files = [f for f in pptx_dir.rglob("*.pdf") if not f.name.startswith('._')]
-    if pdf_files:
-        print(f"📄 Found PDF: {pdf_files[0].name} — using it instead of Keynote")
-        export_slides_pdf(pdf_files[0], slide_out)
-    else:
-        print("⚠️  No PDF found — falling back to Keynote export")
-        export_slides_keynote_fallback(pptx_path, slide_out)
-    slide_map = build_slide_map(slide_out)
-    print(f"   Slide map: {len(slide_map)} slides ({min(slide_map)} - {max(slide_map)})")
-
-    # Parse PPTX
+    # Parse PPTX first (needed for slide text-matching)
     prs = Presentation(str(pptx_path))
     if detect_format_a(prs):
         structure = parse_format_a(prs)
     else:
         structure = parse_format_b(prs)
+
+    # Export slides — prefer PDF (fast, no Keynote needed)
+    slide_out = SCRATCHPAD / folder / "slides"
+    pdf_files = [f for f in pptx_dir.rglob("*.pdf") if not f.name.startswith('._')]
+    if pdf_files:
+        print(f"📄 Found PDF: {pdf_files[0].name} — using it instead of Keynote")
+        slide_map = export_slides_pdf(pdf_files[0], slide_out, prs)
+    else:
+        print("⚠️  No PDF found in ZIP — please include a PDF export of the presentation")
+        sys.exit(1)
+    if slide_map:
+        print(f"   Slide map: {len(slide_map)} slides")
 
     fmt = structure["format"]
     dest_dir = MEDIA_ROOT / folder
