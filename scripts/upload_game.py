@@ -137,30 +137,35 @@ def parse_format_a(prs: Presentation) -> dict:
         a_idx = a_slides.get(qnum)
 
         q_texts = slide_texts(prs.slides[q_idx])
-        # Answers: all lines except trailing number and non-option lines
-        answers = _extract_options(q_texts)
-        question_text = _extract_question_text(q_texts, answers)
+        question_text = ' '.join(
+            t for t in q_texts
+            if not (t.strip().isdigit() and 1 <= int(t.strip()) <= 30 and t == q_texts[-1])
+        ).strip()
 
-        # Correct answer: FFC000-highlighted option on answer slide
+        # Prefer answer slide for options — it has clean options without decorative content
         correct = None
+        answers = []
         if a_idx is not None:
             colored = slide_colored_texts(prs.slides[a_idx])
             a_texts = slide_texts(prs.slides[a_idx])
-            a_options = _extract_options(a_texts)
+            answers = _extract_options(a_texts)
             for txt, colors in colored:
-                if CORRECT_COLOR in colors and txt in a_options:
-                    # Map back to question option index
-                    # Options may be the same text in same order
-                    for ci, opt in enumerate(answers):
-                        if opt == txt:
-                            correct = ci
-                            break
-                    if correct is None:
-                        # Try partial match
+                if CORRECT_COLOR in colors and txt in answers:
+                    correct = answers.index(txt)
+                    break
+            if correct is None:
+                for txt, colors in colored:
+                    if CORRECT_COLOR in colors:
                         for ci, opt in enumerate(answers):
                             if txt in opt or opt in txt:
                                 correct = ci
                                 break
+
+        # Fallback to question slide options if answer slide had none
+        if not answers:
+            answers = _extract_options(q_texts)
+
+        question_text = _extract_question_text(q_texts, answers)
 
         questions.append({
             "n": qnum,
