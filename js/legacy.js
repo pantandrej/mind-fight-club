@@ -13088,8 +13088,77 @@ function _gcShowLoaded() {
 }
 
 window.gcFilmClick = function(n) {
-  // Highlight the number in the filmstrip — convenience only
   toast(`Слайд ${n} — введи номер в поле вопроса`);
+};
+
+window.gcSaveDraft = function() {
+  if (!_gcData) return;
+  const questions = [];
+  for (let qi = 0; qi < _gcQCount; qi++) {
+    if (!document.getElementById(`gc-q-${qi}`)) continue;
+    const opts = [];
+    for (let ai = 0; ai < (_gcOptCount[qi] || 4); ai++) {
+      opts.push(document.getElementById(`gc-opt-txt-${qi}-${ai}`)?.value || '');
+    }
+    questions.push({
+      sq: document.getElementById(`gc-sq-${qi}`)?.value || '',
+      sa: document.getElementById(`gc-sa-${qi}`)?.value || '',
+      text: document.getElementById(`gc-qtxt-${qi}`)?.value || '',
+      media: document.getElementById(`gc-media-${qi}`)?.value || '',
+      opts,
+      correct: _gcCorrect[qi],
+    });
+  }
+  const draft = {
+    jsonUrl: document.getElementById('gc-json-url')?.value || '',
+    gameData: _gcData,
+    name: document.getElementById('gc-name')?.value || '',
+    code: document.getElementById('gc-code')?.value || '',
+    type: document.getElementById('gc-type')?.value || 'pack',
+    time: document.getElementById('gc-time')?.value || '20',
+    questions,
+    savedAt: Date.now(),
+  };
+  localStorage.setItem('gc_draft', JSON.stringify(draft));
+  toast('💾 Черновик сохранён');
+};
+
+window.gcLoadDraft = function() {
+  const raw = localStorage.getItem('gc_draft');
+  if (!raw) { toast('Нет сохранённого черновика'); return; }
+  const draft = JSON.parse(raw);
+  _gcData = draft.gameData;
+  _gcShowLoaded();
+  // Restore meta
+  if (draft.name) document.getElementById('gc-name').value = draft.name;
+  if (draft.code) document.getElementById('gc-code').value = draft.code;
+  if (draft.type) document.getElementById('gc-type').value = draft.type;
+  if (draft.time) document.getElementById('gc-time').value = draft.time;
+  if (draft.jsonUrl) document.getElementById('gc-json-url').value = draft.jsonUrl;
+  // Restore questions in reverse order (they insert at top)
+  const qs = draft.questions || [];
+  for (let i = qs.length - 1; i >= 0; i--) {
+    const q = qs[i];
+    gcAddQuestion();
+    const qi = _gcQCount - 1;
+    // fill in values after DOM is ready
+    setTimeout(((qi, q) => () => {
+      if (q.sq) { document.getElementById(`gc-sq-${qi}`).value = q.sq; gcUpdatePreview(qi,'q'); }
+      if (q.sa) { document.getElementById(`gc-sa-${qi}`).value = q.sa; gcUpdatePreview(qi,'a'); }
+      if (q.text) document.getElementById(`gc-qtxt-${qi}`).value = q.text;
+      if (q.media) { const s = document.getElementById(`gc-media-${qi}`); if(s) s.value = q.media; }
+      // fill options
+      q.opts.forEach((opt, ai) => {
+        let el = document.getElementById(`gc-opt-txt-${qi}-${ai}`);
+        if (!el) { gcAddOption(qi); el = document.getElementById(`gc-opt-txt-${qi}-${ai}`); }
+        if (el && opt) el.value = opt;
+      });
+      // set correct
+      if (q.correct !== null && q.correct !== undefined) gcSelectCorrect(qi, q.correct);
+    })(qi, q), 0);
+  }
+  const d = new Date(draft.savedAt);
+  toast(`✅ Черновик восстановлен (сохранён в ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')})`);
 };
 
 window.gcAddQuestion = function() {
