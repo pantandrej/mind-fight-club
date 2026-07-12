@@ -13149,7 +13149,8 @@ window.gcAddQuestion = function() {
       </select>
     </div>` : ''}
   </div>`;
-  document.getElementById('gc-questions').appendChild(card);
+  const container = document.getElementById('gc-questions');
+  container.insertBefore(card, container.firstChild);
 };
 
 window.gcToggleQuestion = function(qi) {
