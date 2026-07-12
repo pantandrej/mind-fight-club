@@ -1,0 +1,143 @@
+{
+  "folder": "mb4",
+  "base_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb4/",
+  "slides": [
+    {
+      "n": 1,
+      "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb4/slide_001.jpg"
+    },
+    {
+      "n": 2,
+      "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb4/slide_002.jpg"
+    },
+    {
+      "n": 3,
+      "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb4/slide_003.jpg"
+    },
+    {
+      "n": 4,
+      "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb4/slide_004.jpg"
+    },
+    {
+      "n": 5,
+      "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb4/slide_005.jpg"
+    },
+    {
+      "n": 6,
+      "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb4/slide_006.jpg"
+    },
+    {
+      "n": 7,
+      "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb4/slide_007.jpg"
+    },
+    {
+      "n": 8,
+      "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb4/slide_008.jpg"
+    },
+    {
+      "n": 9,
+      "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb4/slide_009.jpg"
+    },
+    {
+      "n": 10,
+      "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb4/slide_010.jpg"
+    },
+    {
+      "n": 11,
+      "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb4/slide_011.jpg"
+    },
+    {
+      "n": 12,
+      "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb4/slide_012.jpg"
+    },
+    {
+      "n": 13,
+      "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb4/slide_013.jpg"
+    },
+    {
+      "n": 14,
+      "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb4/slide_014.jpg"
+    },
+    {
+      "n": 15,
+      "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb4/slide_015.jpg"
+    },
+    {
+      "n": 16,
+      "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb4/slide_016.jpg"
+    },
+    {
+      "n": 17,
+      "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb4/slide_017.jpg"
+    },
+    {
+      "n": 18,
+      "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb4/slide_018.jpg"
+    },
+    {
+      "n": 19,
+      "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb4/slide_019.jpg"
+    },
+    {
+      "n": 20,
+      "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb4/slide_020.jpg"
+    },
+    {
+      "n": 21,
+      "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb4/slide_021.jpg"
+    },
+    {
+      "n": 22,
+      "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb4/slide_022.jpg"
+    },
+    {
+      "n": 23,
+      "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb4/slide_023.jpg"
+    },
+    {
+      "n": 24,
+      "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb4/slide_024.jpg"
+    },
+    {
+      "n": 25,
+      "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb4/slide_025.jpg"
+    },
+    {
+      "n": 26,
+      "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb4/slide_026.jpg"
+    },
+    {
+      "n": 27,
+      "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb4/slide_027.jpg"
+    },
+    {
+      "n": 28,
+      "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb4/slide_028.jpg"
+    },
+    {
+      "n": 29,
+      "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb4/slide_029.jpg"
+    },
+    {
+      "n": 30,
+      "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb4/slide_030.jpg"
+    },
+    {
+      "n": 31,
+      "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb4/slide_031.jpg"
+    }
+  ],
+  "media": [
+    {
+      "name": "6.mp3",
+      "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb4/6.mp3",
+      "type": "audio"
+    },
+    {
+      "name": "6╨╛.mp4",
+      "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/mb4/6╨╛.mp4",
+      "type": "video"
+    }
+  ],
+  "questions": []
+}
