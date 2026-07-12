@@ -13048,72 +13048,145 @@ window.submitCreateClub = async function() {
 };
 
 // ═══════════════════════════════════════════════════════════════
-// GAME CREATOR
+// GAME CREATOR  (manual question builder)
 // ═══════════════════════════════════════════════════════════════
 
-let _gcData = null; // loaded game.json
+let _gcData      = null;  // loaded game.json
+let _gcQCount    = 0;     // total question cards added
+let _gcCorrect   = {};    // qi → ai (selected correct option index)
+let _gcOptCount  = {};    // qi → number of option rows
 
-function _gcShowLoaded() {
-  document.getElementById('gc-meta').style.display = '';
-  document.getElementById('gc-questions-wrap').style.display = '';
-  document.getElementById('gc-publish-wrap').style.display = '';
+const _gcIS = 'background:var(--bg3);border:0.5px solid var(--border);border-radius:8px;padding:7px 10px;font-size:13px;color:var(--text);font-family:inherit;outline:none;box-sizing:border-box;width:100%';
 
-  const code = (_gcData.folder || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-  document.getElementById('gc-code').value = code;
-
-  const questionsEl = document.getElementById('gc-questions');
-  questionsEl.innerHTML = '';
-  _gcData.questions.forEach((q, qi) => {
-    const div = document.createElement('div');
-    div.style.cssText = 'background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;padding:14px';
-
-    const slideImg = q.slide_q_url
-      ? `<img src="${q.slide_q_url}" style="width:100%;border-radius:10px;margin-bottom:10px;display:block">`
-      : '';
-
-    const answersHtml = (q.answers || []).map((a, ai) => {
-      const selected = q.correct === ai;
-      return `<button onclick="gcPickAnswer(${qi},${ai})"
-        data-qi="${qi}" data-ai="${ai}"
-        style="text-align:left;width:100%;background:${selected ? 'rgba(82,196,136,.2)' : 'var(--bg3)'};
-          border:1.5px solid ${selected ? 'var(--green)' : 'var(--border)'};
-          border-radius:10px;padding:8px 12px;font-size:13px;color:var(--text);
-          cursor:pointer;font-family:inherit;margin-bottom:6px">
-        ${ai+1}. ${a}
-      </button>`;
-    }).join('');
-
-    const correct = q.correct !== null && q.correct !== undefined
-      ? `<div style="font-size:11px;color:var(--green);margin-top:4px">✅ Правильный: ${q.answers[q.correct] || '?'}</div>`
-      : `<div style="font-size:11px;color:var(--red);margin-top:4px">⚠️ Выбери правильный ответ</div>`;
-
-    div.innerHTML = `
-      <div style="font-size:11px;font-weight:800;color:var(--muted);margin-bottom:6px">ВОПРОС ${qi+1}</div>
-      ${slideImg}
-      <div style="font-size:13px;font-weight:700;margin-bottom:8px">${q.question_text || '(без текста)'}</div>
-      <div id="gc-ans-${qi}">${answersHtml}</div>
-      ${correct}
-    `;
-    div.querySelector('div:last-child').id = `gc-correct-label-${qi}`;
-    questionsEl.appendChild(div);
-  });
+function _gcSlideUrl(n) {
+  if (!_gcData || !n) return null;
+  const s = _gcData.slides.find(s => s.n === Number(n));
+  return s ? s.url : null;
 }
 
-window.gcPickAnswer = function(qi, ai) {
-  _gcData.questions[qi].correct = ai;
-  // Update buttons
-  const container = document.getElementById(`gc-ans-${qi}`);
-  if (container) {
-    container.querySelectorAll('button').forEach((btn, i) => {
-      const sel = i === ai;
-      btn.style.background = sel ? 'rgba(82,196,136,.2)' : 'var(--bg3)';
-      btn.style.border = `1.5px solid ${sel ? 'var(--green)' : 'var(--border)'}`;
-    });
+function _gcShowLoaded() {
+  const loadedEl = document.getElementById('gc-loaded');
+  loadedEl.style.display = 'flex';
+
+  // Auto-fill code from folder name
+  document.getElementById('gc-code').value =
+    (_gcData.folder || '').toUpperCase().replace(/[^A-Z0-9]/g,'');
+
+  // Filmstrip
+  const film = document.getElementById('gc-filmstrip');
+  film.innerHTML = (_gcData.slides || []).map(s =>
+    `<div style="flex-shrink:0;text-align:center">
+       <img src="${s.url}" style="height:70px;border-radius:6px;display:block;cursor:pointer"
+            onclick="gcFilmClick(${s.n})" title="Слайд ${s.n}">
+       <div style="font-size:10px;color:var(--muted);margin-top:2px">${s.n}</div>
+     </div>`
+  ).join('');
+
+  // Reset questions
+  _gcQCount = 0; _gcCorrect = {}; _gcOptCount = {};
+  document.getElementById('gc-questions').innerHTML = '';
+}
+
+window.gcFilmClick = function(n) {
+  // Highlight the number in the filmstrip — convenience only
+  toast(`Слайд ${n} — введи номер в поле вопроса`);
+};
+
+window.gcAddQuestion = function() {
+  const qi = _gcQCount++;
+  _gcCorrect[qi] = null;
+  _gcOptCount[qi] = 4;
+
+  const mediaOpts = (_gcData.media || []).map(m =>
+    `<option value="${m.url}">${m.name}</option>`).join('');
+
+  const card = document.createElement('div');
+  card.id = `gc-q-${qi}`;
+  card.style.cssText = 'background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;padding:14px';
+  card.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div style="font-size:11px;font-weight:800;color:var(--muted)">ВОПРОС ${qi+1}</div>
+      <button onclick="gcRemoveQuestion(${qi})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;line-height:1;padding:0">×</button>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+      <div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Слайд вопроса #</div>
+        <input type="number" id="gc-sq-${qi}" min="1" placeholder="№"
+          oninput="gcUpdatePreview(${qi},'q')" style="${_gcIS}">
+        <img id="gc-sq-img-${qi}" style="width:100%;border-radius:6px;margin-top:6px;display:none">
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Слайд ответа #</div>
+        <input type="number" id="gc-sa-${qi}" min="1" placeholder="№"
+          oninput="gcUpdatePreview(${qi},'a')" style="${_gcIS}">
+        <img id="gc-sa-img-${qi}" style="width:100%;border-radius:6px;margin-top:6px;display:none">
+      </div>
+    </div>
+
+    <div style="margin-bottom:10px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Текст вопроса (необязательно)</div>
+      <input type="text" id="gc-qtxt-${qi}" placeholder="Текст вопроса..." style="${_gcIS}">
+    </div>
+
+    <div style="margin-bottom:10px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Варианты — нажми ◯ рядом с правильным</div>
+      <div id="gc-opts-${qi}" style="display:flex;flex-direction:column;gap:5px">
+        ${[0,1,2,3].map(ai => _gcOptRow(qi,ai)).join('')}
+      </div>
+      <button onclick="gcAddOption(${qi})" style="margin-top:6px;background:none;border:0.5px solid var(--border);border-radius:8px;padding:5px 12px;font-size:12px;color:var(--muted);cursor:pointer;font-family:inherit">+ ещё вариант</button>
+    </div>
+
+    ${mediaOpts ? `<div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Медиа (опционально)</div>
+      <select id="gc-media-${qi}" style="${_gcIS}">
+        <option value="">Без медиа</option>${mediaOpts}
+      </select>
+    </div>` : ''}
+  `;
+  document.getElementById('gc-questions').appendChild(card);
+};
+
+function _gcOptRow(qi, ai) {
+  return `<div style="display:flex;gap:6px;align-items:center" id="gc-opt-row-${qi}-${ai}">
+    <button onclick="gcSelectCorrect(${qi},${ai})" id="gc-correct-${qi}-${ai}"
+      style="width:28px;height:28px;flex-shrink:0;border-radius:50%;border:2px solid var(--border);background:none;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;transition:all .15s">◯</button>
+    <input type="text" id="gc-opt-txt-${qi}-${ai}" placeholder="Вариант ${ai+1}"
+      style="flex:1;background:var(--bg3);border:0.5px solid var(--border);border-radius:8px;padding:7px 10px;font-size:13px;color:var(--text);font-family:inherit;outline:none">
+  </div>`;
+}
+
+window.gcUpdatePreview = function(qi, type) {
+  const n = document.getElementById(`gc-s${type}-${qi}`)?.value;
+  const img = document.getElementById(`gc-s${type}-img-${qi}`);
+  if (!img) return;
+  const url = _gcSlideUrl(n);
+  if (url) { img.src = url; img.style.display = ''; }
+  else      { img.style.display = 'none'; }
+};
+
+window.gcSelectCorrect = function(qi, ai) {
+  _gcCorrect[qi] = ai;
+  const count = _gcOptCount[qi] || 4;
+  for (let i = 0; i < count; i++) {
+    const btn = document.getElementById(`gc-correct-${qi}-${i}`);
+    if (!btn) continue;
+    const sel = i === ai;
+    btn.textContent = sel ? '✅' : '◯';
+    btn.style.border = `2px solid ${sel ? 'var(--green)' : 'var(--border)'}`;
   }
-  const label = document.getElementById(`gc-correct-label-${qi}`);
-  if (label) {
-    label.innerHTML = `<div style="font-size:11px;color:var(--green);margin-top:4px">✅ Правильный: ${_gcData.questions[qi].answers[ai]}</div>`;
-  }
+};
+
+window.gcAddOption = function(qi) {
+  const ai = _gcOptCount[qi]++;
+  if (ai >= 8) return;
+  const container = document.getElementById(`gc-opts-${qi}`);
+  if (!container) return;
+  container.insertAdjacentHTML('beforeend', _gcOptRow(qi, ai));
+};
+
+window.gcRemoveQuestion = function(qi) {
+  document.getElementById(`gc-q-${qi}`)?.remove();
 };
 
 window.gcLoadFromUrl = async function() {
@@ -13123,10 +13196,8 @@ window.gcLoadFromUrl = async function() {
     const res = await fetch(url);
     _gcData = await res.json();
     _gcShowLoaded();
-    toast('✅ game.json загружен');
-  } catch(e) {
-    toast('❌ Ошибка загрузки: ' + e.message);
-  }
+    toast('✅ game.json загружен — ' + (_gcData.slides||[]).length + ' слайдов');
+  } catch(e) { toast('❌ ' + e.message); }
 };
 
 window.gcLoadFromFile = function(input) {
@@ -13137,29 +13208,72 @@ window.gcLoadFromFile = function(input) {
     try {
       _gcData = JSON.parse(e.target.result);
       _gcShowLoaded();
-      toast('✅ Файл загружен');
-    } catch(err) {
-      toast('❌ Неверный JSON');
-    }
+      toast('✅ Файл загружен — ' + (_gcData.slides||[]).length + ' слайдов');
+    } catch { toast('❌ Неверный JSON'); }
   };
   reader.readAsText(file);
 };
 
+function _gcCollectQuestions(time) {
+  const questions = [];
+  for (let qi = 0; qi < _gcQCount; qi++) {
+    if (!document.getElementById(`gc-q-${qi}`)) continue; // removed
+
+    const sqN    = parseInt(document.getElementById(`gc-sq-${qi}`)?.value) || null;
+    const saN    = parseInt(document.getElementById(`gc-sa-${qi}`)?.value) || null;
+    const text   = document.getElementById(`gc-qtxt-${qi}`)?.value.trim() || '';
+    const media  = document.getElementById(`gc-media-${qi}`)?.value || '';
+    const correctAi = _gcCorrect[qi];
+
+    // Collect non-empty options
+    const opts = [];
+    const rawIndices = [];
+    for (let ai = 0; ai < (_gcOptCount[qi] || 4); ai++) {
+      const v = document.getElementById(`gc-opt-txt-${qi}-${ai}`)?.value.trim();
+      if (v) { opts.push(v); rawIndices.push(ai); }
+    }
+
+    // Map correctAi to filtered index
+    const correct = correctAi !== null ? rawIndices.indexOf(correctAi) : null;
+
+    const mediaItem = _gcData.media?.find(m => m.url === media);
+    questions.push({
+      n: questions.length + 1,
+      question_text: text,
+      answers: opts,
+      correct: correct >= 0 ? correct : null,
+      slide_q_url: _gcSlideUrl(sqN),
+      slide_a_url: _gcSlideUrl(saN),
+      audio: mediaItem?.type === 'audio' ? media : null,
+      video: mediaItem?.type === 'video' ? media : null,
+      t: time,
+    });
+  }
+  return questions;
+}
+
 window.gcPublish = async function() {
   if (!_gcData) return;
-  const name = document.getElementById('gc-name').value.trim();
-  const code = document.getElementById('gc-code').value.trim().toUpperCase();
-  const type = document.getElementById('gc-type').value;
-  const time = parseInt(document.getElementById('gc-time').value) || 20;
-  const sync = document.getElementById('gc-sync').checked;
+  const name     = document.getElementById('gc-name').value.trim();
+  const code     = document.getElementById('gc-code').value.trim().toUpperCase();
+  const type     = document.getElementById('gc-type').value;
+  const time     = parseInt(document.getElementById('gc-time').value) || 20;
   const statusEl = document.getElementById('gc-publish-status');
 
   if (!name) { toast('Введи название'); return; }
   if (!code) { toast('Введи код'); return; }
 
-  const unanswered = _gcData.questions.filter(q => q.correct === null || q.correct === undefined);
-  if (unanswered.length) {
-    toast(`⚠️ Выбери правильный ответ для ${unanswered.length} вопросов`);
+  const questions = _gcCollectQuestions(time);
+  if (!questions.length) { toast('Нет вопросов'); return; }
+
+  const noCorrect = questions.filter(q => q.correct === null || q.correct === undefined);
+  if (noCorrect.length) {
+    toast(`⚠️ Не выбран правильный ответ у ${noCorrect.length} вопросов`);
+    return;
+  }
+  const noOptions = questions.filter(q => !q.answers.length);
+  if (noOptions.length) {
+    toast(`⚠️ Нет вариантов у ${noOptions.length} вопросов`);
     return;
   }
 
@@ -13167,55 +13281,32 @@ window.gcPublish = async function() {
 
   try {
     if (type === 'tournament') {
-      // Build org_slides_json from game.json org slides
-      const orgSlides = (_gcData.org_slides || []).map((org, i) => {
-        // Try to figure out before_q: org slides appear before rounds
-        // Org 0 = rules (before Q1), Org 1 = Round1 (before Q1), Org N = Round N (before Q(N*questions_per_round+1))
-        // Simple heuristic: evenly distribute
-        const qCount = _gcData.questions.length;
-        const qPerRound = Math.round(qCount / Math.max(1, _gcData.org_slides.length - 1));
-        let beforeQ = i === 0 ? 1 : Math.min(i * qPerRound + 1, qCount + 1);
-        return { before_q: beforeQ, url: org.url, duration: 10000 };
-      });
-
-      // 1. Insert tournament
       const { data: t, error: te } = await sb.from('official_tournaments').insert({
-        name, code, status: 'lobby', sync_mode: sync, is_private: false,
-        org_slides_json: orgSlides.length ? orgSlides : null
+        name, code, status: 'lobby', sync_mode: false, is_private: false,
       }).select().single();
       if (te) throw new Error(te.message);
 
-      // 2. Insert questions
-      for (let i = 0; i < _gcData.questions.length; i++) {
-        const q = _gcData.questions[i];
-        // Insert into questions table
+      for (let i = 0; i < questions.length; i++) {
+        const q = questions[i];
         const { data: qRow, error: qe } = await sb.from('questions').insert({
           q: q.question_text || `Вопрос ${i+1}`,
-          a: q.answers,
-          c: q.correct,
-          t: time,
+          a: q.answers, c: q.correct, t: time,
           image_url: q.slide_q_url || null,
           answer_image_url: q.slide_a_url || null,
           audio_url: q.audio || null,
           video_url: q.video || null,
-          answer_audio_url: q.answer_audio || null,
-          answer_video_url: q.answer_video || null,
           media_type: q.audio ? 'audio' : q.video ? 'video' : q.slide_q_url ? 'image' : 'text',
           lang: 'ru', cat: 'general'
         }).select().single();
         if (qe) throw new Error(qe.message);
-
-        // Link to tournament
         await sb.from('official_tournament_questions').insert({
           tournament_id: t.id, question_id: qRow.id, order_index: i + 1
         });
       }
-
       statusEl.textContent = `✅ Турнир «${name}» создан! Код: ${code}`;
       toast(`🎮 Турнир создан: ${code}`);
 
     } else {
-      // Pack: create game_packs entry (draft = not visible in store) + link questions
       const { data: packRow, error: pe } = await sb.from('game_packs').insert({
         title_ru: name,
         import_key: code.toLowerCase(),
@@ -13226,8 +13317,8 @@ window.gcPublish = async function() {
       if (pe) throw new Error(pe.message);
 
       const packId = packRow.id;
-      for (let i = 0; i < _gcData.questions.length; i++) {
-        const q = _gcData.questions[i];
+      for (let i = 0; i < questions.length; i++) {
+        const q = questions[i];
         const { data: qRow, error: qe } = await sb.from('questions').insert({
           q: q.question_text || `Вопрос ${i+1}`,
           a: q.answers, c: q.correct, t: time,
@@ -13241,13 +13332,11 @@ window.gcPublish = async function() {
         if (qe) throw new Error(qe.message);
         await sb.from('game_pack_questions').insert({ game_pack_id: packId, question_id: qRow.id, order_index: i + 1 });
       }
-      statusEl.innerHTML = `✅ Пак создан как <b>черновик</b> (не виден в магазине)<br>
-        ID: <code>${packId}</code><br>
-        <span style="font-size:11px;color:var(--muted)">Чтобы опубликовать в магазине — измени статус на published в Supabase или добавь кнопку.</span>`;
-      toast(`✅ Пак «${name}» создан (draft)`);
+      statusEl.innerHTML = `✅ Пак «${name}» создан (черновик, не виден в магазине)<br><span style="font-size:11px;color:var(--muted)">ID: ${packId}</span>`;
+      toast(`✅ Пак «${name}» создан`);
     }
   } catch(err) {
-    statusEl.textContent = '❌ Ошибка: ' + err.message;
+    statusEl.textContent = '❌ ' + err.message;
     toast('❌ ' + err.message);
   }
 };

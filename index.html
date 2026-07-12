@@ -1742,65 +1742,64 @@
   </div>
   <div style="width:100%;max-width:720px;padding:12px 16px 100px;display:flex;flex-direction:column;gap:12px">
 
-    <!-- Load game.json -->
+    <!-- Step 1: Load game.json -->
     <div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;padding:14px">
-      <div style="font-size:12px;font-weight:800;color:var(--muted);margin-bottom:8px">1. ЗАГРУЗИТЬ GAME.JSON</div>
+      <div style="font-size:11px;font-weight:800;color:var(--muted);margin-bottom:8px">1. ЗАГРУЗИТЬ GAME.JSON</div>
       <div style="display:flex;gap:8px">
-        <input id="gc-json-url" type="text" placeholder="URL или paste JSON сюда..."
+        <input id="gc-json-url" type="text" placeholder="URL к game.json..."
           style="flex:1;background:var(--bg3);border:0.5px solid var(--border);border-radius:10px;padding:9px 12px;font-size:13px;color:var(--text);font-family:inherit;outline:none" />
         <button onclick="gcLoadFromUrl()" style="background:var(--accent2);border:none;border-radius:10px;padding:9px 16px;font-size:13px;font-weight:800;color:#000;cursor:pointer;font-family:inherit;white-space:nowrap">Загрузить</button>
       </div>
       <div style="margin-top:8px">
-        <label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer">
+        <label style="cursor:pointer">
           <input type="file" id="gc-file-input" accept=".json" onchange="gcLoadFromFile(this)" style="display:none">
           <span style="background:var(--bg3);border:0.5px solid var(--border);border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer">📂 Выбрать файл</span>
         </label>
       </div>
     </div>
 
-    <!-- Game meta (shown after load) -->
-    <div id="gc-meta" style="display:none;background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;padding:14px">
-      <div style="font-size:12px;font-weight:800;color:var(--muted);margin-bottom:10px">2. НАСТРОЙКИ ИГРЫ</div>
-      <div style="display:flex;flex-direction:column;gap:8px">
-        <label style="font-size:13px;color:var(--text)">Название
-          <input id="gc-name" type="text" placeholder="Например: Видеоигры — сезон 1"
-            style="width:100%;margin-top:4px;background:var(--bg3);border:0.5px solid var(--border);border-radius:10px;padding:8px 12px;font-size:13px;color:var(--text);font-family:inherit;outline:none;box-sizing:border-box">
-        </label>
-        <label style="font-size:13px;color:var(--text)">Код (slug)
-          <input id="gc-code" type="text" placeholder="GAME1"
-            style="width:100%;margin-top:4px;background:var(--bg3);border:0.5px solid var(--border);border-radius:10px;padding:8px 12px;font-size:13px;color:var(--text);font-family:inherit;outline:none;box-sizing:border-box;text-transform:uppercase">
-        </label>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-          <label style="font-size:13px;color:var(--text)">Тип
-            <select id="gc-type" style="width:100%;margin-top:4px;background:var(--bg3);border:0.5px solid var(--border);border-radius:10px;padding:8px 12px;font-size:13px;color:var(--text);font-family:inherit;outline:none">
-              <option value="tournament">Турнир</option>
-              <option value="pack">Пак вопросов</option>
-            </select>
-          </label>
-          <label style="font-size:13px;color:var(--text)">Время на вопрос (с)
-            <input id="gc-time" type="number" value="20" min="5" max="120"
-              style="width:100%;margin-top:4px;background:var(--bg3);border:0.5px solid var(--border);border-radius:10px;padding:8px 12px;font-size:13px;color:var(--text);font-family:inherit;outline:none;box-sizing:border-box">
-          </label>
-        </div>
-        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text);cursor:pointer">
-          <input type="checkbox" id="gc-sync" style="width:16px;height:16px">
-          Синхронный режим (таймер общий)
-        </label>
+    <!-- Content shown after load -->
+    <div id="gc-loaded" style="display:none;flex-direction:column;gap:12px">
+
+      <!-- Filmstrip -->
+      <div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;padding:12px">
+        <div style="font-size:11px;font-weight:800;color:var(--muted);margin-bottom:8px">СЛАЙДЫ — смотри номера, используй при составлении вопросов</div>
+        <div id="gc-filmstrip" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px"></div>
       </div>
-    </div>
 
-    <!-- Questions preview -->
-    <div id="gc-questions-wrap" style="display:none">
-      <div style="font-size:12px;font-weight:800;color:var(--muted);margin-bottom:6px">3. ПРАВИЛЬНЫЕ ОТВЕТЫ — нажми на нужный вариант</div>
-      <div id="gc-questions" style="display:flex;flex-direction:column;gap:10px"></div>
-    </div>
+      <!-- Meta -->
+      <div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;padding:14px">
+        <div style="font-size:11px;font-weight:800;color:var(--muted);margin-bottom:10px">2. НАСТРОЙКИ</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <input id="gc-name" type="text" placeholder="Название игры"
+            style="background:var(--bg3);border:0.5px solid var(--border);border-radius:10px;padding:8px 12px;font-size:13px;color:var(--text);font-family:inherit;outline:none">
+          <input id="gc-code" type="text" placeholder="Код (slug, напр. MB3)"
+            style="background:var(--bg3);border:0.5px solid var(--border);border-radius:10px;padding:8px 12px;font-size:13px;color:var(--text);font-family:inherit;outline:none;text-transform:uppercase">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <select id="gc-type" style="background:var(--bg3);border:0.5px solid var(--border);border-radius:10px;padding:8px 12px;font-size:13px;color:var(--text);font-family:inherit;outline:none">
+              <option value="pack">Пак вопросов</option>
+              <option value="tournament">Турнир</option>
+            </select>
+            <input id="gc-time" type="number" value="20" min="5" max="120" placeholder="Время (с)"
+              style="background:var(--bg3);border:0.5px solid var(--border);border-radius:10px;padding:8px 12px;font-size:13px;color:var(--text);font-family:inherit;outline:none">
+          </div>
+        </div>
+      </div>
 
-    <!-- Publish -->
-    <div id="gc-publish-wrap" style="display:none">
+      <!-- Questions -->
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div style="font-size:11px;font-weight:800;color:var(--muted)">3. ВОПРОСЫ</div>
+          <button onclick="gcAddQuestion()" style="background:var(--accent2);border:none;border-radius:10px;padding:7px 14px;font-size:12px;font-weight:800;color:#000;cursor:pointer;font-family:inherit">+ Добавить вопрос</button>
+        </div>
+        <div id="gc-questions" style="display:flex;flex-direction:column;gap:10px"></div>
+      </div>
+
+      <!-- Publish -->
       <button onclick="gcPublish()" class="big-btn" style="font-size:14px;padding:14px">🚀 Опубликовать</button>
-      <div id="gc-publish-status" style="font-size:12px;color:var(--muted);margin-top:8px;text-align:center"></div>
-    </div>
+      <div id="gc-publish-status" style="font-size:12px;color:var(--muted);margin-top:-4px;text-align:center"></div>
 
+    </div>
   </div>
 </div>
 
