@@ -13105,9 +13105,14 @@ window.gcAddQuestion = function() {
   card.style.cssText = 'background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;padding:14px';
   card.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-      <div style="font-size:11px;font-weight:800;color:var(--muted)">ВОПРОС ${qi+1}</div>
+      <div style="display:flex;align-items:center;gap:8px;cursor:pointer" onclick="gcToggleQuestion(${qi})">
+        <span id="gc-toggle-${qi}" style="font-size:13px;color:var(--muted);user-select:none">▾</span>
+        <div style="font-size:11px;font-weight:800;color:var(--muted)">ВОПРОС ${qi+1}</div>
+        <span id="gc-summary-${qi}" style="font-size:11px;color:var(--muted)"></span>
+      </div>
       <button onclick="gcRemoveQuestion(${qi})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;line-height:1;padding:0">×</button>
     </div>
+    <div id="gc-body-${qi}">
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
       <div>
@@ -13143,8 +13148,36 @@ window.gcAddQuestion = function() {
         <option value="">Без медиа</option>${mediaOpts}
       </select>
     </div>` : ''}
-  `;
+  </div>`;
   document.getElementById('gc-questions').appendChild(card);
+};
+
+window.gcToggleQuestion = function(qi) {
+  const body = document.getElementById(`gc-body-${qi}`);
+  const arrow = document.getElementById(`gc-toggle-${qi}`);
+  if (!body) return;
+  const collapsed = body.style.display === 'none';
+  body.style.display = collapsed ? '' : 'none';
+  arrow.textContent = collapsed ? '▾' : '▸';
+  // Update summary when collapsing
+  if (!collapsed) {
+    const sqN = document.getElementById(`gc-sq-${qi}`)?.value;
+    const saN = document.getElementById(`gc-sa-${qi}`)?.value;
+    const correctAi = _gcCorrect[qi];
+    const correctTxt = correctAi !== null
+      ? document.getElementById(`gc-opt-txt-${qi}-${correctAi}`)?.value?.trim()
+      : null;
+    const summary = document.getElementById(`gc-summary-${qi}`);
+    if (summary) {
+      const parts = [];
+      if (sqN) parts.push(`слайды ${sqN}→${saN || '?'}`);
+      if (correctTxt) parts.push(`✅ ${correctTxt}`);
+      summary.textContent = parts.length ? '· ' + parts.join(' · ') : '';
+    }
+  } else {
+    const summary = document.getElementById(`gc-summary-${qi}`);
+    if (summary) summary.textContent = '';
+  }
 };
 
 function _gcOptRow(qi, ai) {
