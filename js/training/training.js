@@ -674,12 +674,12 @@ async function playDBPack(importKey, packId){
       }
     }
 
-    // Fallback: load by import_key prefix
+    // Fallback: load by import_key prefix (e.g. mb4_q001, mb4_q002...)
     if(!data || !data.length){
-      console.warn('playDBPack: no linked questions, falling back to import_key prefix');
+      const packPrefix = (importKey||'').toLowerCase();
       ({data, error} = await sb.from('questions')
         .select('*')
-        .like('import_key', prefix+'_q%')
+        .like('import_key', packPrefix+'_q%')
         .eq('status','published')
         .order('import_key'));
     }

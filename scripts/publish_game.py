@@ -88,26 +88,42 @@ def main():
         pack_id = rows[0]['id']
         print(f"  📦 Pack id={pack_id}")
 
-        # Clear old questions
+        # Clear old questions — first get their IDs, then delete both tables
+        r = requests.get(
+            f"{SUPABASE_URL}/rest/v1/game_pack_questions?game_pack_id=eq.{pack_id}&select=question_id",
+            headers=HEADERS
+        )
+        old_q_ids = [row['question_id'] for row in (r.json() if r.ok else [])]
         delete_where('game_pack_questions', 'game_pack_id', pack_id)
+        for qid in old_q_ids:
+            delete_where('questions', 'id', qid)
+        if old_q_ids:
+            print(f"  🗑️  Удалено старых вопросов: {len(old_q_ids)}")
 
         # Insert questions
         for i, q in enumerate(questions):
+            import_key = f"{code.lower()}_q{i+1:03d}"
             qrow = post('questions', {
-                'q': q.get('question_text') or f'Вопрос {i+1}',
-                'a': q['answers'],
-                'c': q['correct'],
-                't': time_per_q,
-                'image_url':        q.get('slide_q_url'),
-                'answer_image_url': q.get('slide_a_url'),
-                'audio_url':        q.get('audio'),
-                'video_url':        q.get('video'),
+                'question_text': q.get('question_text') or f'Вопрос {i+1}',
+                'question_ru':   q.get('question_text') or f'Вопрос {i+1}',
+                'answers_json':  q['answers'],
+                'answers_ru':    q['answers'],
+                'correct_index': q['correct'],
+                'slide_img_url':        q.get('slide_q_url'),
+                'answer_slide_img_url': q.get('slide_a_url'),
+                'audio_url':     q.get('audio'),
+                'video_url':     q.get('video'),
                 'media_type': 'audio' if q.get('audio') else 'video' if q.get('video') else 'image' if q.get('slide_q_url') else 'text',
-                'lang': 'ru',
-                'cat': code.lower(),
+                'category': 'GENERAL',
+                'language': 'ru',
+                'source_type': 'official_pack',
+                'status': 'published',
+                'game_type': 'ordinary_multiple_choice',
+                'question_type': 'multiple_choice',
+                'import_key': import_key,
             })
             qid = qrow[0]['id']
-            post('game_pack_questions', {'game_pack_id': pack_id, 'question_id': qid, 'order_index': i + 1})
+            post('game_pack_questions', {'game_pack_id': pack_id, 'question_id': qid, 'position': i + 1})
             print(f"  ✅ Q{i+1}: {q.get('question_text') or '(no text)'[:40]}")
 
         print(f"\n🎉 Пак опубликован как черновик!")
