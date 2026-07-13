@@ -929,8 +929,8 @@ function showExplanation(q, isCorrect){
   let hasContent = false;
 
   // Show explanation image (answer slide)
-  if(q.explanation_img){
-    img.src = q.explanation_img;
+  if(q.answer_slide_img_url||q.explanation_img){
+    img.src = q.answer_slide_img_url||q.explanation_img;
     img.style.display = 'block';
     hasContent = true;
   } else {
