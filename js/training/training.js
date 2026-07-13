@@ -870,13 +870,18 @@ function startExtractedPack(data, packTitle, importKey){
     return;
   }
 
-  // Apply gold standard: 2×2opt, 2×3opt, 2×4opt, 2×5opt, 2×6opt
-  const standard = buildStandardPackQuestions(playable);
-  if(!standard){
-    // buildStandardPackQuestions already showed a toast with details
-    return;
+  // Admins can play any number of questions without the 10-question standard check
+  let finalQ;
+  if(isAdmin()){
+    finalQ = playable;
+  } else {
+    // Apply gold standard: 2×2opt, 2×3opt, 2×4opt, 2×5opt, 2×6opt
+    finalQ = buildStandardPackQuestions(playable);
+    if(!finalQ){
+      return;
+    }
   }
-  setState({ curQ: standard });
+  setState({ curQ: finalQ });
 
   setState({ qIdx: 0, correctCount: 0, streak: 0, bestStreak: 0, roundScore: 0 });
   _gameStartTime=Date.now(); _gameId=null;
