@@ -34,6 +34,7 @@ export function showScreen(name) {
       if (name === 'shop'    && typeof window.renderShop        === 'function') window.renderShop();
       if (name === 'teams'   && typeof window.renderTeamsScreen  === 'function') window.renderTeamsScreen();
       if (name === 'profile' && typeof window.showProfile        === 'function') window.showProfile();
+      if (name === 'admin'   && typeof window.loadAdminGames     === 'function') window.loadAdminGames();
     } catch (e) { console.error('Screen render error:', e); }
   }, 50);
 }
