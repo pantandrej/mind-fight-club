@@ -855,25 +855,35 @@ function buildStandardPackQuestions(questions){
 // ─── EXTRACTED QUESTION pack (standard quiz UI) ──────────────────
 function startExtractedPack(data, packTitle, importKey){
   // Map to playable format
-  let mapped = data.map(q=>({
-    cat: q.category||'GENERAL',
-    q: lang==='ru'?(q.question_ru||q.question_text):(q.question_text||q.question_ru),
-    a: lang==='ru'?(q.answers_ru||q.answers_json||[]):(q.answers_json||q.answers_ru||[]),
-    c: q.correct_index||0,
-    t: 20 + ((q.answers_json||q.answers_ru||[]).length || 4) * 5,
-    img:   q.media_type==='image'?(q.image_url||q.slide_img_url||null):null,
-    audio: q.media_type==='audio'?(q.audio_url||null):null,
-    video: q.media_type==='video'?(q.video_url||null):null,
-    slide_img_url:        q.slide_img_url||null,
-    answer_slide_img_url: q.answer_slide_img_url||null,
-    explanation_ru:  q.explanation_ru||null,
-    _mediaType:      q.media_type||null,
-    _questionType:   q.question_type||'multiple_choice',
-    status: q.status||'published',
-    media: { type: q.media_type||'none', url: q.image_url||q.slide_img_url||q.audio_url||q.video_url||'',
-             filename:'', placeholder:'' },
-    _id: q.id, _importKey: q.import_key||null,
-  }));
+  let mapped = data.map(q=>{
+    const ans = Array.isArray(q.answers_ru) ? q.answers_ru :
+                Array.isArray(q.answers_json) ? q.answers_json :
+                Array.isArray(q.answers) ? q.answers : [];
+    const imgUrl = q.image_url||q.slide_img_url||null;
+    const audUrl = q.audio_url||null;
+    const vidUrl = q.video_url||null;
+    const mediaUrl = imgUrl||audUrl||vidUrl||'';
+    const mediaType = q.media_type || (imgUrl?'image':audUrl?'audio':vidUrl?'video':'none');
+    return {
+      ...q,  // preserve all DB fields so toPlayableQuestion can find them
+      cat: q.category||'GENERAL',
+      q: lang==='ru'?(q.question_ru||q.question_text||''):(q.question_text||q.question_ru||''),
+      a: ans,
+      c: q.correct_index||0,
+      t: 20 + (ans.length || 4) * 5,
+      img: mediaType==='image'?imgUrl:null,
+      audio: mediaType==='audio'?audUrl:null,
+      video: mediaType==='video'?vidUrl:null,
+      slide_img_url:        q.slide_img_url||null,
+      answer_slide_img_url: q.answer_slide_img_url||null,
+      explanation_ru:  q.explanation_ru||null,
+      _mediaType:      mediaType,
+      _questionType:   q.question_type||'multiple_choice',
+      status: q.status||'published',
+      media: { type: mediaType, url: mediaUrl, filename:'', placeholder:'' },
+      _id: q.id, _importKey: q.import_key||null,
+    };
+  });
 
   // Filter out unplayable questions
   let playable = filterPlayableQuestions(mapped, {logBad: true});
