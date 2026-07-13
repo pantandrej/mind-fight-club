@@ -651,20 +651,32 @@ async function playDBPack(importKey, packId){
   const packTitle  = packData?.title_ru || packData?.title_en || importKey;
   const prefix     = (importKey||'').replace('game_','');
 
-  // Load questions: try via game_pack_questions link first, fallback to import_key prefix
+  // Load questions: first get IDs from game_pack_questions, then load questions by ID
   let data, error;
 
   if(packData?.id){
-    // Try linked questions (ordered by position)
-    ({data, error} = await sb.from('questions')
-      .select('*, game_pack_questions!inner(position)')
-      .eq('game_pack_questions.game_pack_id', packData.id)
-      .eq('status','published')
-      .order('position', {foreignTable:'game_pack_questions'}));
+    // Step 1: get question IDs ordered by position
+    const {data: links} = await sb.from('game_pack_questions')
+      .select('question_id, position')
+      .eq('game_pack_id', packData.id)
+      .order('position');
 
-    // Fallback: if no linked questions, load by import_key prefix
+    if(links && links.length){
+      const ids = links.map(r => r.question_id);
+      ({data, error} = await sb.from('questions')
+        .select('*')
+        .in('id', ids)
+        .eq('status','published'));
+      // Re-sort by position order from links
+      if(data && data.length){
+        const posMap = Object.fromEntries(links.map(r => [r.question_id, r.position]));
+        data.sort((a,b) => (posMap[a.id]||0) - (posMap[b.id]||0));
+      }
+    }
+
+    // Fallback: load by import_key prefix
     if(!data || !data.length){
-      console.warn('playDBPack: no game_pack_questions links, falling back to import_key prefix');
+      console.warn('playDBPack: no linked questions, falling back to import_key prefix');
       ({data, error} = await sb.from('questions')
         .select('*')
         .like('import_key', prefix+'_q%')
@@ -672,7 +684,6 @@ async function playDBPack(importKey, packId){
         .order('import_key'));
     }
   } else {
-    // No pack record — load by prefix directly
     ({data, error} = await sb.from('questions')
       .select('*')
       .like('import_key', prefix+'_q%')
