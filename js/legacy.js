@@ -13292,6 +13292,18 @@ window.gcRemoveQuestion = function(qi) {
   document.getElementById(`gc-q-${qi}`)?.remove();
 };
 
+window.gcExportJson = function() {
+  if (!_gcData) { toast('Сначала загрузи game.json'); return; }
+  const time = parseInt(document.getElementById('gc-time')?.value) || 20;
+  const questions = _gcCollectQuestions(time);
+  const blob = new Blob([JSON.stringify(questions, null, 2)], {type: 'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = (document.getElementById('gc-code')?.value || 'game') + '_questions.json';
+  a.click();
+  toast('✅ Скачан файл — запусти publish_game.py');
+};
+
 window.gcLoadFromUrl = async function() {
   const url = document.getElementById('gc-json-url').value.trim();
   if (!url) return;

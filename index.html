@@ -1795,10 +1795,11 @@
         <div id="gc-questions" style="display:flex;flex-direction:column;gap:10px"></div>
       </div>
 
-      <!-- Save/Restore draft -->
+      <!-- Save/Restore/Export -->
       <div style="display:flex;gap:8px">
-        <button onclick="gcSaveDraft()" style="flex:1;background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:12px;font-size:13px;font-weight:700;color:var(--text);cursor:pointer;font-family:inherit">💾 Сохранить черновик</button>
+        <button onclick="gcSaveDraft()" style="flex:1;background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:12px;font-size:13px;font-weight:700;color:var(--text);cursor:pointer;font-family:inherit">💾 Сохранить</button>
         <button onclick="gcLoadDraft()" style="flex:1;background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:12px;font-size:13px;font-weight:700;color:var(--text);cursor:pointer;font-family:inherit">📂 Восстановить</button>
+        <button onclick="gcExportJson()" style="flex:1;background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:12px;font-size:13px;font-weight:700;color:var(--text);cursor:pointer;font-family:inherit">⬇️ Экспорт</button>
       </div>
 
       <!-- Publish -->
