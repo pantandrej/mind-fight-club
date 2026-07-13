@@ -2020,6 +2020,7 @@ async function loadAdminDashboard(){
 
 async function _loadAdminDashboardInner(kpiEl, evEl){
   loadAdminOTList();
+  loadAdminGames();
 
   // ── Dates ──────────────────────────────────────────────
   const now      = new Date();
@@ -4214,6 +4215,75 @@ function buildTesterQuestions(data){
       _difficulty: q.difficulty||null,
     };
   });
+}
+
+async function loadAdminGames(){
+  const el = document.getElementById('admin-games-list');
+  if(!el) return;
+  el.innerHTML = '<div style="color:var(--muted);font-size:12px">⏳...</div>';
+  const {data: packs} = await sb.from('game_packs')
+    .select('id,import_key,title_ru,status,pack_type,source_type')
+    .in('status', ['draft','published'])
+    .order('title_ru');
+  if(!packs || !packs.length){
+    el.innerHTML = '<div style="color:var(--muted);font-size:12px">Нет игр. Создайте через конструктор.</div>';
+    return;
+  }
+  let html = '';
+  for(const p of packs){
+    const {count} = await sb.from('game_pack_questions')
+      .select('*',{count:'exact',head:true}).eq('game_pack_id', p.id);
+    const qCount = count||0;
+    const qColor = qCount>=10?'var(--green)':qCount>0?'var(--gold)':'var(--red)';
+    const sColor = p.status==='published'?'var(--green)':'var(--gold)';
+    html += `<div style="padding:12px 0;border-bottom:0.5px solid var(--border)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div>
+          <div style="font-size:14px;font-weight:800">${_esc(p.title_ru||p.import_key)}</div>
+          <div style="font-size:11px;color:var(--muted)">${_esc(p.import_key)} · <span style="color:${qColor}">${qCount} вопр.</span></div>
+        </div>
+        <select onchange="adminSetPackType('${p.id}',this.value)"
+          style="background:var(--bg3);border:0.5px solid var(--border);border-radius:8px;padding:4px 8px;font-size:12px;color:var(--text);font-family:inherit">
+          <option value="standard" ${p.pack_type==='standard'?'selected':''}>📦 Пак</option>
+          <option value="tournament" ${p.pack_type==='tournament'?'selected':''}>🏆 Турнир</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button onclick="adminSetPackStatus('${p.id}','${p.status==='published'?'draft':'published'}')"
+          style="flex:1;padding:7px 0;border-radius:8px;border:none;background:${p.status==='published'?'rgba(0,200,100,.15)':'rgba(240,192,64,.15)'};color:${sColor};font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">
+          ${p.status==='published'?'✅ Опубл.':'🟡 Черновик'}
+        </button>
+        <button onclick="playDBPack('${p.import_key}','${p.id}')"
+          style="flex:1;padding:7px 0;border-radius:8px;border:none;background:rgba(108,99,255,.15);color:var(--accent2);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">
+          ▶ Играть
+        </button>
+        <button onclick="adminEditGame('${p.id}','${p.import_key}')"
+          style="flex:1;padding:7px 0;border-radius:8px;border:none;background:rgba(255,255,255,.06);color:var(--text);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">
+          ✏️ Ред.
+        </button>
+      </div>
+    </div>`;
+  }
+  el.innerHTML = html || '<div style="color:var(--muted);font-size:12px">Нет игр</div>';
+}
+
+async function adminSetPackStatus(packId, newStatus){
+  await sb.from('game_packs').update({status: newStatus}).eq('id', packId);
+  loadAdminGames();
+}
+
+async function adminSetPackType(packId, newType){
+  await sb.from('game_packs').update({pack_type: newType}).eq('id', packId);
+}
+
+function adminEditGame(packId, importKey){
+  showScreen('game-creator');
+  // Pre-fill the game code if Game Creator is ready
+  setTimeout(()=>{
+    const codeEl = document.getElementById('gc-code');
+    if(codeEl && importKey) codeEl.value = importKey.toUpperCase();
+    toast('Загрузи game.json для этой игры, код уже вставлен');
+  }, 300);
 }
 
 async function loadAdminPacks(){
