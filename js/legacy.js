@@ -13410,16 +13410,21 @@ window.gcPublish = async function() {
       toast(`🎮 Турнир создан: ${code}`);
 
     } else {
-      const { data: packRow, error: pe } = await sb.from('game_packs').insert({
+      // Upsert pack — update if import_key already exists
+      const { data: packRow, error: pe } = await sb.from('game_packs').upsert({
         title_ru: name,
         import_key: code.toLowerCase(),
         status: 'draft',
         pack_type: 'standard',
         source_type: 'official_pack',
-      }).select().single();
+      }, { onConflict: 'import_key' }).select().single();
       if (pe) throw new Error(pe.message);
 
       const packId = packRow.id;
+
+      // Delete old questions linked to this pack (re-publishing)
+      await sb.from('game_pack_questions').delete().eq('game_pack_id', packId);
+
       for (let i = 0; i < questions.length; i++) {
         const q = questions[i];
         const { data: qRow, error: qe } = await sb.from('questions').insert({
