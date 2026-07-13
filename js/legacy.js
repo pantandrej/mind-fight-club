@@ -1261,14 +1261,12 @@ const LETTERS = ['A','B','C','D','E','F'];
 
 
 function getFixedPoints(numOptions){
-  // Очки = кол-во вариантов × 15: 2→30, 3→45, 4→60, 5→75, 6→90
-  return (numOptions || 2) * 15;
+  // Время = очки: 2→30, 3→35, 4→40, 5→45, 6→50
+  return 20 + (numOptions || 4) * 5;
 }
-// Очки с бонусом за скорость: на 1-й секунде = макс, убывает до 1
+// Очки = оставшиеся секунды (каждая секунда = 1 очко, минимум 1)
 function getTimedPoints(numOptions, timeLeft, maxTime){
-  const maxPts = getFixedPoints(numOptions);
-  if(!maxTime || maxTime<=0) return maxPts;
-  return Math.max(1, Math.round(maxPts * (timeLeft / maxTime)));
+  return Math.max(1, timeLeft);
 }
 
 // [STATE] → moved to js/state.js (getState/setState)

@@ -849,7 +849,7 @@ function startExtractedPack(data, packTitle, importKey){
     q: lang==='ru'?(q.question_ru||q.question_text):(q.question_text||q.question_ru),
     a: lang==='ru'?(q.answers_ru||q.answers_json||[]):(q.answers_json||q.answers_ru||[]),
     c: q.correct_index||0,
-    t: 30,
+    t: 20 + ((q.answers_json||q.answers_ru||[]).length || 4) * 5,
     img:   q.media_type==='image'?(q.image_url||q.slide_img_url||null):null,
     audio: q.media_type==='audio'?(q.audio_url||null):null,
     video: q.media_type==='video'?(q.video_url||null):null,
