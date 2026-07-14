@@ -876,7 +876,7 @@ function startExtractedPack(data, packTitle, importKey){
       q: lang==='ru'?(q.question_ru||q.question_text||''):(q.question_text||q.question_ru||''),
       a: ans,
       c: q.correct_index||0,
-      t: 20 + (ans.length || 4) * 5,
+      t: q.question_type==='info' ? 0 : (25 + (ans.length || 4) * 5),
       img: slideImgUrl || (mediaType==='image'?imgUrl:null),
       audio: mediaType==='audio'?audUrl:null,
       video: mediaType==='video'?vidUrl:null,

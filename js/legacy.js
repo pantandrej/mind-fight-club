@@ -2300,9 +2300,22 @@ function renderQMedia(containerId, q){
   if(q.img){
     const hint = 'Посмотри на картинку';
     if(q.img.startsWith('http') || q.img.startsWith('data:')){
+      const audioHtml = q.audio ? (() => {
+        const bid2 = 'audio-btn-img-'+containerId, pid2 = 'audio-prog-img-'+containerId;
+        setTimeout(()=>{
+          currentAudio = new Audio(q.audio);
+          currentAudio.ontimeupdate = ()=>{ const p=document.getElementById(pid2); if(p&&currentAudio.duration) p.style.width=(currentAudio.currentTime/currentAudio.duration*100)+'%'; };
+          currentAudio.onended = ()=>{ const b=document.getElementById(bid2); if(b) b.textContent='▶️'; };
+        }, 0);
+        return `<div style="display:flex;align-items:center;gap:10px;margin-top:8px;padding:8px 12px;background:var(--bg3);border-radius:10px">
+          <button id="${bid2}" onclick="toggleAudio('${containerId}')" style="width:40px;height:40px;border-radius:50%;border:none;background:var(--accent);color:#fff;font-size:18px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center">▶️</button>
+          <div style="flex:1"><div style="height:4px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden"><div id="${pid2}" style="height:100%;width:0%;background:var(--accent2);border-radius:2px;transition:width .1s linear"></div></div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">Нажми ▶️ и слушай</div></div></div>`;
+      })() : '';
       container.innerHTML = `<div class="q-media">
         <img src="${q.img}" alt="" style="width:100%;max-height:320px;object-fit:contain;display:block;border-radius:8px;background:var(--bg3)" onerror="this.parentElement.innerHTML='<div style=\'padding:16px;text-align:center;color:var(--muted);font-size:12px\'>🖼 Изображение недоступно</div>'">
         ${q.video ? `<video src="${q.video}" controls style="width:100%;border-radius:8px;margin-top:8px" playsinline></video>` : ''}
+        ${audioHtml}
         <div class="q-media-hint">${hint}</div>
       </div>`;
     } else {
