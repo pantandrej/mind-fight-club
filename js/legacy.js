@@ -13576,7 +13576,7 @@ window.gcPublish = async function() {
           question_type: q.question_type || 'multiple_choice',
           category: 'general', language: 'ru', status: 'active',
         });
-        await post('game_pack_questions', { game_pack_id: packId, question_id: qRow.id, order_index: i + 1 });
+        await post('game_pack_questions', { game_pack_id: packId, question_id: qRow.id, position: i + 1 });
       }
       statusEl.innerHTML = `✅ Пак «${name}» опубликован!<br><span style="font-size:11px;color:var(--muted)">ID: ${packId} · ${questions.length} слайдов</span>`;
       toast(`✅ Пак «${name}» опубликован`);
