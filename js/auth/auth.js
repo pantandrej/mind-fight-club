@@ -195,8 +195,7 @@ async function _showPackLanding(packKey) {
   window._startPackFromLanding = function(key) {
     const el = document.getElementById('pack-landing-overlay');
     if (el) el.remove();
-    showScreen('home');
-    setTimeout(() => window.playDBPack?.(key), 300);
+    setTimeout(() => window.playDBPack?.(key), 100);
   };
 }
 
@@ -212,8 +211,7 @@ function _redirectAfterAuth() {
   if (p.get('pack')) {
     const el = document.getElementById('pack-landing-overlay');
     if (el) el.remove();
-    showScreen('home');
-    setTimeout(() => window.playDBPack?.(p.get('pack')), 500);
+    setTimeout(() => window.playDBPack?.(p.get('pack')), 300);
     return;
   }
   if (p.get('official') && typeof window.openOfficialTournament === 'function') {

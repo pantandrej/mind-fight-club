@@ -2298,7 +2298,7 @@ function renderQMedia(containerId, q){
   }
 
   if(q.img){
-    const hint = 'Посмотри на картинку';
+    const hint = '';
     if(q.img.startsWith('http') || q.img.startsWith('data:')){
       const audioHtml = q.audio ? (() => {
         const bid2 = 'audio-btn-img-'+containerId, pid2 = 'audio-prog-img-'+containerId;
@@ -2360,7 +2360,7 @@ function renderQMedia(containerId, q){
     };
 
   } else if(q.video){
-    const hint = lang==='ru'?'Посмотри видео':'Watch the video';
+    const hint = '';
     const vid = 'vid-'+containerId;
     container.innerHTML = `<div class="q-media">
       <video id="${vid}" src="${q.video}" controls playsinline preload="metadata"
@@ -4314,14 +4314,76 @@ async function adminDeleteGame(packId, title){
   loadAdminGames();
 }
 
-function adminEditGame(packId, importKey){
+async function adminEditGame(packId, importKey){
   showScreen('game-creator');
-  // Pre-fill the game code if Game Creator is ready
-  setTimeout(()=>{
-    const codeEl = document.getElementById('gc-code');
-    if(codeEl && importKey) codeEl.value = importKey.toUpperCase();
-    toast('Загрузи game.json для этой игры, код уже вставлен');
-  }, 300);
+  toast('⏳ Загружаем данные игры...');
+  try {
+    const SB_URL = window._supabaseUrl;
+    const SB_SVC = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5obWlkeGtvaGpwY25oanVjdXVoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTMzNzI3NSwiZXhwIjoyMDk0OTEzMjc1fQ.7KMc9cTJj9PfJFbMS0JUJTOY_QF5hhcrJo-72oV1mOo';
+    const H = { 'apikey': SB_SVC, 'Authorization': 'Bearer ' + SB_SVC };
+
+    // Load pack meta
+    const pr = await fetch(`${SB_URL}/rest/v1/game_packs?id=eq.${packId}&select=*`, { headers: H });
+    const packs = await pr.json();
+    const pack = packs[0];
+
+    // Load questions in order
+    const lr = await fetch(`${SB_URL}/rest/v1/game_pack_questions?game_pack_id=eq.${packId}&select=question_id,position&order=position`, { headers: H });
+    const links = await lr.json();
+    const qids = links.map(l => `"${l.question_id}"`).join(',');
+    const qr = await fetch(`${SB_URL}/rest/v1/questions?id=in.(${qids})&select=*`, { headers: H });
+    const qrows = await qr.json();
+    const posMap = Object.fromEntries(links.map(l => [l.question_id, l.position]));
+    qrows.sort((a,b) => (posMap[a.id]||0) - (posMap[b.id]||0));
+
+    // Build _gcData-compatible structure
+    const questions = qrows.map((q, i) => ({
+      sq: null, sa: null,
+      text: q.question_ru || q.question_text || '',
+      media: q.audio_url || q.video_url || null,
+      opts: Array.isArray(q.answers_json) ? q.answers_json : (JSON.parse(q.answers_json||'[]')),
+      correct: q.correct_index ?? 0,
+      question_type: q.question_type || 'multiple_choice',
+    }));
+
+    _gcData = { folder: importKey, slides: [], media: [], questions };
+
+    setTimeout(() => {
+      const nameEl = document.getElementById('gc-name');
+      const codeEl = document.getElementById('gc-code');
+      if(nameEl) nameEl.value = pack.title_ru || importKey;
+      if(codeEl) codeEl.value = importKey.toUpperCase();
+
+      // Clear existing question cards
+      _gcQCount = 0;
+      const container = document.getElementById('gc-questions');
+      if(container) container.innerHTML = '';
+
+      // Load questions into form
+      for(let i = 0; i < questions.length; i++){
+        const q = questions[i];
+        gcAddQuestion();
+        const qi = _gcQCount - 1;
+        setTimeout(((qi,q) => () => {
+          if(q.text) { const el = document.getElementById(`gc-qtxt-${qi}`); if(el) el.value = q.text; }
+          if(q.media) { const el = document.getElementById(`gc-media-${qi}`); if(el) el.value = q.media; }
+          (q.opts||[]).forEach((opt, ai) => {
+            let el = document.getElementById(`gc-opt-txt-${qi}-${ai}`);
+            if(!el){ gcAddOption(qi); el = document.getElementById(`gc-opt-txt-${qi}-${ai}`); }
+            if(el && opt) el.value = opt;
+          });
+          if(q.correct !== null && q.correct !== undefined) gcSelectCorrect(qi, q.correct);
+          if(q.question_type === 'info'){
+            const optsEl = document.getElementById(`gc-opts-${qi}`);
+            if(optsEl?.parentElement) optsEl.parentElement.style.display = 'none';
+          }
+        })(qi,q), 0);
+      }
+      toast(`✅ Загружено: ${questions.length} вопросов`);
+    }, 300);
+  } catch(e) {
+    toast('❌ Ошибка загрузки: ' + e.message);
+  }
 }
 
 async function loadAdminPacks(){
