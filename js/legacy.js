@@ -4337,8 +4337,10 @@ async function adminEditGame(packId, importKey){
     qrows.sort((a,b) => (posMap[a.id]||0) - (posMap[b.id]||0));
 
     // Build _gcData-compatible structure
+    const _slideNum = url => { const m = (url||'').match(/slide[_-]?(\d+)\./i); return m ? parseInt(m[1],10) : null; };
     const questions = qrows.map((q, i) => ({
-      sq: null, sa: null,
+      sq: _slideNum(q.slide_img_url),
+      sa: _slideNum(q.answer_slide_img_url),
       text: q.question_ru || q.question_text || '',
       media: q.audio_url || q.video_url || null,
       opts: Array.isArray(q.answers_json) ? q.answers_json : (JSON.parse(q.answers_json||'[]')),
@@ -4388,6 +4390,8 @@ async function adminEditGame(packId, importKey){
         gcAddQuestion();
         const qi = _gcQCount - 1;
         setTimeout(((qi,q) => () => {
+          if(q.sq) { const el = document.getElementById(`gc-sq-${qi}`); if(el){ el.value = q.sq; gcUpdatePreview(qi,'q'); } }
+          if(q.sa) { const el = document.getElementById(`gc-sa-${qi}`); if(el){ el.value = q.sa; gcUpdatePreview(qi,'a'); } }
           if(q.text) { const el = document.getElementById(`gc-qtxt-${qi}`); if(el) el.value = q.text; }
           if(q.media) { const el = document.getElementById(`gc-media-${qi}`); if(el) el.value = q.media; }
           (q.opts||[]).forEach((opt, ai) => {
