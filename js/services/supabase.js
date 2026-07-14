@@ -15,3 +15,4 @@ export const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 window._sbReady         = sb;   // triggers the setter in legacy.js
 window.sb               = sb;   // direct access for training.js and inline handlers
 window._supabaseAnonKey = SUPA_KEY;
+window._supabaseUrl     = SUPA_URL;

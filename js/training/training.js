@@ -663,11 +663,13 @@ async function playDBPack(importKey, packId){
 
     if(links && links.length){
       const ids = links.map(r => r.question_id);
+      // Use raw fetch (no user JWT) — authenticated role loses access to answers_json/answers_ru
       const QCOLS = 'id,question_text,question_ru,answers_json,answers_ru,correct_index,slide_img_url,answer_slide_img_url,image_url,audio_url,video_url,media_type,category,language,status,import_key,explanation_ru,question_type,game_type,source_type';
-      ({data, error} = await sb.from('questions')
-        .select(QCOLS)
-        .in('id', ids)
-        .eq('status','published'));
+      const idsParam = ids.map(id=>`"${id}"`).join(',');
+      const qRes = await fetch(`${window._supabaseUrl}/rest/v1/questions?id=in.(${idsParam})&status=eq.published&select=${QCOLS}`, {
+        headers: { apikey: window._supabaseAnonKey }
+      });
+      data = qRes.ok ? await qRes.json() : null;
       // Re-sort by position order from links
       if(data && data.length){
         const posMap = Object.fromEntries(links.map(r => [r.question_id, r.position]));
@@ -679,11 +681,10 @@ async function playDBPack(importKey, packId){
     if(!data || !data.length){
       const packPrefix = (importKey||'').toLowerCase();
       const QCOLS = 'id,question_text,question_ru,answers_json,answers_ru,correct_index,slide_img_url,answer_slide_img_url,image_url,audio_url,video_url,media_type,category,language,status,import_key,explanation_ru,question_type,game_type,source_type';
-      ({data, error} = await sb.from('questions')
-        .select(QCOLS)
-        .like('import_key', packPrefix+'_q%')
-        .eq('status','published')
-        .order('import_key'));
+      const fbRes = await fetch(`${window._supabaseUrl}/rest/v1/questions?import_key=like.${packPrefix}_q%&status=eq.published&select=${QCOLS}&order=import_key`, {
+        headers: { apikey: window._supabaseAnonKey }
+      });
+      data = fbRes.ok ? await fbRes.json() : null;
     }
   } else {
     ({data, error} = await sb.from('questions')
