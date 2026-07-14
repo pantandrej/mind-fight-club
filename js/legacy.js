@@ -8807,13 +8807,18 @@ function _rowToQuestion(row, idx){
   else correct_index = Math.max(0, 'ABCDEF'.indexOf(correctRaw.toUpperCase()[0]));
 
   var q = {
-    question:        row['question']||row['question_text']||row['question_ru']||'',
-    answers:         answers,
-    correct_index:   correct_index,
-    category:        (row['category']||'GENERAL').toUpperCase(),
-    explanation:     row['explanation']||row['explanation_ru']||'',
-    media_filename:  row['media_filename']||row['image_filename']||row['audio_filename']||row['video_filename']||'',
-    _slideNumber:    parseInt(row['slide_number']||row['slide']||'0')||0,
+    question:             row['question']||row['question_text']||row['question_ru']||'',
+    answers:              answers,
+    correct_index:        correct_index,
+    category:             (row['category']||'GENERAL').toUpperCase(),
+    explanation:          row['explanation']||row['explanation_ru']||'',
+    media_filename:       row['media_filename']||row['image_filename']||row['audio_filename']||row['video_filename']||'',
+    slide_img_url:        row['slide_img_url']||row['slide_q_url']||null,
+    answer_slide_img_url: row['answer_slide_img_url']||row['slide_a_url']||null,
+    audio_url:            row['audio_url']||row['audio']||null,
+    video_url:            row['video_url']||row['video']||null,
+    question_type:        row['question_type']||'multiple_choice',
+    _slideNumber:         parseInt(row['slide_number']||row['slide']||'0')||0,
     errors:[], warnings:[], media:null
   };
   _validateQ(q, idx);
@@ -8977,9 +8982,11 @@ function renderImportPreviewTable(){
       }[q.correct_source] || q.correct_source || '';
       confHtml = '<div style="font-size:10px;color:' + confColor + ';margin-top:3px">' + confLabel + (srcLabel ? ' · ' + srcLabel : '') + '</div>';
     }
-    var mediaHtml = q.media
-      ? '<span class="import-media-chip">' + (q.media.type==='video'?'🎬':q.media.type==='audio'?'🎵':'🖼') + ' ' + _esc(q.media.fname.slice(0,12)) + '</span>'
-      : '—';
+    var mediaHtml = q.slide_img_url
+      ? '<img src="' + q.slide_img_url + '" style="max-width:120px;max-height:68px;border-radius:4px;object-fit:cover;display:block">'
+      : q.media
+        ? '<span class="import-media-chip">' + (q.media.type==='video'?'🎬':q.media.type==='audio'?'🎵':'🖼') + ' ' + _esc(q.media.fname.slice(0,12)) + '</span>'
+        : (q.audio_url ? '🎵 audio' : q.video_url ? '🎬 video' : '—');
     var qText = q.question.length>80 ? q.question.slice(0,80)+'…' : q.question;
 
     // Source badge
@@ -9233,14 +9240,16 @@ async function saveImportedQuestions(mode){
       category:        q.category||'GENERAL',
       explanation_ru:  q.explanation||'',
       source_type:     packId ? 'official_pack' : 'official_general',
-      question_type:   'multiple_choice',
-      status:          qStatus,
-      difficulty:      1,
-      author_user_id:  currentUser.id,
-      media_type:      q._mediaType||null,
-      image_url:       q._mediaType==='image'  ? q._mediaUrl : null,
-      audio_url:       q._mediaType==='audio'  ? q._mediaUrl : null,
-      video_url:       q._mediaType==='video'  ? q._mediaUrl : null,
+      question_type:        q.question_type||'multiple_choice',
+      status:               qStatus,
+      difficulty:           1,
+      author_user_id:       currentUser.id,
+      media_type:           q._mediaType||(q.audio_url?'audio':q.video_url?'video':q.slide_img_url?'image':null),
+      image_url:            q._mediaType==='image'  ? q._mediaUrl : null,
+      audio_url:            q._mediaType==='audio'  ? q._mediaUrl : (q.audio_url||null),
+      video_url:            q._mediaType==='video'  ? q._mediaUrl : (q.video_url||null),
+      slide_img_url:        q.slide_img_url||null,
+      answer_slide_img_url: q.answer_slide_img_url||null,
       import_key:      batchKey + '_q' + (qi+1),
       created_at:      new Date().toISOString()
     };
