@@ -774,7 +774,7 @@ function normalizeDBQuestionForQuickPlay(row){
     c:    correctIdx !== null ? correctIdx : 0,
     correct_index: correctIdx !== null ? correctIdx : 0,
     cat:  row.category || row.cat || 'GENERAL',
-    t:    30,
+    t:    20 + (answers.length * 5),
     img:  mtype === 'image' ? murl : null,
     audio: mtype === 'audio' ? murl : null,
     video: mtype === 'video' ? murl : null,
