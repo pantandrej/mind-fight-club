@@ -13708,7 +13708,7 @@ window.gcPublish = async function() {
           audio_url: q.audio || null, video_url: q.video || null,
           media_type: q.audio ? 'audio' : q.video ? 'video' : q.slide_q_url ? 'image' : 'text',
           question_type: q.question_type || 'multiple_choice',
-          category: 'general', language: 'ru', status: 'published',
+          category: 'general', language: 'ru', status: 'published', source_type: 'official_pack',
         });
         await post('game_pack_questions', { game_pack_id: packId, question_id: qRow.id, position: i + 1 });
       }
