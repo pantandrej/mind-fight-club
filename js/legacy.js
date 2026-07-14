@@ -4263,6 +4263,10 @@ async function loadAdminGames(){
           style="flex:1;padding:7px 0;border-radius:8px;border:none;background:rgba(255,255,255,.06);color:var(--text);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">
           ✏️ Ред.
         </button>
+        <button onclick="adminDeleteGame('${p.id}','${_esc(p.title_ru||p.import_key)}')"
+          style="padding:7px 12px;border-radius:8px;border:none;background:rgba(220,50,50,.15);color:var(--red);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">
+          🗑
+        </button>
       </div>
     </div>`;
   }
@@ -4276,6 +4280,17 @@ async function adminSetPackStatus(packId, newStatus){
 
 async function adminSetPackType(packId, newType){
   await sb.from('game_packs').update({pack_type: newType}).eq('id', packId);
+}
+
+async function adminDeleteGame(packId, title){
+  if(!confirm(`Удалить игру «${title}»?\nЭто удалит все вопросы пака.`)) return;
+  const SB_URL = window._supabaseUrl;
+  const SB_SVC = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5obWlkeGtvaGpwY25oanVjdXVoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTMzNzI3NSwiZXhwIjoyMDk0OTEzMjc1fQ.7KMc9cTJj9PfJFbMS0JUJTOY_QF5hhcrJo-72oV1mOo';
+  const H = { 'apikey': SB_SVC, 'Authorization': 'Bearer ' + SB_SVC };
+  await fetch(`${SB_URL}/rest/v1/game_pack_questions?game_pack_id=eq.${packId}`, { method: 'DELETE', headers: H });
+  await fetch(`${SB_URL}/rest/v1/game_packs?id=eq.${packId}`, { method: 'DELETE', headers: H });
+  toast('🗑 Игра удалена');
+  loadAdminGames();
 }
 
 function adminEditGame(packId, importKey){
