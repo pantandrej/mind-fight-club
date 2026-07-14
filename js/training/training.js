@@ -663,8 +663,9 @@ async function playDBPack(importKey, packId){
 
     if(links && links.length){
       const ids = links.map(r => r.question_id);
+      const QCOLS = 'id,question_text,question_ru,answers_json,answers_ru,correct_index,slide_img_url,answer_slide_img_url,image_url,audio_url,video_url,media_type,category,language,status,import_key,explanation_ru,question_type,game_type,source_type';
       ({data, error} = await sb.from('questions')
-        .select('*')
+        .select(QCOLS)
         .in('id', ids)
         .eq('status','published'));
       // Re-sort by position order from links
@@ -677,8 +678,9 @@ async function playDBPack(importKey, packId){
     // Fallback: load by import_key prefix (e.g. mb4_q001, mb4_q002...)
     if(!data || !data.length){
       const packPrefix = (importKey||'').toLowerCase();
+      const QCOLS = 'id,question_text,question_ru,answers_json,answers_ru,correct_index,slide_img_url,answer_slide_img_url,image_url,audio_url,video_url,media_type,category,language,status,import_key,explanation_ru,question_type,game_type,source_type';
       ({data, error} = await sb.from('questions')
-        .select('*')
+        .select(QCOLS)
         .like('import_key', packPrefix+'_q%')
         .eq('status','published')
         .order('import_key'));
