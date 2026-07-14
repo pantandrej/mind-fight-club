@@ -864,11 +864,12 @@ function startExtractedPack(data, packTitle, importKey){
     const ans = Array.isArray(q.answers_ru) ? q.answers_ru :
                 Array.isArray(q.answers_json) ? q.answers_json :
                 Array.isArray(q.answers) ? q.answers : [];
-    const imgUrl = q.image_url||q.slide_img_url||null;
+    const slideImgUrl = q.slide_img_url||null;
+    const imgUrl = q.image_url||slideImgUrl||null;
     const audUrl = q.audio_url||null;
     const vidUrl = q.video_url||null;
     const mediaUrl = imgUrl||audUrl||vidUrl||'';
-    const mediaType = q.media_type || (imgUrl?'image':audUrl?'audio':vidUrl?'video':'none');
+    const mediaType = q.media_type || (vidUrl?'video':audUrl?'audio':imgUrl?'image':'none');
     return {
       ...q,  // preserve all DB fields so toPlayableQuestion can find them
       cat: q.category||'GENERAL',
@@ -876,7 +877,7 @@ function startExtractedPack(data, packTitle, importKey){
       a: ans,
       c: q.correct_index||0,
       t: 20 + (ans.length || 4) * 5,
-      img: mediaType==='image'?imgUrl:null,
+      img: slideImgUrl || (mediaType==='image'?imgUrl:null),
       audio: mediaType==='audio'?audUrl:null,
       video: mediaType==='video'?vidUrl:null,
       slide_img_url:        q.slide_img_url||null,
