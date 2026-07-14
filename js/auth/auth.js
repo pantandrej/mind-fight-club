@@ -40,6 +40,13 @@ export async function initAuth() {
   const p = new URLSearchParams(window.location.search);
   const hasDeepLink = p.get('duel') || p.get('tourn') || p.get('official') || p.get('join_club') || p.get('u') || p.get('uid') || p.get('challenge') || p.get('brand');
 
+  // Pack deep link — show pack landing without requiring login
+  if (!existingSession && !isOAuthCallback && p.get('pack')) {
+    _bootAuth(false);
+    _showPackLanding(p.get('pack'));
+    return;
+  }
+
   if (!existingSession && !isOAuthCallback && !hasDeepLink) {
     // Show landing for first-time visitors — but still boot auth listener in background
     _showLanding();
@@ -141,6 +148,58 @@ function _showLanding() {
 }
 
 // ── Post-auth navigation ──────────────────────────────────────────
+async function _showPackLanding(packKey) {
+  // Show a full-screen pack intro without requiring login
+  const overlay = document.createElement('div');
+  overlay.id = 'pack-landing-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:300;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center';
+  overlay.innerHTML = `
+    <div style="max-width:480px;width:100%">
+      <div style="font-size:13px;font-weight:800;letter-spacing:2px;color:var(--muted);margin-bottom:16px">BRAIN FIGHT CLUB</div>
+      <div id="pll-img" style="width:100%;aspect-ratio:16/9;background:var(--bg3);border-radius:16px;margin-bottom:20px;overflow:hidden">
+        <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:32px">🎮</div>
+      </div>
+      <div id="pll-title" style="font-size:26px;font-weight:900;margin-bottom:8px">Загружаем...</div>
+      <div id="pll-meta" style="font-size:13px;color:var(--muted);margin-bottom:28px"></div>
+      <button id="pll-start-btn" onclick="window._startPackFromLanding('${packKey}')"
+        style="width:100%;padding:16px;border-radius:16px;border:none;background:var(--accent);color:#fff;font-size:17px;font-weight:800;cursor:pointer;font-family:inherit">
+        ▶ Начать игру
+      </button>
+      <button onclick="document.getElementById('pack-landing-overlay').remove();showScreen('auth')"
+        style="margin-top:12px;background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;font-family:inherit">
+        Войти / Зарегистрироваться
+      </button>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  // Load pack meta
+  try {
+    const r = await fetch(`${window._supabaseUrl}/rest/v1/game_packs?import_key=eq.${packKey}&select=title_ru,import_key&status=eq.published`,
+      { headers: { apikey: window._supabaseAnonKey } });
+    const packs = r.ok ? await r.json() : [];
+    const pack = packs[0];
+    if (pack) {
+      const titleEl = document.getElementById('pll-title');
+      if (titleEl) titleEl.textContent = pack.title_ru || packKey.toUpperCase();
+      const metaEl = document.getElementById('pll-meta');
+      if (metaEl) metaEl.textContent = 'Пак вопросов';
+      // Try to show first slide as cover image
+      const qr = await fetch(`${window._supabaseUrl}/rest/v1/game_pack_questions?game_pack_id=eq.${pack.id || ''}&select=question_id&order=position&limit=1`,
+        { headers: { apikey: window._supabaseAnonKey } });
+    }
+  } catch(e) {
+    const titleEl = document.getElementById('pll-title');
+    if (titleEl) titleEl.textContent = packKey.toUpperCase();
+  }
+
+  window._startPackFromLanding = function(key) {
+    const el = document.getElementById('pack-landing-overlay');
+    if (el) el.remove();
+    showScreen('home');
+    setTimeout(() => window.playDBPack?.(key), 300);
+  };
+}
+
 function _redirectAfterAuth() {
   if (typeof window.savePendingRef  === 'function') window.savePendingRef();
   if (typeof window.checkRefParam   === 'function') window.checkRefParam();
@@ -150,6 +209,13 @@ function _redirectAfterAuth() {
   if (typeof window.checkAndStartOnboarding === 'function') window.checkAndStartOnboarding();
 
   const p = new URLSearchParams(window.location.search);
+  if (p.get('pack')) {
+    const el = document.getElementById('pack-landing-overlay');
+    if (el) el.remove();
+    showScreen('home');
+    setTimeout(() => window.playDBPack?.(p.get('pack')), 500);
+    return;
+  }
   if (p.get('official') && typeof window.openOfficialTournament === 'function') {
     // Guest finished — save their result instead of restarting the game
     const guestResult = sessionStorage.getItem('_otGuestResult');
