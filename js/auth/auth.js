@@ -451,7 +451,8 @@ export async function signInVK() {
     if (p.get('tourn')) sessionStorage.setItem('mfc_pending_tourn', p.get('tourn'));
     const redirectTo = window.location.origin + window.location.pathname + window.location.search;
     const { error } = await sb.auth.signInWithOAuth({
-      provider: 'vk', options: { redirectTo, skipBrowserRedirect: false },
+      provider: 'vk',
+      options: { redirectTo, skipBrowserRedirect: false, scopes: 'email' },
     });
     if (error) {
       if (errEl) { errEl.textContent = 'VK error: ' + error.message; errEl.style.display = 'block'; }
