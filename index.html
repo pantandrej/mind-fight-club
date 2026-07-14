@@ -3273,17 +3273,7 @@ console.log('✅ Firebase Tournaments module loaded');
   // Auto-launch slide pack from URL: ?pack=videogames
   const _urlParams = new URLSearchParams(location.search);
 
-  // Deep link: ?pack=videogames_v2
-  const urlPack = _urlParams.get('pack');
-  if (urlPack) {
-    const _tryLaunch = setInterval(() => {
-      if (window.openSlidePack && window.loadPack) {
-        clearInterval(_tryLaunch);
-        window.openSlidePack(urlPack);
-      }
-    }, 200);
-    setTimeout(() => clearInterval(_tryLaunch), 10000);
-  }
+  // Deep link: ?pack=KEY → handled by auth.js _showPackLanding / playDBPack
 
   // Deep link: ?t=tournamentId → open lobby
   const urlTournament = _urlParams.get('t');
