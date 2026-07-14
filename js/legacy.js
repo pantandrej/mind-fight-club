@@ -4354,6 +4354,10 @@ async function adminEditGame(packId, importKey){
       if(nameEl) nameEl.value = pack.title_ru || importKey;
       if(codeEl) codeEl.value = importKey.toUpperCase();
 
+      // Show the loaded section (hidden by default, shown after JSON load)
+      const gcLoaded = document.getElementById('gc-loaded');
+      if(gcLoaded) gcLoaded.style.display = 'flex';
+
       // Clear existing question cards
       _gcQCount = 0; _gcCorrect = {}; _gcOptCount = {};
       const container = document.getElementById('gc-questions');
