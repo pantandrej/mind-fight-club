@@ -13534,6 +13534,7 @@ window.gcPublish = async function() {
       for (let i = 0; i < questions.length; i++) {
         const q = questions[i];
         const qRow = await post('questions', {
+          question_text: q.question_text || `Вопрос ${i+1}`,
           question_ru: q.question_text || `Вопрос ${i+1}`,
           answers_json: q.answers, correct_index: q.correct,
           slide_img_url: q.slide_q_url || null,
@@ -13565,6 +13566,7 @@ window.gcPublish = async function() {
       for (let i = 0; i < questions.length; i++) {
         const q = questions[i];
         const qRow = await post('questions', {
+          question_text: q.question_text || `Вопрос ${i+1}`,
           question_ru: q.question_text || `Вопрос ${i+1}`,
           answers_json: q.answers, correct_index: q.correct,
           slide_img_url: q.slide_q_url || null,
