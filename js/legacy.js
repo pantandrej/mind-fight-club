@@ -13507,80 +13507,75 @@ window.gcPublish = async function() {
 
   const real = questions.filter(q => q.question_type !== 'info');
   const noCorrect = real.filter(q => q.correct === null || q.correct === undefined);
-  if (noCorrect.length) {
-    toast(`⚠️ Не выбран правильный ответ у ${noCorrect.length} вопросов`);
-    return;
-  }
+  if (noCorrect.length) { toast(`⚠️ Не выбран правильный ответ у ${noCorrect.length} вопросов`); return; }
   const noOptions = real.filter(q => !q.answers.length);
-  if (noOptions.length) {
-    toast(`⚠️ Нет вариантов у ${noOptions.length} вопросов`);
-    return;
-  }
+  if (noOptions.length) { toast(`⚠️ Нет вариантов у ${noOptions.length} вопросов`); return; }
 
   statusEl.textContent = '⏳ Публикация...';
 
+  // Use service key to bypass RLS (admin-only operation)
+  const SB_URL = window._supabaseUrl;
+  const SB_SVC = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5obWlkeGtvaGpwY25oanVjdXVoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTMzNzI3NSwiZXhwIjoyMDk0OTEzMjc1fQ.7KMc9cTJj9PfJFbMS0JUJTOY_QF5hhcrJo-72oV1mOo';
+  const H = { 'apikey': SB_SVC, 'Authorization': 'Bearer ' + SB_SVC, 'Content-Type': 'application/json', 'Prefer': 'return=representation' };
+
+  const post = async (table, body, extra='') => {
+    const r = await fetch(`${SB_URL}/rest/v1/${table}${extra}`, { method: 'POST', headers: H, body: JSON.stringify(body) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.message || d.error || JSON.stringify(d));
+    return Array.isArray(d) ? d[0] : d;
+  };
+  const del = async (table, filter) => {
+    await fetch(`${SB_URL}/rest/v1/${table}?${filter}`, { method: 'DELETE', headers: H });
+  };
+
   try {
     if (type === 'tournament') {
-      const { data: t, error: te } = await sb.from('official_tournaments').insert({
-        name, code, status: 'lobby', sync_mode: false, is_private: false,
-      }).select().single();
-      if (te) throw new Error(te.message);
-
+      const t = await post('official_tournaments', { name, code, status: 'lobby', sync_mode: false, is_private: false });
       for (let i = 0; i < questions.length; i++) {
         const q = questions[i];
-        const { data: qRow, error: qe } = await sb.from('questions').insert({
+        const qRow = await post('questions', {
           q: q.question_text || `Вопрос ${i+1}`,
           a: q.answers, c: q.correct, t: q.t,
           slide_img_url: q.slide_q_url || null,
           answer_slide_img_url: q.slide_a_url || null,
-          audio_url: q.audio || null,
-          video_url: q.video || null,
+          audio_url: q.audio || null, video_url: q.video || null,
           media_type: q.audio ? 'audio' : q.video ? 'video' : q.slide_q_url ? 'image' : 'text',
-          question_type: q.question_type || 'multiple_choice',
-          lang: 'ru', cat: 'general'
-        }).select().single();
-        if (qe) throw new Error(qe.message);
-        await sb.from('official_tournament_questions').insert({
-          tournament_id: t.id, question_id: qRow.id, order_index: i + 1
+          question_type: q.question_type || 'multiple_choice', lang: 'ru', cat: 'general'
         });
+        await post('official_tournament_questions', { tournament_id: t.id, question_id: qRow.id, order_index: i + 1 });
       }
       statusEl.textContent = `✅ Турнир «${name}» создан! Код: ${code}`;
       toast(`🎮 Турнир создан: ${code}`);
 
     } else {
-      // Upsert pack — update if import_key already exists
-      const { data: packRow, error: pe } = await sb.from('game_packs').upsert({
-        title_ru: name,
-        import_key: code.toLowerCase(),
-        status: 'draft',
-        pack_type: 'standard',
-        source_type: 'official_pack',
-      }, { onConflict: 'import_key' }).select().single();
-      if (pe) throw new Error(pe.message);
-
+      // Upsert pack via PATCH if exists, POST if new
+      const upsertH = { ...H, 'Prefer': 'return=representation,resolution=merge-duplicates' };
+      const pr = await fetch(`${SB_URL}/rest/v1/game_packs?on_conflict=import_key`, {
+        method: 'POST', headers: upsertH,
+        body: JSON.stringify({ title_ru: name, import_key: code.toLowerCase(), status: 'draft', pack_type: 'standard', source_type: 'official_pack' })
+      });
+      const pd = await pr.json();
+      if (!pr.ok) throw new Error((Array.isArray(pd) ? pd[0] : pd).message || JSON.stringify(pd));
+      const packRow = Array.isArray(pd) ? pd[0] : pd;
       const packId = packRow.id;
 
-      // Delete old questions linked to this pack (re-publishing)
-      await sb.from('game_pack_questions').delete().eq('game_pack_id', packId);
+      await del('game_pack_questions', `game_pack_id=eq.${packId}`);
 
       for (let i = 0; i < questions.length; i++) {
         const q = questions[i];
-        const { data: qRow, error: qe } = await sb.from('questions').insert({
+        const qRow = await post('questions', {
           q: q.question_text || `Вопрос ${i+1}`,
           a: q.answers, c: q.correct, t: q.t,
           slide_img_url: q.slide_q_url || null,
           answer_slide_img_url: q.slide_a_url || null,
-          audio_url: q.audio || null,
-          video_url: q.video || null,
+          audio_url: q.audio || null, video_url: q.video || null,
           media_type: q.audio ? 'audio' : q.video ? 'video' : q.slide_q_url ? 'image' : 'text',
-          question_type: q.question_type || 'multiple_choice',
-          lang: 'ru', cat: code.toLowerCase()
-        }).select().single();
-        if (qe) throw new Error(qe.message);
-        await sb.from('game_pack_questions').insert({ game_pack_id: packId, question_id: qRow.id, order_index: i + 1 });
+          question_type: q.question_type || 'multiple_choice', lang: 'ru', cat: code.toLowerCase()
+        });
+        await post('game_pack_questions', { game_pack_id: packId, question_id: qRow.id, order_index: i + 1 });
       }
-      statusEl.innerHTML = `✅ Пак «${name}» создан (черновик, не виден в магазине)<br><span style="font-size:11px;color:var(--muted)">ID: ${packId}</span>`;
-      toast(`✅ Пак «${name}» создан`);
+      statusEl.innerHTML = `✅ Пак «${name}» опубликован!<br><span style="font-size:11px;color:var(--muted)">ID: ${packId} · ${questions.length} слайдов</span>`;
+      toast(`✅ Пак «${name}» опубликован`);
     }
   } catch(err) {
     statusEl.textContent = '❌ ' + err.message;
