@@ -1420,18 +1420,24 @@ function showProfile(){
       <div style="font-size:10px;color:var(--muted);margin-top:2px">${nextInfo}</div>
     </div>`;
 
-  const afterEl = document.getElementById('profile-email');
-  // Remove existing badges
-  document.querySelectorAll('.level-badge').forEach(b=>b.parentElement?.removeChild(b));
-  const levelWrap = document.createElement('div');
-  levelWrap.innerHTML = badgeHTML;
-  afterEl.insertAdjacentElement('afterend', levelWrap);
-  // Rank badge
-  document.querySelectorAll('.profile-rank-wrap').forEach(b=>b.remove());
-  const rankWrap = document.createElement('div');
-  rankWrap.className = 'profile-rank-wrap';
-  rankWrap.innerHTML = _rankBadgeHTML(xp);
-  levelWrap.insertAdjacentElement('afterend', rankWrap);
+  // New profile design: update static rank badge element
+  const rankBadgeEl = document.getElementById('profile-rank-badge');
+  if (rankBadgeEl) {
+    const rank = getRank(xp);
+    rankBadgeEl.textContent = rank.icon + ' ' + rank.name;
+  } else {
+    // Fallback for old profile layout
+    const afterEl = document.getElementById('profile-email');
+    document.querySelectorAll('.level-badge').forEach(b=>b.parentElement?.removeChild(b));
+    const levelWrap = document.createElement('div');
+    levelWrap.innerHTML = badgeHTML;
+    afterEl?.insertAdjacentElement('afterend', levelWrap);
+    document.querySelectorAll('.profile-rank-wrap').forEach(b=>b.remove());
+    const rankWrap = document.createElement('div');
+    rankWrap.className = 'profile-rank-wrap';
+    rankWrap.innerHTML = _rankBadgeHTML(xp);
+    levelWrap.insertAdjacentElement('afterend', rankWrap);
+  }
   document.getElementById('n-profile').textContent=neurons;
   // Load stats from DB
   loadProfileStats();
