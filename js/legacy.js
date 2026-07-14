@@ -1684,12 +1684,8 @@ async function _checkOrgApplications() {
 }
 
 window.loadAdminOrgApplications = async function() {
-  const alert = document.getElementById('admin-org-alert');
-  const panel = document.getElementById('admin-org-applications');
-  const list  = document.getElementById('admin-org-list');
-  if (!panel || !list) return;
-  if (alert) alert.style.display = 'none';
-  panel.style.display = 'block';
+  const list = document.getElementById('admin-org-list');
+  if (!list) return;
 
   const { data } = await sb.from('organizer_profiles')
     .select('user_id, display_name, contact_email, city, about, status, created_at')
@@ -2031,6 +2027,7 @@ async function loadAdminDashboard(){
 async function _loadAdminDashboardInner(kpiEl, evEl){
   loadAdminOTList();
   loadAdminGames();
+  loadAdminOrgApplications();
 
   // ── Dates ──────────────────────────────────────────────
   const now      = new Date();
