@@ -4346,7 +4346,18 @@ async function adminEditGame(packId, importKey){
       question_type: q.question_type || 'multiple_choice',
     }));
 
-    _gcData = { folder: importKey, slides: [], media: [], questions };
+    // Reconstruct slides from question image URLs for filmstrip
+    const slideMap = new Map();
+    qrows.forEach(q => {
+      [q.slide_img_url, q.answer_slide_img_url].forEach(url => {
+        if (!url) return;
+        const m = url.match(/slide[_-]?(\d+)\./i);
+        const n = m ? parseInt(m[1], 10) : null;
+        if (n && !slideMap.has(n)) slideMap.set(n, { n, url });
+      });
+    });
+    const slides = [...slideMap.values()].sort((a, b) => a.n - b.n);
+    _gcData = { folder: importKey, slides, media: [], questions };
 
     setTimeout(() => {
       const nameEl = document.getElementById('gc-name');
