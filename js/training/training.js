@@ -1007,6 +1007,24 @@ function loadQ(){
   q=normalizeAndShuffleQuestion(q); // shuffle answers so correct isn't always A
   curQ[qIdx]=q;
 
+  // Info slide (organizational — round header, rules, etc.) — just show image + Next
+  if(q._questionType === 'info' || q.question_type === 'info'){
+    document.getElementById('cat-pill').textContent = q.cat||'';
+    document.getElementById('q-counter').textContent = (qIdx+1)+'/'+curQ.length;
+    document.getElementById('q-text').textContent = '';
+    document.getElementById('answers').innerHTML = '';
+    document.getElementById('fb').className = 'fb';
+    document.getElementById('timer-fill').style.width = '0%';
+    document.getElementById('t-val').textContent = '';
+    renderQMedia('q-media-container', q);
+    setDot('prog-dots', qIdx, 'active');
+    answered = true; // allow next immediately
+    const nb = document.getElementById('next-btn');
+    nb.className = 'next-btn show';
+    nb.textContent = lang==='ru' ? 'Далее →' : 'Next →';
+    return;
+  }
+
   // Record question as seen immediately (before answer) so page-refresh can't repeat it
   if(currentGameType === 'quick' && q._id){
     markQuestionSeen(q._id, 'quick'); // async, fire-and-forget — never blocks UI

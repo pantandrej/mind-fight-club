@@ -1,0 +1,160 @@
+[
+  {
+    "question_type": "info",
+    "question_text": "Правила игры",
+    "answers": [],
+    "correct": 0,
+    "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/public/games/t1/slide_001.jpg"
+  },
+  {
+    "question_type": "info",
+    "question_text": "Первый раунд",
+    "answers": [],
+    "correct": 0,
+    "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/public/games/t1/slide_002.jpg"
+  },
+  {
+    "question_text": "Где на фото Джордж Уизли?",
+    "answers": ["Слева", "Справа"],
+    "correct": 0,
+    "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/public/games/t1/slide_003.jpg",
+    "slide_a_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/public/games/t1/slide_005.jpg"
+  },
+  {
+    "question_text": "Назовите главного героя мультфильма по аудиофрагменту",
+    "answers": ["Арбуз", "Тыква"],
+    "correct": 1,
+    "audio": "__AUDIO_Q2__",
+    "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/public/games/t1/slide_006.jpg",
+    "slide_a_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/public/games/t1/slide_008.jpg"
+  },
+  {
+    "question_text": "Сколько букв в названии обуви на фото?",
+    "answers": ["4", "5"],
+    "correct": 0,
+    "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/public/games/t1/slide_009.jpg",
+    "slide_a_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/public/games/t1/slide_011.jpg"
+  },
+  {
+    "question_type": "info",
+    "question_text": "Второй раунд",
+    "answers": [],
+    "correct": 0,
+    "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/public/games/t1/slide_012.jpg"
+  },
+  {
+    "question_text": "Это бронзовая скульптура французского скульптора. Знаменитое произведение было создано в 1881 году. Назовите её.",
+    "answers": ["Мыслитель", "Дискобол", "Давид"],
+    "correct": 0,
+    "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/public/games/t1/slide_013.jpg",
+    "slide_a_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/public/games/t1/slide_015.jpg"
+  },
+  {
+    "question_text": "В какой сфере деятельности используется предмет на фото?",
+    "answers": ["Строительство", "Медицина", "Кулинария"],
+    "correct": 2,
+    "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/public/games/t1/slide_016.jpg",
+    "slide_a_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/public/games/t1/slide_018.jpg"
+  },
+  {
+    "question_text": "Полное название деревни означает «Церковь святой Марии в ложбине белого орешника…». Выберите её название.",
+    "answers": ["Llanfairpwllgwyngyllgogerychwyrndrobwllllantysiliogogogoch", "Vjhdbvdfhsdjksjkfeufjdfjhfsklsjdksjfhjgsyubnsofsge", "Tyryiusbvpwhdvaeefcvbhsyetgfhbsnftsfgyf"],
+    "correct": 0,
+    "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/public/games/t1/slide_019.jpg",
+    "slide_a_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/public/games/t1/slide_021.jpg"
+  },
+  {
+    "question_type": "info",
+    "question_text": "Третий раунд",
+    "answers": [],
+    "correct": 0,
+    "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/public/games/t1/slide_022.jpg"
+  },
+  {
+    "question_text": "На фото схема оригами. Кто получится, если следовать инструкции?",
+    "answers": ["Журавль", "Кошка", "Пчела", "Медведь"],
+    "correct": 0,
+    "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/public/games/t1/slide_023.jpg",
+    "slide_a_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/public/games/t1/slide_025.jpg"
+  },
+  {
+    "question_text": "Назовите певца по аудиофрагменту из его интервью",
+    "answers": ["Сергей Лазарев", "Денис Клявер", "Дима Билан", "Алексей Чумаков"],
+    "correct": 1,
+    "audio": "__AUDIO_Q8__",
+    "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/public/games/t1/slide_026.jpg",
+    "slide_a_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/public/games/t1/slide_028.jpg"
+  },
+  {
+    "question_text": "Согласно народным приметам, если сорока сидит напротив дома и стрекочет, то это к…",
+    "answers": ["К дождю", "К ссоре", "К новостям", "К деньгам"],
+    "correct": 2,
+    "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/public/games/t1/slide_029.jpg",
+    "slide_a_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/public/games/t1/slide_031.jpg"
+  },
+  {
+    "question_type": "info",
+    "question_text": "Четвёртый раунд",
+    "answers": [],
+    "correct": 0,
+    "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/public/games/t1/slide_032.jpg"
+  },
+  {
+    "question_text": "Назовите блюдо на фото",
+    "answers": ["Тортилья", "Ризотто", "Бирьяни", "Гаспачо", "Паэлья"],
+    "correct": 4,
+    "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/public/games/t1/slide_033.jpg",
+    "slide_a_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/public/games/t1/slide_035.jpg"
+  },
+  {
+    "question_text": "Назовите актрису на видеофрагменте, которая по сюжету фильма была женой Брэда Питта",
+    "answers": ["Кейт Бланшетт", "Анджелина Джоли", "Шарлиз Терон", "Марион Котийяр", "Сандра Буллок"],
+    "correct": 1,
+    "video": "__VIDEO_Q11__",
+    "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/public/games/t1/slide_036.jpg",
+    "slide_a_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/public/games/t1/slide_038.jpg"
+  },
+  {
+    "question_text": "Анаграммами загаданы коктейли. Назовите их цвет.",
+    "answers": ["Голубой", "Жёлтый", "Красный", "Зелёный", "Коричневый"],
+    "correct": 2,
+    "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/public/games/t1/slide_039.jpg",
+    "slide_a_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/public/games/t1/slide_041.jpg"
+  },
+  {
+    "question_type": "info",
+    "question_text": "Пятый раунд",
+    "answers": [],
+    "correct": 0,
+    "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/public/games/t1/slide_042.jpg"
+  },
+  {
+    "question_text": "Расставьте логотипы брендов по порядку: Dove, Чижик, Famous Grouse, ХК Авангард",
+    "answers": ["1432", "1423", "3421", "3412", "2413", "2431"],
+    "correct": 5,
+    "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/public/games/t1/slide_043.jpg",
+    "slide_a_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/public/games/t1/slide_045.jpg"
+  },
+  {
+    "question_text": "Назовите игру по описанию: действие происходит в Междуземье — стране «за завесой тумана»",
+    "answers": ["Baldur's Gate 3", "Mass Effect", "Elden Ring", "Uncharted", "Atomic Heart", "Dead Space"],
+    "correct": 2,
+    "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/public/games/t1/slide_046.jpg",
+    "slide_a_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/public/games/t1/slide_048.jpg"
+  },
+  {
+    "question_text": "Что рекламируется на видеофрагменте?",
+    "answers": ["Освежитель воздуха", "Мягкие игрушки", "Кигуруми", "Аквагрим", "Зубная паста", "Подгузники"],
+    "correct": 5,
+    "video": "__VIDEO_Q15__",
+    "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/public/games/t1/slide_049.jpg",
+    "slide_a_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/public/games/t1/slide_051.jpg"
+  },
+  {
+    "question_type": "info",
+    "question_text": "Спасибо за игру!",
+    "answers": [],
+    "correct": 0,
+    "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/public/games/t1/slide_052.jpg"
+  }
+]

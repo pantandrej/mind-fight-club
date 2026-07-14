@@ -103,23 +103,25 @@ def main():
         # Insert questions
         for i, q in enumerate(questions):
             import_key = f"{code.lower()}_q{i+1:03d}"
+            qtype = q.get('question_type', 'multiple_choice')
+            is_info = qtype == 'info'
             qrow = post('questions', {
-                'question_text': q.get('question_text') or f'Вопрос {i+1}',
-                'question_ru':   q.get('question_text') or f'Вопрос {i+1}',
-                'answers_json':  q['answers'],
-                'answers_ru':    q['answers'],
-                'correct_index': q['correct'],
+                'question_text': q.get('question_text') or f'Слайд {i+1}',
+                'question_ru':   q.get('question_text') or f'Слайд {i+1}',
+                'answers_json':  q.get('answers') or [],
+                'answers_ru':    q.get('answers') or [],
+                'correct_index': q.get('correct', 0),
                 'slide_img_url':        q.get('slide_q_url'),
                 'answer_slide_img_url': q.get('slide_a_url'),
-                'audio_url':     q.get('audio'),
-                'video_url':     q.get('video'),
-                'media_type': 'audio' if q.get('audio') else 'video' if q.get('video') else 'image' if q.get('slide_q_url') else 'text',
+                'audio_url':     q.get('audio') if q.get('audio') and not q['audio'].startswith('__') else None,
+                'video_url':     q.get('video') if q.get('video') and not q['video'].startswith('__') else None,
+                'media_type': 'info' if is_info else ('audio' if q.get('audio') else 'video' if q.get('video') else 'image' if q.get('slide_q_url') else 'text'),
                 'category': 'GENERAL',
                 'language': 'ru',
                 'source_type': 'official_pack',
                 'status': 'published',
                 'game_type': 'ordinary_multiple_choice',
-                'question_type': 'multiple_choice',
+                'question_type': qtype,
                 'import_key': import_key,
             })
             qid = qrow[0]['id']
