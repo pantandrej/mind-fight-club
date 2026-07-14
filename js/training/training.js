@@ -929,6 +929,7 @@ function showExplanation(q, isCorrect){
   let hasContent = false;
 
   // Show explanation image (answer slide)
+  console.log('[MFC] showExplanation answer_slide_img_url=', q.answer_slide_img_url, 'explanation_img=', q.explanation_img);
   if(q.answer_slide_img_url||q.explanation_img){
     img.src = q.answer_slide_img_url||q.explanation_img;
     img.style.display = 'block';
