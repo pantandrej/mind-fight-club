@@ -1440,9 +1440,9 @@ function showProfile(){
   updatePushBtn();
   // Translate labels
   const L=T[lang];
-  document.getElementById('profile-stats-title').textContent = 'Статистика';
+  const _st = (id,v) => { const e=document.getElementById(id); if(e) e.textContent=v; };
+  _st('profile-stats-title','Статистика');
   const statLabels = document.querySelectorAll('.stat-label');
-  // Map labels using T keys
   const statMap = {
     'Games': L.statsGames||'Игры', 'Игры': L.statsGames||'Игры',
     'Correct': L.statsCorrect||'Верных', 'Верных': L.statsCorrect||'Верных',
@@ -1450,14 +1450,22 @@ function showProfile(){
     'Best streak': L.statsStreak||'Лучшая серия', 'Лучшая серия': L.statsStreak,
   };
   statLabels.forEach(el=>{ if(statMap[el.textContent]) el.textContent=statMap[el.textContent]; });
-  document.getElementById('profile-badges-title').textContent=lang==='ru'?'Достижения':'Achievements';
-  document.getElementById('ps-neurons-lbl').textContent=lang==='ru'?'Нейроны':'Нейроны';
-  document.getElementById('ps-games-lbl').textContent=lang==='ru'?'Игры':'Games';
-  document.getElementById('ps-streak-lbl').textContent=lang==='ru'?'Лучшая серия':'Best streak';
-  document.getElementById('ps-acc-lbl').textContent=lang==='ru'?'Точность':'Accuracy';
-  document.getElementById('ps-duels-lbl').textContent=lang==='ru'?'Дуэли выиграны':'Duels won';
-  document.getElementById('ps-correct-lbl').textContent=lang==='ru'?'Верных ответов':'Correct answers';
-  document.getElementById('profile-signout-btn').textContent=lang==='ru'?'Выйти':'Sign out';
+  _st('profile-badges-title',lang==='ru'?'Достижения':'Achievements');
+  _st('ps-neurons-lbl','Нейроны'); _st('ps-games-lbl',lang==='ru'?'Игры':'Games');
+  _st('ps-streak-lbl',lang==='ru'?'Лучшая серия':'Best streak');
+  _st('ps-acc-lbl',lang==='ru'?'Точность':'Accuracy');
+  _st('ps-duels-lbl',lang==='ru'?'Дуэли выиграны':'Duels won');
+  _st('ps-correct-lbl',lang==='ru'?'Верных ответов':'Correct answers');
+  _st('profile-signout-btn',lang==='ru'?'Выйти':'Sign out');
+
+  // Set ref link immediately from user id (fallback if DB unavailable)
+  if(currentUser) {
+    const _fallbackCode = currentUser.id.slice(0,8);
+    const _refEl = document.getElementById('profile-ref-link');
+    if(_refEl && _refEl.textContent.includes('Войди')) {
+      _refEl.textContent = location.origin + location.pathname + '?ref=' + _fallbackCode;
+    }
+  }
   // Share profile button
   const signoutBtn = document.getElementById('profile-signout-btn');
   if (signoutBtn && !document.getElementById('profile-share-btn')) {
