@@ -13422,8 +13422,8 @@ window.gcLoadFromFile = function(input) {
             });
             if (q.correct !== null && q.correct !== undefined) gcSelectCorrect(qi, q.correct);
             if (q.question_type === 'info') {
-              const typeEl = document.getElementById(`gc-type-${qi}`);
-              if (typeEl) typeEl.value = 'info';
+              const optsEl = document.getElementById(`gc-opts-${qi}`);
+              if (optsEl?.parentElement) optsEl.parentElement.style.display = 'none';
             }
           })(qi, q), 0);
         }

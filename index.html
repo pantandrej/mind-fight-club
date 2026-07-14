@@ -1566,25 +1566,6 @@
       <div class="xp-bar-bg"><div class="xp-bar-fill" id="xp-bar-fill" style="width:0%"></div></div>
     </div>
 
-    <!-- Achievements button -->
-    <button class="achievements-btn" onclick="openAchievements()">
-      🏅 Достижения <span id="achievements-count" style="background:rgba(108,99,255,.3);border-radius:6px;padding:1px 7px;font-size:11px;margin-left:4px">0</span>
-    </button>
-
-    <!-- Stats hidden until real data is populated -->
-    <div style="display:none" id="profile-stats-title" class="section-title">Статистика</div>
-    <div class="profile-stats-grid" style="display:none">
-      <div class="pstat-box"><div class="pstat-val" id="ps-neurons">0</div><div class="pstat-lbl" id="ps-neurons-lbl">Нейроны</div></div>
-      <div class="pstat-box"><div class="pstat-val" id="ps-games">0</div><div class="pstat-lbl" id="ps-games-lbl">Игр</div></div>
-      <div class="pstat-box"><div class="pstat-val" id="ps-streak">0</div><div class="pstat-lbl" id="ps-streak-lbl">Лучшая серия</div></div>
-      <div class="pstat-box"><div class="pstat-val" id="ps-acc">0%</div><div class="pstat-lbl" id="ps-acc-lbl">Точность</div></div>
-      <div class="pstat-box"><div class="pstat-val" id="ps-duels">0</div><div class="pstat-lbl" id="ps-duels-lbl">Дуэлей выиграно</div></div>
-      <div class="pstat-box"><div class="pstat-val" id="ps-correct">0</div><div class="pstat-lbl" id="ps-correct-lbl">Верных ответов</div></div>
-      <div class="pstat-box"><div class="pstat-val" id="ps-duels-played">0</div><div class="pstat-lbl">Дуэлей сыграно</div></div>
-      <div class="pstat-box"><div class="pstat-val" id="ps-packs">0</div><div class="pstat-lbl">Паков сыграно</div></div>
-      <div class="pstat-box"><div class="pstat-val" id="ps-questions-submitted">0</div><div class="pstat-lbl">Вопросов предложено</div></div>
-      <div class="pstat-box"><div class="pstat-val" id="ps-reports">0</div><div class="pstat-lbl">Жалоб отправлено</div></div>
-    </div>
     <!-- Badges -->
     <!-- Rules & Neurons explanation -->
     <button onclick="showScreen('rules')" style="width:100%;background:rgba(108,99,255,.1);border:0.5px solid rgba(108,99,255,.3);border-radius:14px;padding:12px 16px;display:flex;align-items:center;gap:10px;cursor:pointer;font-family:inherit;color:var(--accent2);font-size:13px;font-weight:700;margin-bottom:8px">
@@ -1642,9 +1623,7 @@
       <div id="friends-list" style="font-size:13px;color:var(--muted)">Загрузка...</div>
     </div>
 
-    <div class="section-title" id="profile-badges-title">Достижения</div>
-    <div id="achievements-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px"></div>
-    <div class="profile-badges-grid" id="profile-badges-grid"></div>
+    <div class="profile-badges-grid" id="profile-badges-grid" style="display:none"></div>
     <!-- Analytics mini dashboard -->
     <div id="profile-analytics" style="display:none;margin-top:8px">
       <div class="section-title" style="margin-bottom:8px">📊 Аналитика за 7 дней</div>
