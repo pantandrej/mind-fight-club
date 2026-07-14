@@ -1032,7 +1032,7 @@ function loadQ(){
   const ans=document.getElementById('answers');ans.innerHTML='';
 
   if(!qNorm.a||qNorm.a.length<2){
-    console.warn('[MFC] No answers. qNorm.a=', qNorm.a, 'answers_json=', qNorm.answers_json, 'answers_ru=', qNorm.answers_ru, 'raw=', JSON.stringify(qNorm).slice(0,300));
+    console.error('[MFC-NOANSWERS] a='+JSON.stringify(qNorm.a)+' answers_json='+JSON.stringify(qNorm.answers_json)+' answers_ru='+JSON.stringify(qNorm.answers_ru));
     track('question_render_error',{id:qNorm._id,q:(qNorm.q||'').slice(0,50)});
     const errDiv=document.createElement('div');
     errDiv.style.cssText='background:rgba(224,85,85,.15);border:0.5px solid var(--red);border-radius:12px;padding:16px;text-align:center;margin:8px 0';
