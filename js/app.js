@@ -5,7 +5,7 @@ import './services/supabase.js';
 import './services/analytics.js';
 import './state.js';
 import './router.js';
-import { initAuth } from './auth/auth.js';
+import { initAuth, initVKIDCallback } from './auth/auth.js';
 import { trackPageView } from './services/analytics.js';
 import './economy/wallet.js';
 
@@ -42,6 +42,7 @@ window.awardWeeklyNeurons = awardWeeklyNeurons;
 document.addEventListener('DOMContentLoaded', () => {
   trackPageView();
   initAuth();
+  initVKIDCallback();
   registerServiceWorker();
   // Brand page route ?brand=slug
   checkBrandRoute();

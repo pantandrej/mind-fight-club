@@ -439,28 +439,100 @@ export async function verifyPhoneOTP() {
   btn.disabled = false;
 }
 
+function _vkBtnReset(btn) {
+  if (!btn) return;
+  btn.style.opacity = ''; btn.style.pointerEvents = '';
+  const sp = btn.querySelector('span'); if (sp) sp.textContent = 'Войти через ВКонтакте';
+}
+
+async function _loadVKIDSDK() {
+  if (window.VKIDSDK) return window.VKIDSDK;
+  await new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://unpkg.com/@vkid/sdk@<3.0.0/dist-sdk/umd/index.js';
+    s.onload = res; s.onerror = () => rej(new Error('Не удалось загрузить VK ID SDK'));
+    document.head.appendChild(s);
+  });
+  return window.VKIDSDK;
+}
+
+async function _handleVKTokens(data) {
+  // data from VKID.Auth.exchangeCode: { access_token, user_id, first_name, last_name, email, avatar }
+  const resp = await fetch(`${window._supabaseUrl}/functions/v1/vk-auth`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': window._supabaseAnonKey || '',
+    },
+    body: JSON.stringify({
+      access_token: data.access_token,
+      user_id: data.user_id,
+      first_name: data.first_name,
+      last_name: data.last_name,
+      avatar: data.avatar,
+    }),
+  });
+  const result = await resp.json();
+  if (result.error) throw new Error(result.error);
+
+  const { error: verifyErr } = await sb.auth.verifyOtp({
+    token_hash: result.token_hash,
+    type: 'email',
+  });
+  if (verifyErr) throw verifyErr;
+}
+
+// Called on every page load to pick up VK ID callback after redirect
+export async function initVKIDCallback() {
+  const params = new URLSearchParams(window.location.search);
+  if (!params.get('code') || !params.get('device_id')) return;
+  try {
+    const VKID = await _loadVKIDSDK();
+    VKID.Config.init({
+      app: 54679210,
+      redirectUrl: window.location.origin + window.location.pathname,
+      responseMode: VKID.ConfigResponseMode.Callback,
+      source: VKID.ConfigSource.LOWCODE,
+    });
+    // SDK handles callback params automatically via events — attach listener
+    VKID.Auth.on(VKID.AuthEvents.LOGIN_SUCCESS, async (payload) => {
+      try {
+        toast('⏳ Входим через ВКонтакте...');
+        const data = await VKID.Auth.exchangeCode(payload.code, payload.device_id);
+        await _handleVKTokens(data);
+        // Remove VK params from URL without reload
+        const clean = window.location.origin + window.location.pathname;
+        window.history.replaceState({}, '', clean);
+      } catch (e) { toast('❌ ' + (e.message || 'Ошибка входа через ВК')); }
+    });
+  } catch { /* SDK not critical on non-callback page loads */ }
+}
+
 export async function signInVK() {
   const btn   = document.getElementById('vk-sign-in-btn');
   const errEl = document.getElementById('auth-error');
   if (errEl) errEl.style.display = 'none';
-  if (btn) { btn.style.opacity = '0.6'; btn.style.pointerEvents = 'none'; btn.querySelector('span').textContent = 'Открываем ВКонтакте...'; }
+  if (btn) { btn.style.opacity = '0.6'; btn.style.pointerEvents = 'none'; const sp = btn.querySelector('span'); if (sp) sp.textContent = 'Открываем ВКонтакте...'; }
   track('signup_started', { method: 'vk' });
   try {
     const p = new URLSearchParams(window.location.search);
     if (p.get('duel'))  sessionStorage.setItem('mfc_pending_duel',  p.get('duel'));
     if (p.get('tourn')) sessionStorage.setItem('mfc_pending_tourn', p.get('tourn'));
-    const redirectTo = window.location.origin + window.location.pathname + window.location.search;
-    const { error } = await sb.auth.signInWithOAuth({
-      provider: 'vk',
-      options: { redirectTo, skipBrowserRedirect: false, scopes: 'email' },
+
+    const VKID = await _loadVKIDSDK();
+    VKID.Config.init({
+      app: 54679210,
+      redirectUrl: window.location.origin + window.location.pathname,
+      responseMode: VKID.ConfigResponseMode.Callback,
+      source: VKID.ConfigSource.LOWCODE,
     });
-    if (error) {
-      if (errEl) { errEl.textContent = 'VK error: ' + error.message; errEl.style.display = 'block'; }
-      if (btn) { btn.style.opacity = ''; btn.style.pointerEvents = ''; btn.querySelector('span').textContent = 'Войти через ВКонтакте'; }
-    }
+
+    VKID.Auth.login();
+    // Page will redirect to VK and back; initVKIDCallback() handles the return
   } catch (e) {
-    if (errEl) { errEl.textContent = 'Exception: ' + (e.message || e); errEl.style.display = 'block'; }
-    if (btn) { btn.style.opacity = ''; btn.style.pointerEvents = ''; btn.querySelector('span').textContent = 'Войти через ВКонтакте'; }
+    const msg = e.message || String(e);
+    if (errEl) { errEl.textContent = 'VK ошибка: ' + msg; errEl.style.display = 'block'; }
+    _vkBtnReset(btn);
   }
 }
 
