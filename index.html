@@ -3215,9 +3215,10 @@ console.log('✅ Firebase Tournaments module loaded');
     if (el('xp-label'))       el('xp-label').textContent       = cur + ' / ' + next + ' XP';
     if (el('xp-bar-fill'))    el('xp-bar-fill').style.width    = pct + '%';
 
-    // Referral link
-    if (p.referral_code) {
-      const link = location.origin + location.pathname + '?ref=' + p.referral_code;
+    // Referral link — generate fallback from user id if no code in DB
+    const refCode = p.referral_code || (window.currentUser?.id?.slice(0,8));
+    if (refCode) {
+      const link = location.origin + location.pathname + '?ref=' + refCode;
       if (el('profile-ref-link')) el('profile-ref-link').textContent = link;
       if (el('profile-ref-count')) el('profile-ref-count').textContent = p.referral_count || 0;
       window._myRefLink = link;
