@@ -13422,8 +13422,18 @@ window.gcLoadFromFile = function(input) {
             });
             if (q.correct !== null && q.correct !== undefined) gcSelectCorrect(qi, q.correct);
             if (q.question_type === 'info') {
+              // hide options block: gc-opts is inside a wrapper div
               const optsEl = document.getElementById(`gc-opts-${qi}`);
-              if (optsEl?.parentElement) optsEl.parentElement.style.display = 'none';
+              if (optsEl) {
+                let wrap = optsEl.parentElement;
+                if (wrap) wrap.style.display = 'none';
+              }
+              // also hide the correct-answer label
+              const bodyEl = document.getElementById(`gc-body-${qi}`);
+              if (bodyEl) {
+                const labels = bodyEl.querySelectorAll('[style*="margin-bottom:10px"]');
+                labels.forEach(el => { if (el.querySelector(`#gc-opts-${qi}`)) el.style.display = 'none'; });
+              }
             }
           })(qi, q), 0);
         }
