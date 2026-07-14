@@ -11869,7 +11869,11 @@ async function submitOrgApplication(){
   const name    = document.getElementById('org-apply-name')?.value?.trim();
   const email   = document.getElementById('org-apply-email')?.value?.trim();
   const city    = document.getElementById('org-apply-city')?.value?.trim();
-  const about   = document.getElementById('org-apply-about')?.value?.trim();
+  const phone   = document.getElementById('org-apply-phone')?.value?.trim();
+  const social  = document.getElementById('org-apply-social')?.value?.trim();
+  const aboutRaw = document.getElementById('org-apply-about')?.value?.trim();
+  const aboutParts = [aboutRaw, phone ? `📞 ${phone}` : '', social ? `🔗 ${social}` : ''].filter(Boolean);
+  const about = aboutParts.join('\n');
 
   if(!name || !email){ toast('Заполните имя и email'); return; }
 
