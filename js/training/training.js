@@ -855,6 +855,7 @@ function buildStandardPackQuestions(questions){
 // ─── EXTRACTED QUESTION pack (standard quiz UI) ──────────────────
 function startExtractedPack(data, packTitle, importKey){
   // Map to playable format
+  console.error('[MFC-RAW] startExtractedPack rows=', data.length, 'first=', JSON.stringify(data[0]).slice(0,400));
   let mapped = data.map(q=>{
     const ans = Array.isArray(q.answers_ru) ? q.answers_ru :
                 Array.isArray(q.answers_json) ? q.answers_json :
