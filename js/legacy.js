@@ -4817,8 +4817,8 @@ function integrityViolation(reason){
     } else {
       toast('⚠️ ' + (lang==='ru' ? 'Не уходи со страницы во время дуэли!' : 'Stay on page during duel!'), 3000);
     }
-  } else {
-    // Normal quiz
+  } else if(quizIntegrity.mode !== 'pack') {
+    // Normal quiz (not pack — packs don't penalize tab switching)
     if(v === 1) toast('⚠️ Оставайся на вкладке — иначе очки не засчитаются', 3000);
     else if(v >= 2) toast('⚠️ Повторное нарушение зафиксировано', 2500);
   }

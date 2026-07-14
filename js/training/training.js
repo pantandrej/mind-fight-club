@@ -911,7 +911,7 @@ function startExtractedPack(data, packTitle, importKey){
   buildDots('prog-dots', curQ.length);
   track('pack_started', {pack:importKey, mode:'extracted', count:curQ.length});
   createGameRow('pack');
-  startIntegrity('quiz');
+  startIntegrity('pack');
   _currentGameCountsDailyLimit = false; // packs don't count toward daily limit
   showScreen('quiz'); loadQ();
 }
@@ -929,7 +929,7 @@ function showExplanation(q, isCorrect){
   let hasContent = false;
 
   // Show explanation image (answer slide)
-  console.log('[MFC] showExplanation answer_slide_img_url=', q.answer_slide_img_url, 'explanation_img=', q.explanation_img);
+  console.error('[MFC-DEBUG] showExplanation answer_slide_img_url=', q.answer_slide_img_url, 'explanation_img=', q.explanation_img);
   if(q.answer_slide_img_url||q.explanation_img){
     img.src = q.answer_slide_img_url||q.explanation_img;
     img.style.display = 'block';
