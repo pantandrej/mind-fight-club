@@ -4355,7 +4355,7 @@ async function adminEditGame(packId, importKey){
       if(codeEl) codeEl.value = importKey.toUpperCase();
 
       // Clear existing question cards
-      _gcQCount = 0;
+      _gcQCount = 0; _gcCorrect = {}; _gcOptCount = {};
       const container = document.getElementById('gc-questions');
       if(container) container.innerHTML = '';
 
