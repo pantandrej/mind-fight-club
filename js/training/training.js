@@ -910,6 +910,7 @@ function startExtractedPack(data, packTitle, importKey){
     }
   }
   setState({ curQ: finalQ });
+  if(window._syncStateToLegacy) window._syncStateToLegacy();
 
   setState({ qIdx: 0, correctCount: 0, streak: 0, bestStreak: 0, roundScore: 0 });
   _gameStartTime=Date.now(); _gameId=null;

@@ -62,6 +62,7 @@ function _syncStateToLegacy() {
   refCode      = s.refCode;
   earnedBadges = s.earnedBadges;
 }
+window._syncStateToLegacy = _syncStateToLegacy;
 
 // Service aliases (legacy code calls sb directly)
 // sb is set by services/supabase.js on the window object
