@@ -4250,6 +4250,13 @@ async function loadAdminGames(){
           <option value="tournament" ${p.pack_type==='tournament'?'selected':''}>🏆 Турнир</option>
         </select>
       </div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px;display:flex;align-items:center;gap:6px">
+        🔗 <span style="user-select:all;color:var(--accent2)">${location.origin}/?pack=${p.import_key}</span>
+        <button onclick="navigator.clipboard.writeText('${location.origin}/?pack=${p.import_key}').then(()=>toast('✅ Ссылка скопирована'))"
+          style="padding:2px 8px;border-radius:6px;border:none;background:rgba(108,99,255,.15);color:var(--accent2);font-size:11px;cursor:pointer;font-family:inherit">
+          Копировать
+        </button>
+      </div>
       <div style="display:flex;gap:8px">
         <button onclick="adminSetPackStatus('${p.id}','${p.status==='published'?'draft':'published'}')"
           style="flex:1;padding:7px 0;border-radius:8px;border:none;background:${p.status==='published'?'rgba(0,200,100,.15)':'rgba(240,192,64,.15)'};color:${sColor};font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">
@@ -13557,7 +13564,7 @@ window.gcPublish = async function() {
           audio_url: q.audio || null, video_url: q.video || null,
           media_type: q.audio ? 'audio' : q.video ? 'video' : q.slide_q_url ? 'image' : 'text',
           question_type: q.question_type || 'multiple_choice',
-          category: 'general', language: 'ru', status: 'active',
+          category: 'general', language: 'ru', status: 'published',
         });
         await post('official_tournament_questions', { tournament_id: t.id, question_id: qRow.id, order_index: i + 1 });
       }
@@ -13569,7 +13576,7 @@ window.gcPublish = async function() {
       const upsertH = { ...H, 'Prefer': 'return=representation,resolution=merge-duplicates' };
       const pr = await fetch(`${SB_URL}/rest/v1/game_packs?on_conflict=import_key`, {
         method: 'POST', headers: upsertH,
-        body: JSON.stringify({ title_ru: name, import_key: code.toLowerCase(), status: 'draft', pack_type: 'standard', source_type: 'official_pack' })
+        body: JSON.stringify({ title_ru: name, import_key: code.toLowerCase(), status: 'published', pack_type: 'standard', source_type: 'official_pack' })
       });
       const pd = await pr.json();
       if (!pr.ok) throw new Error((Array.isArray(pd) ? pd[0] : pd).message || JSON.stringify(pd));
@@ -13589,7 +13596,7 @@ window.gcPublish = async function() {
           audio_url: q.audio || null, video_url: q.video || null,
           media_type: q.audio ? 'audio' : q.video ? 'video' : q.slide_q_url ? 'image' : 'text',
           question_type: q.question_type || 'multiple_choice',
-          category: 'general', language: 'ru', status: 'active',
+          category: 'general', language: 'ru', status: 'published',
         });
         await post('game_pack_questions', { game_pack_id: packId, question_id: qRow.id, position: i + 1 });
       }
