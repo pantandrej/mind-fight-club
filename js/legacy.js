@@ -13436,7 +13436,7 @@ window.gcLoadFromFile = function(input) {
   reader.readAsText(file);
 };
 
-function _gcCollectQuestions(time) {
+function _gcCollectQuestions() {
   const questions = [];
   for (let qi = 0; qi < _gcQCount; qi++) {
     if (!document.getElementById(`gc-q-${qi}`)) continue; // removed
@@ -13458,17 +13458,25 @@ function _gcCollectQuestions(time) {
     // Map correctAi to filtered index
     const correct = correctAi !== null ? rawIndices.indexOf(correctAi) : null;
 
-    const mediaItem = _gcData.media?.find(m => m.url === media);
+    // Info slide = no answer options
+    const isInfo = opts.length === 0;
+    // Time per question based on number of options (scheme: 2→30s, 3→35s, 4→40s, 5→45s, 6→50s)
+    const t = isInfo ? 0 : Math.max(30, 25 + opts.length * 5);
+
+    const mediaName = media ? media.split('/').pop() : '';
+    const isAudio = mediaName.endsWith('.mp3') || mediaName.endsWith('.wav');
+    const isVideo = mediaName.endsWith('.mp4') || mediaName.endsWith('.webm');
     questions.push({
       n: questions.length + 1,
       question_text: text,
       answers: opts,
-      correct: correct >= 0 ? correct : null,
+      correct: isInfo ? 0 : (correct >= 0 ? correct : null),
       slide_q_url: _gcSlideUrl(sqN),
       slide_a_url: _gcSlideUrl(saN),
-      audio: mediaItem?.type === 'audio' ? media : null,
-      video: mediaItem?.type === 'video' ? media : null,
-      t: time,
+      audio: isAudio ? media : null,
+      video: isVideo ? media : null,
+      question_type: isInfo ? 'info' : 'multiple_choice',
+      t,
     });
   }
   return questions;
@@ -13479,21 +13487,21 @@ window.gcPublish = async function() {
   const name     = document.getElementById('gc-name').value.trim();
   const code     = document.getElementById('gc-code').value.trim().toUpperCase();
   const type     = document.getElementById('gc-type').value;
-  const time     = parseInt(document.getElementById('gc-time').value) || 20;
   const statusEl = document.getElementById('gc-publish-status');
 
   if (!name) { toast('Введи название'); return; }
   if (!code) { toast('Введи код'); return; }
 
-  const questions = _gcCollectQuestions(time);
+  const questions = _gcCollectQuestions();
   if (!questions.length) { toast('Нет вопросов'); return; }
 
-  const noCorrect = questions.filter(q => q.correct === null || q.correct === undefined);
+  const real = questions.filter(q => q.question_type !== 'info');
+  const noCorrect = real.filter(q => q.correct === null || q.correct === undefined);
   if (noCorrect.length) {
     toast(`⚠️ Не выбран правильный ответ у ${noCorrect.length} вопросов`);
     return;
   }
-  const noOptions = questions.filter(q => !q.answers.length);
+  const noOptions = real.filter(q => !q.answers.length);
   if (noOptions.length) {
     toast(`⚠️ Нет вариантов у ${noOptions.length} вопросов`);
     return;
@@ -13512,12 +13520,13 @@ window.gcPublish = async function() {
         const q = questions[i];
         const { data: qRow, error: qe } = await sb.from('questions').insert({
           q: q.question_text || `Вопрос ${i+1}`,
-          a: q.answers, c: q.correct, t: time,
-          image_url: q.slide_q_url || null,
-          answer_image_url: q.slide_a_url || null,
+          a: q.answers, c: q.correct, t: q.t,
+          slide_img_url: q.slide_q_url || null,
+          answer_slide_img_url: q.slide_a_url || null,
           audio_url: q.audio || null,
           video_url: q.video || null,
           media_type: q.audio ? 'audio' : q.video ? 'video' : q.slide_q_url ? 'image' : 'text',
+          question_type: q.question_type || 'multiple_choice',
           lang: 'ru', cat: 'general'
         }).select().single();
         if (qe) throw new Error(qe.message);
@@ -13548,12 +13557,13 @@ window.gcPublish = async function() {
         const q = questions[i];
         const { data: qRow, error: qe } = await sb.from('questions').insert({
           q: q.question_text || `Вопрос ${i+1}`,
-          a: q.answers, c: q.correct, t: time,
-          image_url: q.slide_q_url || null,
-          answer_image_url: q.slide_a_url || null,
+          a: q.answers, c: q.correct, t: q.t,
+          slide_img_url: q.slide_q_url || null,
+          answer_slide_img_url: q.slide_a_url || null,
           audio_url: q.audio || null,
           video_url: q.video || null,
           media_type: q.audio ? 'audio' : q.video ? 'video' : q.slide_q_url ? 'image' : 'text',
+          question_type: q.question_type || 'multiple_choice',
           lang: 'ru', cat: code.toLowerCase()
         }).select().single();
         if (qe) throw new Error(qe.message);
