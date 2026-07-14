@@ -13534,13 +13534,14 @@ window.gcPublish = async function() {
       for (let i = 0; i < questions.length; i++) {
         const q = questions[i];
         const qRow = await post('questions', {
-          q: q.question_text || `Вопрос ${i+1}`,
-          a: q.answers, c: q.correct, t: q.t,
+          question_ru: q.question_text || `Вопрос ${i+1}`,
+          answers_json: q.answers, correct_index: q.correct,
           slide_img_url: q.slide_q_url || null,
           answer_slide_img_url: q.slide_a_url || null,
           audio_url: q.audio || null, video_url: q.video || null,
           media_type: q.audio ? 'audio' : q.video ? 'video' : q.slide_q_url ? 'image' : 'text',
-          question_type: q.question_type || 'multiple_choice', lang: 'ru', cat: 'general'
+          question_type: q.question_type || 'multiple_choice',
+          language: 'ru', status: 'active',
         });
         await post('official_tournament_questions', { tournament_id: t.id, question_id: qRow.id, order_index: i + 1 });
       }
@@ -13564,13 +13565,14 @@ window.gcPublish = async function() {
       for (let i = 0; i < questions.length; i++) {
         const q = questions[i];
         const qRow = await post('questions', {
-          q: q.question_text || `Вопрос ${i+1}`,
-          a: q.answers, c: q.correct, t: q.t,
+          question_ru: q.question_text || `Вопрос ${i+1}`,
+          answers_json: q.answers, correct_index: q.correct,
           slide_img_url: q.slide_q_url || null,
           answer_slide_img_url: q.slide_a_url || null,
           audio_url: q.audio || null, video_url: q.video || null,
           media_type: q.audio ? 'audio' : q.video ? 'video' : q.slide_q_url ? 'image' : 'text',
-          question_type: q.question_type || 'multiple_choice', lang: 'ru', cat: code.toLowerCase()
+          question_type: q.question_type || 'multiple_choice',
+          language: 'ru', status: 'active',
         });
         await post('game_pack_questions', { game_pack_id: packId, question_id: qRow.id, order_index: i + 1 });
       }
