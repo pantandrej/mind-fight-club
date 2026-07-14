@@ -1228,7 +1228,7 @@ function isPlayableQuestion(raw){
   // ── 5. Media check: claimed type but no real URL
   const mtype = q.media && q.media.type;
   const murl  = q.media && q.media.url;
-  if(mtype && mtype !== 'none' && !murl) return false;
+  if(mtype && mtype !== 'none' && mtype !== 'text' && !murl) return false;
 
   // ── 6. Placeholder text check
   if(hasPlaceholderText(q.q)) return false;
