@@ -2298,7 +2298,7 @@ function renderQMedia(containerId, q){
     const hint = 'Посмотри на картинку';
     if(q.img.startsWith('http') || q.img.startsWith('data:')){
       container.innerHTML = `<div class="q-media">
-        <img src="${q.img}" alt="" style="width:100%;max-height:280px;object-fit:contain;display:block;background:#0a0a0f" onerror="this.parentElement.innerHTML='<div style=\'padding:16px;text-align:center;color:var(--muted);font-size:12px\'>🖼 Изображение недоступно</div>'">
+        <img src="${q.img}" alt="" style="width:100%;max-height:280px;object-fit:cover;display:block;border-radius:8px" onerror="this.parentElement.innerHTML='<div style=\'padding:16px;text-align:center;color:var(--muted);font-size:12px\'>🖼 Изображение недоступно</div>'">
         <div class="q-media-hint">${hint}</div>
       </div>`;
     } else {
