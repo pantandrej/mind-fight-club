@@ -1032,15 +1032,19 @@ function loadQ(){
   maxT=q.t;timeLeft=q.t;
   document.getElementById('cat-pill').textContent=q.cat;
   document.getElementById('q-counter').textContent=(qIdx+1)+'/'+curQ.length;
-  // Fix 6: render question_html_ru if available (safe HTML with q-hl spans)
+  // Hide question text when slide image is present (text is already in the image)
   const qEl = document.getElementById('q-text');
-  if(q.question_html_ru && lang==='ru'){
-    // Sanitize: only allow safe tags
-    const safe = q.question_html_ru
-      .replace(/<(?!\/?(b|strong|i|em|br|span)[^>]*>)/gi,'&lt;');
-    qEl.innerHTML = safe;
+  if(q.slide_img_url || q.img) {
+    qEl.textContent = '';
+    qEl.style.display = 'none';
   } else {
-    qEl.textContent = q.q;
+    qEl.style.display = '';
+    if(q.question_html_ru && lang==='ru'){
+      const safe = q.question_html_ru.replace(/<(?!\/?(b|strong|i|em|br|span)[^>]*>)/gi,'&lt;');
+      qEl.innerHTML = safe;
+    } else {
+      qEl.textContent = q.q;
+    }
   }
   document.getElementById('fb').className='fb';
   document.getElementById('next-btn').className='next-btn';

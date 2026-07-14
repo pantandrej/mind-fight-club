@@ -1189,6 +1189,9 @@ function hasPlaceholderText(str){
 }
 
 function isPlayableQuestion(raw){
+  // Info slides always pass — they have no answers but are valid pack items
+  if(raw.question_type === 'info' || raw._questionType === 'info' || raw.media_type === 'info') return true;
+
   // ── 1. Extract raw answers (same logic as toPlayableQuestion, before filtering)
   let _ajson = raw.answers_json;
   if(typeof _ajson==='string'){ try{ _ajson=JSON.parse(_ajson); }catch(e){ _ajson=null; } }
