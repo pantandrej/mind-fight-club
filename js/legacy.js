@@ -13541,7 +13541,7 @@ window.gcPublish = async function() {
           audio_url: q.audio || null, video_url: q.video || null,
           media_type: q.audio ? 'audio' : q.video ? 'video' : q.slide_q_url ? 'image' : 'text',
           question_type: q.question_type || 'multiple_choice',
-          language: 'ru', status: 'active',
+          category: 'general', language: 'ru', status: 'active',
         });
         await post('official_tournament_questions', { tournament_id: t.id, question_id: qRow.id, order_index: i + 1 });
       }
@@ -13572,7 +13572,7 @@ window.gcPublish = async function() {
           audio_url: q.audio || null, video_url: q.video || null,
           media_type: q.audio ? 'audio' : q.video ? 'video' : q.slide_q_url ? 'image' : 'text',
           question_type: q.question_type || 'multiple_choice',
-          language: 'ru', status: 'active',
+          category: 'general', language: 'ru', status: 'active',
         });
         await post('game_pack_questions', { game_pack_id: packId, question_id: qRow.id, order_index: i + 1 });
       }
