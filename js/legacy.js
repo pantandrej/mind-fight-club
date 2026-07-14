@@ -4365,9 +4365,17 @@ async function adminEditGame(packId, importKey){
       if(nameEl) nameEl.value = pack.title_ru || importKey;
       if(codeEl) codeEl.value = importKey.toUpperCase();
 
-      // Show the loaded section (hidden by default, shown after JSON load)
+      // Show the loaded section and render filmstrip
       const gcLoaded = document.getElementById('gc-loaded');
       if(gcLoaded) gcLoaded.style.display = 'flex';
+      const film = document.getElementById('gc-filmstrip');
+      if(film) film.innerHTML = (_gcData.slides || []).map(s =>
+        `<div style="flex-shrink:0;text-align:center">
+           <img src="${s.url}" style="height:70px;border-radius:6px;display:block;cursor:pointer"
+                onclick="gcFilmClick(${s.n})" title="Слайд ${s.n}">
+           <div style="font-size:10px;color:var(--muted);margin-top:2px">${s.n}</div>
+         </div>`
+      ).join('');
 
       // Clear existing question cards
       _gcQCount = 0; _gcCorrect = {}; _gcOptCount = {};
