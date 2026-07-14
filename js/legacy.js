@@ -13404,7 +13404,33 @@ window.gcLoadFromFile = function(input) {
     try {
       _gcData = JSON.parse(e.target.result);
       _gcShowLoaded();
-      toast('✅ Файл загружен — ' + (_gcData.slides||[]).length + ' слайдов');
+      const qs = _gcData.questions || [];
+      if (qs.length) {
+        for (let i = qs.length - 1; i >= 0; i--) {
+          const q = qs[i];
+          gcAddQuestion();
+          const qi = _gcQCount - 1;
+          setTimeout(((qi, q) => () => {
+            if (q.sq) { document.getElementById(`gc-sq-${qi}`).value = q.sq; gcUpdatePreview(qi,'q'); }
+            if (q.sa) { document.getElementById(`gc-sa-${qi}`).value = q.sa; gcUpdatePreview(qi,'a'); }
+            if (q.text) document.getElementById(`gc-qtxt-${qi}`).value = q.text;
+            if (q.media) { const s = document.getElementById(`gc-media-${qi}`); if(s) s.value = q.media; }
+            (q.opts||[]).forEach((opt, ai) => {
+              let el = document.getElementById(`gc-opt-txt-${qi}-${ai}`);
+              if (!el) { gcAddOption(qi); el = document.getElementById(`gc-opt-txt-${qi}-${ai}`); }
+              if (el && opt) el.value = opt;
+            });
+            if (q.correct !== null && q.correct !== undefined) gcSelectCorrect(qi, q.correct);
+            if (q.question_type === 'info') {
+              const typeEl = document.getElementById(`gc-type-${qi}`);
+              if (typeEl) typeEl.value = 'info';
+            }
+          })(qi, q), 0);
+        }
+        toast('✅ Файл загружен — ' + (_gcData.slides||[]).length + ' слайдов, ' + qs.length + ' вопросов');
+      } else {
+        toast('✅ Файл загружен — ' + (_gcData.slides||[]).length + ' слайдов');
+      }
     } catch { toast('❌ Неверный JSON'); }
   };
   reader.readAsText(file);

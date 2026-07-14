@@ -203,97 +203,22 @@ def main():
         while len(slide_texts) < n_slides:
             slide_texts.append([])
 
-        # Build question list: group slides into (question_slide, answer_slide) pairs
-        # Pattern: info | (question_slide, skip_slide?, answer_slide) repeating
-        questions = []
-        i = 0
-        while i < n_slides:
-            slide_num = i + 1
-            texts = slide_texts[i] if i < len(slide_texts) else []
-            kind = classify_slide(texts, slide_num)
+        # Build Game Creator format: {folder, slides, media}
+        slides_list = [{"n": i, "url": url} for i, url in sorted(slide_urls.items())]
+        media_list  = [{"url": url, "name": fname} for fname, url in media_urls.items()]
 
-            if kind == 'info':
-                questions.append({
-                    "question": texts[0] if texts else f"Слайд {slide_num}",
-                    "answer_a": "", "answer_b": "", "answer_c": "",
-                    "answer_d": "", "answer_e": "", "answer_f": "",
-                    "correct_answer": "A",
-                    "category": "GENERAL",
-                    "explanation": "",
-                    "question_type": "info",
-                    "slide_img_url": slide_urls.get(slide_num),
-                    "answer_slide_img_url": None,
-                    "audio_url": None, "video_url": None,
-                })
-                i += 1
-
-            elif kind == 'question':
-                q_slide = slide_num
-                q_texts = texts
-                answers = extract_answers_from_texts(q_texts)
-                q_text = q_texts[0] if q_texts else f"Вопрос {slide_num}"
-
-                # Next slide: skip (question without answers) — skip it
-                # Slide after that: answer slide
-                a_slide_num = None
-                # Look ahead for answer slide (skip intermediate)
-                if i + 2 < n_slides:
-                    next_kind = classify_slide(slide_texts[i+1] if i+1 < len(slide_texts) else [], i+2)
-                    after_kind = classify_slide(slide_texts[i+2] if i+2 < len(slide_texts) else [], i+3)
-                    if next_kind in ('answer_only', 'skip') and after_kind in ('answer_only', 'skip', 'question', 'info'):
-                        a_slide_num = i + 3  # 3rd slide is answer reveal
-                        i += 3
-                    else:
-                        i += 1
-                else:
-                    i += 1
-
-                # Determine media for this question (by question number in text)
-                q_num_match = re.search(r'\b(\d+)\b', ' '.join(q_texts[-2:]))
-                q_num = int(q_num_match.group(1)) if q_num_match else None
-
-                audio_url = None
-                video_url = None
-                for fname, url in media_urls.items():
-                    stem = Path(fname).stem
-                    if q_num and (stem == str(q_num) or stem.rstrip('о') == str(q_num)):
-                        if fname.endswith('.mp3'):
-                            audio_url = url
-                        elif fname.endswith('.mp4') and not stem.endswith('о'):
-                            video_url = url
-
-                # Map answers to fields
-                abc = ['a','b','c','d','e','f']
-                entry = {
-                    "question": q_text,
-                    "answer_a": answers[0] if len(answers) > 0 else "",
-                    "answer_b": answers[1] if len(answers) > 1 else "",
-                    "answer_c": answers[2] if len(answers) > 2 else "",
-                    "answer_d": answers[3] if len(answers) > 3 else "",
-                    "answer_e": answers[4] if len(answers) > 4 else "",
-                    "answer_f": answers[5] if len(answers) > 5 else "",
-                    "correct_answer": "A",  # user sets this in admin panel
-                    "category": "GENERAL",
-                    "explanation": "",
-                    "question_type": "multiple_choice",
-                    "slide_img_url": slide_urls.get(q_slide),
-                    "answer_slide_img_url": slide_urls.get(a_slide_num) if a_slide_num else None,
-                    "audio_url": audio_url,
-                    "video_url": video_url,
-                }
-                questions.append(entry)
-
-            else:  # answer_only or skip
-                i += 1
+        out_data = {
+            "folder": code,
+            "slides": slides_list,
+            "media":  media_list,
+        }
 
         out_path = Path(__file__).parent / f"{code}_import.json"
-        out_path.write_text(json.dumps(questions, ensure_ascii=False, indent=2), encoding='utf-8')
+        out_path.write_text(json.dumps(out_data, ensure_ascii=False, indent=2), encoding='utf-8')
 
-        valid = sum(1 for q in questions if q.get('question_type') != 'info')
-        info  = sum(1 for q in questions if q.get('question_type') == 'info')
         print(f"\n✅ {out_path.name} готов")
-        print(f"   Вопросов: {valid} | Орг.слайдов: {info}")
-        print(f"\n👉 Загрузи в Админка → Импорт игр → выбери {out_path.name}")
+        print(f"   Слайдов: {len(slides_list)} | Медиа: {len(media_list)}")
+        print(f"\n👉 Загрузи в Админка → Конструктор игр → Выбрать файл → {out_path.name}")
 
 if __name__ == '__main__':
     main()
