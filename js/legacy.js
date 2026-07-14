@@ -12866,9 +12866,9 @@ async function loadFriends() {
 window._startPresencePing =
 function _startPresencePing() {
   if (!currentUser) return;
-  sb.rpc('ping_presence').catch(() => {});
+  (async () => { try { await sb.rpc('ping_presence'); } catch(e) {} })();
   setInterval(() => {
-    if (currentUser) sb.rpc('ping_presence').catch(() => {});
+    if (currentUser) (async () => { try { await sb.rpc('ping_presence'); } catch(e) {} })();
   }, 60_000);
 }
 // Called after user is loaded
