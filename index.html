@@ -329,6 +329,7 @@
     <div class="logo">BFC</div>
     <div class="hdr-right">
       <div class="streak-pill" id="streak-pill"><span>🔥</span><span id="streak-num">0</span></div>
+      <div id="game-score-pill" style="display:none;background:rgba(108,99,255,.18);border-radius:20px;padding:4px 12px;font-size:13px;font-weight:800;color:var(--accent2)">⭐ <span id="game-score-val">0</span></div>
       <div class="neurons-pill"><div class="n-orb"></div><span id="n-quiz">0</span></div>
     </div>
   </div>
@@ -654,6 +655,10 @@
           <div style="font-size:11px;color:var(--accent2);margin-top:4px">Смотреть рейтинг →</div>
         </div>
       </div>
+    </div>
+    <div id="sc-pack-leaderboard" style="display:none;width:100%;margin:12px 0">
+      <div style="font-size:10px;font-weight:800;letter-spacing:1px;color:var(--muted);margin-bottom:8px">🏆 ТОП ИГРОКОВ ПАКА</div>
+      <div id="sc-pack-lb-rows" style="display:flex;flex-direction:column;gap:6px"></div>
     </div>
     <div class="score-btns">
       <!-- AI разбор после игры -->

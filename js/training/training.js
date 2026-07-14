@@ -609,6 +609,9 @@ async function playDBPack(importKey, packId){
   currentGameType = 'pack';
   currentPackKey  = importKey;
   _scoreShownForGame = false; _roundAnswers = [];
+  const _gsp = document.getElementById('game-score-pill');
+  const _gsv = document.getElementById('game-score-val');
+  if(_gsp){ _gsp.style.display='flex'; } if(_gsv) _gsv.textContent='0';
   toast(lang==='ru'?'⏳ Загружаем пак...':'⏳ Loading pack...', 1500);
 
   // Load pack meta — by packId (UUID) or importKey (string)
@@ -1162,6 +1165,8 @@ function pick(i){
     if(streak>bestStreak)bestStreak=streak;
     _syncQuizStateToStore();
     updNeurons();
+    const gsv = document.getElementById('game-score-val');
+    if(gsv) gsv.textContent = _roundScore;
     const pillEl=document.getElementById('n-quiz').closest('.neurons-pill');
     if(pillEl){pillEl.classList.add('pop');setTimeout(()=>pillEl.classList.remove('pop'),220);}
     showFb('fb',(streak>1?'🔥 '+streak+'x! ':'✓ ')+'+'+pts,true);
@@ -1257,6 +1262,38 @@ function spawnConfetti(){
   }
 }
 
+async function _loadPackLeaderboard(packMode, myScore){
+  const lbEl = document.getElementById('sc-pack-leaderboard');
+  const rowsEl = document.getElementById('sc-pack-lb-rows');
+  if(!lbEl || !rowsEl || !window.sb) return;
+  lbEl.style.display = 'block';
+  rowsEl.innerHTML = '<div style="color:var(--muted);font-size:12px">Загружаем...</div>';
+  try {
+    const {data} = await window.sb.from('game_sessions')
+      .select('user_id, score')
+      .eq('mode', packMode)
+      .order('score', {ascending: false})
+      .limit(10);
+    if(!data || !data.length){ lbEl.style.display='none'; return; }
+    // Get user names
+    const uids = [...new Set(data.map(r=>r.user_id))];
+    const {data: profiles} = await window.sb.from('profiles')
+      .select('id,display_name,username')
+      .in('id', uids);
+    const nameMap = Object.fromEntries((profiles||[]).map(p=>[p.id, p.display_name||p.username||'Игрок']));
+    const myId = window.currentUser?.id;
+    rowsEl.innerHTML = data.map((r,i)=>{
+      const isMe = r.user_id === myId && r.score === myScore;
+      const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}.`;
+      return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:10px;background:${isMe?'rgba(108,99,255,.18)':'var(--bg3)'};${isMe?'border:1px solid var(--accent);':''}">
+        <span style="font-size:16px;min-width:24px">${medal}</span>
+        <span style="flex:1;font-size:13px;font-weight:${isMe?'800':'600'};color:${isMe?'var(--accent2)':'var(--text)'}">${nameMap[r.user_id]||'Игрок'}</span>
+        <span style="font-size:13px;font-weight:800;color:var(--gold)">${r.score}</span>
+      </div>`;
+    }).join('');
+  } catch(e){ lbEl.style.display='none'; }
+}
+
 function showScore(){
   // Guard: prevent double-execution for the same round
   if(_scoreShownForGame) return;
@@ -1321,6 +1358,22 @@ function showScore(){
       questions_count: Array.isArray(curQ) ? curQ.length : 10,
       score:           _roundScore,
     }).eq('id', window._currentSessionId).then(()=>{}).catch(()=>{});
+  }
+  // Hide game score pill
+  const _gsp2 = document.getElementById('game-score-pill');
+  if(_gsp2) _gsp2.style.display = 'none';
+  // Pack leaderboard: save + show top
+  if(currentGameType === 'pack' && currentPackKey && window.sb && window.currentUser){
+    const packMode = 'pack:' + currentPackKey;
+    window.sb.from('game_sessions').insert({
+      user_id: window.currentUser.id, mode: packMode,
+      score: _roundScore, correct_answers: correctCount,
+      questions_count: Array.isArray(curQ) ? curQ.length : 10,
+    }).then(()=>{}).catch(()=>{});
+    _loadPackLeaderboard(packMode, _roundScore);
+  } else {
+    const lbEl = document.getElementById('sc-pack-leaderboard');
+    if(lbEl) lbEl.style.display = 'none';
   }
   // Sync team score async (club aggregation)
   if(window.syncTeamScoreAfterGame) window.syncTeamScoreAfterGame();

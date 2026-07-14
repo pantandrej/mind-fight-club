@@ -2313,7 +2313,7 @@ function renderQMedia(containerId, q){
           <div style="font-size:11px;color:var(--muted);margin-top:4px">Нажми ▶️ и слушай</div></div></div>`;
       })() : '';
       container.innerHTML = `<div class="q-media">
-        <img src="${q.img}" alt="" style="width:100%;max-height:320px;object-fit:contain;display:block;border-radius:8px;background:var(--bg3)" onerror="this.parentElement.innerHTML='<div style=\'padding:16px;text-align:center;color:var(--muted);font-size:12px\'>🖼 Изображение недоступно</div>'">
+        <img src="${q.img}" alt="" style="width:100%;aspect-ratio:16/9;object-fit:cover;display:block;border-radius:8px" onerror="this.parentElement.innerHTML='<div style=\'padding:16px;text-align:center;color:var(--muted);font-size:12px\'>🖼 Изображение недоступно</div>'">
         ${q.video ? `<video src="${q.video}" controls style="width:100%;border-radius:8px;margin-top:8px" playsinline></video>` : ''}
         ${audioHtml}
         <div class="q-media-hint">${hint}</div>

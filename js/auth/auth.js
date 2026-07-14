@@ -508,7 +508,8 @@ export function continueAsGuest() {
   if (typeof window.savePendingRef === 'function') window.savePendingRef();
   const p = new URLSearchParams(window.location.search);
   const hypeSlug = p.get('hype') || window._hypeAutoSlug || null;
-  if (p.get('duel')) { showScreen('duel'); document.getElementById('join-code-input').value = p.get('duel'); }
+  if (p.get('pack')) { showScreen('home'); setTimeout(() => window.playDBPack?.(p.get('pack')), 800); }
+  else if (p.get('duel')) { showScreen('duel'); document.getElementById('join-code-input').value = p.get('duel'); }
   else if (p.get('tourn')) { showScreen('tournament'); document.getElementById('t-join-code').value = p.get('tourn'); }
   else if (p.get('challenge')) { showScreen('home'); setTimeout(_showChallengeModal, 500); }
   else showScreen('home');
