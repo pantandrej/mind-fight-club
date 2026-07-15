@@ -94,7 +94,7 @@ Deno.serve(async (req) => {
     const { data: linkData, error: linkErr } = await sb.auth.admin.generateLink({
       type: 'magiclink',
       email: targetUser!.email!,
-      options: { redirectTo: 'https://brainfight.club/' }
+      options: { redirectTo: 'https://mind-fight-club.vercel.app/' }
     })
     if (linkErr) throw linkErr
 

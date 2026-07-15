@@ -440,7 +440,7 @@ export async function verifyPhoneOTP() {
 }
 
 const VK_APP_ID = '54679210';
-const VK_REDIRECT_URI = 'https://brainfight.club/';
+const VK_REDIRECT_URI = window.location.origin + '/';
 
 // Called on every page load to handle VK OAuth2 callback (?code=...&state=vk)
 export async function initVKIDCallback() {
