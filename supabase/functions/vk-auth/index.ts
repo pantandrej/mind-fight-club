@@ -6,42 +6,17 @@ const CORS = {
 }
 
 const VK_APP_ID = '54679210'
-const VK_CLIENT_SECRET = Deno.env.get('VK_CLIENT_SECRET')!
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
 
   try {
-    const { code, redirect_uri } = await req.json()
-    if (!code || !redirect_uri) {
-      return new Response(JSON.stringify({ error: 'Missing code or redirect_uri' }), {
+    const { access_token } = await req.json()
+    if (!access_token) {
+      return new Response(JSON.stringify({ error: 'Missing access_token' }), {
         status: 400, headers: { ...CORS, 'Content-Type': 'application/json' }
       })
     }
-
-    // Exchange code for access_token via VK ID OAuth2 (PKCE)
-    const tokenBody = new URLSearchParams({
-      grant_type: 'authorization_code',
-      client_id: VK_APP_ID,
-      client_secret: VK_CLIENT_SECRET,
-      redirect_uri,
-      code,
-      ...(code_verifier ? { code_verifier } : {}),
-    })
-    const tokenResp = await fetch('https://id.vk.com/oauth2/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: tokenBody,
-    })
-    const tokenData = await tokenResp.json()
-
-    if (tokenData.error) {
-      return new Response(JSON.stringify({ error: tokenData.error_description || tokenData.error }), {
-        status: 401, headers: { ...CORS, 'Content-Type': 'application/json' }
-      })
-    }
-
-    const { access_token } = tokenData
 
     // Get user info from VK ID
     const userResp = await fetch('https://id.vk.com/oauth2/user_info', {
@@ -52,8 +27,13 @@ Deno.serve(async (req) => {
     const userData = await userResp.json()
     const vkUser = userData.user || {}
     const user_id = vkUser.user_id
-    const vkEmail = vkUser.email
+    if (!user_id) {
+      return new Response(JSON.stringify({ error: 'VK user_info failed: ' + JSON.stringify(userData) }), {
+        status: 401, headers: { ...CORS, 'Content-Type': 'application/json' }
+      })
+    }
 
+    const vkEmail = vkUser.email
     const displayName = [vkUser.first_name, vkUser.last_name].filter(Boolean).join(' ') || `VK${user_id}`
     const avatarUrl = vkUser.avatar || null
     const email = vkEmail || `vk${user_id}@brainfight.club`
