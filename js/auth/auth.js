@@ -494,9 +494,13 @@ export async function signInVK() {
   if (p.get('duel'))  sessionStorage.setItem('mfc_pending_duel',  p.get('duel'));
   if (p.get('tourn')) sessionStorage.setItem('mfc_pending_tourn', p.get('tourn'));
 
-  const vkUrl = `https://oauth.vk.com/authorize?client_id=${VK_APP_ID}` +
+  const { verifier, challenge } = await _pkceChallenge();
+  sessionStorage.setItem('vk_code_verifier', verifier);
+
+  const vkUrl = `https://id.vk.com/oauth2/auth?client_id=${VK_APP_ID}` +
     `&redirect_uri=${encodeURIComponent(_vkRedirectUri())}` +
-    `&response_type=code&scope=email&state=vk`;
+    `&response_type=code&scope=email&state=vk` +
+    `&code_challenge=${challenge}&code_challenge_method=S256`;
 
   window.location.href = vkUrl;
 }

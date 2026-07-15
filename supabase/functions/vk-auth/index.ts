@@ -19,12 +19,20 @@ Deno.serve(async (req) => {
       })
     }
 
-    // Exchange code for access_token via classic VK OAuth2
-    const tokenUrl = `https://oauth.vk.com/access_token?client_id=${VK_APP_ID}` +
-      `&client_secret=${encodeURIComponent(VK_CLIENT_SECRET)}` +
-      `&redirect_uri=${encodeURIComponent(redirect_uri)}` +
-      `&code=${encodeURIComponent(code)}`
-    const tokenResp = await fetch(tokenUrl)
+    // Exchange code for access_token via VK ID OAuth2 (PKCE)
+    const tokenBody = new URLSearchParams({
+      grant_type: 'authorization_code',
+      client_id: VK_APP_ID,
+      client_secret: VK_CLIENT_SECRET,
+      redirect_uri,
+      code,
+      ...(code_verifier ? { code_verifier } : {}),
+    })
+    const tokenResp = await fetch('https://id.vk.com/oauth2/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: tokenBody,
+    })
     const tokenData = await tokenResp.json()
 
     if (tokenData.error) {
@@ -33,17 +41,21 @@ Deno.serve(async (req) => {
       })
     }
 
-    const { access_token, user_id, email: vkEmail } = tokenData
+    const { access_token } = tokenData
 
-    // Get user info from VK API
-    const userResp = await fetch(
-      `https://api.vk.com/method/users.get?user_ids=${user_id}&fields=photo_200&access_token=${access_token}&v=5.199`
-    )
+    // Get user info from VK ID
+    const userResp = await fetch('https://id.vk.com/oauth2/user_info', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `client_id=${VK_APP_ID}&access_token=${encodeURIComponent(access_token)}`,
+    })
     const userData = await userResp.json()
-    const vkUser = userData.response?.[0] || {}
+    const vkUser = userData.user || {}
+    const user_id = vkUser.user_id
+    const vkEmail = vkUser.email
 
     const displayName = [vkUser.first_name, vkUser.last_name].filter(Boolean).join(' ') || `VK${user_id}`
-    const avatarUrl = vkUser.photo_200 || null
+    const avatarUrl = vkUser.avatar || null
     const email = vkEmail || `vk${user_id}@brainfight.club`
 
     const sb = createClient(
