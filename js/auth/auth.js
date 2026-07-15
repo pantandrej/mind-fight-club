@@ -495,12 +495,15 @@ export async function signInVK() {
   if (p.get('tourn')) sessionStorage.setItem('mfc_pending_tourn', p.get('tourn'));
 
   const { verifier, challenge } = await _pkceChallenge();
+  const deviceId = crypto.randomUUID();
   sessionStorage.setItem('vk_code_verifier', verifier);
+  sessionStorage.setItem('vk_device_id', deviceId);
 
-  const vkUrl = `https://id.vk.com/oauth2/authorize?client_id=${VK_APP_ID}` +
+  const vkUrl = `https://id.vk.com/oauth2/auth?client_id=${VK_APP_ID}` +
     `&redirect_uri=${encodeURIComponent(_vkRedirectUri())}` +
     `&response_type=code&scope=email&state=vk` +
-    `&code_challenge=${challenge}&code_challenge_method=S256`;
+    `&code_challenge=${challenge}&code_challenge_method=S256` +
+    `&device_id=${deviceId}`;
 
   window.location.href = vkUrl;
 }
