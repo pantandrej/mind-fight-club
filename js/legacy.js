@@ -12958,33 +12958,55 @@ window.showAddFriendModal = function() {
     document.body.appendChild(modal);
   }
   modal.innerHTML = `<div style="background:var(--bg2);border-radius:20px;padding:24px;width:100%;max-width:340px">
-    <div style="font-size:17px;font-weight:900;margin-bottom:16px">Добавить друга</div>
-    <input id="add-friend-input" placeholder="Имя пользователя"
-      style="width:100%;background:var(--bg3);border:0.5px solid var(--border);border-radius:12px;padding:12px;font-size:15px;color:var(--text);font-family:inherit;outline:none;box-sizing:border-box;margin-bottom:8px" />
+    <div style="font-size:17px;font-weight:900;margin-bottom:16px">Найти игрока</div>
+    <input id="add-friend-input" placeholder="Имя или фамилия..."
+      oninput="searchFriendUsers(this.value)"
+      style="width:100%;background:var(--bg3);border:0.5px solid var(--border);border-radius:12px;padding:12px;font-size:15px;color:var(--text);font-family:inherit;outline:none;box-sizing:border-box;margin-bottom:6px" />
+    <div id="add-friend-results" style="margin-bottom:6px"></div>
     <div id="add-friend-err" style="font-size:12px;color:var(--red);min-height:16px;margin-bottom:8px"></div>
-    <div style="display:flex;gap:8px">
-      <button onclick="document.getElementById('add-friend-modal').remove()" style="flex:1;background:rgba(255,255,255,.07);border:0.5px solid var(--border);border-radius:12px;padding:12px;font-size:14px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit">Отмена</button>
-      <button onclick="submitAddFriend()" style="flex:1;background:var(--accent);border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit">Добавить</button>
-    </div>
+    <button onclick="document.getElementById('add-friend-modal').remove()" style="width:100%;background:rgba(255,255,255,.07);border:0.5px solid var(--border);border-radius:12px;padding:12px;font-size:14px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit">Отмена</button>
   </div>`;
   modal.style.display = 'flex';
   setTimeout(() => document.getElementById('add-friend-input')?.focus(), 100);
 };
 
-window.submitAddFriend = async function() {
-  const name = document.getElementById('add-friend-input')?.value.trim();
+let _friendSearchTimer = null;
+window.searchFriendUsers = function(query) {
+  clearTimeout(_friendSearchTimer);
+  const resEl = document.getElementById('add-friend-results');
   const errEl = document.getElementById('add-friend-err');
-  if (!name) { if(errEl) errEl.textContent = 'Введи имя'; return; }
+  if (errEl) errEl.textContent = '';
+  if (!query || query.length < 2) { if (resEl) resEl.innerHTML = ''; return; }
+  if (resEl) resEl.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:6px 0">Ищем...</div>';
+  _friendSearchTimer = setTimeout(async () => {
+    const { data } = await sb.from('profiles').select('id,display_name,city')
+      .ilike('display_name', `%${query}%`).limit(8);
+    if (!resEl) return;
+    if (!data?.length) { resEl.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:6px 0">Никого не нашли</div>'; return; }
+    resEl.innerHTML = data.map(u => `
+      <div style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:10px;background:var(--bg3);margin-bottom:4px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:700;color:var(--text)">${u.display_name || 'Игрок'}</div>
+          ${u.city ? `<div style="font-size:11px;color:var(--muted)">${u.city}</div>` : ''}
+        </div>
+        <button onclick="submitAddFriend('${u.id}','${(u.display_name||'').replace(/'/g,"\\'")}')"
+          style="background:var(--accent);border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit;flex-shrink:0">
+          Добавить
+        </button>
+      </div>`).join('');
+  }, 350);
+};
 
-  const { data: found } = await sb.from('profiles').select('id,display_name').eq('display_name', name).maybeSingle();
-  if (!found) { if(errEl) errEl.textContent = 'Пользователь не найден'; return; }
-  if (found.id === currentUser?.id) { if(errEl) errEl.textContent = 'Нельзя добавить себя'; return; }
+window.submitAddFriend = async function(friendId, friendName) {
+  const errEl = document.getElementById('add-friend-err');
+  if (!friendId) { if(errEl) errEl.textContent = 'Выбери пользователя из списка'; return; }
+  if (friendId === currentUser?.id) { if(errEl) errEl.textContent = 'Нельзя добавить себя'; return; }
 
-  const { error } = await sb.from('friendships').insert({ user_id: currentUser.id, friend_id: found.id }).single();
+  const { error } = await sb.from('friendships').insert({ user_id: currentUser.id, friend_id: friendId }).single();
   if (error && error.code !== '23505') { if(errEl) errEl.textContent = 'Ошибка: ' + error.message; return; }
 
   document.getElementById('add-friend-modal')?.remove();
-  window.toast?.('✅ ' + found.display_name + ' добавлен в друзья!');
+  window.toast?.('✅ ' + friendName + ' добавлен в друзья!');
   loadFriends();
 };
 

@@ -1969,3 +1969,46 @@ window.renderProfileCity                 = renderProfileCity;
 window.claimDailyGoalBonus              = claimDailyGoalBonus;
 window.isDailyGoalClaimed               = isDailyGoalClaimed;
 window.todayKey                          = todayKey;
+
+function toggleAvatarEdit() {
+  const panel = document.getElementById('profile-avatar-edit');
+  if (!panel) return;
+  const isOpen = panel.style.display !== 'none';
+  panel.style.display = isOpen ? 'none' : 'block';
+}
+
+async function saveAvatarFile(input) {
+  const file = input?.files?.[0];
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) { toast('❌ Файл больше 2 МБ'); return; }
+  if (!currentUser) { toast('❌ Войди в аккаунт'); return; }
+
+  toast('⏳ Загружаем фото...');
+  const ext = file.name.split('.').pop().toLowerCase() || 'jpg';
+  const path = `avatars/${currentUser.id}.${ext}`;
+  const { error: upErr } = await sb.storage.from('mfc-media').upload(path, file, { upsert: true, contentType: file.type });
+  if (upErr) { toast('❌ Ошибка загрузки: ' + upErr.message.slice(0, 60)); return; }
+
+  const { data: urlData } = sb.storage.from('mfc-media').getPublicUrl(path);
+  const url = urlData?.publicUrl;
+  if (!url) { toast('❌ Не удалось получить URL'); return; }
+
+  // Save to profile
+  await sb.from('profiles').upsert({ id: currentUser.id, avatar_url: url, updated_at: new Date().toISOString() }, { onConflict: 'id' });
+  await sb.auth.updateUser({ data: { avatar_url: url } });
+
+  // Update avatar in UI
+  const avEl = document.getElementById('profile-av');
+  if (avEl) {
+    avEl.style.backgroundImage = `url(${url})`;
+    avEl.style.backgroundSize = 'cover';
+    avEl.style.backgroundPosition = 'center';
+    avEl.textContent = '';
+  }
+
+  toggleAvatarEdit();
+  toast('✅ Фото сохранено!');
+}
+
+window.toggleAvatarEdit = toggleAvatarEdit;
+window.saveAvatarFile   = saveAvatarFile;

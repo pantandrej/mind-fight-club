@@ -270,7 +270,7 @@ function renderDailyStreakUI(){
   // Sub
   const sub = document.getElementById('home-streak-sub');
   if(sub) {
-    if(doneToday) sub.textContent = lang==='ru'?'Отлично! Заходи завтра чтобы не прерывать.':'Great! Come back tomorrow to keep it going.';
+    if(doneToday) sub.textContent = lang==='ru'?'Отлично! Заходи завтра, чтобы не прерывать.':'Great! Come back tomorrow to keep it going.';
     else if(hasFrz) sub.innerHTML = lang==='ru'?'❄️ Заморозка активна — серия защищена':'❄️ Freeze active — streak protected';
     else if(streak > 0) sub.textContent = lang==='ru'?'Сыграй сегодня, чтобы не потерять серию!':'Play today to keep your streak alive!';
     else sub.textContent = lang==='ru'?'Играй каждый день — не прерывай серию!':'Play every day — don\'t break the chain!';

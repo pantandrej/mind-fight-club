@@ -75,19 +75,26 @@ async function renderWeekLeaderboard(listEl, myRowEl) {
 
   const { data: rows, error } = await sb
     .from('pack_results')
-    .select('user_id, score, profiles(display_name, city)')
+    .select('user_id, score')
     .gte('played_at', mon.toISOString())
     .order('score', { ascending: false })
-    .limit(200);
+    .limit(500);
 
   if (error) throw error;
 
   // Aggregate by user
   const agg = {};
   (rows || []).forEach(r => {
-    if (!agg[r.user_id]) agg[r.user_id] = { user_id: r.user_id, score: 0, display_name: r.profiles?.display_name, city: r.profiles?.city };
+    if (!agg[r.user_id]) agg[r.user_id] = { user_id: r.user_id, score: 0 };
     agg[r.user_id].score += r.score || 0;
   });
+
+  // Fetch profiles for top users
+  const topIds = Object.keys(agg);
+  if (topIds.length) {
+    const { data: profiles } = await sb.from('profiles').select('id,display_name,city').in('id', topIds.slice(0, 200));
+    (profiles || []).forEach(p => { if (agg[p.id]) { agg[p.id].display_name = p.display_name; agg[p.id].city = p.city; } });
+  }
 
   const sorted = Object.values(agg).sort((a, b) => b.score - a.score);
   const myIdx = sorted.findIndex(r => r.user_id === currentUser?.id);
