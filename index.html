@@ -1492,219 +1492,228 @@
 
 <div class="screen" id="profile">
   <main class="bfc-profile-page">
+    <div class="prf-layout">
 
-    <!-- Guest block -->
-    <div id="profile-guest" style="display:none;text-align:center;padding:40px 16px;flex-direction:column;align-items:center">
-      <div style="font-size:48px;margin-bottom:16px">👤</div>
-      <div style="font-size:18px;font-weight:800;margin-bottom:8px" id="pg-title">Вы играете как гость</div>
-      <div style="font-size:13px;color:var(--muted);margin-bottom:24px;line-height:1.5" id="pg-sub">Войдите, чтобы сохранить прогресс и соревноваться глобально</div>
-      <button class="google-btn" onclick="signInGoogle()" style="max-width:300px;margin:0 auto">
-        <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.548 0 9s.348 2.825.957 4.039l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"/></svg>
-        <span id="pg-google-btn">Войти через Google</span>
-      </button>
-    </div>
+      <!-- ── SIDEBAR ── -->
+      <aside class="prf-sidebar">
 
-    <!-- 1. Hero -->
-    <header class="prf-hero">
-      <div id="profile-av" class="prf-avatar">🧠</div>
-      <h1 id="profile-name">Игрок BFC</h1>
-      <div id="profile-email"></div>
-      <div class="prf-meta-row">
-        <span id="profile-rank-badge">🌱 Новичок</span>
-        <span id="profile-city-tag">📍 <span id="profile-city-display"></span></span>
-      </div>
-      <div id="profile-bio-display" onclick="toggleBioEdit()">
-        <span id="profile-bio-text" style="display:none;color:rgba(255,255,255,.87);font-size:14px;line-height:1.48"></span>
-        <span id="profile-bio-placeholder" style="color:rgba(255,255,255,.5);font-size:13px">+ Добавить о себе</span>
-      </div>
-    </header>
-
-    <!-- 2. XP bar -->
-    <section id="xp-bar-wrap" class="prf-card prf-xp-card prf-section" style="display:none">
-      <div class="prf-xp-row">
-        <span class="prf-xp-level" id="xp-level-badge">Ур. 1</span>
-        <div class="prf-xp-track"><div id="xp-bar-fill"></div></div>
-        <span class="prf-xp-level" id="xp-next-badge">Ур. 2</span>
-      </div>
-      <div id="xp-label" style="margin-top:8px;color:var(--muted);font-size:12px;font-weight:700;text-align:center">0 / 100 XP</div>
-    </section>
-
-    <!-- 3. Stats -->
-    <section class="prf-stats">
-      <article class="prf-stat">
-        <span class="prf-stat-icon">⚡</span>
-        <strong id="n-profile" class="prf-stat-val" style="color:#c49500">0</strong>
-        <span class="prf-stat-lbl">Нейроны</span>
-      </article>
-      <article class="prf-stat">
-        <span class="prf-stat-icon">🎮</span>
-        <strong id="ps-games" class="prf-stat-val">—</strong>
-        <span id="ps-games-lbl" class="prf-stat-lbl">Игры</span>
-      </article>
-      <article class="prf-stat">
-        <span class="prf-stat-icon">🎯</span>
-        <strong id="ps-acc" class="prf-stat-val">—</strong>
-        <span id="ps-acc-lbl" class="prf-stat-lbl">Точность</span>
-      </article>
-    </section>
-    <!-- Hidden stat IDs referenced by JS -->
-    <span id="ps-neurons" style="display:none"></span>
-    <span id="ps-streak" style="display:none"></span>
-    <span id="ps-duels" style="display:none"></span>
-    <span id="ps-correct" style="display:none"></span>
-    <span id="ps-duels-played" style="display:none"></span>
-    <span id="ps-packs" style="display:none"></span>
-    <span id="ps-questions-submitted" style="display:none"></span>
-    <span id="ps-reports" style="display:none"></span>
-    <span id="profile-stats-title" style="display:none"></span>
-    <span id="profile-badges-title" style="display:none"></span>
-
-    <!-- 4. Edit actions -->
-    <section class="prf-section">
-      <div class="prf-actions">
-        <button class="prf-action-btn" onclick="toggleNameEdit()">✏️ Изменить имя</button>
-        <button class="prf-action-btn" onclick="showScreen('character')">🎨 Аватар</button>
-        <button class="prf-action-btn" onclick="toggleAvatarEdit()">📸 Фото</button>
-        <button class="prf-action-btn" onclick="toggleCityEdit()">📍 Город</button>
-      </div>
-
-      <div id="profile-name-edit" class="prf-edit-card" style="display:none">
-        <label class="prf-field-label" for="profile-name-input">Новое имя</label>
-        <input id="profile-name-input" class="prf-input" type="text" maxlength="40" placeholder="Как тебя зовут?" autocomplete="name">
-        <div class="prf-edit-btns">
-          <button class="prf-mini-btn" onclick="saveProfileName()">Сохранить</button>
-          <button class="prf-mini-btn prf-mini-btn--sec" onclick="toggleNameEdit()">Отмена</button>
+        <!-- Guest block -->
+        <div id="profile-guest" style="display:none;text-align:center;padding:40px 16px;flex-direction:column;align-items:center">
+          <div style="font-size:48px;margin-bottom:16px">👤</div>
+          <div style="font-size:18px;font-weight:800;margin-bottom:8px" id="pg-title">Вы играете как гость</div>
+          <div style="font-size:13px;color:var(--muted);margin-bottom:24px;line-height:1.5" id="pg-sub">Войдите, чтобы сохранить прогресс и соревноваться глобально</div>
+          <button class="google-btn" onclick="signInGoogle()" style="max-width:300px;margin:0 auto">
+            <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.548 0 9s.348 2.825.957 4.039l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"/></svg>
+            <span id="pg-google-btn">Войти через Google</span>
+          </button>
         </div>
-      </div>
 
-      <div id="profile-city-edit" class="prf-edit-card" style="display:none">
-        <label class="prf-field-label" for="profile-city-input">Твой город</label>
-        <input id="profile-city-input" class="prf-input" type="text" maxlength="60" placeholder="Например, Москва" autocomplete="address-level2">
-        <div class="prf-edit-btns">
-          <button class="prf-mini-btn" onclick="saveProfileCity()">Сохранить</button>
-          <button class="prf-mini-btn prf-mini-btn--sec" onclick="toggleCityEdit()">Отмена</button>
+        <!-- Hero -->
+        <header class="prf-hero">
+          <div id="profile-av" class="prf-avatar">🧠</div>
+          <h1 id="profile-name">Игрок BFC</h1>
+          <div id="profile-email"></div>
+          <div class="prf-meta-row">
+            <span id="profile-rank-badge">🌱 Новичок</span>
+            <span id="profile-city-tag">📍 <span id="profile-city-display"></span></span>
+          </div>
+          <div id="profile-bio-display" onclick="toggleBioEdit()">
+            <span id="profile-bio-text" style="display:none;color:rgba(255,255,255,.87);font-size:14px;line-height:1.48"></span>
+            <span id="profile-bio-placeholder" style="color:rgba(255,255,255,.5);font-size:13px">+ Добавить о себе</span>
+          </div>
+        </header>
+
+        <!-- XP bar -->
+        <section id="xp-bar-wrap" class="prf-card prf-xp-card prf-section" style="display:none">
+          <div class="prf-xp-row">
+            <span class="prf-xp-level" id="xp-level-badge">Ур. 1</span>
+            <div class="prf-xp-track"><div id="xp-bar-fill"></div></div>
+            <span class="prf-xp-level" id="xp-next-badge">Ур. 2</span>
+          </div>
+          <div id="xp-label" style="margin-top:8px;color:var(--muted);font-size:12px;font-weight:700;text-align:center">0 / 100 XP</div>
+        </section>
+
+        <!-- Edit actions -->
+        <section class="prf-section">
+          <div class="prf-actions">
+            <button class="prf-action-btn" onclick="toggleNameEdit()">✏️ Изменить имя</button>
+            <button class="prf-action-btn" onclick="showScreen('character')">🎨 Аватар</button>
+            <button class="prf-action-btn" onclick="toggleAvatarEdit()">📸 Фото</button>
+            <button class="prf-action-btn" onclick="toggleCityEdit()">📍 Город</button>
+          </div>
+          <div id="profile-name-edit" class="prf-edit-card" style="display:none">
+            <label class="prf-field-label" for="profile-name-input">Новое имя</label>
+            <input id="profile-name-input" class="prf-input" type="text" maxlength="40" placeholder="Как тебя зовут?" autocomplete="name">
+            <div class="prf-edit-btns">
+              <button class="prf-mini-btn" onclick="saveProfileName()">Сохранить</button>
+              <button class="prf-mini-btn prf-mini-btn--sec" onclick="toggleNameEdit()">Отмена</button>
+            </div>
+          </div>
+          <div id="profile-city-edit" class="prf-edit-card" style="display:none">
+            <label class="prf-field-label" for="profile-city-input">Твой город</label>
+            <input id="profile-city-input" class="prf-input" type="text" maxlength="60" placeholder="Например, Москва" autocomplete="address-level2">
+            <div class="prf-edit-btns">
+              <button class="prf-mini-btn" onclick="saveProfileCity()">Сохранить</button>
+              <button class="prf-mini-btn prf-mini-btn--sec" onclick="toggleCityEdit()">Отмена</button>
+            </div>
+          </div>
+          <div id="profile-bio-edit" class="prf-edit-card" style="display:none">
+            <label class="prf-field-label" for="profile-bio-input">О себе</label>
+            <textarea id="profile-bio-input" class="prf-textarea" maxlength="180" placeholder="Расскажи немного о себе"></textarea>
+            <div class="prf-edit-btns">
+              <button class="prf-mini-btn" onclick="saveBio()">Сохранить</button>
+              <button class="prf-mini-btn prf-mini-btn--sec" onclick="toggleBioEdit()">Отмена</button>
+            </div>
+          </div>
+          <div id="profile-avatar-edit" class="prf-edit-card" style="display:none">
+            <label class="prf-field-label">Загрузить фото</label>
+            <div class="prf-file-drop" onclick="document.getElementById('profile-avatar-file').click()">
+              <div style="font-size:24px;margin-bottom:4px">📸</div>
+              <div style="font-size:13px;font-weight:700;color:var(--text)">Выбрать фото</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px">JPG, PNG · до 2 МБ</div>
+              <input id="profile-avatar-file" type="file" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="saveAvatarFile(this)">
+            </div>
+            <div class="prf-edit-btns">
+              <button class="prf-mini-btn prf-mini-btn--sec" onclick="toggleAvatarEdit()">Отмена</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Admin -->
+        <div id="admin-dashboard" class="prf-section" style="display:none">
+          <button onclick="showScreen('admin')" style="width:100%;background:rgba(240,192,64,.1);border:1px solid var(--gold);border-radius:14px;padding:14px;font-size:14px;font-weight:800;color:var(--gold);cursor:pointer;font-family:inherit">
+            ⚡ Открыть Админ-панель
+          </button>
         </div>
-      </div>
-
-      <div id="profile-bio-edit" class="prf-edit-card" style="display:none">
-        <label class="prf-field-label" for="profile-bio-input">О себе</label>
-        <textarea id="profile-bio-input" class="prf-textarea" maxlength="180" placeholder="Расскажи немного о себе"></textarea>
-        <div class="prf-edit-btns">
-          <button class="prf-mini-btn" onclick="saveBio()">Сохранить</button>
-          <button class="prf-mini-btn prf-mini-btn--sec" onclick="toggleBioEdit()">Отмена</button>
+        <div id="create-trn-btn-wrap" class="prf-section" style="display:none">
+          <button onclick="openCreateTournament()" style="width:100%;background:rgba(108,99,255,.12);border:1px solid rgba(108,99,255,.35);border-radius:14px;padding:14px;font-size:14px;font-weight:800;color:var(--accent2);cursor:pointer;font-family:inherit">
+            ➕ Создать турнир
+          </button>
         </div>
-      </div>
 
-      <div id="profile-avatar-edit" class="prf-edit-card" style="display:none">
-        <label class="prf-field-label">Загрузить фото</label>
-        <div class="prf-file-drop" onclick="document.getElementById('profile-avatar-file').click()">
-          <div style="font-size:24px;margin-bottom:4px">📸</div>
-          <div style="font-size:13px;font-weight:700;color:var(--text)">Выбрать фото</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px">JPG, PNG · до 2 МБ</div>
-          <input id="profile-avatar-file" type="file" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="saveAvatarFile(this)">
+        <!-- Bottom actions -->
+        <section class="prf-bottom-actions">
+          <button id="theme-toggle-btn" class="prf-bottom-btn" onclick="toggleTheme()">🌙 Сменить тему</button>
+          <button id="push-notif-btn" class="prf-bottom-btn" onclick="requestPushPermission('profile').then(updatePushBtn)">🔔 Уведомления</button>
+          <button id="profile-signout-btn" class="prf-bottom-btn prf-bottom-btn--danger" onclick="signOut()">Выйти</button>
+        </section>
+
+      </aside>
+
+      <!-- ── MAIN ── -->
+      <section class="prf-main-col">
+
+        <!-- Stats -->
+        <div class="prf-stats-wrap">
+          <section class="prf-stats">
+            <article class="prf-stat">
+              <span class="prf-stat-icon">⚡</span>
+              <strong id="n-profile" class="prf-stat-val" style="color:#c49500">0</strong>
+              <span class="prf-stat-lbl">Нейроны</span>
+            </article>
+            <article class="prf-stat">
+              <span class="prf-stat-icon">🎮</span>
+              <strong id="ps-games" class="prf-stat-val">—</strong>
+              <span id="ps-games-lbl" class="prf-stat-lbl">Игры</span>
+            </article>
+            <article class="prf-stat">
+              <span class="prf-stat-icon">🎯</span>
+              <strong id="ps-acc" class="prf-stat-val">—</strong>
+              <span id="ps-acc-lbl" class="prf-stat-lbl">Точность</span>
+            </article>
+          </section>
         </div>
-        <div class="prf-edit-btns">
-          <button class="prf-mini-btn prf-mini-btn--sec" onclick="toggleAvatarEdit()">Отмена</button>
+
+        <!-- Hidden stat IDs referenced by JS -->
+        <span id="ps-neurons" style="display:none"></span>
+        <span id="ps-streak" style="display:none"></span>
+        <span id="ps-duels" style="display:none"></span>
+        <span id="ps-correct" style="display:none"></span>
+        <span id="ps-duels-played" style="display:none"></span>
+        <span id="ps-packs" style="display:none"></span>
+        <span id="ps-questions-submitted" style="display:none"></span>
+        <span id="ps-reports" style="display:none"></span>
+        <span id="profile-stats-title" style="display:none"></span>
+        <span id="profile-badges-title" style="display:none"></span>
+
+        <!-- Analytics -->
+        <div id="profile-analytics" class="prf-card prf-section" style="display:none">
+          <div style="font-size:13px;font-weight:800;margin-bottom:8px">📊 Аналитика за 7 дней</div>
+          <div id="profile-analytics-content" style="font-size:12px;color:var(--muted);line-height:1.8"></div>
+          <a href="https://supabase.com/dashboard/project/nhmidxkohjpcnhjucuuh/editor" target="_blank"
+            style="display:block;text-align:center;font-size:11px;color:var(--accent2);margin-top:8px;text-decoration:none;opacity:.7">→ Полная аналитика →</a>
         </div>
-      </div>
-    </section>
 
-    <!-- Badges (shown by JS) -->
-    <div id="profile-badges-grid" class="prf-section" style="display:none"></div>
+        <!-- Two-column row: pack history + duel history -->
+        <div class="prf-history-row">
+          <div id="pack-history-wrap" class="prf-card prf-section prf-history-card" style="display:none">
+            <div style="font-size:13px;font-weight:800;margin-bottom:8px">История паков</div>
+            <div id="pack-history-list" style="display:flex;flex-direction:column;gap:8px"></div>
+          </div>
+          <div id="duel-history-wrap" class="prf-card prf-section prf-history-card" style="display:none">
+            <div style="font-size:13px;font-weight:800;margin-bottom:8px">История дуэлей</div>
+            <div id="duel-history-list" style="display:flex;flex-direction:column;gap:8px"></div>
+          </div>
+        </div>
 
-    <!-- Analytics (shown for admin) -->
-    <div id="profile-analytics" class="prf-card prf-section" style="display:none">
-      <div style="font-size:13px;font-weight:800;margin-bottom:8px">📊 Аналитика за 7 дней</div>
-      <div id="profile-analytics-content" style="font-size:12px;color:var(--muted);line-height:1.8"></div>
-      <a href="https://supabase.com/dashboard/project/nhmidxkohjpcnhjucuuh/editor" target="_blank"
-        style="display:block;text-align:center;font-size:11px;color:var(--accent2);margin-top:8px;text-decoration:none;opacity:.7">→ Полная аналитика →</a>
-    </div>
+        <!-- Friends -->
+        <section class="prf-card prf-section">
+          <div class="prf-friends-head">
+            <h2 style="margin:0;font-size:15px;font-weight:850">Друзья</h2>
+            <button class="prf-add-friend-btn" onclick="showAddFriendModal()">+ Добавить</button>
+          </div>
+          <div id="pending-challenges"></div>
+          <div id="friends-list" style="font-size:13px;color:var(--muted)">Загрузка...</div>
+        </section>
 
-    <!-- Admin (hidden) -->
-    <div id="admin-dashboard" class="prf-section" style="display:none">
-      <button onclick="showScreen('admin')" style="width:100%;background:rgba(240,192,64,.1);border:1px solid var(--gold);border-radius:14px;padding:14px;font-size:14px;font-weight:800;color:var(--gold);cursor:pointer;font-family:inherit">
-        ⚡ Открыть Админ-панель
-      </button>
-    </div>
+        <!-- Referral -->
+        <section class="prf-card prf-ref-card prf-section">
+          <h2 class="prf-ref-title">ПРИГЛАСИ ДРУГА — ОБА +50 ⚡</h2>
+          <div class="prf-ref-row">
+            <div id="profile-ref-link" class="prf-ref-link-box">Войди чтобы увидеть ссылку</div>
+            <button class="prf-copy-btn" onclick="copyProfileRefLink()">Копировать</button>
+          </div>
+          <div style="position:relative;z-index:1;margin-top:10px;color:var(--muted);font-size:12px">Приглашено друзей: <span id="profile-ref-count" style="color:var(--accent2);font-weight:700">0</span></div>
+        </section>
 
-    <!-- Create tournament (hidden) -->
-    <div id="create-trn-btn-wrap" class="prf-section" style="display:none">
-      <button onclick="openCreateTournament()" style="width:100%;background:rgba(108,99,255,.12);border:1px solid rgba(108,99,255,.35);border-radius:14px;padding:14px;font-size:14px;font-weight:800;color:var(--accent2);cursor:pointer;font-family:inherit">
-        ➕ Создать турнир
-      </button>
-    </div>
+        <!-- Rules + Neurons -->
+        <section class="prf-section">
+          <button id="profile-rules-btn" class="prf-wide-btn" onclick="showScreen('rules')">
+            <span>📖 Как это работает / Правила</span>
+            <span style="color:var(--accent);font-size:18px;font-weight:900">›</span>
+          </button>
+          <div class="prf-neurons-card">
+            <h2 style="margin:0 0 10px;font-size:13px;font-weight:900">Что такое нейроны?</h2>
+            <table style="width:100%;border-collapse:collapse">
+              <tr>
+                <td style="padding:10px 0;font-size:12px;color:var(--muted)">Правильный ответ</td>
+                <td style="text-align:right;font-weight:900;color:#b38300;font-size:12px;white-space:nowrap">+1–30 ⚡</td>
+              </tr>
+              <tr>
+                <td style="padding:10px 0;font-size:12px;color:var(--muted);border-top:1px solid var(--border)">Победа в дуэли</td>
+                <td style="text-align:right;font-weight:900;color:#b38300;font-size:12px;white-space:nowrap;border-top:1px solid var(--border)">+30 ⚡</td>
+              </tr>
+            </table>
+          </div>
+        </section>
 
-    <!-- 5. Referral -->
-    <section class="prf-card prf-ref-card prf-section">
-      <h2 class="prf-ref-title">ПРИГЛАСИ ДРУГА — ОБА +50 ⚡</h2>
-      <div class="prf-ref-row">
-        <div id="profile-ref-link" class="prf-ref-link-box">Войди чтобы увидеть ссылку</div>
-        <button class="prf-copy-btn" onclick="copyProfileRefLink()">Копировать</button>
-      </div>
-      <div style="position:relative;z-index:1;margin-top:10px;color:var(--muted);font-size:12px">Приглашено друзей: <span id="profile-ref-count" style="color:var(--accent2);font-weight:700">0</span></div>
-    </section>
+        <!-- Team -->
+        <section class="prf-section">
+          <button class="prf-team-btn" onclick="openClubsScreen()">
+            <span>
+              <span style="display:block;font-size:15px;font-weight:900;margin-bottom:3px">🧠 Команда</span>
+              <span id="profile-club-sub" style="display:block;color:var(--muted);font-size:12px">Вступи в клуб или создай свой</span>
+            </span>
+            <span style="color:var(--accent);font-size:18px;font-weight:900">›</span>
+          </button>
+        </section>
 
-    <!-- 6. Rules + Neurons -->
-    <section class="prf-section">
-      <button id="profile-rules-btn" class="prf-wide-btn" onclick="showScreen('rules')">
-        <span>📖 Как это работает / Правила</span>
-        <span style="color:var(--accent);font-size:18px;font-weight:900">›</span>
-      </button>
-      <div class="prf-neurons-card">
-        <h2 style="margin:0 0 10px;font-size:13px;font-weight:900">Что такое нейроны?</h2>
-        <table style="width:100%;border-collapse:collapse">
-          <tr>
-            <td style="padding:10px 0;font-size:12px;color:var(--muted)">Правильный ответ</td>
-            <td style="text-align:right;font-weight:900;color:#b38300;font-size:12px;white-space:nowrap">+1–30 ⚡</td>
-          </tr>
-          <tr>
-            <td style="padding:10px 0;font-size:12px;color:var(--muted);border-top:1px solid var(--border)">Победа в дуэли</td>
-            <td style="text-align:right;font-weight:900;color:#b38300;font-size:12px;white-space:nowrap;border-top:1px solid var(--border)">+30 ⚡</td>
-          </tr>
-        </table>
-      </div>
-    </section>
+        <!-- Badges -->
+        <div id="profile-badges-grid" class="prf-section" style="display:none"></div>
 
-    <!-- 7. Team -->
-    <section class="prf-section">
-      <button class="prf-team-btn" onclick="openClubsScreen()">
-        <span>
-          <span style="display:block;font-size:15px;font-weight:900;margin-bottom:3px">🧠 Команда</span>
-          <span id="profile-club-sub" style="display:block;color:var(--muted);font-size:12px">Вступи в клуб или создай свой</span>
-        </span>
-        <span style="color:var(--accent);font-size:18px;font-weight:900">›</span>
-      </button>
-    </section>
+      </section><!-- /prf-main-col -->
 
-    <!-- Pack history (hidden) -->
-    <div id="pack-history-wrap" class="prf-section" style="display:none">
-      <div style="font-size:13px;font-weight:800;margin-bottom:8px">История паков</div>
-      <div id="pack-history-list" style="display:flex;flex-direction:column;gap:8px"></div>
-    </div>
-
-    <!-- Duel history (hidden initially, shown by JS) -->
-    <div id="duel-history-wrap" class="prf-section" style="display:none">
-      <div style="font-size:13px;font-weight:800;margin-bottom:8px">История дуэлей</div>
-      <div id="duel-history-list" style="display:flex;flex-direction:column;gap:8px"></div>
-    </div>
-
-    <!-- 8. Friends -->
-    <section class="prf-card prf-section">
-      <div class="prf-friends-head">
-        <h2 style="margin:0;font-size:15px;font-weight:850">Друзья</h2>
-        <button class="prf-add-friend-btn" onclick="showAddFriendModal()">+ Добавить</button>
-      </div>
-      <div id="pending-challenges"></div>
-      <div id="friends-list" style="font-size:13px;color:var(--muted)">Загрузка...</div>
-    </section>
-
-    <!-- 9. Bottom actions -->
-    <section class="prf-bottom-actions">
-      <button id="theme-toggle-btn" class="prf-bottom-btn" onclick="toggleTheme()">🌙 Сменить тему</button>
-      <button id="push-notif-btn" class="prf-bottom-btn" onclick="requestPushPermission('profile').then(updatePushBtn)">🔔 Уведомления</button>
-      <button id="profile-signout-btn" class="prf-bottom-btn prf-bottom-btn--danger" onclick="signOut()">Выйти</button>
-    </section>
-
+    </div><!-- /prf-layout -->
   </main>
 </div>
 

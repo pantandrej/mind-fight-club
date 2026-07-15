@@ -400,3 +400,27 @@
 .prf-bottom-btn--danger{grid-column:1/-1;color:var(--danger,#e45555);border-color:rgba(228,85,85,.18);background:rgba(228,85,85,.055);box-shadow:none}
 #profile-bio-display{position:relative;z-index:1;margin-top:10px}
 @media(max-width:365px){.bfc-profile-page{padding-right:10px;padding-left:10px}.prf-hero{margin-right:-10px;margin-left:-10px}.prf-actions,.prf-bottom-actions{grid-template-columns:1fr}.prf-ref-row{grid-template-columns:1fr}.prf-copy-btn{width:100%}}
+
+/* ── Profile desktop layout ────────────────────────────── */
+.prf-layout{display:flex;flex-direction:column;gap:14px}
+.prf-history-row{display:flex;flex-direction:column;gap:14px}
+.prf-history-card{flex:1}
+@media(min-width:900px){
+  .bfc-profile-page{max-width:1300px;padding:28px 28px 60px}
+  .prf-layout{display:grid;grid-template-columns:340px minmax(0,1fr);gap:24px;align-items:start}
+  .prf-sidebar{position:sticky;top:22px;display:flex;flex-direction:column;gap:0}
+  .prf-hero{min-height:340px;display:flex;flex-direction:column;justify-content:center;padding:38px 24px 30px;border-radius:24px}
+  #profile-av{width:100px;height:100px;font-size:48px}
+  .prf-actions{grid-template-columns:1fr}
+  .prf-main-col{display:flex;flex-direction:column;gap:14px}
+  .prf-stats{gap:14px}
+  .prf-stat{min-height:120px;justify-content:center}
+  .prf-stat-val{font-size:30px}
+  .prf-history-row{flex-direction:row;gap:14px}
+  .prf-history-card{flex:1;min-width:0}
+  .prf-bottom-actions{grid-template-columns:1fr}
+  .prf-bottom-btn--danger{grid-column:1}
+}
+@media(min-width:1180px){
+  .prf-layout{grid-template-columns:360px minmax(0,1fr);gap:28px}
+}
