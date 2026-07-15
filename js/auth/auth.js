@@ -440,24 +440,34 @@ export async function verifyPhoneOTP() {
 }
 
 const VK_APP_ID = '54679210';
-const VK_REDIRECT_URI = window.location.origin + '/';
 
-// Called on every page load to handle VK OAuth2 callback (?code=...&state=vk)
+function _vkRedirectUri() { return window.location.origin + '/'; }
+
+async function _pkceChallenge() {
+  const verifier = Array.from(crypto.getRandomValues(new Uint8Array(48)))
+    .map(b => b.toString(36)).join('').slice(0, 64);
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
+  const challenge = btoa(String.fromCharCode(...new Uint8Array(digest)))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  return { verifier, challenge };
+}
+
+// Called on every page load to handle VK ID OAuth2 callback (?code=...&state=vk)
 export async function initVKIDCallback() {
   const params = new URLSearchParams(window.location.search);
   const code  = params.get('code');
   const state = params.get('state');
   if (!code || state !== 'vk') return;
 
-  // Clean URL immediately so reload doesn't re-trigger
   window.history.replaceState({}, '', window.location.pathname);
-
   toast('⏳ Входим через ВКонтакте...');
   try {
+    const codeVerifier = sessionStorage.getItem('vk_code_verifier');
+    sessionStorage.removeItem('vk_code_verifier');
     const resp = await fetch(`${window._supabaseUrl}/functions/v1/vk-auth`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'apikey': window._supabaseAnonKey || '' },
-      body: JSON.stringify({ code, redirect_uri: VK_REDIRECT_URI }),
+      body: JSON.stringify({ code, redirect_uri: _vkRedirectUri(), code_verifier: codeVerifier }),
     });
     const result = await resp.json();
     if (result.error) throw new Error(result.error);
@@ -484,9 +494,13 @@ export async function signInVK() {
   if (p.get('duel'))  sessionStorage.setItem('mfc_pending_duel',  p.get('duel'));
   if (p.get('tourn')) sessionStorage.setItem('mfc_pending_tourn', p.get('tourn'));
 
-  const vkUrl = `https://oauth.vk.com/authorize?client_id=${VK_APP_ID}` +
-    `&redirect_uri=${encodeURIComponent(VK_REDIRECT_URI)}` +
-    `&response_type=code&scope=email&state=vk&display=page`;
+  const { verifier, challenge } = await _pkceChallenge();
+  sessionStorage.setItem('vk_code_verifier', verifier);
+
+  const vkUrl = `https://id.vk.com/oauth2/auth?client_id=${VK_APP_ID}` +
+    `&redirect_uri=${encodeURIComponent(_vkRedirectUri())}` +
+    `&response_type=code&scope=email&state=vk` +
+    `&code_challenge=${challenge}&code_challenge_method=S256`;
 
   window.location.href = vkUrl;
 }
