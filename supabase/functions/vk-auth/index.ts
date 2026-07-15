@@ -5,29 +5,38 @@ const CORS = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const VK_APP_ID    = '54679210'
-const VK_SECRET    = Deno.env.get('VK_CLIENT_SECRET')!
+const VK_APP_ID = '54679210'
+const VK_SECRET = Deno.env.get('VK_CLIENT_SECRET')!
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
 
   try {
-    const { code, redirect_uri } = await req.json()
+    const { code, redirect_uri, code_verifier, device_id } = await req.json()
     if (!code || !redirect_uri) {
       return new Response(JSON.stringify({ error: 'Missing code or redirect_uri' }), {
         status: 400, headers: { ...CORS, 'Content-Type': 'application/json' }
       })
     }
 
-    // Exchange code for access_token via classic VK OAuth
-    const tokenUrl = `https://oauth.vk.com/access_token` +
-      `?client_id=${VK_APP_ID}` +
-      `&client_secret=${VK_SECRET}` +
-      `&redirect_uri=${encodeURIComponent(redirect_uri)}` +
-      `&code=${code}`
+    // Exchange code via id.vk.com/oauth2/token (VK ID PKCE flow)
+    const tokenParams = new URLSearchParams({
+      grant_type: 'authorization_code',
+      client_id: VK_APP_ID,
+      client_secret: VK_SECRET,
+      redirect_uri,
+      code,
+    })
+    if (code_verifier) tokenParams.set('code_verifier', code_verifier)
+    if (device_id)     tokenParams.set('device_id', device_id)
 
-    const tokenResp = await fetch(tokenUrl)
+    const tokenResp = await fetch('https://id.vk.com/oauth2/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: tokenParams,
+    })
     const tokenData = await tokenResp.json()
+    console.log('VK token response:', JSON.stringify(tokenData))
 
     if (tokenData.error) {
       return new Response(JSON.stringify({ error: tokenData.error_description || tokenData.error }), {
@@ -35,18 +44,28 @@ Deno.serve(async (req) => {
       })
     }
 
-    const { access_token, user_id, email: vkEmail } = tokenData
+    const { access_token } = tokenData
 
-    // Get user info from VK API
-    const userResp = await fetch(
-      `https://api.vk.com/method/users.get?user_ids=${user_id}&fields=photo_200&access_token=${access_token}&v=5.131`
-    )
+    // Get user info from VK ID
+    const userResp = await fetch('https://id.vk.com/oauth2/user_info', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `client_id=${VK_APP_ID}&access_token=${encodeURIComponent(access_token)}`,
+    })
     const userData = await userResp.json()
-    const vkUser = userData.response?.[0] || {}
+    console.log('VK user_info:', JSON.stringify(userData))
+
+    const vkUser  = userData.user || {}
+    const user_id = vkUser.user_id
+    if (!user_id) {
+      return new Response(JSON.stringify({ error: 'Could not get VK user: ' + JSON.stringify(userData) }), {
+        status: 401, headers: { ...CORS, 'Content-Type': 'application/json' }
+      })
+    }
 
     const displayName = [vkUser.first_name, vkUser.last_name].filter(Boolean).join(' ') || `VK${user_id}`
-    const avatarUrl   = vkUser.photo_200 || null
-    const email       = vkEmail || `vk${user_id}@brainfight.club`
+    const avatarUrl   = vkUser.avatar || null
+    const email       = vkUser.email || `vk${user_id}@brainfight.club`
 
     const sb = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -54,7 +73,6 @@ Deno.serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     )
 
-    // Find or create user
     const { data: { users }, error: listErr } = await sb.auth.admin.listUsers({ perPage: 1000 })
     if (listErr) throw listErr
 
@@ -65,23 +83,12 @@ Deno.serve(async (req) => {
 
     if (targetUser) {
       await sb.auth.admin.updateUserById(targetUser.id, {
-        user_metadata: {
-          ...targetUser.user_metadata,
-          vk_id: String(user_id),
-          full_name: displayName,
-          avatar_url: avatarUrl,
-        }
+        user_metadata: { ...targetUser.user_metadata, vk_id: String(user_id), full_name: displayName, avatar_url: avatarUrl }
       })
     } else {
       const { data: created, error: createErr } = await sb.auth.admin.createUser({
-        email,
-        email_confirm: true,
-        user_metadata: {
-          vk_id: String(user_id),
-          full_name: displayName,
-          avatar_url: avatarUrl,
-          provider: 'vk',
-        },
+        email, email_confirm: true,
+        user_metadata: { vk_id: String(user_id), full_name: displayName, avatar_url: avatarUrl, provider: 'vk' },
       })
       if (createErr) {
         targetUser = users?.find(u => u.email === email)
