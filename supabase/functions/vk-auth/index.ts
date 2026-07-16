@@ -6,20 +6,26 @@ const CORS = {
 }
 
 const VK_APP_ID = '54679210'
-const VK_SECRET = Deno.env.get('VK_CLIENT_SECRET')!
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
 
   try {
-    const { code, redirect_uri, code_verifier, device_id } = await req.json()
+    const VK_SECRET = Deno.env.get('VK_CLIENT_SECRET') ?? ''
+    if (!VK_SECRET) console.warn('VK_CLIENT_SECRET not set!')
+
+    const body = await req.json()
+    const { code, redirect_uri, code_verifier, device_id } = body
+
+    console.log('vk-auth called, code present:', !!code, 'verifier present:', !!code_verifier, 'device_id present:', !!device_id)
+
     if (!code || !redirect_uri) {
       return new Response(JSON.stringify({ error: 'Missing code or redirect_uri' }), {
         status: 400, headers: { ...CORS, 'Content-Type': 'application/json' }
       })
     }
 
-    // Exchange code via id.vk.com/oauth2/token (VK ID PKCE flow)
+    // Exchange code for access_token via id.vk.com/oauth2/token
     const tokenParams = new URLSearchParams({
       grant_type: 'authorization_code',
       client_id: VK_APP_ID,
@@ -33,10 +39,17 @@ Deno.serve(async (req) => {
     const tokenResp = await fetch('https://id.vk.com/oauth2/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: tokenParams,
+      body: tokenParams.toString(),
     })
-    const tokenData = await tokenResp.json()
-    console.log('VK token response:', JSON.stringify(tokenData))
+
+    const tokenText = await tokenResp.text()
+    console.log('VK token raw response:', tokenText.slice(0, 500))
+
+    let tokenData: Record<string, string>
+    try { tokenData = JSON.parse(tokenText) }
+    catch { return new Response(JSON.stringify({ error: 'VK token endpoint returned non-JSON: ' + tokenText.slice(0, 200) }), {
+      status: 502, headers: { ...CORS, 'Content-Type': 'application/json' }
+    })}
 
     if (tokenData.error) {
       return new Response(JSON.stringify({ error: tokenData.error_description || tokenData.error }), {
@@ -52,13 +65,19 @@ Deno.serve(async (req) => {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: `client_id=${VK_APP_ID}&access_token=${encodeURIComponent(access_token)}`,
     })
-    const userData = await userResp.json()
-    console.log('VK user_info:', JSON.stringify(userData))
+    const userText = await userResp.text()
+    console.log('VK user_info raw:', userText.slice(0, 500))
 
-    const vkUser  = userData.user || {}
+    let userData: Record<string, unknown>
+    try { userData = JSON.parse(userText) }
+    catch { return new Response(JSON.stringify({ error: 'VK user_info returned non-JSON: ' + userText.slice(0, 200) }), {
+      status: 502, headers: { ...CORS, 'Content-Type': 'application/json' }
+    })}
+
+    const vkUser  = (userData.user || {}) as Record<string, string>
     const user_id = vkUser.user_id
     if (!user_id) {
-      return new Response(JSON.stringify({ error: 'Could not get VK user: ' + JSON.stringify(userData) }), {
+      return new Response(JSON.stringify({ error: 'No user_id in VK response: ' + JSON.stringify(userData).slice(0, 200) }), {
         status: 401, headers: { ...CORS, 'Content-Type': 'application/json' }
       })
     }
@@ -111,8 +130,8 @@ Deno.serve(async (req) => {
     }), { headers: { ...CORS, 'Content-Type': 'application/json' } })
 
   } catch (e) {
-    console.error('vk-auth error:', e)
-    return new Response(JSON.stringify({ error: e.message || 'Internal error' }), {
+    console.error('vk-auth unhandled error:', e)
+    return new Response(JSON.stringify({ error: String(e?.message || e) }), {
       status: 500, headers: { ...CORS, 'Content-Type': 'application/json' }
     })
   }
