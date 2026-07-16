@@ -443,15 +443,6 @@ const VK_APP_ID = 54679210;
 
 function _vkRedirectUri() { return window.location.origin + '/'; }
 
-async function _pkceChallenge() {
-  const verifier = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32))))
-    .replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
-  const challenge = btoa(String.fromCharCode(...new Uint8Array(buf)))
-    .replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
-  return { verifier, challenge };
-}
-
 // Called on every page load — handles ?code=...&state=vk redirect from VK ID
 export async function initVKIDCallback() {
   const params = new URLSearchParams(window.location.search);
@@ -463,16 +454,11 @@ export async function initVKIDCallback() {
   toast('⏳ Входим через ВКонтакте...');
 
   const errEl = document.getElementById('auth-error');
-  const verifier  = sessionStorage.getItem('vk_code_verifier');
-  const device_id = sessionStorage.getItem('vk_device_id');
-  sessionStorage.removeItem('vk_code_verifier');
-  sessionStorage.removeItem('vk_device_id');
-
   try {
     const resp = await fetch(`${window._supabaseUrl}/functions/v1/vk-auth`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'apikey': window._supabaseAnonKey || '' },
-      body: JSON.stringify({ code, redirect_uri: _vkRedirectUri(), code_verifier: verifier, device_id }),
+      body: JSON.stringify({ code, redirect_uri: _vkRedirectUri() }),
     });
     const result = await resp.json();
     if (result.error) throw new Error(result.error);
@@ -496,21 +482,14 @@ export async function signInVK() {
   if (p.get('duel'))  sessionStorage.setItem('mfc_pending_duel',  p.get('duel'));
   if (p.get('tourn')) sessionStorage.setItem('mfc_pending_tourn', p.get('tourn'));
 
-  const { verifier, challenge } = await _pkceChallenge();
-  const device_id = crypto.randomUUID();
-  sessionStorage.setItem('vk_code_verifier', verifier);
-  sessionStorage.setItem('vk_device_id', device_id);
-
-  // id.vk.com/authorize — VK ID OAuth2 with PKCE (different from /oauth2/auth and /oauth2/authorize)
+  // id.vk.com/authorize works for VK ID service apps
+  // Token exchange via oauth.vk.com/access_token (classic, no PKCE needed server-side)
   const vkUrl = 'https://id.vk.com/authorize' +
     '?client_id=' + VK_APP_ID +
     '&redirect_uri=' + encodeURIComponent(_vkRedirectUri()) +
     '&response_type=code' +
     '&scope=email' +
-    '&state=vk' +
-    '&code_challenge=' + challenge +
-    '&code_challenge_method=S256' +
-    '&device_id=' + device_id;
+    '&state=vk';
 
   window.location.href = vkUrl;
 }

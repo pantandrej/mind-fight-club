@@ -12,42 +12,28 @@ Deno.serve(async (req) => {
 
   try {
     const VK_SECRET = Deno.env.get('VK_CLIENT_SECRET') ?? ''
-    if (!VK_SECRET) console.warn('VK_CLIENT_SECRET not set!')
 
-    const body = await req.json()
-    const { code, redirect_uri, code_verifier, device_id } = body
-
-    console.log('vk-auth called, code present:', !!code, 'verifier present:', !!code_verifier, 'device_id present:', !!device_id)
-
+    const { code, redirect_uri } = await req.json()
     if (!code || !redirect_uri) {
       return new Response(JSON.stringify({ error: 'Missing code or redirect_uri' }), {
         status: 400, headers: { ...CORS, 'Content-Type': 'application/json' }
       })
     }
 
-    // Exchange code for access_token via id.vk.com/oauth2/token
-    const tokenParams = new URLSearchParams({
-      grant_type: 'authorization_code',
-      client_id: VK_APP_ID,
-      client_secret: VK_SECRET,
-      redirect_uri,
-      code,
-    })
-    if (code_verifier) tokenParams.set('code_verifier', code_verifier)
-    if (device_id)     tokenParams.set('device_id', device_id)
+    // Exchange code via oauth.vk.com/access_token (classic endpoint, works with id.vk.com/authorize codes)
+    const tokenUrl = `https://oauth.vk.com/access_token` +
+      `?client_id=${VK_APP_ID}` +
+      `&client_secret=${encodeURIComponent(VK_SECRET)}` +
+      `&redirect_uri=${encodeURIComponent(redirect_uri)}` +
+      `&code=${encodeURIComponent(code)}`
 
-    const tokenResp = await fetch('https://id.vk.com/oauth2/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: tokenParams.toString(),
-    })
-
+    const tokenResp = await fetch(tokenUrl)
     const tokenText = await tokenResp.text()
-    console.log('VK token raw response:', tokenText.slice(0, 500))
+    console.log('VK token response:', tokenText.slice(0, 500))
 
     let tokenData: Record<string, string>
     try { tokenData = JSON.parse(tokenText) }
-    catch { return new Response(JSON.stringify({ error: 'VK token endpoint returned non-JSON: ' + tokenText.slice(0, 200) }), {
+    catch { return new Response(JSON.stringify({ error: 'VK token non-JSON: ' + tokenText.slice(0, 200) }), {
       status: 502, headers: { ...CORS, 'Content-Type': 'application/json' }
     })}
 
@@ -57,34 +43,18 @@ Deno.serve(async (req) => {
       })
     }
 
-    const { access_token } = tokenData
+    const { access_token, user_id, email: vkEmail } = tokenData
 
-    // Get user info from VK ID
-    const userResp = await fetch('https://id.vk.com/oauth2/user_info', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `client_id=${VK_APP_ID}&access_token=${encodeURIComponent(access_token)}`,
-    })
-    const userText = await userResp.text()
-    console.log('VK user_info raw:', userText.slice(0, 500))
-
-    let userData: Record<string, unknown>
-    try { userData = JSON.parse(userText) }
-    catch { return new Response(JSON.stringify({ error: 'VK user_info returned non-JSON: ' + userText.slice(0, 200) }), {
-      status: 502, headers: { ...CORS, 'Content-Type': 'application/json' }
-    })}
-
-    const vkUser  = (userData.user || {}) as Record<string, string>
-    const user_id = vkUser.user_id
-    if (!user_id) {
-      return new Response(JSON.stringify({ error: 'No user_id in VK response: ' + JSON.stringify(userData).slice(0, 200) }), {
-        status: 401, headers: { ...CORS, 'Content-Type': 'application/json' }
-      })
-    }
+    // Get user name + avatar from VK API
+    const userResp = await fetch(
+      `https://api.vk.com/method/users.get?user_ids=${user_id}&fields=photo_200&access_token=${access_token}&v=5.131`
+    )
+    const userJson = await userResp.json()
+    const vkUser  = userJson.response?.[0] || {}
 
     const displayName = [vkUser.first_name, vkUser.last_name].filter(Boolean).join(' ') || `VK${user_id}`
-    const avatarUrl   = vkUser.avatar || null
-    const email       = vkUser.email || `vk${user_id}@brainfight.club`
+    const avatarUrl   = vkUser.photo_200 || null
+    const email       = vkEmail || `vk${user_id}@brainfight.club`
 
     const sb = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -130,7 +100,7 @@ Deno.serve(async (req) => {
     }), { headers: { ...CORS, 'Content-Type': 'application/json' } })
 
   } catch (e) {
-    console.error('vk-auth unhandled error:', e)
+    console.error('vk-auth error:', e)
     return new Response(JSON.stringify({ error: String(e?.message || e) }), {
       status: 500, headers: { ...CORS, 'Content-Type': 'application/json' }
     })
