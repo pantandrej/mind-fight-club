@@ -443,19 +443,55 @@ const VK_APP_ID = 54679210;
 
 function _vkRedirectUri() { return window.location.origin + '/'; }
 
-// Called on every page load — handles #access_token=... redirect from VK ID implicit flow
+async function _pkceChallenge() {
+  const verifier = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32))))
+    .replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
+  const challenge = btoa(String.fromCharCode(...new Uint8Array(buf)))
+    .replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+  return { verifier, challenge };
+}
+
+async function _loadVKSDK() {
+  if (window.VKID) return window.VKID;
+  await new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/@vkid/sdk@2/dist-sdk/umd/index.js';
+    s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  });
+  return window.VKID;
+}
+
+// Called on every page load — VK returns ?code=vk2.a.xxx&device_id=...&type=code_v2
 export async function initVKIDCallback() {
-  // VK ID implicit flow returns token in URL hash
-  const hash = new URLSearchParams(window.location.hash.slice(1));
-  const access_token = hash.get('access_token');
-  const vk_state     = hash.get('state');
-  if (!access_token || vk_state !== 'vk') return;
+  const params    = new URLSearchParams(window.location.search);
+  const code      = params.get('code');
+  const type      = params.get('type');
+  const urlDevice = params.get('device_id');
+  if (!code || type !== 'code_v2') return;
 
   window.history.replaceState({}, '', window.location.pathname);
   toast('⏳ Входим через ВКонтакте...');
 
-  const errEl = document.getElementById('auth-error');
+  const errEl   = document.getElementById('auth-error');
+  const verifier  = sessionStorage.getItem('vk_code_verifier');
+  const device_id = urlDevice || sessionStorage.getItem('vk_device_id') || '';
+  sessionStorage.removeItem('vk_code_verifier');
+  sessionStorage.removeItem('vk_device_id');
+
   try {
+    // Browser-side exchange via VK ID SDK (server can't call id.vk.com/oauth2/token directly)
+    const VKID = await _loadVKSDK();
+    VKID.Config.init({
+      app: VK_APP_ID,
+      redirectUrl: _vkRedirectUri(),
+      responseMode: VKID.ConfigResponseMode.Redirect,
+    });
+    const tokens = await VKID.Auth.exchangeCode(code, device_id);
+    const access_token = tokens?.access_token;
+    if (!access_token) throw new Error('No access_token from VK SDK exchange');
+
     const resp = await fetch(`${window._supabaseUrl}/functions/v1/vk-auth`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'apikey': window._supabaseAnonKey || '' },
@@ -483,14 +519,21 @@ export async function signInVK() {
   if (p.get('duel'))  sessionStorage.setItem('mfc_pending_duel',  p.get('duel'));
   if (p.get('tourn')) sessionStorage.setItem('mfc_pending_tourn', p.get('tourn'));
 
-  // Implicit flow: VK returns access_token directly in URL hash — no code exchange needed
+  const { verifier, challenge } = await _pkceChallenge();
+  const device_id = crypto.randomUUID();
+  sessionStorage.setItem('vk_code_verifier', verifier);
+  sessionStorage.setItem('vk_device_id', device_id);
+
+  // id.vk.com/authorize requires PKCE + device_id; returns ?code=vk2.a.xxx&type=code_v2
   const vkUrl = 'https://id.vk.com/authorize' +
     '?client_id=' + VK_APP_ID +
     '&redirect_uri=' + encodeURIComponent(_vkRedirectUri()) +
-    '&response_type=token' +
+    '&response_type=code' +
     '&scope=email' +
     '&state=vk' +
-    '&display=page';
+    '&code_challenge=' + challenge +
+    '&code_challenge_method=S256' +
+    '&device_id=' + device_id;
 
   window.location.href = vkUrl;
 }

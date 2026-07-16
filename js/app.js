@@ -10,7 +10,7 @@ import { trackPageView } from './services/analytics.js';
 import './economy/wallet.js';
 
 // ── Iteration 2 ───────────────────────────────────────────────────
-import './training/training.js?v=20260716b';
+import './training/training.js?v=20260716c';
 import './training/daily-limit.js';
 import './training/streak.js';
 import './battles/friend-battle.js';
