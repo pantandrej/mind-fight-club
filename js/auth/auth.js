@@ -454,13 +454,16 @@ async function _loadVKSDK() {
   return window.VKID;
 }
 
-// PKCE helpers
-async function _pkce() {
-  const verifier = Array.from(crypto.getRandomValues(new Uint8Array(32)))
-    .map(b => b.toString(16).padStart(2, '0')).join('');
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
-  const challenge = btoa(String.fromCharCode(...new Uint8Array(digest)))
+// PKCE helpers — RFC 7636 base64url verifier + S256 challenge
+function _base64url(buf) {
+  return btoa(String.fromCharCode.apply(null, new Uint8Array(buf)))
     .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+async function _pkce() {
+  const verifierBuf = crypto.getRandomValues(new Uint8Array(32));
+  const verifier    = _base64url(verifierBuf);
+  const digest      = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
+  const challenge   = _base64url(digest);
   return { verifier, challenge };
 }
 
@@ -524,7 +527,7 @@ export async function signInVK() {
       scope:                 'email',
       state:                 'vkid',
       code_challenge:        challenge,
-      code_challenge_method: 'S256',
+      code_challenge_method: 's256',
       device_id,
     });
     window.location.href = 'https://id.vk.com/oauth2/auth?' + qs.toString();
