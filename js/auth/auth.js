@@ -443,12 +443,13 @@ const VK_APP_ID = 54679210;
 
 function _vkRedirectUri() { return window.location.origin + '/'; }
 
-// Called on every page load — handles ?code=...&state=vk redirect from VK ID
+// Called on every page load — handles #access_token=... redirect from VK ID implicit flow
 export async function initVKIDCallback() {
-  const params = new URLSearchParams(window.location.search);
-  const code  = params.get('code');
-  const state = params.get('state');
-  if (!code || state !== 'vk') return;
+  // VK ID implicit flow returns token in URL hash
+  const hash = new URLSearchParams(window.location.hash.slice(1));
+  const access_token = hash.get('access_token');
+  const vk_state     = hash.get('state');
+  if (!access_token || vk_state !== 'vk') return;
 
   window.history.replaceState({}, '', window.location.pathname);
   toast('⏳ Входим через ВКонтакте...');
@@ -458,7 +459,7 @@ export async function initVKIDCallback() {
     const resp = await fetch(`${window._supabaseUrl}/functions/v1/vk-auth`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'apikey': window._supabaseAnonKey || '' },
-      body: JSON.stringify({ code, redirect_uri: _vkRedirectUri() }),
+      body: JSON.stringify({ access_token }),
     });
     const result = await resp.json();
     if (result.error) throw new Error(result.error);
@@ -482,14 +483,14 @@ export async function signInVK() {
   if (p.get('duel'))  sessionStorage.setItem('mfc_pending_duel',  p.get('duel'));
   if (p.get('tourn')) sessionStorage.setItem('mfc_pending_tourn', p.get('tourn'));
 
-  // id.vk.com/authorize works for VK ID service apps
-  // Token exchange via oauth.vk.com/access_token (classic, no PKCE needed server-side)
+  // Implicit flow: VK returns access_token directly in URL hash — no code exchange needed
   const vkUrl = 'https://id.vk.com/authorize' +
     '?client_id=' + VK_APP_ID +
     '&redirect_uri=' + encodeURIComponent(_vkRedirectUri()) +
-    '&response_type=code' +
+    '&response_type=token' +
     '&scope=email' +
-    '&state=vk';
+    '&state=vk' +
+    '&display=page';
 
   window.location.href = vkUrl;
 }
