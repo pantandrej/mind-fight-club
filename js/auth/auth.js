@@ -443,50 +443,23 @@ const VK_APP_ID = 54679210;
 
 function _vkRedirectUri() { return window.location.origin + '/'; }
 
-async function _loadVKSDK() {
-  if (window.VKID) return window.VKID;
-  await new Promise((res, rej) => {
-    const s = document.createElement('script');
-    s.src = 'https://cdn.jsdelivr.net/npm/@vkid/sdk@2/dist-sdk/umd/index.js';
-    s.onload = res; s.onerror = rej;
-    document.head.appendChild(s);
-  });
-  return window.VKID;
-}
-
-function _vkSDKInit(VKID) {
-  VKID.Config.init({
-    app: VK_APP_ID,
-    redirectUrl: _vkRedirectUri(),
-    responseMode: VKID.ConfigResponseMode.Redirect,
-  });
-}
-
-// VK returns ?code=vk2.a.xxx&device_id=...&type=code_v2 after SDK login()
+// Classic VK OAuth callback — detects ?code=xxx without type=code_v2
 export async function initVKIDCallback() {
   const params = new URLSearchParams(window.location.search);
-  const code      = params.get('code');
-  const type      = params.get('type');
-  const device_id = params.get('device_id') || '';
-  if (!code || type !== 'code_v2') return;
+  const code   = params.get('code');
+  const type   = params.get('type');
+  // Classic Web app code has no 'type' param; skip VK ID codes (type=code_v2)
+  if (!code || type === 'code_v2') return;
 
   window.history.replaceState({}, '', window.location.pathname);
   toast('⏳ Входим через ВКонтакте...');
 
   const errEl = document.getElementById('auth-error');
   try {
-    const VKID = await _loadVKSDK();
-    _vkSDKInit(VKID);
-
-    // SDK exchanges code → access_token (browser-side, not server-side)
-    const tokens = await VKID.Auth.exchangeCode(code, device_id);
-    const access_token = tokens?.access_token;
-    if (!access_token) throw new Error('No access_token from VK SDK: ' + JSON.stringify(tokens));
-
     const resp = await fetch(`${window._supabaseUrl}/functions/v1/vk-auth`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'apikey': window._supabaseAnonKey || '' },
-      body: JSON.stringify({ access_token }),
+      body: JSON.stringify({ code, redirect_uri: _vkRedirectUri() }),
     });
     const result = await resp.json();
     if (result.error) throw new Error(result.error);
@@ -510,15 +483,16 @@ export async function signInVK() {
   if (p.get('duel'))  sessionStorage.setItem('mfc_pending_duel',  p.get('duel'));
   if (p.get('tourn')) sessionStorage.setItem('mfc_pending_tourn', p.get('tourn'));
 
-  try {
-    const VKID = await _loadVKSDK();
-    _vkSDKInit(VKID);
-    // Let SDK build the correct URL with its own device_id + PKCE
-    VKID.Auth.login();
-  } catch(e) {
-    if (btn) { btn.style.opacity = ''; btn.style.pointerEvents = ''; }
-    if (errEl) { errEl.textContent = '❌ ' + (e.message || e); errEl.style.display = 'block'; }
-  }
+  // Classic VK OAuth for Web-type apps — no PKCE, no SDK
+  const qs = new URLSearchParams({
+    client_id:     String(VK_APP_ID),
+    redirect_uri:  _vkRedirectUri(),
+    response_type: 'code',
+    scope:         'email',
+    display:       'page',
+    v:             '5.131',
+  });
+  window.location.href = 'https://oauth.vk.com/authorize?' + qs.toString();
 }
 
 export async function signInGoogle() {
