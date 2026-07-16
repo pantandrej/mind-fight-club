@@ -524,8 +524,8 @@ export async function signInVK() {
   sessionStorage.setItem('vk_code_verifier', verifier);
   sessionStorage.setItem('vk_device_id', device_id);
 
-  // id.vk.com/authorize requires PKCE + device_id; returns ?code=vk2.a.xxx&type=code_v2
-  const vkUrl = 'https://id.vk.com/authorize' +
+  // id.vk.com/oauth2/auth — VK ID endpoint that shows confirmation page
+  const vkUrl = 'https://id.vk.com/oauth2/auth' +
     '?client_id=' + VK_APP_ID +
     '&redirect_uri=' + encodeURIComponent(_vkRedirectUri()) +
     '&response_type=code' +
