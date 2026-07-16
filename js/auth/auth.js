@@ -443,23 +443,51 @@ const VK_APP_ID = 54679210;
 
 function _vkRedirectUri() { return window.location.origin + '/'; }
 
-// Classic VK OAuth callback — detects ?code=xxx without type=code_v2
+async function _loadVKSDK() {
+  if (window.VKID) return window.VKID;
+  await new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://unpkg.com/@vkid/sdk@latest/dist-sdk/umd/index.js';
+    s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  });
+  return window.VKID;
+}
+
+// PKCE helpers
+async function _pkce() {
+  const verifier = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+    .map(b => b.toString(16).padStart(2, '0')).join('');
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
+  const challenge = btoa(String.fromCharCode(...new Uint8Array(digest)))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+  return { verifier, challenge };
+}
+
+// VK ID callback — detects ?code=vk2.a.xxx&type=code_v2&device_id=xxx
 export async function initVKIDCallback() {
-  const params = new URLSearchParams(window.location.search);
-  const code   = params.get('code');
-  const type   = params.get('type');
-  // Classic Web app code has no 'type' param; skip VK ID codes (type=code_v2)
-  if (!code || type === 'code_v2') return;
+  const params    = new URLSearchParams(window.location.search);
+  const code      = params.get('code');
+  const type      = params.get('type');
+  const device_id = params.get('device_id') || sessionStorage.getItem('vk_device_id') || '';
+  if (!code || type !== 'code_v2') return;
 
   window.history.replaceState({}, '', window.location.pathname);
   toast('⏳ Входим через ВКонтакте...');
 
   const errEl = document.getElementById('auth-error');
   try {
+    // Browser-side token exchange — VK SDK handles this without server secret
+    const VKID = await _loadVKSDK();
+    VKID.Config.init({ app: VK_APP_ID, redirectUrl: _vkRedirectUri() });
+    const tokens = await VKID.Auth.exchangeCode(code, device_id);
+    const access_token = tokens?.access_token;
+    if (!access_token) throw new Error('No access_token: ' + JSON.stringify(tokens));
+
     const resp = await fetch(`${window._supabaseUrl}/functions/v1/vk-auth`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'apikey': window._supabaseAnonKey || '' },
-      body: JSON.stringify({ code, redirect_uri: _vkRedirectUri() }),
+      body: JSON.stringify({ access_token }),
     });
     const result = await resp.json();
     if (result.error) throw new Error(result.error);
@@ -483,16 +511,27 @@ export async function signInVK() {
   if (p.get('duel'))  sessionStorage.setItem('mfc_pending_duel',  p.get('duel'));
   if (p.get('tourn')) sessionStorage.setItem('mfc_pending_tourn', p.get('tourn'));
 
-  // Classic VK OAuth for Web-type apps — no PKCE, no SDK
-  const qs = new URLSearchParams({
-    client_id:     String(VK_APP_ID),
-    redirect_uri:  _vkRedirectUri(),
-    response_type: 'code',
-    scope:         'email',
-    display:       'page',
-    v:             '5.131',
-  });
-  window.location.href = 'https://oauth.vk.com/authorize?' + qs.toString();
+  try {
+    const { verifier, challenge } = await _pkce();
+    const device_id = crypto.randomUUID();
+    sessionStorage.setItem('vk_pkce_verifier', verifier);
+    sessionStorage.setItem('vk_device_id', device_id);
+
+    const qs = new URLSearchParams({
+      client_id:             String(VK_APP_ID),
+      redirect_uri:          _vkRedirectUri(),
+      response_type:         'code',
+      scope:                 'email',
+      state:                 'vkid',
+      code_challenge:        challenge,
+      code_challenge_method: 'S256',
+      device_id,
+    });
+    window.location.href = 'https://id.vk.com/oauth2/auth?' + qs.toString();
+  } catch(e) {
+    if (btn) { btn.style.opacity = ''; btn.style.pointerEvents = ''; }
+    if (errEl) { errEl.textContent = '❌ ' + (e.message || e); errEl.style.display = 'block'; }
+  }
 }
 
 export async function signInGoogle() {
