@@ -454,35 +454,27 @@ async function _loadVKSDK() {
   return window.VKID;
 }
 
-// PKCE helpers — RFC 7636 base64url verifier + S256 challenge
-function _base64url(buf) {
-  return btoa(String.fromCharCode.apply(null, new Uint8Array(buf)))
-    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-}
-async function _pkce() {
-  const verifierBuf = crypto.getRandomValues(new Uint8Array(32));
-  const verifier    = _base64url(verifierBuf);
-  const digest      = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
-  const challenge   = _base64url(digest);
-  return { verifier, challenge };
-}
-
-// VK ID callback — detects ?code=vk2.a.xxx&type=code_v2&device_id=xxx
+// Called on page load — handles redirect callback fallback (if popup blocked, etc.)
 export async function initVKIDCallback() {
   const params    = new URLSearchParams(window.location.search);
   const code      = params.get('code');
   const type      = params.get('type');
-  const device_id = params.get('device_id') || sessionStorage.getItem('vk_device_id') || '';
+  const device_id = params.get('device_id') || '';
   if (!code || type !== 'code_v2') return;
-
   window.history.replaceState({}, '', window.location.pathname);
-  toast('⏳ Входим через ВКонтакте...');
+  await _vkHandleCode(code, device_id);
+}
 
+async function _vkHandleCode(code, device_id) {
+  toast('⏳ Входим через ВКонтакте...');
   const errEl = document.getElementById('auth-error');
   try {
-    // Browser-side token exchange — VK SDK handles this without server secret
     const VKID = await _loadVKSDK();
-    VKID.Config.init({ app: VK_APP_ID, redirectUrl: _vkRedirectUri() });
+    VKID.Config.init({
+      app: VK_APP_ID,
+      redirectUrl: _vkRedirectUri(),
+      responseMode: VKID.ConfigResponseMode.Callback,
+    });
     const tokens = await VKID.Auth.exchangeCode(code, device_id);
     const access_token = tokens?.access_token;
     if (!access_token) throw new Error('No access_token: ' + JSON.stringify(tokens));
@@ -507,7 +499,7 @@ export async function signInVK() {
   const btn   = document.getElementById('vk-sign-in-btn');
   const errEl = document.getElementById('auth-error');
   if (errEl) errEl.style.display = 'none';
-  if (btn) { btn.style.opacity = '0.6'; btn.style.pointerEvents = 'none'; const sp = btn.querySelector('span'); if (sp) sp.textContent = 'Открываем ВКонтакте...'; }
+  if (btn) { btn.style.opacity = '0.6'; btn.style.pointerEvents = 'none'; }
   track('signup_started', { method: 'vk' });
 
   const p = new URLSearchParams(window.location.search);
@@ -515,25 +507,37 @@ export async function signInVK() {
   if (p.get('tourn')) sessionStorage.setItem('mfc_pending_tourn', p.get('tourn'));
 
   try {
-    const { verifier, challenge } = await _pkce();
-    const device_id = crypto.randomUUID();
-    sessionStorage.setItem('vk_pkce_verifier', verifier);
-    sessionStorage.setItem('vk_device_id', device_id);
+    const VKID = await _loadVKSDK();
 
-    const qs = new URLSearchParams({
-      client_id:             String(VK_APP_ID),
-      redirect_uri:          _vkRedirectUri(),
-      response_type:         'code',
-      scope:                 'email',
-      state:                 'vkid',
-      code_challenge:        challenge,
-      code_challenge_method: 's256',
-      device_id,
+    // Callback mode — auth happens via VK widget popup on our page, no redirect
+    VKID.Config.init({
+      app: VK_APP_ID,
+      redirectUrl: _vkRedirectUri(),
+      responseMode: VKID.ConfigResponseMode.Callback,
     });
-    window.location.href = 'https://id.vk.com/oauth2/auth?' + qs.toString();
+
+    const widget = new VKID.FloatingOneTap();
+
+    widget.on(VKID.WidgetEvents.ERROR, (err) => {
+      console.error('[vk-widget] error', err);
+      widget.close?.();
+      if (btn) { btn.style.opacity = ''; btn.style.pointerEvents = ''; }
+      const msg = err?.message || JSON.stringify(err) || 'Неизвестная ошибка VK';
+      if (errEl) { errEl.textContent = '❌ VK: ' + msg; errEl.style.display = 'block'; }
+    });
+
+    widget.on(VKID.AuthEventType.LOGIN_SUCCESS, async (payload) => {
+      widget.close?.();
+      const { code, device_id } = payload;
+      await _vkHandleCode(code, device_id || '');
+    });
+
+    widget.render({ showAlternativeLogin: true });
+
   } catch(e) {
     if (btn) { btn.style.opacity = ''; btn.style.pointerEvents = ''; }
     if (errEl) { errEl.textContent = '❌ ' + (e.message || e); errEl.style.display = 'block'; }
+    console.error('[signInVK]', e);
   }
 }
 
