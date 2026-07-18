@@ -454,45 +454,28 @@ async function _loadVKSDK() {
   return window.VKID;
 }
 
-// PKCE — exact format that worked in commit 7c66371 (base-36 verifier)
-async function _pkceChallenge() {
-  const verifier = Array.from(crypto.getRandomValues(new Uint8Array(48)))
-    .map(b => b.toString(36)).join('').slice(0, 64);
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
-  const challenge = btoa(String.fromCharCode(...new Uint8Array(digest)))
-    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-  return { verifier, challenge };
-}
+const _vkCallbackUri = () =>
+  'https://nhmidxkohjpcnhjucuuh.supabase.co/functions/v1/vk-callback';
 
-// Callback: VK returns ?code=vk2.a.xxx&type=code_v2&device_id=xxx&state=vk
+// Callback: edge function redirects back with ?vk_hash=xxx or ?vk_error=xxx
 export async function initVKIDCallback() {
-  const params    = new URLSearchParams(window.location.search);
-  const code      = params.get('code');
-  const state     = params.get('state');
-  const device_id = params.get('device_id') || sessionStorage.getItem('vk_device_id') || '';
-  // detect both old (state=vk) and new (type=code_v2) callback formats
-  if (!code || (state !== 'vk' && params.get('type') !== 'code_v2')) return;
+  const params = new URLSearchParams(window.location.search);
+  const hash   = params.get('vk_hash');
+  const vkErr  = params.get('vk_error');
 
+  if (!hash && !vkErr) return;
   window.history.replaceState({}, '', window.location.pathname);
-  toast('⏳ Входим через ВКонтакте...');
-  const errEl = document.getElementById('auth-error');
-  try {
-    // Browser-side code exchange via SDK (avoids server-side 401)
-    const VKID = await _loadVKSDK();
-    VKID.Config.init({ app: VK_APP_ID, redirectUrl: _vkRedirectUri() });
-    const tokens = await VKID.Auth.exchangeCode(code, device_id);
-    const access_token = tokens?.access_token;
-    if (!access_token) throw new Error('No access_token from SDK: ' + JSON.stringify(tokens));
 
-    const resp = await fetch(`${window._supabaseUrl}/functions/v1/vk-auth`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'apikey': window._supabaseAnonKey || '' },
-      body: JSON.stringify({ access_token }),
-    });
-    const result = await resp.json();
-    if (result.error) throw new Error(result.error);
-    const { error: verifyErr } = await sb.auth.verifyOtp({ token_hash: result.token_hash, type: 'email' });
-    if (verifyErr) throw verifyErr;
+  const errEl = document.getElementById('auth-error');
+  if (vkErr) {
+    if (errEl) { errEl.textContent = '❌ VK: ' + decodeURIComponent(vkErr); errEl.style.display = 'block'; }
+    return;
+  }
+
+  toast('⏳ Входим через ВКонтакте...');
+  try {
+    const { error } = await sb.auth.verifyOtp({ token_hash: hash, type: 'email' });
+    if (error) throw error;
     track('signup_completed', { method: 'vk' });
   } catch (e) {
     if (errEl) { errEl.textContent = '❌ Ошибка входа через ВК: ' + (e.message || e); errEl.style.display = 'block'; }
@@ -511,24 +494,17 @@ export async function signInVK() {
   if (p.get('duel'))  sessionStorage.setItem('mfc_pending_duel',  p.get('duel'));
   if (p.get('tourn')) sessionStorage.setItem('mfc_pending_tourn', p.get('tourn'));
 
-  try {
-    const { verifier, challenge } = await _pkceChallenge();
-    const deviceId = crypto.randomUUID();
-    sessionStorage.setItem('vk_code_verifier', verifier);
-    sessionStorage.setItem('vk_device_id', deviceId);
-
-    // /oauth2/auth (not /authorize) — this path worked before; SDK's /authorize always fails
-    const vkUrl = 'https://id.vk.com/oauth2/auth?client_id=' + VK_APP_ID
-      + '&redirect_uri=' + encodeURIComponent(_vkRedirectUri())
-      + '&response_type=code&scope=email&state=vk'
-      + '&code_challenge=' + challenge + '&code_challenge_method=S256'
-      + '&device_id=' + deviceId;
-
-    window.location.href = vkUrl;
-  } catch(e) {
-    if (btn) { btn.style.opacity = ''; btn.style.pointerEvents = ''; }
-    if (errEl) { errEl.textContent = '❌ ' + (e.message || e); errEl.style.display = 'block'; }
-  }
+  // Classic VK Web OAuth — redirect_uri = our edge function (server-side code exchange)
+  // This bypasses id.vk.com/authorize entirely
+  const qs = new URLSearchParams({
+    client_id:     String(VK_APP_ID),
+    redirect_uri:  _vkCallbackUri(),
+    response_type: 'code',
+    scope:         'email',
+    display:       'page',
+    v:             '5.131',
+  });
+  window.location.href = 'https://oauth.vk.com/authorize?' + qs.toString();
 }
 
 export async function signInGoogle() {
