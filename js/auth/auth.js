@@ -519,7 +519,7 @@ export async function signInVK() {
       await _vkFinishAuth(payload.code, payload.device_id || '');
     });
 
-    oneTap.render({ showAlternativeLogin: true });
+    oneTap.render({ appName: 'Brain Fight Club', showAlternativeLogin: true });
 
   } catch(e) {
     if (btn) { btn.style.opacity = ''; btn.style.pointerEvents = ''; }
