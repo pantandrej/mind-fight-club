@@ -454,9 +454,15 @@ async function _loadVKSDK() {
   return window.VKIDSDK;
 }
 
-// Callback: VK OneTap returns code+device_id directly (no page redirect)
+// Callback: VK redirects back with ?code=...&type=code_v2&device_id=...
 export async function initVKIDCallback() {
-  // No URL-based callback needed — OneTap Callback mode handles auth in-page
+  const params    = new URLSearchParams(window.location.search);
+  const code      = params.get('code');
+  const type      = params.get('type');
+  const device_id = params.get('device_id') || '';
+  if (!code || type !== 'code_v2') return;
+  window.history.replaceState({}, '', window.location.pathname);
+  await _vkFinishAuth(code, device_id);
 }
 
 async function _vkFinishAuth(code, device_id) {
@@ -501,23 +507,9 @@ export async function signInVK() {
     VKID.Config.init({
       app: VK_APP_ID,
       redirectUrl: _vkRedirectUri(),
-      responseMode: VKID.ConfigResponseMode.Callback,
     });
 
     const oneTap = new VKID.FloatingOneTap();
-
-    oneTap.on('ERROR', (err) => {
-      console.error('[vk] error', err);
-      try { oneTap.close(); } catch(_) {}
-      if (btn) { btn.style.opacity = ''; btn.style.pointerEvents = ''; }
-      const msg = err?.message || JSON.stringify(err) || 'Ошибка VK';
-      if (errEl) { errEl.textContent = '❌ VK: ' + msg; errEl.style.display = 'block'; }
-    });
-
-    oneTap.on('LOGIN_SUCCESS', async (payload) => {
-      try { oneTap.close(); } catch(_) {}
-      await _vkFinishAuth(payload.code, payload.device_id || '');
-    });
 
     oneTap.render({ appName: 'Brain Fight Club', showAlternativeLogin: true });
 
