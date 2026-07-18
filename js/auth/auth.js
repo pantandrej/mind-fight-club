@@ -506,7 +506,7 @@ export async function signInVK() {
 
     const oneTap = new VKID.OneTap();
 
-    oneTap.on(VKID.WidgetEvents.ERROR, (err) => {
+    oneTap.on('ERROR', (err) => {
       console.error('[vk] error', err);
       oneTap.close?.();
       if (btn) { btn.style.opacity = ''; btn.style.pointerEvents = ''; }
@@ -514,7 +514,7 @@ export async function signInVK() {
       if (errEl) { errEl.textContent = '❌ VK: ' + msg; errEl.style.display = 'block'; }
     });
 
-    oneTap.on(VKID.AuthEventType.LOGIN_SUCCESS, async (payload) => {
+    oneTap.on('LOGIN_SUCCESS', async (payload) => {
       oneTap.close?.();
       await _vkFinishAuth(payload.code, payload.device_id || '');
     });
