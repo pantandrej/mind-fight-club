@@ -551,6 +551,10 @@ export async function signInVK() {
   if (p.get('tourn')) sessionStorage.setItem('mfc_pending_tourn', p.get('tourn'));
 
   try {
+    const { verifier, challenge } = await _vkPkce();
+    const device_id = _vkDeviceId();
+    sessionStorage.setItem('vk_code_verifier', verifier);
+
     // VK ID PKCE — works with VK ID type app (54679210)
     const authUrl = 'https://id.vk.com/oauth2/auth?' + new URLSearchParams({
       response_type:         'code',
