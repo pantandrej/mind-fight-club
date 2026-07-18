@@ -504,29 +504,22 @@ export async function signInVK() {
       responseMode: VKID.ConfigResponseMode.Callback,
     });
 
-    const oneTap = new VKID.OneTap();
+    const oneTap = new VKID.FloatingOneTap();
 
     oneTap.on('ERROR', (err) => {
       console.error('[vk] error', err);
-      oneTap.close?.();
+      try { oneTap.close(); } catch(_) {}
       if (btn) { btn.style.opacity = ''; btn.style.pointerEvents = ''; }
       const msg = err?.message || JSON.stringify(err) || 'Ошибка VK';
       if (errEl) { errEl.textContent = '❌ VK: ' + msg; errEl.style.display = 'block'; }
     });
 
     oneTap.on('LOGIN_SUCCESS', async (payload) => {
-      oneTap.close?.();
+      try { oneTap.close(); } catch(_) {}
       await _vkFinishAuth(payload.code, payload.device_id || '');
     });
 
-    // Render as full-screen overlay
-    const container = document.createElement('div');
-    container.id = 'vk-onetap-wrap';
-    container.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.5)';
-    container.addEventListener('click', e => { if (e.target === container) { container.remove(); if (btn) { btn.style.opacity=''; btn.style.pointerEvents=''; } } });
-    document.body.appendChild(container);
-
-    oneTap.render({ container, showAlternativeLogin: true });
+    oneTap.render({ showAlternativeLogin: true });
 
   } catch(e) {
     if (btn) { btn.style.opacity = ''; btn.style.pointerEvents = ''; }
