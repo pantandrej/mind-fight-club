@@ -1,27 +1,26 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const VK_APP_ID = '54679210'
-const APP_URL   = 'https://brain-fight-club.vercel.app'
+const VK_APP_ID = '54683964'
+const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
 
 Deno.serve(async (req) => {
-  const url    = new URL(req.url)
-  const code   = url.searchParams.get('code')
-  const errParam = url.searchParams.get('error')
-
-  if (errParam) {
-    return Response.redirect(`${APP_URL}/?vk_error=${encodeURIComponent(errParam)}`, 302)
-  }
-
-  if (!code) {
-    return Response.redirect(`${APP_URL}/?vk_error=no_code`, 302)
-  }
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
 
   try {
-    const clientSecret  = Deno.env.get('VK_CLIENT_SECRET')!
-    const redirectUri   = `${Deno.env.get('SUPABASE_URL')}/functions/v1/vk-callback`
+    const { code, redirect_uri } = await req.json()
+    if (!code) {
+      return new Response(JSON.stringify({ error: 'Missing code' }), {
+        status: 400, headers: { ...CORS, 'Content-Type': 'application/json' }
+      })
+    }
 
-    // Classic VK Web OAuth — server-side code exchange
-    const tokenUrl = `https://oauth.vk.com/access_token?` + new URLSearchParams({
+    const clientSecret = Deno.env.get('VK_CLIENT_SECRET')!
+    const redirectUri  = redirect_uri || 'https://brain-fight-club.vercel.app/'
+
+    const tokenUrl = 'https://oauth.vk.com/access_token?' + new URLSearchParams({
       client_id:     VK_APP_ID,
       client_secret: clientSecret,
       redirect_uri:  redirectUri,
@@ -38,12 +37,11 @@ Deno.serve(async (req) => {
     const vk_user_id   = String(tokenData.user_id)
     const email        = (tokenData.email as string) || null
 
-    // Get user name + photo
     const apiResp = await fetch(
       `https://api.vk.com/method/users.get?fields=photo_200&access_token=${access_token}&v=5.131&user_ids=${vk_user_id}`
     )
-    const apiJson  = await apiResp.json()
-    const u        = apiJson.response?.[0] || {}
+    const apiJson     = await apiResp.json()
+    const u           = apiJson.response?.[0] || {}
     const displayName = [u.first_name, u.last_name].filter(Boolean).join(' ') || `VK${vk_user_id}`
     const avatarUrl   = u.photo_200 || null
     const userEmail   = email || `vk${vk_user_id}@brainfight.club`
@@ -77,15 +75,19 @@ Deno.serve(async (req) => {
     const { data: linkData, error: linkErr } = await sb.auth.admin.generateLink({
       type: 'magiclink',
       email: targetUser!.email!,
-      options: { redirectTo: APP_URL + '/' }
+      options: { redirectTo: 'https://brain-fight-club.vercel.app/' }
     })
     if (linkErr) throw linkErr
 
-    const tokenHash = linkData.properties.hashed_token
-    return Response.redirect(`${APP_URL}/?vk_hash=${tokenHash}`, 302)
+    return new Response(JSON.stringify({
+      token_hash: linkData.properties.hashed_token,
+      email: targetUser!.email,
+    }), { headers: { ...CORS, 'Content-Type': 'application/json' } })
 
   } catch (e) {
     console.error('vk-callback error:', e)
-    return Response.redirect(`${APP_URL}/?vk_error=${encodeURIComponent(String(e?.message || e))}`, 302)
+    return new Response(JSON.stringify({ error: String(e?.message || e) }), {
+      status: 500, headers: { ...CORS, 'Content-Type': 'application/json' }
+    })
   }
 })
