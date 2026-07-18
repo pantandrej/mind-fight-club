@@ -439,27 +439,31 @@ export async function verifyPhoneOTP() {
   btn.disabled = false;
 }
 
-const VK_APP_ID = 54683964;
+const VK_APP_ID = '54683964';
 
 function _vkRedirectUri() { return window.location.origin + '/'; }
 
-async function _loadVKSDK() {
-  if (window.VKIDSDK) return window.VKIDSDK;
-  await new Promise((res, rej) => {
-    const s = document.createElement('script');
-    s.src = 'https://unpkg.com/@vkid/sdk@<3.0.0/dist-sdk/umd/index.js';
-    s.onload = res; s.onerror = rej;
-    document.head.appendChild(s);
-  });
-  return window.VKIDSDK;
+async function _vkPkce() {
+  const array = crypto.getRandomValues(new Uint8Array(32));
+  const verifier = btoa(String.fromCharCode(...array))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+  const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
+  const challenge = btoa(String.fromCharCode(...new Uint8Array(hash)))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+  return { verifier, challenge };
 }
 
-// Callback: VK redirects back with ?code=...&type=code_v2&device_id=...
+function _vkDeviceId() {
+  let id = sessionStorage.getItem('vk_device_id');
+  if (!id) { id = crypto.randomUUID().replace(/-/g, ''); sessionStorage.setItem('vk_device_id', id); }
+  return id;
+}
+
 export async function initVKIDCallback() {
   const params    = new URLSearchParams(window.location.search);
   const code      = params.get('code');
   const type      = params.get('type');
-  const device_id = params.get('device_id') || '';
+  const device_id = params.get('device_id') || sessionStorage.getItem('vk_device_id') || '';
   if (!code || type !== 'code_v2') return;
   window.history.replaceState({}, '', window.location.pathname);
   await _vkFinishAuth(code, device_id);
@@ -469,11 +473,28 @@ async function _vkFinishAuth(code, device_id) {
   toast('⏳ Входим через ВКонтакте...');
   const errEl = document.getElementById('auth-error');
   try {
-    const VKID = await _loadVKSDK();
-    VKID.Config.init({ app: VK_APP_ID, redirectUrl: _vkRedirectUri() });
-    const tokens = await VKID.Auth.exchangeCode(code, device_id);
-    const access_token = tokens?.access_token;
-    if (!access_token) throw new Error('No access_token: ' + JSON.stringify(tokens));
+    const verifier = sessionStorage.getItem('vk_code_verifier');
+    sessionStorage.removeItem('vk_code_verifier');
+
+    const tokenBody = new URLSearchParams({
+      grant_type:   'authorization_code',
+      code,
+      device_id,
+      redirect_uri: _vkRedirectUri(),
+      client_id:    VK_APP_ID,
+    });
+    if (verifier) tokenBody.set('code_verifier', verifier);
+
+    const tokenResp = await fetch('https://id.vk.com/oauth2/auth', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body:    tokenBody.toString(),
+    });
+    const tokenData = await tokenResp.json();
+    console.log('[vk] token response:', JSON.stringify(tokenData).slice(0, 300));
+
+    const access_token = tokenData.access_token;
+    if (!access_token) throw new Error('No access_token: ' + JSON.stringify(tokenData).slice(0, 200));
 
     const resp = await fetch(`${window._supabaseUrl}/functions/v1/vk-auth`, {
       method: 'POST',
@@ -503,30 +524,22 @@ export async function signInVK() {
   if (p.get('tourn')) sessionStorage.setItem('mfc_pending_tourn', p.get('tourn'));
 
   try {
-    const VKID = await _loadVKSDK();
-    VKID.Config.init({
-      app: VK_APP_ID,
-      redirectUrl: _vkRedirectUri(),
+    const { verifier, challenge } = await _vkPkce();
+    const device_id = _vkDeviceId();
+    sessionStorage.setItem('vk_code_verifier', verifier);
+
+    const authUrl = 'https://id.vk.com/oauth2/auth?' + new URLSearchParams({
+      response_type:         'code',
+      client_id:             VK_APP_ID,
+      redirect_uri:          _vkRedirectUri(),
+      code_challenge:        challenge,
+      code_challenge_method: 'S256',
+      device_id,
+      scope:                 'vkid.personal_info email',
+      state:                 crypto.randomUUID(),
     });
 
-    const oneTap = new VKID.FloatingOneTap();
-
-    const rendered = oneTap.render({ appName: 'Brain Fight Club', showAlternativeLogin: true });
-    const target = rendered && typeof rendered.on === 'function' ? rendered : oneTap;
-
-    target.on('ERROR', (err) => {
-      console.error('[vk] error', err);
-      try { oneTap.close(); } catch(_) {}
-      if (btn) { btn.style.opacity = ''; btn.style.pointerEvents = ''; }
-      const msg = err?.message || JSON.stringify(err) || 'Ошибка VK';
-      if (errEl) { errEl.textContent = '❌ VK: ' + msg; errEl.style.display = 'block'; }
-    });
-
-    target.on('LOGIN_SUCCESS', async (payload) => {
-      try { oneTap.close(); } catch(_) {}
-      await _vkFinishAuth(payload.code, payload.device_id || '');
-    });
-
+    window.location.href = authUrl;
   } catch(e) {
     if (btn) { btn.style.opacity = ''; btn.style.pointerEvents = ''; }
     if (errEl) { errEl.textContent = '❌ ' + (e.message || e); errEl.style.display = 'block'; }
