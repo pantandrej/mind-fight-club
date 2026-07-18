@@ -511,7 +511,21 @@ export async function signInVK() {
 
     const oneTap = new VKID.FloatingOneTap();
 
-    oneTap.render({ appName: 'Brain Fight Club', showAlternativeLogin: true });
+    const rendered = oneTap.render({ appName: 'Brain Fight Club', showAlternativeLogin: true });
+    const target = rendered && typeof rendered.on === 'function' ? rendered : oneTap;
+
+    target.on('ERROR', (err) => {
+      console.error('[vk] error', err);
+      try { oneTap.close(); } catch(_) {}
+      if (btn) { btn.style.opacity = ''; btn.style.pointerEvents = ''; }
+      const msg = err?.message || JSON.stringify(err) || 'Ошибка VK';
+      if (errEl) { errEl.textContent = '❌ VK: ' + msg; errEl.style.display = 'block'; }
+    });
+
+    target.on('LOGIN_SUCCESS', async (payload) => {
+      try { oneTap.close(); } catch(_) {}
+      await _vkFinishAuth(payload.code, payload.device_id || '');
+    });
 
   } catch(e) {
     if (btn) { btn.style.opacity = ''; btn.style.pointerEvents = ''; }
