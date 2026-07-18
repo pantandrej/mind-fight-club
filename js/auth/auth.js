@@ -444,14 +444,14 @@ const VK_APP_ID = 54683964;
 function _vkRedirectUri() { return window.location.origin + '/'; }
 
 async function _loadVKSDK() {
-  if (window.VKID) return window.VKID;
+  if (window.VKIDSDK) return window.VKIDSDK;
   await new Promise((res, rej) => {
     const s = document.createElement('script');
-    s.src = 'https://unpkg.com/@vkid/sdk@latest/dist-sdk/umd/index.js';
+    s.src = 'https://unpkg.com/@vkid/sdk@<3.0.0/dist-sdk/umd/index.js';
     s.onload = res; s.onerror = rej;
     document.head.appendChild(s);
   });
-  return window.VKID;
+  return window.VKIDSDK;
 }
 
 // Callback: VK OneTap returns code+device_id directly (no page redirect)
