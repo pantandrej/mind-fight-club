@@ -439,7 +439,7 @@ export async function verifyPhoneOTP() {
   btn.disabled = false;
 }
 
-const VK_APP_ID = 54679210;
+const VK_APP_ID = 54683964;
 
 function _vkRedirectUri() { return window.location.origin + '/'; }
 
@@ -454,28 +454,30 @@ async function _loadVKSDK() {
   return window.VKID;
 }
 
-const _vkCallbackUri = () =>
-  'https://nhmidxkohjpcnhjucuuh.supabase.co/functions/v1/vk-callback';
-
-// Callback: edge function redirects back with ?vk_hash=xxx or ?vk_error=xxx
+// Callback: VK OneTap returns code+device_id directly (no page redirect)
 export async function initVKIDCallback() {
-  const params = new URLSearchParams(window.location.search);
-  const hash   = params.get('vk_hash');
-  const vkErr  = params.get('vk_error');
+  // No URL-based callback needed — OneTap Callback mode handles auth in-page
+}
 
-  if (!hash && !vkErr) return;
-  window.history.replaceState({}, '', window.location.pathname);
-
-  const errEl = document.getElementById('auth-error');
-  if (vkErr) {
-    if (errEl) { errEl.textContent = '❌ VK: ' + decodeURIComponent(vkErr); errEl.style.display = 'block'; }
-    return;
-  }
-
+async function _vkFinishAuth(code, device_id) {
   toast('⏳ Входим через ВКонтакте...');
+  const errEl = document.getElementById('auth-error');
   try {
-    const { error } = await sb.auth.verifyOtp({ token_hash: hash, type: 'email' });
-    if (error) throw error;
+    const VKID = await _loadVKSDK();
+    VKID.Config.init({ app: VK_APP_ID, redirectUrl: _vkRedirectUri() });
+    const tokens = await VKID.Auth.exchangeCode(code, device_id);
+    const access_token = tokens?.access_token;
+    if (!access_token) throw new Error('No access_token: ' + JSON.stringify(tokens));
+
+    const resp = await fetch(`${window._supabaseUrl}/functions/v1/vk-auth`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': window._supabaseAnonKey || '' },
+      body: JSON.stringify({ access_token }),
+    });
+    const result = await resp.json();
+    if (result.error) throw new Error(result.error);
+    const { error: verifyErr } = await sb.auth.verifyOtp({ token_hash: result.token_hash, type: 'email' });
+    if (verifyErr) throw verifyErr;
     track('signup_completed', { method: 'vk' });
   } catch (e) {
     if (errEl) { errEl.textContent = '❌ Ошибка входа через ВК: ' + (e.message || e); errEl.style.display = 'block'; }
@@ -487,24 +489,49 @@ export async function signInVK() {
   const btn   = document.getElementById('vk-sign-in-btn');
   const errEl = document.getElementById('auth-error');
   if (errEl) errEl.style.display = 'none';
-  if (btn) { btn.style.opacity = '0.6'; btn.style.pointerEvents = 'none'; const sp = btn.querySelector('span'); if (sp) sp.textContent = 'Открываем ВКонтакте...'; }
+  if (btn) { btn.style.opacity = '0.6'; btn.style.pointerEvents = 'none'; }
   track('signup_started', { method: 'vk' });
 
   const p = new URLSearchParams(window.location.search);
   if (p.get('duel'))  sessionStorage.setItem('mfc_pending_duel',  p.get('duel'));
   if (p.get('tourn')) sessionStorage.setItem('mfc_pending_tourn', p.get('tourn'));
 
-  // Classic VK Web OAuth — redirect_uri = our edge function (server-side code exchange)
-  // This bypasses id.vk.com/authorize entirely
-  const qs = new URLSearchParams({
-    client_id:     String(VK_APP_ID),
-    redirect_uri:  _vkCallbackUri(),
-    response_type: 'code',
-    scope:         'email',
-    display:       'page',
-    v:             '5.131',
-  });
-  window.location.href = 'https://oauth.vk.com/authorize?' + qs.toString();
+  try {
+    const VKID = await _loadVKSDK();
+    VKID.Config.init({
+      app: VK_APP_ID,
+      redirectUrl: _vkRedirectUri(),
+      responseMode: VKID.ConfigResponseMode.Callback,
+    });
+
+    const oneTap = new VKID.OneTap();
+
+    oneTap.on(VKID.WidgetEvents.ERROR, (err) => {
+      console.error('[vk] error', err);
+      oneTap.close?.();
+      if (btn) { btn.style.opacity = ''; btn.style.pointerEvents = ''; }
+      const msg = err?.message || JSON.stringify(err) || 'Ошибка VK';
+      if (errEl) { errEl.textContent = '❌ VK: ' + msg; errEl.style.display = 'block'; }
+    });
+
+    oneTap.on(VKID.AuthEventType.LOGIN_SUCCESS, async (payload) => {
+      oneTap.close?.();
+      await _vkFinishAuth(payload.code, payload.device_id || '');
+    });
+
+    // Render as full-screen overlay
+    const container = document.createElement('div');
+    container.id = 'vk-onetap-wrap';
+    container.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.5)';
+    container.addEventListener('click', e => { if (e.target === container) { container.remove(); if (btn) { btn.style.opacity=''; btn.style.pointerEvents=''; } } });
+    document.body.appendChild(container);
+
+    oneTap.render({ container, showAlternativeLogin: true });
+
+  } catch(e) {
+    if (btn) { btn.style.opacity = ''; btn.style.pointerEvents = ''; }
+    if (errEl) { errEl.textContent = '❌ ' + (e.message || e); errEl.style.display = 'block'; }
+  }
 }
 
 export async function signInGoogle() {
