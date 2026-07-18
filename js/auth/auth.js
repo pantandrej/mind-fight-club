@@ -439,7 +439,7 @@ export async function verifyPhoneOTP() {
   btn.disabled = false;
 }
 
-const VK_APP_ID = '54683964';
+const VK_APP_ID = '54679210'; // VK ID type app — supports id.vk.com/oauth2/auth
 
 function _vkRedirectUri() { return window.location.origin + '/'; }
 
@@ -551,14 +551,16 @@ export async function signInVK() {
   if (p.get('tourn')) sessionStorage.setItem('mfc_pending_tourn', p.get('tourn'));
 
   try {
-    // Classic VK OAuth — works with Web App type, no PKCE needed
-    const authUrl = 'https://oauth.vk.com/authorize?' + new URLSearchParams({
-      client_id:     VK_APP_ID,
-      redirect_uri:  _vkRedirectUri(),
-      response_type: 'code',
-      scope:         'email',
-      display:       'page',
-      v:             '5.131',
+    // VK ID PKCE — works with VK ID type app (54679210)
+    const authUrl = 'https://id.vk.com/oauth2/auth?' + new URLSearchParams({
+      response_type:         'code',
+      client_id:             VK_APP_ID,
+      redirect_uri:          _vkRedirectUri(),
+      code_challenge:        challenge,
+      code_challenge_method: 'S256',
+      device_id,
+      scope:                 'vkid.personal_info email',
+      state:                 crypto.randomUUID(),
     });
     window.location.href = authUrl;
   } catch(e) {
