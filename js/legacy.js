@@ -5279,26 +5279,7 @@ function checkOnboarding(){
 // ═══════════════════════════════════════════
 // VK AUTH
 // ═══════════════════════════════════════════
-// VK login flag — set to true only when VK app is configured and unblocked
-const VK_LOGIN_ENABLED = false;
-
-function signInVK(){
-  if(!VK_LOGIN_ENABLED){
-    const errEl = document.getElementById('auth-error');
-    if(errEl){
-      errEl.style.display='block';
-      errEl.textContent = '⚠️ VK вход временно недоступен: приложение заблокировано или не настроено. Используй Google или Email.';
-      setTimeout(()=>{ if(errEl) errEl.style.display='none'; }, 6000);
-    }
-    return; // never open VK oauth URL
-  }
-  const VK_CLIENT_ID = '51986479';
-  const REDIRECT_URI = encodeURIComponent(location.origin + '/vk-callback');
-  const STATE = Math.random().toString(36).slice(2);
-  sessionStorage.setItem('vk_state', STATE);
-  const vkUrl = `https://oauth.vk.com/authorize?client_id=${VK_CLIENT_ID}&display=popup&redirect_uri=${REDIRECT_URI}&scope=email&response_type=code&state=${STATE}&v=5.131`;
-  window.open(vkUrl, '_blank', 'width=600,height=500');
-}
+// VK auth is handled by auth.js (window.signInVK set there)
 
 // Show VK button only if enabled
 (function(){
