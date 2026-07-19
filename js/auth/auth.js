@@ -439,7 +439,7 @@ export async function verifyPhoneOTP() {
   btn.disabled = false;
 }
 
-const VK_APP_ID = 54679210;
+const VK_APP_ID = 54683964;
 
 function _vkRedirectUri() { return window.location.origin + '/'; }
 
