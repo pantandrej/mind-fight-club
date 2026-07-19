@@ -507,6 +507,8 @@ async function _vkFinishAuth(code, device_id) {
     const { error: verifyErr } = await sb.auth.verifyOtp({ token_hash: result.token_hash, type: 'email' });
     if (verifyErr) throw verifyErr;
     track('signup_completed', { method: 'vk' });
+    // Reload so onAuthStateChange fires cleanly and app shows home screen
+    window.location.replace('/');
   } catch (e) {
     if (errEl) { errEl.textContent = '❌ Ошибка входа через ВК: ' + (e.message || e); errEl.style.display = 'block'; }
     console.error('[vk-auth]', e);
