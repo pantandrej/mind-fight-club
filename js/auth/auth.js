@@ -503,7 +503,7 @@ export async function signInVK() {
 
   try {
     const VKID = await _loadVKSDK();
-    VKID.Config.init({ app: VK_APP_ID, redirectUrl: _vkRedirectUri() });
+    VKID.Config.init({ app: VK_APP_ID, redirectUrl: _vkRedirectUri(), responseMode: 'callback' });
 
     const oneTap = new VKID.FloatingOneTap();
     const rendered = oneTap.render({ appName: 'Brain Fight Club', showAlternativeLogin: true });
