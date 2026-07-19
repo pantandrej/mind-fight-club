@@ -439,9 +439,17 @@ export async function verifyPhoneOTP() {
   btn.disabled = false;
 }
 
-const VK_APP_ID = 54683964;
+const VK_APP_ID = '54683964';
 
 function _vkRedirectUri() { return window.location.origin + '/'; }
+
+async function _vkPkce() {
+  const arr = crypto.getRandomValues(new Uint8Array(32));
+  const verifier = btoa(String.fromCharCode(...arr)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+  const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
+  const challenge = btoa(String.fromCharCode(...new Uint8Array(hash))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+  return { verifier, challenge };
+}
 
 async function _loadVKSDK() {
   if (window.VKIDSDK) return window.VKIDSDK;
@@ -468,11 +476,26 @@ async function _vkFinishAuth(code, device_id) {
   toast('⏳ Входим через ВКонтакте...');
   const errEl = document.getElementById('auth-error');
   try {
-    const VKID = await _loadVKSDK();
-    VKID.Config.init({ app: VK_APP_ID, redirectUrl: _vkRedirectUri() });
-    const tokens = await VKID.Auth.exchangeCode(code, device_id);
-    const access_token = tokens?.access_token;
-    if (!access_token) throw new Error('No access_token: ' + JSON.stringify(tokens));
+    const verifier = sessionStorage.getItem('vk_code_verifier') || '';
+    sessionStorage.removeItem('vk_code_verifier');
+
+    const tokenBody = new URLSearchParams({
+      grant_type:    'authorization_code',
+      code,
+      device_id:     device_id || sessionStorage.getItem('vk_device_id') || '',
+      redirect_uri:  _vkRedirectUri(),
+      client_id:     VK_APP_ID,
+      code_verifier: verifier,
+    });
+    const tokenResp = await fetch('https://id.vk.ru/oauth2/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: tokenBody.toString(),
+    });
+    const tokenData = await tokenResp.json();
+    console.log('[vk] token response:', JSON.stringify(tokenData).slice(0, 300));
+    const access_token = tokenData.access_token;
+    if (!access_token) throw new Error('VK token error: ' + JSON.stringify(tokenData).slice(0, 200));
 
     const resp = await fetch(`${window._supabaseUrl}/functions/v1/vk-auth`, {
       method: 'POST',
@@ -502,50 +525,25 @@ export async function signInVK() {
   if (p.get('tourn')) sessionStorage.setItem('mfc_pending_tourn', p.get('tourn'));
 
   try {
-    const VKID = await _loadVKSDK();
-    console.log('[vk] ConfigResponseMode:', JSON.stringify(VKID.ConfigResponseMode));
-    VKID.Config.init({ app: VK_APP_ID, redirectUrl: _vkRedirectUri() });
+    const { verifier, challenge } = await _vkPkce();
+    const device_id = crypto.randomUUID().replace(/-/g,'').slice(0,16);
+    sessionStorage.setItem('vk_code_verifier', verifier);
+    sessionStorage.setItem('vk_device_id', device_id);
 
-    const oneTap = new VKID.FloatingOneTap();
-
-    // Register events on the instance BEFORE render
-    oneTap.on('onetap: success login', async (payload) => {
-      try { oneTap.close(); } catch(_) {}
-      const code      = payload?.code      || payload?.auth_code;
-      const device_id = payload?.device_id || '';
-      console.log('[vk] login payload:', JSON.stringify(payload));
-      await _vkFinishAuth(code, device_id);
-    });
-    oneTap.on('common: error', (err) => {
-      console.error('[vk] error event:', err);
-      try { oneTap.close(); } catch(_) {}
-      if (btn) { btn.style.opacity = ''; btn.style.pointerEvents = ''; }
-      const msg = err?.message || JSON.stringify(err) || 'Ошибка VK';
-      if (errEl) { errEl.textContent = '❌ VK: ' + msg; errEl.style.display = 'block'; }
+    // id.vk.ru/authorize — actual VK ID auth URL from SDK source
+    const authUrl = 'https://id.vk.ru/authorize?' + new URLSearchParams({
+      response_type:         'code',
+      client_id:             VK_APP_ID,
+      redirect_uri:          _vkRedirectUri(),
+      code_challenge:        challenge,
+      code_challenge_method: 'S256',
+      device_id,
+      scope:                 'vkid.personal_info email',
+      state:                 crypto.randomUUID(),
     });
 
-    const rendered = oneTap.render({ appName: 'Brain Fight Club', showAlternativeLogin: true });
-    const target = (rendered && typeof rendered.on === 'function') ? rendered : oneTap;
-
-    // Also register on rendered result (covers both registration patterns)
-    target.on('onetap: success login', async (payload) => {
-      try { oneTap.close(); } catch(_) {}
-      const code      = payload?.code      || payload?.auth_code;
-      const device_id = payload?.device_id || '';
-      console.log('[vk] login payload:', JSON.stringify(payload));
-      await _vkFinishAuth(code, device_id);
-    });
-
-    target.on('common: error', (err) => {
-      console.error('[vk] error event:', err);
-      try { oneTap.close(); } catch(_) {}
-      if (btn) { btn.style.opacity = ''; btn.style.pointerEvents = ''; }
-      const msg = err?.message || JSON.stringify(err) || 'Ошибка VK';
-      if (errEl) { errEl.textContent = '❌ VK: ' + msg; errEl.style.display = 'block'; }
-    });
-
-    // Also listen for redirect-mode callback (type=code_v2 in URL)
-    // handled by initVKIDCallback on page load
+    console.log('[vk] auth url:', authUrl.split('?')[0]);
+    window.location.href = authUrl;
   } catch(e) {
     if (btn) { btn.style.opacity = ''; btn.style.pointerEvents = ''; }
     if (errEl) { errEl.textContent = '❌ ' + (e.message || e); errEl.style.display = 'block'; }
