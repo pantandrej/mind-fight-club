@@ -40,14 +40,17 @@ export async function initAuth() {
   const p = new URLSearchParams(window.location.search);
   const hasDeepLink = p.get('duel') || p.get('tourn') || p.get('official') || p.get('join_club') || p.get('u') || p.get('uid') || p.get('challenge') || p.get('brand');
 
+  // VK ID callback uses query params (?code=...&type=code_v2), not hash
+  const hasVKCallback = p.get('code') && p.get('type') === 'code_v2';
+
   // Pack deep link — show pack landing without requiring login
-  if (!existingSession && !isOAuthCallback && p.get('pack')) {
+  if (!existingSession && !isOAuthCallback && !hasVKCallback && p.get('pack')) {
     _bootAuth(false);
     _showPackLanding(p.get('pack'));
     return;
   }
 
-  if (!existingSession && !isOAuthCallback && !hasDeepLink) {
+  if (!existingSession && !isOAuthCallback && !hasDeepLink && !hasVKCallback) {
     // Show landing for first-time visitors — but still boot auth listener in background
     _showLanding();
     _bootAuth(); // registers onAuthStateChange so OAuth callback is handled
@@ -507,8 +510,7 @@ async function _vkFinishAuth(code, device_id) {
     const { error: verifyErr } = await sb.auth.verifyOtp({ token_hash: result.token_hash, type: 'email' });
     if (verifyErr) throw verifyErr;
     track('signup_completed', { method: 'vk' });
-    // Reload so onAuthStateChange fires cleanly and app shows home screen
-    window.location.replace('/');
+    // onAuthStateChange SIGNED_IN fires from verifyOtp — no reload needed
   } catch (e) {
     if (errEl) { errEl.textContent = '❌ Ошибка входа через ВК: ' + (e.message || e); errEl.style.display = 'block'; }
     console.error('[vk-auth]', e);
