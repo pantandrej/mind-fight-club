@@ -1261,7 +1261,7 @@ if(urlP.get('tourn'))document.getElementById('t-join-code').value=urlP.get('tour
 
 loadDailyState();
 _remoteQsPromise = loadRemoteQuestions(); // store promise so startQuiz can await it
-initAuth();
+// initAuth() is called by app.js — do not call again here
 
 // ═══════════════════════════════════════════
 

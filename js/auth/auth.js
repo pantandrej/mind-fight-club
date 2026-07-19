@@ -203,6 +203,9 @@ async function _showPackLanding(packKey) {
 }
 
 function _redirectAfterAuth() {
+  // Hide landing overlay in case it was shown (e.g. second initAuth call)
+  const lo = document.getElementById('landing-overlay');
+  if (lo) lo.style.display = 'none';
   if (typeof window.savePendingRef  === 'function') window.savePendingRef();
   if (typeof window.checkRefParam   === 'function') window.checkRefParam();
   if (!localStorage.getItem('mfc_onboarded') &&
