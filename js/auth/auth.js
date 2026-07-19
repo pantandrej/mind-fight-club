@@ -503,13 +503,32 @@ export async function signInVK() {
 
   try {
     const VKID = await _loadVKSDK();
-    VKID.Config.init({ app: VK_APP_ID, redirectUrl: _vkRedirectUri(), responseMode: 'callback' });
+    const callbackMode = VKID.ConfigResponseMode?.Callback ?? 'callback';
+    console.log('[vk] ConfigResponseMode:', JSON.stringify(VKID.ConfigResponseMode));
+    VKID.Config.init({ app: VK_APP_ID, redirectUrl: _vkRedirectUri(), responseMode: callbackMode });
 
     const oneTap = new VKID.FloatingOneTap();
+
+    // Register events on the instance BEFORE render
+    oneTap.on('onetap: success login', async (payload) => {
+      try { oneTap.close(); } catch(_) {}
+      const code      = payload?.code      || payload?.auth_code;
+      const device_id = payload?.device_id || '';
+      console.log('[vk] login payload:', JSON.stringify(payload));
+      await _vkFinishAuth(code, device_id);
+    });
+    oneTap.on('common: error', (err) => {
+      console.error('[vk] error event:', err);
+      try { oneTap.close(); } catch(_) {}
+      if (btn) { btn.style.opacity = ''; btn.style.pointerEvents = ''; }
+      const msg = err?.message || JSON.stringify(err) || 'Ошибка VK';
+      if (errEl) { errEl.textContent = '❌ VK: ' + msg; errEl.style.display = 'block'; }
+    });
+
     const rendered = oneTap.render({ appName: 'Brain Fight Club', showAlternativeLogin: true });
     const target = (rendered && typeof rendered.on === 'function') ? rendered : oneTap;
 
-    // Actual event strings from SDK source (not enum names)
+    // Also register on rendered result (covers both registration patterns)
     target.on('onetap: success login', async (payload) => {
       try { oneTap.close(); } catch(_) {}
       const code      = payload?.code      || payload?.auth_code;
