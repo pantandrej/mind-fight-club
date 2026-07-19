@@ -31,17 +31,15 @@ function _loadUserOnce(user) {
 
 // ── Entry point ───────────────────────────────────────────────────
 export async function initAuth() {
-  const { data: { session: existingSession } } = await sb.auth.getSession();
-
-  // Detect OAuth callback in URL hash — must boot immediately to handle SIGNED_IN
+  // Read URL BEFORE first await — initVKIDCallback runs concurrently and clears ?code= synchronously
   const hash = window.location.hash;
   const isOAuthCallback = hash.includes('access_token=') || hash.includes('code=') || hash.includes('error_description=');
-
   const p = new URLSearchParams(window.location.search);
   const hasDeepLink = p.get('duel') || p.get('tourn') || p.get('official') || p.get('join_club') || p.get('u') || p.get('uid') || p.get('challenge') || p.get('brand');
-
   // VK ID callback uses query params (?code=...&type=code_v2), not hash
   const hasVKCallback = p.get('code') && p.get('type') === 'code_v2';
+
+  const { data: { session: existingSession } } = await sb.auth.getSession();
 
   // Pack deep link — show pack landing without requiring login
   if (!existingSession && !isOAuthCallback && !hasVKCallback && p.get('pack')) {
