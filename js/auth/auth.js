@@ -503,9 +503,8 @@ export async function signInVK() {
 
   try {
     const VKID = await _loadVKSDK();
-    const callbackMode = VKID.ConfigResponseMode?.Callback ?? 'callback';
     console.log('[vk] ConfigResponseMode:', JSON.stringify(VKID.ConfigResponseMode));
-    VKID.Config.init({ app: VK_APP_ID, redirectUrl: _vkRedirectUri(), responseMode: callbackMode });
+    VKID.Config.init({ app: VK_APP_ID, redirectUrl: _vkRedirectUri() });
 
     const oneTap = new VKID.FloatingOneTap();
 
