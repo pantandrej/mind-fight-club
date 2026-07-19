@@ -125,6 +125,7 @@ async function _bootAuth(showAuth = true) {
 
 // ── Landing page logic ────────────────────────────────────────────
 function _showLanding() {
+  console.trace('[auth] _showLanding called');
   const el = document.getElementById('landing-overlay');
   if (!el) { _bootAuth(); return; }
   el.style.display = 'flex';
