@@ -3673,16 +3673,17 @@ function showPlayMenu(){
     ? (L ? 'Дневной лимит исчерпан — возвращайтесь завтра' : 'Daily limit reached — come back tomorrow')
     : (L ? '10 бесплатных вопросов в день' : '10 free questions per day');
 
-  document.getElementById('pm-topics').textContent = L ? 'Выбрать тему' : 'Choose Topic';
-  document.getElementById('pm-topics-sub').textContent = L ? 'Наука, кино, спорт и другое' : 'Science, Cinema, Sports and more';
-  document.getElementById('pm-packs').textContent = L ? 'Бонусы' : 'Bonuses';
-  document.getElementById('pm-packs-sub').textContent = L ? 'Призы, паки и бонусы за нейроны' : 'Prizes, packs and bonuses for neurons';
-  document.getElementById('pm-daily').textContent = L ? 'Дневное задание' : 'Daily Challenge';
-  document.getElementById('pm-daily-sub').textContent = L ? 'Бонусные нейроны за задание' : 'Bonus neurons for today\'s task';
-  document.getElementById('pm-random').textContent = L ? 'Случайный бой' : 'Random Battle';
-  document.getElementById('pm-random-sub').textContent = L ? 'Найти случайного соперника онлайн' : 'Find a random opponent online';
-  document.getElementById('pm-duel').textContent = L ? 'Дуэль с другом' : 'Duel a Friend';
-  document.getElementById('pm-duel-sub').textContent = L ? 'Отправь ссылку и играйте вместе' : 'Send a link and play together';
+  const _pm = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+  _pm('pm-topics',     L ? 'Выбрать тему' : 'Choose Topic');
+  _pm('pm-topics-sub', L ? 'Наука, кино, спорт и другое' : 'Science, Cinema, Sports and more');
+  _pm('pm-packs',      L ? 'Бонусы' : 'Bonuses');
+  _pm('pm-packs-sub',  L ? 'Призы, паки и бонусы за нейроны' : 'Prizes, packs and bonuses for neurons');
+  _pm('pm-daily',      L ? 'Дневное задание' : 'Daily Challenge');
+  _pm('pm-daily-sub',  L ? 'Бонусные нейроны за задание' : 'Bonus neurons for today\'s task');
+  _pm('pm-random',     L ? 'Случайный бой' : 'Random Battle');
+  _pm('pm-random-sub', L ? 'Найти случайного соперника онлайн' : 'Find a random opponent online');
+  _pm('pm-duel',       L ? 'Дуэль с другом' : 'Duel a Friend');
+  _pm('pm-duel-sub',   L ? 'Отправь ссылку и играйте вместе' : 'Send a link and play together');
   // Show owned packs count
   const ownedCount = ownedPacks ? ownedPacks.size : 0;
   const badge = document.getElementById('pm-packs-count');
@@ -5691,7 +5692,7 @@ function renderTeamsScreen(){
   document.getElementById('tm-invite-btn').textContent = lang==='ru'?'🔗 Пригласить друзей':'🔗 Invite friends';
   document.getElementById('tm-leave-btn').textContent = lang==='ru'?'Покинуть команду':'Leave team';
   document.getElementById('tm-members-label').textContent = lang==='ru'?'Участники':'Members';
-  document.getElementById('t-global-title').textContent = lang==='ru'?'🌆 Городской рейтинг':'🌆 City Leaderboard';
+  const tgt = document.getElementById('t-global-title'); if (tgt) tgt.textContent = lang==='ru'?'🌆 Городской рейтинг':'🌆 City Leaderboard';
   document.getElementById('nav-teams-label').textContent = 'Команда';
   document.getElementById('n-teams').textContent = neurons;
   document.getElementById('city-tab-teams').textContent = lang==='ru'?'Команды':'Teams';
