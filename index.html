@@ -1536,10 +1536,10 @@
         <!-- Edit actions -->
         <section class="prf-section">
           <div class="prf-actions">
-            <button class="prf-action-btn" onclick="toggleNameEdit()">✏️ Изменить имя</button>
+            <button id="profile-name-btn" class="prf-action-btn" onclick="toggleNameEdit()">✏️ Изменить имя</button>
             <button class="prf-action-btn" onclick="showScreen('character')">🎨 Аватар</button>
             <button class="prf-action-btn" onclick="toggleAvatarEdit()">📸 Фото</button>
-            <button class="prf-action-btn" onclick="toggleCityEdit()">📍 Город</button>
+            <button id="profile-city-btn" class="prf-action-btn" onclick="toggleCityEdit()">📍 Город</button>
           </div>
           <div id="profile-name-edit" class="prf-edit-card" style="display:none">
             <label class="prf-field-label" for="profile-name-input">Новое имя</label>
