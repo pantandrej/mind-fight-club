@@ -520,6 +520,10 @@ async function _vkFinishAuth(code, device_id) {
 }
 
 export async function signInVK() {
+  // If already authenticated, just show home — don't redirect to VK again
+  const { data: { session: existing } } = await sb.auth.getSession();
+  if (existing?.user) { showScreen('home'); return; }
+
   const btn   = document.getElementById('vk-sign-in-btn');
   const errEl = document.getElementById('auth-error');
   if (errEl) errEl.style.display = 'none';
