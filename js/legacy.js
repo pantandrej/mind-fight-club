@@ -7373,9 +7373,16 @@ document.addEventListener('DOMContentLoaded', () => {
         renderCharacter();
       }
       if(id==='character'){
-        if(currentUser && !playerInventory.length) _loadCharacterDataIfNeeded();
         renderCharacter();
         showCharTab('appearance');
+        // Load inventory/shop then render presets (async)
+        const nEl = document.getElementById('n-character');
+        if(nEl) nEl.textContent = neurons;
+        Promise.all([loadPlayerInventory(), loadShopItems()]).then(()=>{
+          renderAvatarPresets();
+          renderInventoryInline();
+          renderShopItemsInline();
+        });
       }
     };
   }
