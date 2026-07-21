@@ -7561,6 +7561,33 @@ function renderAvatarPresets(){
       <div class="preset-name">${p.name}${isEquipped?' ✓':locked?' 🔒':''}</div>
     </div>`;
   }).join('');
+
+  // Photo upload section (Pro only)
+  const photoSection = document.getElementById('char-photo-section');
+  if(photoSection){
+    const isPro = window._userSubscription?.isPremium ?? false;
+    if(isPro){
+      photoSection.innerHTML = `
+        <div class="char-section-title">📸 Фото-аватар</div>
+        <div id="profile-avatar-edit" style="background:var(--bg2);border-radius:12px;padding:14px">
+          <label style="display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;border:2px dashed var(--muted);border-radius:10px;padding:18px">
+            <span style="font-size:28px">📷</span>
+            <span style="font-weight:600">Выбрать фото</span>
+            <span style="font-size:12px;color:var(--muted)">JPG, PNG · до 2 МБ</span>
+            <input type="file" accept="image/jpeg,image/png" style="display:none" onchange="handleAvatarUpload(event)">
+          </label>
+        </div>`;
+    } else {
+      photoSection.innerHTML = `
+        <div class="char-section-title">📸 Фото-аватар</div>
+        <div style="background:var(--bg2);border-radius:12px;padding:14px;text-align:center;cursor:pointer" onclick="typeof openPremiumScreen==='function'?openPremiumScreen():showScreen('premium')">
+          <div style="font-size:22px;margin-bottom:6px">🔒</div>
+          <div style="font-weight:600;margin-bottom:4px">Только для Pro</div>
+          <div style="font-size:13px;color:var(--muted)">Загружай своё фото вместо эмодзи</div>
+          <button class="btn-gold" style="margin-top:10px;padding:8px 20px;font-size:13px">Получить Pro</button>
+        </div>`;
+    }
+  }
 }
 
 async function tryEquipAvatar(code){
