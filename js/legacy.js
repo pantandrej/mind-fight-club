@@ -7369,6 +7369,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if(currentUser && !playerInventory.length) _loadCharacterDataIfNeeded();
         renderCharacter();
       }
+      if(id==='character'){
+        if(currentUser && !playerInventory.length) _loadCharacterDataIfNeeded();
+        renderCharacter();
+        showCharTab('appearance');
+      }
     };
   }
 
