@@ -1974,6 +1974,17 @@ function toggleAvatarEdit() {
   const panel = document.getElementById('profile-avatar-edit');
   if (!panel) return;
   const isOpen = panel.style.display !== 'none';
+  if (!isOpen) {
+    const isPro = window._userSubscription?.isPremium ?? false;
+    if (!isPro) {
+      toast('📸 Загрузка фото — только для Pro');
+      setTimeout(() => {
+        if (typeof window.openPremiumScreen === 'function') window.openPremiumScreen();
+        else showScreen('premium');
+      }, 800);
+      return;
+    }
+  }
   panel.style.display = isOpen ? 'none' : 'block';
 }
 
