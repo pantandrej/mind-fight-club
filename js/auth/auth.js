@@ -55,6 +55,13 @@ export async function initAuth() {
     return;
   }
 
+  if (!existingSession && hasVKCallback) {
+    // VK OAuth callback in progress — show minimal loading screen
+    _showVKLoading();
+    _bootAuth(false);
+    return;
+  }
+
   // Official tournament deep link — open tournament immediately without auth screen
   if (!existingSession && !isOAuthCallback && p.get('official')) {
     _bootAuth(false); // register listener but skip auth screen
@@ -121,9 +128,22 @@ async function _bootAuth(showAuth = true) {
   }
 }
 
+// ── VK loading screen ─────────────────────────────────────────────
+function _showVKLoading() {
+  const el = document.createElement('div');
+  el.id = 'vk-loading-overlay';
+  el.style.cssText = 'position:fixed;inset:0;z-index:10000;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px';
+  el.innerHTML = `
+    <div style="width:56px;height:56px;border-radius:50%;background:#0077FF;display:flex;align-items:center;justify-content:center">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><path d="M14.8 19.6h1.6s.5-.05.75-.33c.23-.26.22-.74.22-.74s-.03-2.27 1.02-2.6c1.03-.33 2.36 2.19 3.76 3.16.28.19.49.15.49.15l2.35-.03s1.23-.08.64-1.04c-.05-.08-.35-.73-1.8-2.07-1.52-1.4-1.32-1.17.52-3.58 1.12-1.5 1.57-2.41 1.43-2.8-.13-.37-1.01-.27-1.01-.27l-2.64.02s-.2-.03-.34.07c-.14.09-.23.31-.23.31s-.43 1.16-1.01 2.14c-1.22 2.07-1.7 2.18-1.9 2.05-.46-.3-.35-1.2-.35-1.84 0-2 .3-2.83-.59-3.05-.29-.07-.51-.12-1.26-.13-.96-.01-1.77.01-2.23.23-.3.15-.54.48-.4.5.18.02.58.11.79.4.27.37.26 1.2.26 1.2s.16 2.36-.36 2.65c-.36.2-.85-.21-1.9-2.1-.56-.97-.97-2.04-.97-2.04s-.08-.2-.22-.31c-.17-.12-.4-.16-.4-.16l-2.51.02s-.37.01-.51.17c-.12.14-.01.44-.01.44s1.97 4.6 4.19 6.92c2.04 2.13 4.36 1.99 4.36 1.99z" fill="white"/></svg>
+    </div>
+    <div style="font-size:20px;font-weight:700;color:var(--text)">Входим через ВКонтакте</div>
+    <div style="font-size:14px;color:var(--muted)">Подождите секунду...</div>`;
+  document.body.appendChild(el);
+}
+
 // ── Landing page logic ────────────────────────────────────────────
 function _showLanding() {
-  console.trace('[auth] _showLanding called');
   const el = document.getElementById('landing-overlay');
   if (!el) { _bootAuth(); return; }
   el.style.display = 'flex';
@@ -202,6 +222,9 @@ async function _showPackLanding(packKey) {
 }
 
 function _redirectAfterAuth() {
+  // Hide VK loading screen and landing overlay
+  const vkEl = document.getElementById('vk-loading-overlay');
+  if (vkEl) vkEl.remove();
   // Hide landing overlay in case it was shown (e.g. second initAuth call)
   const lo = document.getElementById('landing-overlay');
   if (lo) lo.style.display = 'none';
