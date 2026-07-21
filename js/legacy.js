@@ -1396,10 +1396,13 @@ function showProfile(){
   // Async: fetch display_name from DB and update if different
   if(currentUser){
     sb.from('profiles').select('display_name').eq('id',currentUser.id).single().then(({data})=>{
-      if(data?.display_name && data.display_name !== name){
-        localStorage.setItem('mfc_display_name', data.display_name);
-        document.getElementById('profile-name').textContent = data.display_name;
-        document.getElementById('profile-av').textContent = data.display_name[0].toUpperCase();
+      // localStorage wins over DB — user may have just saved (upsert still in-flight)
+      const currentSaved = localStorage.getItem('mfc_display_name');
+      const displayName = currentSaved || data?.display_name;
+      if(displayName && displayName !== name){
+        if(!currentSaved) localStorage.setItem('mfc_display_name', displayName);
+        document.getElementById('profile-name').textContent = displayName;
+        document.getElementById('profile-av').textContent = displayName[0].toUpperCase();
       }
     }).catch(()=>{});
   }
