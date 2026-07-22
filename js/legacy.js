@@ -2881,7 +2881,7 @@ function _doLoadQ(q){
   // Always show slide image first, then add audio/video below if present
   const qMedia = document.getElementById('ot-q-media');
   if (q.slide_img) {
-    qMedia.innerHTML = `<img src="${q.slide_img}" alt="" style="width:100%;border-radius:12px;display:block">`;
+    qMedia.innerHTML = `<img src="${q.slide_img}" alt="" style="width:100%;max-height:52vh;object-fit:contain;border-radius:12px;display:block">`;
     if (q.audio) {
       qMedia.insertAdjacentHTML('beforeend',
         `<audio src="${q.audio}" controls autoplay style="width:100%;margin-top:8px"></audio>`);
