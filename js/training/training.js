@@ -1389,7 +1389,7 @@ function showScore(){
     setState({ neurons: getState().neurons + _roundScore, xp: getState().xp + _roundScore, roundScore: _roundScore });
     updNeurons();
   }
-  saveGameStats(correctCount,curQ.length,bestStreak);
+  window.saveGameStats?.(correctCount,curQ.length,bestStreak);
   completeGameRow(correctCount, curQ.length); // no addSeasonPoints inside
   updateDailyProgress(correctCount, correctCount===curQ.length);
   incrementDailyRounds(); // track daily usage
