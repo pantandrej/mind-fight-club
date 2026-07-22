@@ -2262,19 +2262,19 @@ let currentVideo = null;
 
 function stopMedia(){
   try{
-    if(currentAudio){
-      currentAudio.pause();
-      currentAudio.currentTime=0;
-    }
+    if(currentAudio){ currentAudio.pause(); currentAudio.currentTime=0; }
   }catch(e){}
   currentAudio=null;
   try{
-    if(currentVideo){
-      currentVideo.pause();
-      currentVideo.currentTime=0;
-    }
+    if(currentVideo){ currentVideo.pause(); currentVideo.currentTime=0; }
   }catch(e){}
   currentVideo=null;
+  // Also stop any inline autoplay audio/video elements (e.g. tournament answer media)
+  try{
+    document.querySelectorAll('audio, video').forEach(el=>{
+      try{ el.pause(); el.currentTime=0; el.src=''; }catch(e){}
+    });
+  }catch(e){}
 }
 
 // Keep stopAudio as alias for compatibility
