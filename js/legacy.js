@@ -3082,25 +3082,76 @@ async function showOTFinished(){
     document.getElementById('ot-my-result').insertAdjacentElement('afterend', prompt);
   }
 
-  const {data: players} = await sb.from('official_tournament_players')
-    .select('user_id,display_name,score,correct_count,total_count,disqualified')
-    .eq('tournament_id', otData?.id||'')
-    .order('score',{ascending:false});
+  const [{data: players}, {data: answers}] = await Promise.all([
+    sb.from('official_tournament_players')
+      .select('user_id,display_name,score,correct_count,total_count,disqualified')
+      .eq('tournament_id', otData?.id||'')
+      .order('score',{ascending:false}),
+    sb.from('official_tournament_answers')
+      .select('user_id,question_key,selected_index,correct_index,is_correct,points')
+      .eq('tournament_id', otData?.id||'')
+  ]);
+
+  // Build per-player answer map: uid → {q_key → {is_correct, points}}
+  const ansMap = {};
+  (answers||[]).forEach(a=>{
+    if(!ansMap[a.user_id]) ansMap[a.user_id] = {};
+    ansMap[a.user_id][a.question_key] = {ok: a.is_correct, pts: a.points};
+  });
+
+  // Question keys in order
+  const qKeys = otQs.map(q => q.q?.slice(0,100));
+  const qPts  = otQs.map(q => {const n=q.a?.length||4; return {2:30,3:35,4:40,5:45,6:50}[n]||40;});
 
   const medals=['🥇','🥈','🥉'];
   const lb = document.getElementById('ot-leaderboard');
-  lb.innerHTML = (players||[]).map((p,i)=>{
+
+  const cellW = '32px';
+  const headerCells = qKeys.map((k,i)=>`
+    <div style="width:${cellW};text-align:center;flex-shrink:0">
+      <div style="font-size:9px;font-weight:800;color:var(--muted)">В${i+1}</div>
+      <div style="font-size:9px;color:var(--accent2)">+${qPts[i]}</div>
+    </div>`).join('');
+
+  const rows = (players||[]).map((p,i)=>{
     const isMe = currentUser && p.user_id === currentUser.id;
-    const dqMark = p.disqualified
-      ? '<span style="margin-left:6px;font-size:10px;color:var(--red);font-weight:800">DQ</span>' : '';
-    const score = p.disqualified ? '<span style="color:var(--red)">0 DQ</span>' : p.score;
-    return `<div class="lb-row${isMe?' me':''}">
-      <div class="lb-rank">${p.disqualified?'—':(medals[i]||i+1)}</div>
-      <div class="lb-av" style="background:rgba(108,99,255,.15);color:var(--accent2)">${(p.display_name||'?')[0].toUpperCase()}</div>
-      <div class="lb-name">${p.display_name}${dqMark} <span style="font-size:10px;color:var(--muted)">${p.correct_count||0}/${p.total_count||0}</span></div>
-      <div class="lb-score${isMe?' me':''}">${score}</div>
+    const pAnswers = ansMap[p.user_id] || {};
+    const cells = qKeys.map((k,qi)=>{
+      const a = pAnswers[k];
+      if(!a) return `<div style="width:${cellW};text-align:center;flex-shrink:0;font-size:11px;color:var(--muted)">—</div>`;
+      return a.ok
+        ? `<div style="width:${cellW};text-align:center;flex-shrink:0">
+             <div style="font-size:11px;color:var(--green);font-weight:800">✓</div>
+             <div style="font-size:9px;color:var(--green)">+${a.pts}</div>
+           </div>`
+        : `<div style="width:${cellW};text-align:center;flex-shrink:0">
+             <div style="font-size:11px;color:var(--red)">✗</div>
+             <div style="font-size:9px;color:var(--muted)">0</div>
+           </div>`;
+    }).join('');
+    const dqMark = p.disqualified?'<span style="margin-left:4px;font-size:9px;color:var(--red);font-weight:800">DQ</span>':'';
+    const scoreColor = p.disqualified?'var(--red)':'var(--accent2)';
+    const scoreVal   = p.disqualified?'0':''+p.score;
+    return `<div style="display:flex;align-items:center;gap:4px;padding:6px 10px;border-bottom:0.5px solid var(--border);${isMe?'background:rgba(108,99,255,.08)':''}">
+      <div style="width:22px;flex-shrink:0;font-size:14px">${p.disqualified?'—':(medals[i]||i+1)}</div>
+      <div style="width:26px;height:26px;border-radius:50%;background:rgba(108,99,255,.15);color:var(--accent2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0">${(p.display_name||'?')[0].toUpperCase()}</div>
+      <div style="min-width:60px;max-width:90px;font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.display_name}${dqMark}</div>
+      <div style="display:flex;gap:2px;flex:1;overflow-x:auto;-webkit-overflow-scrolling:touch">${cells}</div>
+      <div style="width:36px;text-align:right;font-size:13px;font-weight:900;color:${scoreColor};flex-shrink:0">${scoreVal}</div>
     </div>`;
-  }).join('') || '<div style="padding:14px;text-align:center;color:var(--muted)">No results yet</div>';
+  }).join('');
+
+  lb.innerHTML = `
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+      <div style="display:flex;align-items:center;gap:4px;padding:4px 10px 6px;border-bottom:1px solid var(--border);background:var(--bg2)">
+        <div style="width:22px;flex-shrink:0"></div>
+        <div style="width:26px;flex-shrink:0"></div>
+        <div style="min-width:60px;max-width:90px;font-size:9px;font-weight:800;color:var(--muted);text-transform:uppercase">Игрок</div>
+        <div style="display:flex;gap:2px;flex:1">${headerCells}</div>
+        <div style="width:36px;text-align:right;font-size:9px;font-weight:800;color:var(--muted);text-transform:uppercase;flex-shrink:0">Итог</div>
+      </div>
+      ${rows || '<div style="padding:14px;text-align:center;color:var(--muted)">Нет данных</div>'}
+    </div>`;
 }
 
 // Save guest tournament result after login
