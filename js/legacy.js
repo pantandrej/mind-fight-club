@@ -2816,7 +2816,10 @@ function _showOrgSlideOverlay(url, duration, onDone) {
       <div style="margin-bottom:10px;height:4px;background:rgba(255,255,255,.15);border-radius:2px;overflow:hidden">
         <div id="ot-org-bar" style="height:4px;background:var(--accent);border-radius:2px;width:100%;transition:width ${duration}ms linear"></div>
       </div>
-      <button id="ot-org-next-btn" onclick="window._orgSlideNext()" style="width:100%;background:var(--accent);border:none;border-radius:14px;padding:14px;font-size:16px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit">Далее →</button>`;
+      ${otData?.sync_mode
+        ? `<div style="width:100%;background:rgba(108,99,255,.15);border:0.5px solid rgba(108,99,255,.3);border-radius:14px;padding:14px;font-size:14px;font-weight:700;color:var(--muted);text-align:center" id="ot-org-next-btn">⏳ Слайд сменится автоматически</div>`
+        : `<button id="ot-org-next-btn" onclick="window._orgSlideNext()" style="width:100%;background:var(--accent);border:none;border-radius:14px;padding:14px;font-size:16px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit">Далее →</button>`
+      }`;
     requestAnimationFrame(() => requestAnimationFrame(() => {
       const bar = document.getElementById('ot-org-bar');
       if (bar) bar.style.width = '0%';
@@ -2980,7 +2983,17 @@ function otExpire(){
 
   if (isSync) {
     const nb = document.getElementById('ot-next-btn');
-    if(nb){ nb.className='next-btn show'; nb.textContent=lang==='ru'?'Далее →':'Next →'; nb.style.pointerEvents=''; nb.style.opacity=''; }
+    if(nb){
+      nb.className='next-btn show';
+      nb.style.pointerEvents='none'; nb.style.opacity='0.55';
+      let sec = 4;
+      nb.textContent = lang==='ru' ? `⏳ Следующий через ${sec}с` : `⏳ Next in ${sec}s`;
+      const countdown = setInterval(()=>{
+        sec--;
+        if(sec <= 0){ clearInterval(countdown); return; }
+        nb.textContent = lang==='ru' ? `⏳ Следующий через ${sec}с` : `⏳ Next in ${sec}s`;
+      }, 1000);
+    }
     // Auto-advance after 4s so everyone can see the answer
     setTimeout(() => { stopMedia(); otQIdx++; if(otQIdx>=otQs.length) otFinish(); else otLoadQ(); }, 4000);
   } else {

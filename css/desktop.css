@@ -178,7 +178,8 @@
     padding: 24px 40px 60px;
   }
   .q-text { font-size: 22px; }
-  .answers { grid-template-columns: 1fr 1fr; gap: 10px; display: grid; }
+  .answers { grid-template-columns: 1fr 1fr; gap: 10px; display: grid; align-items: stretch; }
+  .answers .ans { height: 100%; }
   /* Odd last answer: center it spanning both columns */
   .answers .ans:last-child:nth-child(odd) { grid-column: 1 / -1; max-width: calc(50% - 5px); margin: 0 auto; width: 100%; }
 
