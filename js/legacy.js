@@ -2272,7 +2272,13 @@ function stopMedia(){
   // Also stop any inline autoplay audio/video elements (e.g. tournament answer media)
   try{
     document.querySelectorAll('audio, video').forEach(el=>{
-      try{ el.pause(); el.currentTime=0; el.src=''; }catch(e){}
+      try{
+        el.pause();
+        el.currentTime = 0;
+        el.src = '';
+        el.load(); // Safari: forces decoder to stop
+        el.remove();
+      }catch(e){}
     });
   }catch(e){}
 }
