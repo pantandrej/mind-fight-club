@@ -1,0 +1,92 @@
+[
+  {
+    "question_text": "Для какой игры мяч на фото?",
+    "answers": ["Волейбол", "Гандбол"],
+    "correct": 1,
+    "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/t2/q01_sq.jpg",
+    "slide_a_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/t2/q01_sa.jpg",
+    "audio": null,
+    "video": null
+  },
+  {
+    "question_text": "Назовите вид главного героя мультсериала на видеофрагменте",
+    "answers": ["Рысь", "Тигр"],
+    "correct": 0,
+    "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/t2/q02_sq.jpg",
+    "slide_a_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/t2/q02_sa.jpg",
+    "audio": null,
+    "video": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/t2/q02_video.mp4"
+  },
+  {
+    "question_text": "«Для царевниной поимки надо, царь, мне две «пропуск»...». Где, в наше время, можно встретить пропущенный архаизм из сказки «Конёк-Горбунок»?",
+    "answers": ["На ботинках", "На брюках", "На пиджаках"],
+    "correct": 1,
+    "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/t2/q03_sq.jpg",
+    "slide_a_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/t2/q03_sa.jpg",
+    "audio": null,
+    "video": null
+  },
+  {
+    "question_text": "На фото перемешанные части двух картин художников. Назовите их общее имя.",
+    "answers": ["Валентин", "Иван", "Василий"],
+    "correct": 2,
+    "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/t2/q04_sq.jpg",
+    "slide_a_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/t2/q04_sa.jpg",
+    "audio": null,
+    "video": null
+  },
+  {
+    "question_text": "Какая часть речи присутствует в названии фильма?",
+    "answers": ["Глагол", "Существительное", "Наречие", "Прилагательное"],
+    "correct": 3,
+    "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/t2/q05_sq.jpg",
+    "slide_a_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/t2/q05_sa.jpg",
+    "audio": null,
+    "video": null
+  },
+  {
+    "question_text": "Что рекламируется на аудиофрагменте, озвученным роботом?",
+    "answers": ["Rondo", "Meller", "Tic Tac", "Orbit"],
+    "correct": 0,
+    "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/t2/q06_sq.jpg",
+    "slide_a_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/t2/q06_sa.jpg",
+    "audio": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/t2/q06_audio.mp3",
+    "video": null
+  },
+  {
+    "question_text": "Назовите мореплавателя по его маршруту на фото",
+    "answers": ["Христофор Колумб", "Васко да Гама", "Фернан Магеллан", "Джеймс Кук", "Иван Крузенштерн"],
+    "correct": 1,
+    "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/t2/q07_sq.jpg",
+    "slide_a_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/t2/q07_sa.jpg",
+    "audio": null,
+    "video": null
+  },
+  {
+    "question_text": "Какие блюда загаданы анаграммами? ТЕННИС МОРЕ / КРАСЬ СИЛНО / ОДИН ЛОХ К",
+    "answers": ["Салаты", "Десерты", "Супы", "Пицца", "Роллы"],
+    "correct": 2,
+    "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/t2/q08_sq.jpg",
+    "slide_a_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/t2/q08_sa.jpg",
+    "audio": null,
+    "video": null
+  },
+  {
+    "question_text": "В городе Лонгйир (Норвегия) действует закон, который запрещает «делать это» из-за привлечения внимания белых медведей. Что заменили на «делать это»?",
+    "answers": ["Кормить оленя", "Жевать жвачку", "Умирать", "Носить джинсы", "Шуметь", "Играть в снежки"],
+    "correct": 2,
+    "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/t2/q09_sq.jpg",
+    "slide_a_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/t2/q09_sa.jpg",
+    "audio": null,
+    "video": null
+  },
+  {
+    "question_text": "Какой цвет закрыли на фото?",
+    "answers": ["Красный", "Оранжевый", "Жёлтый", "Зелёный", "Голубой", "Синий"],
+    "correct": 4,
+    "slide_q_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/t2/q10_sq.jpg",
+    "slide_a_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/t2/q10_sa.jpg",
+    "audio": null,
+    "video": null
+  }
+]
