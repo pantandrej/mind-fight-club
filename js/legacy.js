@@ -2606,7 +2606,10 @@ async function loadOfficialTournament(code){
   document.getElementById('ot-desc').textContent = data.description||'';
 
   const adminStartBtn = document.getElementById('ot-admin-start-btn');
-  if(adminStartBtn) adminStartBtn.style.display = isAdmin() ? 'block' : 'none';
+  if(adminStartBtn){
+    await loadCurrentUserRole();
+    adminStartBtn.style.display = isAdmin() ? 'block' : 'none';
+  }
 
   // Show prize pool banner if entry fee > 0
   let prizeEl = document.getElementById('ot-prize-banner');
