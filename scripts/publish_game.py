@@ -136,31 +136,38 @@ def main():
     else:
         # Tournament
         rows = post('official_tournaments', {
-            'name': name,
+            'title': name,
             'code': code,
             'status': 'lobby',
-            'sync_mode': False,
-            'is_private': False,
+            'sync_mode': True,
+            'is_private': True,
         })
         t_id = rows[0]['id']
         print(f"  🏆 Tournament id={t_id}")
 
         for i, q in enumerate(questions):
+            import_key = f"{code.lower()}_q{i+1:03d}"
             qrow = post('questions', {
-                'q': q.get('question_text') or f'Вопрос {i+1}',
-                'a': q['answers'],
-                'c': q['correct'],
-                't': time_per_q,
+                'question_text':    q.get('question_text') or f'Вопрос {i+1}',
+                'question_ru':      q.get('question_text') or f'Вопрос {i+1}',
+                'answers_json':     q.get('answers') or [],
+                'answers_ru':       q.get('answers') or [],
+                'correct_index':    q.get('correct', 0),
                 'image_url':        q.get('slide_q_url'),
                 'answer_image_url': q.get('slide_a_url'),
                 'audio_url':        q.get('audio'),
                 'video_url':        q.get('video'),
+                'answer_video_url': q.get('answer_video'),
                 'media_type': 'audio' if q.get('audio') else 'video' if q.get('video') else 'image' if q.get('slide_q_url') else 'text',
-                'lang': 'ru',
-                'cat': 'general',
+                'category': 'GENERAL',
+                'language': 'ru',
+                'source_type': 'official_pack',
+                'status': 'published',
+                'game_type': 'ordinary_multiple_choice',
+                'import_key': import_key,
             })
             qid = qrow[0]['id']
-            post('official_tournament_questions', {'tournament_id': t_id, 'question_id': qid, 'order_index': i + 1})
+            post('official_tournament_questions', {'tournament_id': t_id, 'question_id': qid, 'position': i + 1})
             print(f"  ✅ Q{i+1}: {q.get('question_text') or '(no text)'[:40]}")
 
         print(f"\n🎉 Турнир создан! Код: {code}")
