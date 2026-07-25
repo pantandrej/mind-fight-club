@@ -2607,8 +2607,8 @@ async function loadOfficialTournament(code){
 
   const adminStartBtn = document.getElementById('ot-admin-start-btn');
   if(adminStartBtn){
-    await loadCurrentUserRole();
-    adminStartBtn.style.display = isAdmin() ? 'block' : 'none';
+    // Show for any logged-in user on private tournaments; server RLS protects the actual start
+    adminStartBtn.style.display = (currentUser && data.is_private) ? 'block' : 'none';
   }
 
   // Show prize pool banner if entry fee > 0
@@ -3525,7 +3525,7 @@ function copyOTLink(code){
 }
 
 async function adminStartOT(id){
-  if(!isAdmin()) return;
+  if(!currentUser){ toast('Нужна авторизация'); return; }
 
   // Preflight check
   const preflight = await tournamentPreflight(id);
