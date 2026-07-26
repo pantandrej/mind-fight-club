@@ -13819,32 +13819,36 @@ window.gcPublish = async function() {
   };
 
   try {
+    const testOrigin = location.origin + location.pathname;
     if (type === 'tournament') {
-      const t = await post('official_tournaments', { name, code, status: 'lobby', sync_mode: false, is_private: false });
+      const t = await post('official_tournaments', { title: name, code, status: 'lobby', sync_mode: false, is_private: true });
       for (let i = 0; i < questions.length; i++) {
         const q = questions[i];
         const qRow = await post('questions', {
           question_text: q.question_text || `Вопрос ${i+1}`,
           question_ru: q.question_text || `Вопрос ${i+1}`,
-          answers_json: q.answers, correct_index: q.correct,
+          answers_json: q.answers, answers_ru: q.answers, correct_index: q.correct,
           slide_img_url: q.slide_q_url || null,
           answer_slide_img_url: q.slide_a_url || null,
           audio_url: q.audio || null, video_url: q.video || null,
           media_type: q.audio ? 'audio' : q.video ? 'video' : q.slide_q_url ? 'image' : 'text',
           question_type: q.question_type || 'multiple_choice',
-          category: 'general', language: 'ru', status: 'published',
+          category: 'GENERAL', language: 'ru', status: 'published', source_type: 'official_pack',
         });
-        await post('official_tournament_questions', { tournament_id: t.id, question_id: qRow.id, order_index: i + 1 });
+        await post('official_tournament_questions', { tournament_id: t.id, question_id: qRow.id, position: i + 1 });
       }
-      statusEl.textContent = `✅ Турнир «${name}» создан! Код: ${code}`;
+      const testLink = `${testOrigin}?official=${code}`;
+      statusEl.innerHTML = `✅ Турнир «${name}» создан (приватный)!<br>
+        <a href="${testLink}" target="_blank" style="color:var(--accent2);font-weight:700">🔗 Открыть для теста →</a><br>
+        <span style="font-size:11px;color:var(--muted)">Код: ${code} · ${questions.length} вопросов · скрыт от публики</span>`;
       toast(`🎮 Турнир создан: ${code}`);
 
     } else {
-      // Upsert pack via PATCH if exists, POST if new
+      // Pack saved as draft — not visible publicly until published
       const upsertH = { ...H, 'Prefer': 'return=representation,resolution=merge-duplicates' };
       const pr = await fetch(`${SB_URL}/rest/v1/game_packs?on_conflict=import_key`, {
         method: 'POST', headers: upsertH,
-        body: JSON.stringify({ title_ru: name, import_key: code.toLowerCase(), status: 'published', pack_type: 'standard', source_type: 'official_pack' })
+        body: JSON.stringify({ title_ru: name, import_key: code.toLowerCase(), status: 'draft', pack_type: 'standard', source_type: 'official_pack' })
       });
       const pd = await pr.json();
       if (!pr.ok) throw new Error((Array.isArray(pd) ? pd[0] : pd).message || JSON.stringify(pd));
@@ -13858,18 +13862,21 @@ window.gcPublish = async function() {
         const qRow = await post('questions', {
           question_text: q.question_text || `Вопрос ${i+1}`,
           question_ru: q.question_text || `Вопрос ${i+1}`,
-          answers_json: q.answers, correct_index: q.correct,
+          answers_json: q.answers, answers_ru: q.answers, correct_index: q.correct,
           slide_img_url: q.slide_q_url || null,
           answer_slide_img_url: q.slide_a_url || null,
           audio_url: q.audio || null, video_url: q.video || null,
           media_type: q.audio ? 'audio' : q.video ? 'video' : q.slide_q_url ? 'image' : 'text',
           question_type: q.question_type || 'multiple_choice',
-          category: 'general', language: 'ru', status: 'published', source_type: 'official_pack',
+          category: 'GENERAL', language: 'ru', status: 'published', source_type: 'official_pack',
         });
         await post('game_pack_questions', { game_pack_id: packId, question_id: qRow.id, position: i + 1 });
       }
-      statusEl.innerHTML = `✅ Пак «${name}» опубликован!<br><span style="font-size:11px;color:var(--muted)">ID: ${packId} · ${questions.length} слайдов</span>`;
-      toast(`✅ Пак «${name}» опубликован`);
+      const testLink = `${testOrigin}?pack=${code.toLowerCase()}`;
+      statusEl.innerHTML = `✅ Пак «${name}» сохранён как черновик!<br>
+        <a href="${testLink}" target="_blank" style="color:var(--accent2);font-weight:700">🔗 Протестировать →</a><br>
+        <span style="font-size:11px;color:var(--muted)">ID: ${packId} · ${questions.length} вопросов · не виден публично</span>`;
+      toast(`✅ Черновик сохранён: ${name}`);
     }
   } catch(err) {
     statusEl.textContent = '❌ ' + err.message;
