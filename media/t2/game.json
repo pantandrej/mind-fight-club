@@ -1,0 +1,38 @@
+{
+  "folder": "t2",
+  "base_url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/t2/",
+  "slides": [
+    {"n": 1,  "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/t2/q01_sq.jpg"},
+    {"n": 2,  "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/t2/q01_sa.jpg"},
+    {"n": 3,  "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/t2/q02_sq.jpg"},
+    {"n": 4,  "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/t2/q02_sa.jpg"},
+    {"n": 5,  "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/t2/q03_sq.jpg"},
+    {"n": 6,  "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/t2/q03_sa.jpg"},
+    {"n": 7,  "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/t2/q04_sq.jpg"},
+    {"n": 8,  "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/t2/q04_sa.jpg"},
+    {"n": 9,  "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/t2/q05_sq.jpg"},
+    {"n": 10, "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/t2/q05_sa.jpg"},
+    {"n": 11, "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/t2/q06_sq.jpg"},
+    {"n": 12, "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/t2/q06_sa.jpg"},
+    {"n": 13, "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/t2/q07_sq.jpg"},
+    {"n": 14, "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/t2/q07_sa.jpg"},
+    {"n": 15, "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/t2/q08_sq.jpg"},
+    {"n": 16, "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/t2/q08_sa.jpg"},
+    {"n": 17, "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/t2/q09_sq.jpg"},
+    {"n": 18, "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/t2/q09_sa.jpg"},
+    {"n": 19, "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/t2/q10_sq.jpg"},
+    {"n": 20, "url": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/t2/q10_sa.jpg"}
+  ],
+  "questions": [
+    {"sq": 1,  "sa": 2,  "text": "Для какой игры мяч на фото?", "opts": ["Волейбол", "Гандбол"], "correct": 1},
+    {"sq": 3,  "sa": 4,  "text": "Назовите вид главного героя мультсериала на видеофрагменте", "opts": ["Рысь", "Тигр"], "correct": 0, "media": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/t2/q02_video.mp4"},
+    {"sq": 5,  "sa": 6,  "text": "Где можно встретить пропущенный архаизм из сказки «Конёк-Горбунок»?", "opts": ["На ботинках", "На брюках", "На пиджаках"], "correct": 1},
+    {"sq": 7,  "sa": 8,  "text": "На фото перемешанные части двух картин. Назовите их общее имя.", "opts": ["Валентин", "Иван", "Василий"], "correct": 2},
+    {"sq": 9,  "sa": 10, "text": "Какая часть речи присутствует в названии фильма?", "opts": ["Глагол", "Существительное", "Наречие", "Прилагательное"], "correct": 3},
+    {"sq": 11, "sa": 12, "text": "Что рекламируется на аудиофрагменте, озвученным роботом?", "opts": ["Rondo", "Meller", "Tic Tac", "Orbit"], "correct": 0, "media": "https://raw.githubusercontent.com/pantandrej/mind-fight-club/main/media/t2/q06_audio.mp3"},
+    {"sq": 13, "sa": 14, "text": "Назовите мореплавателя по его маршруту на фото", "opts": ["Христофор Колумб", "Васко да Гама", "Фернан Магеллан", "Джеймс Кук", "Иван Крузенштерн"], "correct": 1},
+    {"sq": 15, "sa": 16, "text": "Какие блюда загаданы анаграммами? ТЕННИС МОРЕ / КРАСЬ СИЛНО / ОДИН ЛОХ К", "opts": ["Салаты", "Десерты", "Супы", "Пицца", "Роллы"], "correct": 2},
+    {"sq": 17, "sa": 18, "text": "В Лонгйире запрещено «делать это» из-за белых медведей. Что заменили?", "opts": ["Кормить оленя", "Жевать жвачку", "Умирать", "Носить джинсы", "Шуметь", "Играть в снежки"], "correct": 2},
+    {"sq": 19, "sa": 20, "text": "Какой цвет закрыли на фото?", "opts": ["Красный", "Оранжевый", "Жёлтый", "Зелёный", "Голубой", "Синий"], "correct": 4}
+  ]
+}
