@@ -26,7 +26,6 @@ import { loadDailyQuestion } from './daily-question.js';
 import { loadActivityFeed }  from './activity-feed.js';
 import './pwa.js';
 import { initDailyLogic, checkBrandRoute } from './brands/brands.js';
-import './battles/dating-battle.js';
 import { loadClubFinder } from './club-finder.js';
 import { sendPushToUser } from './pwa.js';
 import { loadOrgAnalytics, exportOrgCSV } from './organizer-analytics.js';
