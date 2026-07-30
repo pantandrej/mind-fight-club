@@ -2,6 +2,12 @@
 -- Migration 40: Teams, Challenge Results, Fixed Economy, Super Question
 -- ══════════════════════════════════════════════════════════════════
 
+-- Чистим таблицы от предыдущих неудачных запусков (CASCADE убирает зависимости)
+DROP TABLE IF EXISTS public.user_super_question_attempts CASCADE;
+DROP TABLE IF EXISTS public.daily_super_questions        CASCADE;
+DROP TABLE IF EXISTS public.challenge_results            CASCADE;
+DROP TABLE IF EXISTS public.providers                    CASCADE;
+DROP TABLE IF EXISTS public.teams                        CASCADE;
 
 -- ── 1. PROVIDERS ─────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.providers (
