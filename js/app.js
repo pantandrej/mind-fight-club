@@ -27,11 +27,15 @@ import { loadActivityFeed }  from './activity-feed.js';
 import './pwa.js';
 import { initDailyLogic, checkBrandRoute } from './brands/brands.js';
 import { loadClubFinder } from './club-finder.js';
+import { loadMyTeam } from './my-team.js';
+import { loadScoutForm } from './scout-form.js';
 import { sendPushToUser } from './pwa.js';
 import { loadOrgAnalytics, exportOrgCSV } from './organizer-analytics.js';
 import { loadWeeklyChest, awardWeeklyNeurons } from './weekly-chest.js';
 
 // ── Boot ──────────────────────────────────────────────────────────
+window.loadMyTeam    = loadMyTeam;
+window.loadScoutForm = loadScoutForm;
 window._sendPushToUser    = sendPushToUser;
 window.loadOrgAnalytics   = loadOrgAnalytics;
 window.exportOrgCSV       = exportOrgCSV;

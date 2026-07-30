@@ -1303,11 +1303,11 @@ function showScore(){
   // _roundScore already accumulated in pick() - DO NOT overwrite here
   _cityRank = null;
 
-  // Show round score with count-up animation
+  // Show round score with count-up animation (fixed: 2 нейрона за верный ответ)
   const scNeuronsEl = document.getElementById('sc-neurons');
   scNeuronsEl.textContent = '0';
   let n = 0;
-  const target = _roundScore;
+  const target = Math.min(correctCount * 2, 20);
   const step = Math.max(1, Math.ceil(target / 30));
   const countUp = setInterval(()=>{
     n = Math.min(n + step, target);
@@ -1378,15 +1378,15 @@ function showScore(){
   // Sync team score async (club aggregation)
   if(window.syncTeamScoreAfterGame) window.syncTeamScoreAfterGame();
 
-  if(_roundScore > 0 && _gameId){
-    awardNeurons(_roundScore, 'quiz_reward', 'quiz:' + _gameId).then(result => {
-      if(result){
-        updNeurons();
-      }
+  // p_client_amount = кол-во верных ответов; сервер умножает × 2 (max 20)
+  if(correctCount > 0 && _gameId){
+    awardNeurons(correctCount, 'quiz_reward', 'quiz:' + _gameId).then(result => {
+      if(result) updNeurons();
     });
-  } else if(_roundScore > 0) {
-    // Guest or no gameId: local only
-    setState({ neurons: getState().neurons + _roundScore, xp: getState().xp + _roundScore, roundScore: _roundScore });
+  } else if(correctCount > 0) {
+    // Гость: локально +2 за каждый верный, cap 20
+    const localAward = Math.min(correctCount * 2, 20);
+    setState({ neurons: getState().neurons + localAward, xp: getState().xp + localAward, roundScore: localAward });
     updNeurons();
   }
   window.saveGameStats?.(correctCount,curQ.length,bestStreak);
