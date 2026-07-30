@@ -76,7 +76,7 @@ CREATE POLICY "super_questions_read" ON public.daily_super_questions FOR SELECT 
 -- ── 5. USER SUPER QUESTION ATTEMPTS ──────────────────────────────
 CREATE TABLE IF NOT EXISTS public.user_super_question_attempts (
   id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id     uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  user_id     uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   question_id uuid NOT NULL REFERENCES public.daily_super_questions(id),
   is_correct  boolean NOT NULL,
   created_at  timestamptz DEFAULT now(),
