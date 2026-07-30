@@ -18,8 +18,8 @@ INSERT INTO public.providers (id, name) VALUES
 ON CONFLICT (id) DO NOTHING;
 
 ALTER TABLE public.providers ENABLE ROW LEVEL SECURITY;
-CREATE POLICY IF NOT EXISTS "providers_read" ON public.providers
-  FOR SELECT USING (true);
+DROP POLICY IF EXISTS "providers_read" ON public.providers;
+CREATE POLICY "providers_read" ON public.providers FOR SELECT USING (true);
 
 
 -- ── 2. TEAMS ─────────────────────────────────────────────────────
@@ -31,8 +31,10 @@ CREATE TABLE IF NOT EXISTS public.teams (
 );
 
 ALTER TABLE public.teams ENABLE ROW LEVEL SECURITY;
-CREATE POLICY IF NOT EXISTS "teams_read"   ON public.teams FOR SELECT USING (true);
-CREATE POLICY IF NOT EXISTS "teams_insert" ON public.teams FOR INSERT
+DROP POLICY IF EXISTS "teams_read"   ON public.teams;
+DROP POLICY IF EXISTS "teams_insert" ON public.teams;
+CREATE POLICY "teams_read"   ON public.teams FOR SELECT USING (true);
+CREATE POLICY "teams_insert" ON public.teams FOR INSERT
   WITH CHECK (auth.uid() IS NOT NULL);
 
 
@@ -47,13 +49,13 @@ CREATE TABLE IF NOT EXISTS public.challenge_results (
   created_at     timestamptz DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS idx_challenge_team   ON public.challenge_results(team_id);
-CREATE INDEX IF NOT EXISTS idx_challenge_type   ON public.challenge_results(challenge_type);
-CREATE INDEX IF NOT EXISTS idx_challenge_date   ON public.challenge_results(created_at);
+CREATE INDEX IF NOT EXISTS idx_challenge_team ON public.challenge_results(team_id);
+CREATE INDEX IF NOT EXISTS idx_challenge_type ON public.challenge_results(challenge_type);
+CREATE INDEX IF NOT EXISTS idx_challenge_date ON public.challenge_results(created_at);
 
 ALTER TABLE public.challenge_results ENABLE ROW LEVEL SECURITY;
-CREATE POLICY IF NOT EXISTS "challenge_results_read" ON public.challenge_results
-  FOR SELECT USING (true);
+DROP POLICY IF EXISTS "challenge_results_read" ON public.challenge_results;
+CREATE POLICY "challenge_results_read" ON public.challenge_results FOR SELECT USING (true);
 
 
 -- ── 4. DAILY SUPER QUESTIONS ──────────────────────────────────────
@@ -67,8 +69,8 @@ CREATE TABLE IF NOT EXISTS public.daily_super_questions (
 );
 
 ALTER TABLE public.daily_super_questions ENABLE ROW LEVEL SECURITY;
-CREATE POLICY IF NOT EXISTS "super_questions_read" ON public.daily_super_questions
-  FOR SELECT USING (true);
+DROP POLICY IF EXISTS "super_questions_read" ON public.daily_super_questions;
+CREATE POLICY "super_questions_read" ON public.daily_super_questions FOR SELECT USING (true);
 
 
 -- ── 5. USER SUPER QUESTION ATTEMPTS ──────────────────────────────
@@ -84,9 +86,11 @@ CREATE TABLE IF NOT EXISTS public.user_super_question_attempts (
 CREATE INDEX IF NOT EXISTS idx_attempts_user ON public.user_super_question_attempts(user_id);
 
 ALTER TABLE public.user_super_question_attempts ENABLE ROW LEVEL SECURITY;
-CREATE POLICY IF NOT EXISTS "attempts_own_insert" ON public.user_super_question_attempts
+DROP POLICY IF EXISTS "attempts_own_insert" ON public.user_super_question_attempts;
+DROP POLICY IF EXISTS "attempts_own_read"   ON public.user_super_question_attempts;
+CREATE POLICY "attempts_own_insert" ON public.user_super_question_attempts
   FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY IF NOT EXISTS "attempts_own_read" ON public.user_super_question_attempts
+CREATE POLICY "attempts_own_read" ON public.user_super_question_attempts
   FOR SELECT USING (auth.uid() = user_id);
 
 
