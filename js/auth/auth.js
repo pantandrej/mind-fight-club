@@ -315,6 +315,12 @@ async function _onUserLoaded(user) {
   // Sync legacy globals after load
   if (window._syncStateToLegacy) window._syncStateToLegacy();
 
+  // Show scout nav button if user is a scout
+  sb.from('profiles').select('is_scout').eq('id', user.id).single().then(({ data }) => {
+    const btn = document.getElementById('nav-scout');
+    if (btn) btn.style.display = data?.is_scout ? '' : 'none';
+  });
+
   setTimeout(() => {
     if (typeof window.updateTeamNeurons === 'function' && window.myTeam && getState().currentUser)
       window.updateTeamNeurons();

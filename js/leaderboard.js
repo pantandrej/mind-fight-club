@@ -3,13 +3,14 @@ import { sb }       from './services/supabase.js';
 import { getState } from './state.js';
 
 // ── Leaderboard ───────────────────────────────────────────────
-export async function loadLeaderboard(tab = 'players') {
-  const listEl = document.getElementById('lb-list');
+const LB_TABS = ['bar_quiz', 'online_quiz', 'brain_fights'];
+
+export async function loadLeaderboard(tab = 'bar_quiz') {
+  const listEl  = document.getElementById('lb-list');
   const myRowEl = document.getElementById('lb-my-row');
   if (!listEl) return;
 
-  // Update tab button styles
-  ['players','week','clubs'].forEach(t => {
+  LB_TABS.forEach(t => {
     const btn = document.getElementById(`lb-tab-${t}`);
     if (btn) btn.classList.toggle('active', t === tab);
   });
@@ -18,40 +19,87 @@ export async function loadLeaderboard(tab = 'players') {
   if (myRowEl) myRowEl.style.display = 'none';
 
   try {
-    if (tab === 'players') {
-      const { data, error } = await sb.from('leaderboard_global').select('*');
-      if (error) throw error;
-      renderPlayerLeaderboard(data || [], listEl, myRowEl);
-    } else if (tab === 'week') {
-      await renderWeekLeaderboard(listEl, myRowEl);
-    } else {
-      // Try leaderboard_clubs view first; fall back to direct teams query
-      let rows = [];
-      const { data: viewData, error: viewErr } = await sb.from('leaderboard_clubs').select('*');
-      if (!viewErr && viewData) {
-        rows = viewData;
-      } else {
-        const { data: teamsData, error: teamsErr } = await sb
-          .from('teams')
-          .select('id, name, emoji, city, total_neurons')
-          .order('total_neurons', { ascending: false })
-          .limit(50);
-        if (teamsErr) throw teamsErr;
-        rows = (teamsData || []).map((t, i) => ({
-          rank: i + 1,
-          name: t.name,
-          avatar_emoji: t.emoji,
-          city: t.city,
-          members_count: '?',
-          total_xp: t.total_neurons || 0,
-        }));
-      }
-      renderClubLeaderboard(rows, listEl);
-    }
+    await renderChallengeLeaderboard(tab, listEl);
   } catch(e) {
     console.error('[lb]', e.message);
     listEl.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted)">Ошибка загрузки</div>';
   }
+}
+
+async function renderChallengeLeaderboard(type, listEl) {
+  // Суммируем очки по командам
+  const { data, error } = await sb
+    .from('challenge_results')
+    .select('team_id, points_earned')
+    .eq('challenge_type', type);
+
+  if (error) throw error;
+
+  // Агрегируем на клиенте
+  const totals = {};
+  for (const row of (data || [])) {
+    totals[row.team_id] = (totals[row.team_id] || 0) + row.points_earned;
+  }
+
+  if (Object.keys(totals).length === 0) {
+    const labels = { bar_quiz: 'Бар-Квиз', online_quiz: 'Онлайн-Квиз', brain_fights: 'Brain Fights' };
+    listEl.innerHTML = `<div style="text-align:center;padding:40px 20px;color:var(--muted)">
+      <div style="font-size:32px;margin-bottom:10px">🏆</div>
+      <div style="font-size:14px;font-weight:700">Нет результатов по ${labels[type]}</div>
+      <div style="font-size:12px;margin-top:6px">Первые данные появятся после ближайшего тура</div>
+    </div>`;
+    return;
+  }
+
+  // Загружаем названия команд
+  const teamIds = Object.keys(totals);
+  const { data: teams } = await sb
+    .from('teams')
+    .select('id, name, city')
+    .in('id', teamIds);
+
+  const teamMap = {};
+  for (const t of (teams || [])) teamMap[t.id] = t;
+
+  // Сортируем
+  const sorted = Object.entries(totals)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 50);
+
+  // Тай-брейк: подгружаем командные нейроны
+  const tiebreakers = {};
+  await Promise.all(sorted.map(async ([tid]) => {
+    const { data: tb } = await sb.rpc('get_team_tiebreaker', { p_team_id: tid });
+    tiebreakers[tid] = tb ?? 0;
+  }));
+
+  // Применяем тай-брейк при одинаковых очках
+  sorted.sort((a, b) => {
+    if (b[1] !== a[1]) return b[1] - a[1];
+    return (tiebreakers[b[0]] || 0) - (tiebreakers[a[0]] || 0);
+  });
+
+  const medals = ['🥇', '🥈', '🥉'];
+
+  listEl.innerHTML = sorted.map(([tid, pts], i) => {
+    const team = teamMap[tid] || { name: 'Команда', city: '' };
+    const rank = i + 1;
+    const medal = medals[i] || `<span style="color:var(--muted);font-size:13px">#${rank}</span>`;
+    const tb = tiebreakers[tid] || 0;
+    return `
+      <div style="display:flex;align-items:center;gap:12px;padding:12px;background:${rank <= 3 ? 'rgba(108,99,255,.08)' : 'var(--bg2)'};border:1px solid ${rank <= 3 ? 'rgba(108,99,255,.25)' : 'var(--border)'};border-radius:14px;margin-bottom:8px">
+        <div style="width:32px;text-align:center;font-size:18px;flex-shrink:0">${medal}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:${rank <= 3 ? '900' : '700'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${team.name}</div>
+          ${team.city ? `<div style="font-size:11px;color:var(--muted)">📍 ${team.city}</div>` : ''}
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:16px;font-weight:900;color:${rank <= 3 ? 'var(--gold)' : 'var(--text)'}">${pts}</div>
+          <div style="font-size:10px;color:var(--muted)">очков</div>
+          ${tb > 0 ? `<div style="font-size:10px;color:var(--accent2)">⚡${tb}</div>` : ''}
+        </div>
+      </div>`;
+  }).join('');
 }
 
 async function renderWeekLeaderboard(listEl, myRowEl) {
@@ -304,3 +352,4 @@ window.sendSticker      = sendSticker;
 window.openTeamChat     = openTeamChat;
 window.closeTeamChat    = closeTeamChat;
 window.loadLeaderboard  = loadLeaderboard;
+window.switchLbTab = (tab) => loadLeaderboard(tab);
