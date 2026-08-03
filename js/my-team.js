@@ -24,12 +24,14 @@ export async function loadMyTeam() {
     return;
   }
 
-  const [teamRes, membersRes, tiebreakRes, barRankRes, onlineRankRes] = await Promise.all([
+  const weekStart = _getWeekStart();
+  const [teamRes, membersRes, tiebreakRes, barRankRes, onlineRankRes, brainRes] = await Promise.all([
     sb.from('teams').select('id,name,city').eq('id', me.team_id).single(),
     sb.from('profiles').select('id,display_name,neurons,avatar_url,is_scout').eq('team_id', me.team_id).order('neurons', { ascending: false }),
     sb.rpc('get_team_tiebreaker', { p_team_id: me.team_id }),
     _getTeamRank(me.team_id, 'bar_quiz'),
     _getTeamRank(me.team_id, 'online_quiz'),
+    sb.from('team_weekly_brain_fights').select('points').eq('team_id', me.team_id).eq('week_start', weekStart).maybeSingle(),
   ]);
 
   const team     = teamRes.data;
@@ -52,8 +54,9 @@ export async function loadMyTeam() {
   ]);
 
   const isAdmin = typeof window.isAdmin === 'function' ? window.isAdmin() : false;
+  const brainPoints = brainRes.data?.points ?? 0;
 
-  _renderMyTeam(el, { team, members, tiebreak, barRankRes, onlineRankRes, activeSet, currentUser, isAdmin });
+  _renderMyTeam(el, { team, members, tiebreak, barRankRes, onlineRankRes, activeSet, currentUser, isAdmin, brainPoints });
 }
 
 function _renderNoTeam(el) {
@@ -111,7 +114,15 @@ async function _getTeamRank(teamId, type) {
   return idx === -1 ? null : { rank: idx + 1, points: totals[teamId], total: sorted.length };
 }
 
-function _renderMyTeam(el, { team, members, tiebreak, barRankRes, onlineRankRes, activeSet, currentUser, isAdmin }) {
+function _getWeekStart() {
+  const d = new Date();
+  const day = d.getUTCDay(); // 0=Sun
+  const diff = (day === 0 ? -6 : 1 - day);
+  const mon = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + diff));
+  return mon.toISOString().slice(0, 10);
+}
+
+function _renderMyTeam(el, { team, members, tiebreak, barRankRes, onlineRankRes, activeSet, currentUser, isAdmin, brainPoints }) {
   const bar    = barRankRes;
   const online = onlineRankRes;
   const massBonus = activeSet.size * 5;
@@ -227,7 +238,31 @@ function _renderMyTeam(el, { team, members, tiebreak, barRankRes, onlineRankRes,
         </div>
       </div>
 
+      <!-- Brain Fights недельный счёт -->
+      <div style="background:linear-gradient(135deg,rgba(60,200,100,.08),rgba(0,180,80,.05));border:1px solid rgba(60,200,100,.25);border-radius:18px;padding:20px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div>
+            <div style="font-size:14px;font-weight:800">🧠 Brain Fights</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">Накопленные очки за неделю</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:28px;font-weight:900;color:#3cc864">${brainPoints}</div>
+            <div style="font-size:10px;color:var(--muted)">очков</div>
+          </div>
+        </div>
+        <div style="background:rgba(60,200,100,.08);border-radius:8px;padding:8px 12px;font-size:11px;color:var(--muted);line-height:1.5">
+          Каждый день: ТОП-3 нейронов + ${activeSet.size} активных × 5 = <strong style="color:var(--text)">${massBonus + tiebreak}</strong> очков сегодня<br>
+          Итоги в воскресенье 23:59 UTC → рейтинг
+        </div>
+      </div>
+
       ${scoutSection}
+
+      <!-- Покинуть команду -->
+      <button onclick="window._mtLeaveTeam()"
+        style="width:100%;background:transparent;border:1px solid rgba(224,85,85,.35);border-radius:14px;padding:12px;font-size:13px;font-weight:700;color:rgba(224,85,85,.8);cursor:pointer;font-family:inherit">
+        Покинуть команду
+      </button>
 
       <div style="height:24px"></div>
     </div>`;
@@ -325,6 +360,24 @@ window._mtToggleScout = async function(userId, makeScout) {
   } else {
     window.toast?.(makeScout ? '✅ Скаут назначен' : '✅ Роль скаута снята');
     window._mtSearchScout();
+  }
+};
+
+// ── Покинуть команду ─────────────────────────────────────────────
+window._mtLeaveTeam = async function() {
+  if (!confirm('Покинуть команду? Твои результаты сохранятся.')) return;
+  const { currentUser } = getState();
+  if (!currentUser) return;
+
+  const { error } = await sb.from('profiles')
+    .update({ team_id: null })
+    .eq('id', currentUser.id);
+
+  if (error) {
+    window.toast?.('Ошибка при выходе из команды');
+  } else {
+    window.toast?.('Ты покинул команду');
+    loadMyTeam();
   }
 };
 

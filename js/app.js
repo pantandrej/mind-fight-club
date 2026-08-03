@@ -32,6 +32,7 @@ import { loadScoutForm } from './scout-form.js';
 import { sendPushToUser } from './pwa.js';
 import { loadOrgAnalytics, exportOrgCSV } from './organizer-analytics.js';
 import { loadWeeklyChest, awardWeeklyNeurons } from './weekly-chest.js';
+import { loadSuperQuestion } from './super-question.js';
 
 // ── Boot ──────────────────────────────────────────────────────────
 window.loadMyTeam    = loadMyTeam;
@@ -57,6 +58,8 @@ document.addEventListener('DOMContentLoaded', () => {
   setTimeout(initDailyLogic, 3500);
   // Activity feed — who's playing right now
   setTimeout(loadActivityFeed, 4000);
+  // Super question of the day
+  setTimeout(loadSuperQuestion, 4500);
 });
 
 async function registerServiceWorker() {
