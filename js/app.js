@@ -33,6 +33,7 @@ import { sendPushToUser } from './pwa.js';
 import { loadOrgAnalytics, exportOrgCSV } from './organizer-analytics.js';
 import { loadWeeklyChest, awardWeeklyNeurons } from './weekly-chest.js';
 import { loadSuperQuestion } from './super-question.js';
+import { loadQModeration } from './q-moderation.js';
 
 // ── Boot ──────────────────────────────────────────────────────────
 window.loadMyTeam    = loadMyTeam;
@@ -42,6 +43,7 @@ window.loadOrgAnalytics   = loadOrgAnalytics;
 window.exportOrgCSV       = exportOrgCSV;
 window.loadWeeklyChest    = loadWeeklyChest;
 window.awardWeeklyNeurons = awardWeeklyNeurons;
+window.loadQModeration    = loadQModeration;
 
 document.addEventListener('DOMContentLoaded', () => {
   trackPageView();
