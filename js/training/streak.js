@@ -136,15 +136,17 @@ async function loadDailyStreakData(){
       .select('daily_streak,best_daily_streak,streak_last_date')
       .eq('id', currentUser.id).single();
     if(data){
-      // Use DB value but only if it's >= local (prevents regression on race)
       const dbStreak = data.daily_streak || 0;
       const dbDate   = data.streak_last_date || null;
+      const today     = getTodayDateKey();
+      const yesterday = getYesterdayDateKey();
+      // Streak is only valid if last played today or yesterday
+      const streakAlive = dbDate === today || dbDate === yesterday;
       if(dbStreak >= _dailyStreak || dbDate > (_lastQuickPlayDate||'')){
-        _dailyStreak       = dbStreak;
+        _dailyStreak       = streakAlive ? dbStreak : 0;
         _bestDailyStreak   = data.best_daily_streak || 0;
-        _lastQuickPlayDate = dbDate; // streak_last_date from DB
-        const today        = getTodayDateKey();
-        _streakPlayedToday = (_lastQuickPlayDate === today);
+        _lastQuickPlayDate = dbDate;
+        _streakPlayedToday = (dbDate === today);
       }
     }
   }catch(e){ /* profiles may not have streak columns yet — silent */ }

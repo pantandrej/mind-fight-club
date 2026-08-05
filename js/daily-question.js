@@ -21,9 +21,16 @@ export async function loadDailyQuestion() {
     return;
   }
 
-  // Pick a question seeded by today's date (deterministic for all users)
+  // Count active questions first, then pick by date seed
+  const { count } = await sb
+    .from('questions')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'active');
+
+  if (!count) return;
+
   const seed = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  const offset = parseInt(seed) % 1000;
+  const offset = parseInt(seed) % count;
 
   const { data: questions } = await sb
     .from('questions')
