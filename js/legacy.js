@@ -1688,7 +1688,8 @@ async function _checkOrgApplications() {
     .eq('status', 'pending');
   if (count > 0) {
     alert.style.display = 'block';
-    document.getElementById('admin-org-alert-text').textContent = `${count} новых заявок организаторов`;
+    const alertText = document.getElementById('admin-org-alert-text');
+    if (alertText) alertText.textContent = `${count} новых заявок организаторов`;
   }
 }
 
