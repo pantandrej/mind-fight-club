@@ -7,6 +7,7 @@ import { getBrandDisplayNames } from '../services/brand-names.js';
 
 export async function openBrandPage(slug) {
   if (!slug) return;
+  window._currentBrandSlug = slug;
   track('brand_page_viewed', { slug });
 
   const screen = document.getElementById('brand-screen');
@@ -50,7 +51,24 @@ export async function openBrandPage(slug) {
   // Load partner quests for this brand
   const { data: quests } = await sb.rpc('get_brand_quests', { p_brand_id: brand.id });
 
-  _renderBrand(brand, tournamentsFinal || [], children || [], quests || []);
+  // Load active promotions
+  const { data: promotions } = await sb.from('brand_promotions')
+    .select('*')
+    .eq('brand_id', brand.id)
+    .eq('is_active', true)
+    .or('expires_at.is.null,expires_at.gt.' + new Date().toISOString())
+    .order('created_at', { ascending: false });
+
+  // Check if current user is brand owner or admin
+  const { currentUser } = getState();
+  let isOwner = false;
+  if (currentUser) {
+    const { data: bOwner } = await sb.from('brand_profiles')
+      .select('id').eq('id', brand.id).eq('owner_id', currentUser.id).maybeSingle();
+    isOwner = !!bOwner || (typeof window.isAdmin === 'function' && window.isAdmin());
+  }
+
+  _renderBrand(brand, tournamentsFinal || [], children || [], quests || [], promotions || [], isOwner);
 }
 
 function _pluck(field, slug) {
@@ -79,7 +97,7 @@ function _renderBrandNotFound() {
   </div>`;
 }
 
-function _renderBrand(brand, tournaments, children, quests = []) {
+function _renderBrand(brand, tournaments, children, quests = [], promotions = [], isOwner = false) {
   const inner = document.getElementById('brand-inner');
   if (!inner) return;
 
@@ -133,9 +151,153 @@ function _renderBrand(brand, tournaments, children, quests = []) {
     ${linkBtns ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px">${linkBtns}</div>` : ''}
 
     ${childrenHtml}
+    ${_renderPromotionsSection(promotions, brand.id, isOwner)}
     ${_renderQuestsSection(quests, brand.id)}
-    ${tournamentsHtml}`;
+    ${tournamentsHtml}
+    ${isOwner ? _renderOwnerPanel(brand.id) : ''}`;
 }
+
+// ── Promotions section ────────────────────────────────────────────
+function _renderPromotionsSection(promotions, brandId, isOwner) {
+  if (!promotions.length && !isOwner) return '';
+
+  const cards = promotions.map(p => {
+    const expiry = p.expires_at
+      ? `<div style="font-size:10px;color:var(--muted);margin-top:4px">до ${new Date(p.expires_at).toLocaleDateString('ru',{day:'numeric',month:'short'})}</div>`
+      : '';
+    const code = p.promo_code
+      ? `<div onclick="window._copyPromo('${_esc(p.promo_code)}')" style="margin-top:10px;background:rgba(245,196,0,.1);border:1px dashed rgba(245,196,0,.4);border-radius:10px;padding:8px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer">
+           <span style="font-size:13px;font-weight:900;letter-spacing:2px;color:#f5c400">${_esc(p.promo_code)}</span>
+           <span style="font-size:11px;color:var(--muted)">скопировать</span>
+         </div>`
+      : '';
+    const cta = p.cta_label
+      ? `<a href="${p.cta_url || '#'}" target="_blank" rel="noopener"
+           style="display:block;margin-top:10px;background:var(--accent);border:none;border-radius:12px;padding:11px;font-size:13px;font-weight:800;color:#fff;text-align:center;text-decoration:none">
+           ${_esc(p.cta_label)}
+         </a>`
+      : '';
+    const deleteBtn = isOwner
+      ? `<button onclick="window._deletePromo('${p.id}','${brandId}')" style="position:absolute;top:10px;right:10px;background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;line-height:1">×</button>`
+      : '';
+
+    return `
+      <div style="position:relative;background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:10px">
+        ${deleteBtn}
+        ${p.image_url ? `<img src="${_esc(p.image_url)}" style="width:100%;border-radius:10px;margin-bottom:10px;max-height:160px;object-fit:cover">` : ''}
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:14px;font-weight:900;line-height:1.3">${_esc(p.title)}</div>
+            ${p.discount_text ? `<div style="font-size:12px;color:var(--gold);font-weight:700;margin-top:3px">🎁 ${_esc(p.discount_text)}</div>` : ''}
+            ${p.description ? `<div style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.5">${_esc(p.description)}</div>` : ''}
+            ${expiry}
+          </div>
+        </div>
+        ${code}
+        ${cta}
+      </div>`;
+  }).join('');
+
+  const addBtn = isOwner
+    ? `<button onclick="window._showAddPromoForm('${brandId}')"
+         style="width:100%;background:rgba(108,99,255,.1);border:1px dashed rgba(108,99,255,.4);border-radius:14px;padding:12px;font-size:13px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit;margin-bottom:2px">
+         + Добавить акцию
+       </button>`
+    : '';
+
+  return `
+    <div style="margin-top:24px" id="brand-promos-section">
+      <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:10px">🎁 Акции</div>
+      <div id="brand-promos-list">${cards}</div>
+      ${addBtn}
+    </div>`;
+}
+
+function _renderOwnerPanel(brandId) {
+  return `
+    <div style="margin-top:24px;background:rgba(108,99,255,.06);border:1px solid rgba(108,99,255,.2);border-radius:18px;padding:16px" id="brand-owner-panel">
+      <div style="font-size:12px;font-weight:800;color:var(--accent2);margin-bottom:4px">⚙️ Управление страницей</div>
+      <div style="font-size:11px;color:var(--muted)">Только вы видите эту панель</div>
+    </div>`;
+}
+
+window._copyPromo = function(code) {
+  navigator.clipboard.writeText(code).then(() => window.toast?.(`Скопировано: ${code}`));
+};
+
+window._deletePromo = async function(promoId, brandId) {
+  if (!confirm('Удалить акцию?')) return;
+  const { data } = await sb.rpc('delete_brand_promotion', { p_id: promoId });
+  if (data?.ok) {
+    window.toast?.('Акция удалена');
+    openBrandPage(window._currentBrandSlug);
+  } else {
+    window.toast?.('Ошибка удаления');
+  }
+};
+
+window._showAddPromoForm = function(brandId) {
+  const existing = document.getElementById('add-promo-modal');
+  if (existing) existing.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'add-promo-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.85);display:flex;align-items:flex-end;padding:0;overflow-y:auto';
+
+  const field = (id, label, placeholder, type='text') => `
+    <div style="margin-bottom:12px">
+      <div style="font-size:11px;color:var(--muted);font-weight:700;margin-bottom:5px">${label}</div>
+      <input id="${id}" type="${type}" placeholder="${placeholder}"
+        style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--text);font-family:inherit;outline:none;box-sizing:border-box"/>
+    </div>`;
+
+  modal.innerHTML = `
+    <div style="background:var(--bg2);border-radius:24px 24px 0 0;padding:24px 20px 40px;width:100%;max-width:560px;margin:0 auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <div style="font-size:16px;font-weight:900">🎁 Новая акция</div>
+        <button onclick="document.getElementById('add-promo-modal').remove()"
+          style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer">×</button>
+      </div>
+      ${field('promo-title',    'Название *',              'Скидка 20% на пиццу')}
+      ${field('promo-discount', 'Текст скидки',            '-20% для участников BFC')}
+      ${field('promo-desc',     'Описание',                'Покажи значок участника BFC официанту')}
+      ${field('promo-code',     'Промокод (необязательно)','BFC2025')}
+      ${field('promo-cta',      'Текст кнопки',            'Перейти на сайт')}
+      ${field('promo-url',      'Ссылка кнопки',           'https://...')}
+      ${field('promo-expires',  'Действует до',            '', 'date')}
+      <button onclick="window._submitPromo('${brandId}')"
+        style="width:100%;background:var(--accent);border:none;border-radius:14px;padding:14px;font-size:15px;font-weight:900;color:#fff;cursor:pointer;font-family:inherit;margin-top:4px">
+        Опубликовать акцию
+      </button>
+    </div>`;
+
+  document.body.appendChild(modal);
+};
+
+window._submitPromo = async function(brandId) {
+  const title    = document.getElementById('promo-title')?.value?.trim();
+  if (!title) { window.toast?.('Введи название акции'); return; }
+
+  const expires  = document.getElementById('promo-expires')?.value;
+  const { data, error } = await sb.rpc('upsert_brand_promotion', {
+    p_brand_id:   brandId,
+    p_title:      title,
+    p_description: document.getElementById('promo-desc')?.value?.trim() || null,
+    p_promo_code: document.getElementById('promo-code')?.value?.trim() || null,
+    p_discount:   document.getElementById('promo-discount')?.value?.trim() || null,
+    p_cta_label:  document.getElementById('promo-cta')?.value?.trim() || null,
+    p_cta_url:    document.getElementById('promo-url')?.value?.trim() || null,
+    p_expires_at: expires ? new Date(expires).toISOString() : null,
+  });
+
+  if (data?.ok) {
+    document.getElementById('add-promo-modal')?.remove();
+    window.toast?.('✅ Акция опубликована!');
+    openBrandPage(window._currentBrandSlug);
+  } else {
+    window.toast?.('Ошибка: ' + (error?.message || data?.reason || 'неизвестно'));
+  }
+};
 
 const _questTypeLabel = { geo_qr: '📍 QR в заведении', social_click: '📲 Подписка/шаринг', sponsored_quiz: '🧠 Брендовый квиз' };
 
