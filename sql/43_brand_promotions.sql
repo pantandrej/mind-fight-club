@@ -133,3 +133,59 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION delete_brand_promotion(uuid) TO authenticated;
+
+
+-- ── 4. RPC: обновить профиль бренда (владелец или admin) ─────────
+CREATE OR REPLACE FUNCTION update_brand_profile(
+  p_brand_id    uuid,
+  p_description text     DEFAULT NULL,
+  p_logo_url    text     DEFAULT NULL,
+  p_city        text     DEFAULT NULL,
+  p_link_tg     text     DEFAULT NULL,
+  p_link_vk     text     DEFAULT NULL,
+  p_link_web    text     DEFAULT NULL,
+  p_link_ig     text     DEFAULT NULL
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_user_id  uuid := auth.uid();
+  v_is_owner boolean;
+  v_is_admin boolean;
+  v_links    jsonb;
+BEGIN
+  IF v_user_id IS NULL THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'unauthenticated');
+  END IF;
+
+  SELECT EXISTS(SELECT 1 FROM brand_profiles WHERE id = p_brand_id AND owner_id = v_user_id) INTO v_is_owner;
+  SELECT EXISTS(SELECT 1 FROM admin_users    WHERE user_id = v_user_id AND is_active = true)  INTO v_is_admin;
+
+  IF NOT (v_is_owner OR v_is_admin) THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'not_authorized');
+  END IF;
+
+  -- Собираем external_links из переданных значений (NULL = убрать ключ)
+  SELECT COALESCE(external_links, '{}') INTO v_links
+  FROM brand_profiles WHERE id = p_brand_id;
+
+  IF p_link_tg  IS NOT NULL THEN v_links := jsonb_set(v_links, '{tg}',  to_jsonb(p_link_tg));  END IF;
+  IF p_link_vk  IS NOT NULL THEN v_links := jsonb_set(v_links, '{vk}',  to_jsonb(p_link_vk));  END IF;
+  IF p_link_web IS NOT NULL THEN v_links := jsonb_set(v_links, '{web}', to_jsonb(p_link_web)); END IF;
+  IF p_link_ig  IS NOT NULL THEN v_links := jsonb_set(v_links, '{ig}',  to_jsonb(p_link_ig));  END IF;
+
+  UPDATE brand_profiles SET
+    description    = COALESCE(p_description, description),
+    logo_url       = COALESCE(p_logo_url,    logo_url),
+    city           = COALESCE(p_city,        city),
+    external_links = v_links
+  WHERE id = p_brand_id;
+
+  RETURN jsonb_build_object('ok', true);
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION update_brand_profile(uuid,text,text,text,text,text,text,text) TO authenticated;

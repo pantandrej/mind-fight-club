@@ -98,6 +98,7 @@ function _renderBrandNotFound() {
 }
 
 function _renderBrand(brand, tournaments, children, quests = [], promotions = [], isOwner = false) {
+  window._currentBrandData = brand;
   const inner = document.getElementById('brand-inner');
   if (!inner) return;
 
@@ -216,10 +217,83 @@ function _renderPromotionsSection(promotions, brandId, isOwner) {
 function _renderOwnerPanel(brandId) {
   return `
     <div style="margin-top:24px;background:rgba(108,99,255,.06);border:1px solid rgba(108,99,255,.2);border-radius:18px;padding:16px" id="brand-owner-panel">
-      <div style="font-size:12px;font-weight:800;color:var(--accent2);margin-bottom:4px">⚙️ Управление страницей</div>
-      <div style="font-size:11px;color:var(--muted)">Только вы видите эту панель</div>
+      <div style="font-size:12px;font-weight:800;color:var(--accent2);margin-bottom:8px">⚙️ Управление страницей</div>
+      <button onclick="window._showEditBrandForm('${brandId}')"
+        style="width:100%;background:rgba(108,99,255,.15);border:1px solid rgba(108,99,255,.35);border-radius:12px;padding:11px;font-size:13px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit">
+        ✏️ Редактировать описание и ссылки
+      </button>
     </div>`;
 }
+
+window._showEditBrandForm = function(brandId) {
+  const existing = document.getElementById('edit-brand-modal');
+  if (existing) existing.remove();
+
+  // Prefill from current rendered data
+  const brand = window._currentBrandData || {};
+  const links = brand.external_links || {};
+
+  const modal = document.createElement('div');
+  modal.id = 'edit-brand-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.85);display:flex;align-items:flex-end;padding:0;overflow-y:auto';
+
+  const field = (id, label, val, placeholder, hint) => `
+    <div style="margin-bottom:14px">
+      <div style="font-size:11px;color:var(--muted);font-weight:700;margin-bottom:5px">${label}</div>
+      ${hint ? `<div style="font-size:10px;color:var(--muted);margin-bottom:5px">${hint}</div>` : ''}
+      <input id="${id}" value="${_esc(val || '')}" placeholder="${placeholder}"
+        style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--text);font-family:inherit;outline:none;box-sizing:border-box"/>
+    </div>`;
+
+  modal.innerHTML = `
+    <div style="background:var(--bg2);border-radius:24px 24px 0 0;padding:24px 20px 48px;width:100%;max-width:560px;margin:0 auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <div style="font-size:16px;font-weight:900">✏️ Редактировать страницу</div>
+        <button onclick="document.getElementById('edit-brand-modal').remove()"
+          style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer">×</button>
+      </div>
+
+      ${field('eb-logo',    'Логотип (URL картинки)',  brand.logo_url,  'https://...', 'Загрузи картинку на imgbb.com или другой хостинг и вставь ссылку')}
+      ${field('eb-desc',    'Описание',                brand.description, 'Коротко о заведении, мероприятии или бренде', '')}
+      ${field('eb-city',    'Город',                   brand.city,      'Москва', '')}
+
+      <div style="font-size:11px;color:var(--muted);font-weight:700;margin-bottom:8px;margin-top:4px">Ссылки на соцсети</div>
+      ${field('eb-tg',  '  Telegram',    links.tg,  'https://t.me/...',         '')}
+      ${field('eb-vk',  '  ВКонтакте',   links.vk,  'https://vk.com/...',       '')}
+      ${field('eb-web', '  Сайт',         links.web, 'https://...',              '')}
+      ${field('eb-ig',  '  Instagram',   links.ig,  'https://instagram.com/...', '')}
+
+      <button onclick="window._submitEditBrand('${brandId}')"
+        style="width:100%;background:var(--accent);border:none;border-radius:14px;padding:14px;font-size:15px;font-weight:900;color:#fff;cursor:pointer;font-family:inherit;margin-top:8px">
+        Сохранить
+      </button>
+    </div>`;
+
+  document.body.appendChild(modal);
+};
+
+window._submitEditBrand = async function(brandId) {
+  const get = id => document.getElementById(id)?.value?.trim() || null;
+
+  const { data, error } = await sb.rpc('update_brand_profile', {
+    p_brand_id:   brandId,
+    p_logo_url:   get('eb-logo'),
+    p_description: get('eb-desc'),
+    p_city:       get('eb-city'),
+    p_link_tg:    get('eb-tg'),
+    p_link_vk:    get('eb-vk'),
+    p_link_web:   get('eb-web'),
+    p_link_ig:    get('eb-ig'),
+  });
+
+  if (data?.ok) {
+    document.getElementById('edit-brand-modal')?.remove();
+    window.toast?.('✅ Страница обновлена');
+    openBrandPage(window._currentBrandSlug);
+  } else {
+    window.toast?.('Ошибка: ' + (error?.message || data?.reason || 'неизвестно'));
+  }
+};
 
 window._copyPromo = function(code) {
   navigator.clipboard.writeText(code).then(() => window.toast?.(`Скопировано: ${code}`));
