@@ -14,7 +14,7 @@ export async function loadQModeration() {
   inner.innerHTML = `<div id="qmod-loading" style="text-align:center;padding:40px;color:var(--muted)">Загрузка...</div>`;
 
   let countQuery = sb.from('questions').select('id', { count: 'exact', head: true })
-    .or('source_type.is.null,source_type.neq.official_pack');
+    .not('source_type', 'eq', 'official_pack');
   if (_filter === 'active') countQuery = countQuery.eq('status', 'active');
   else countQuery = countQuery.neq('status', 'deleted');
   const { count } = await countQuery;
