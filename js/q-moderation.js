@@ -13,10 +13,10 @@ export async function loadQModeration() {
   _offset = 0;
   inner.innerHTML = `<div style="text-align:center;padding:40px;color:var(--muted)">Загрузка...</div>`;
 
-  const { count } = await sb.from('questions')
-    .select('id', { count: 'exact', head: true })
-    .eq('status', _filter === 'active' ? 'active' : undefined)
-    .neq('status', _filter === 'active' ? undefined : 'deleted');
+  let countQuery = sb.from('questions').select('id', { count: 'exact', head: true });
+  if (_filter === 'active') countQuery = countQuery.eq('status', 'active');
+  else countQuery = countQuery.neq('status', 'deleted');
+  const { count } = await countQuery;
 
   _total = count || 0;
   _renderFilter(inner);
@@ -48,7 +48,7 @@ function _renderFilter(inner) {
 
 async function _loadPage(inner, reset = false) {
   let query = sb.from('questions')
-    .select('id, q, a, correct_index, status, category, source')
+    .select('id, question_text, question_ru, answers_json, correct_index, status, category, source_type')
     .order('id')
     .range(_offset, _offset + PAGE - 1);
 
@@ -97,7 +97,8 @@ function _buildCard(q) {
   card.id = `qcard-${q.id}`;
   card.style.cssText = 'background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:14px;position:relative';
 
-  const answers = (q.a || []).map((ans, i) => {
+  const text = q.question_ru || q.question_text || '';
+  const answers = (q.answers_json || []).map((ans, i) => {
     const correct = i === q.correct_index;
     return `<div style="display:flex;align-items:center;gap:6px;margin-top:5px">
       <span style="width:18px;height:18px;border-radius:50%;background:${correct?'rgba(74,222,128,.2)':'rgba(255,255,255,.06)'};border:1px solid ${correct?'rgba(74,222,128,.5)':'var(--border)'};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;color:${correct?'#4ade80':'var(--muted)'};flex-shrink:0">${correct?'✓':String.fromCharCode(65+i)}</span>
@@ -111,10 +112,10 @@ function _buildCard(q) {
 
   card.innerHTML = `
     <div style="font-size:13px;font-weight:800;line-height:1.4;margin-bottom:8px;padding-right:24px">
-      ${_esc(q.q)}${statusBadge}
+      ${_esc(text)}${statusBadge}
     </div>
     <div style="margin-bottom:12px">${answers}</div>
-    ${q.category ? `<div style="font-size:10px;color:var(--muted);margin-bottom:10px">📂 ${_esc(q.category)}${q.source?' · '+_esc(q.source):''}</div>` : ''}
+    ${q.category ? `<div style="font-size:10px;color:var(--muted);margin-bottom:10px">📂 ${_esc(q.category)}${q.source_type?' · '+_esc(q.source_type):''}</div>` : ''}
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
       <button onclick="window._qmodApprove('${q.id}')"
         style="padding:10px;border-radius:10px;border:1px solid rgba(74,222,128,.4);background:rgba(74,222,128,.1);color:#4ade80;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">
