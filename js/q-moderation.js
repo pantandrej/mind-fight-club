@@ -14,7 +14,7 @@ export async function loadQModeration() {
   inner.innerHTML = `<div id="qmod-loading" style="text-align:center;padding:40px;color:var(--muted)">Загрузка...</div>`;
 
   let countQuery = sb.from('questions').select('id', { count: 'exact', head: true })
-    .neq('source_type', 'official_pack');
+    .or('source_type.is.null,source_type.neq.official_pack');
   if (_filter === 'active') countQuery = countQuery.eq('status', 'active');
   else countQuery = countQuery.neq('status', 'deleted');
   const { count } = await countQuery;
@@ -52,7 +52,7 @@ async function _loadPage(inner, reset = false) {
     .order('id')
     .range(_offset, _offset + PAGE - 1);
 
-  query = query.neq('source_type', 'official_pack');
+  query = query.or('source_type.is.null,source_type.neq.official_pack');
   if (_filter === 'active') {
     query = query.eq('status', 'active');
   } else {
