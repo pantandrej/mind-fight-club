@@ -142,14 +142,7 @@ window._qmodApprove = async function(id) {
   if (error || !data?.ok) { window.toast?.('Ошибка: ' + (error?.message || data?.reason)); return; }
 
   const card = document.getElementById(`qcard-${id}`);
-  if (card) {
-    card.style.opacity = '0.4';
-    card.style.pointerEvents = 'none';
-    const label = document.createElement('div');
-    label.style.cssText = 'text-align:center;font-size:12px;color:#4ade80;font-weight:700;margin-top:6px';
-    label.textContent = '✅ Одобрен';
-    card.appendChild(label);
-  }
+  if (card) card.remove();
   _total = Math.max(0, _total - 1);
   _updateCounter();
 };
