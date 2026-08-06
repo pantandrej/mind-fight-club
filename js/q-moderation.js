@@ -11,7 +11,7 @@ export async function loadQModeration() {
   if (!inner) return;
 
   _offset = 0;
-  inner.innerHTML = `<div style="text-align:center;padding:40px;color:var(--muted)">Загрузка...</div>`;
+  inner.innerHTML = `<div id="qmod-loading" style="text-align:center;padding:40px;color:var(--muted)">Загрузка...</div>`;
 
   let countQuery = sb.from('questions').select('id', { count: 'exact', head: true });
   if (_filter === 'active') countQuery = countQuery.eq('status', 'active');
@@ -64,8 +64,9 @@ async function _loadPage(inner, reset = false) {
     return;
   }
 
-  // Remove old list if reset
+  // Remove loading text and old list if reset
   if (reset) {
+    document.getElementById('qmod-loading')?.remove();
     document.getElementById('qmod-list')?.remove();
     document.getElementById('qmod-load-more')?.remove();
   }
@@ -137,11 +138,8 @@ window._qmodFilter = async function(f) {
 };
 
 window._qmodApprove = async function(id) {
-  const { error } = await sb.from('questions')
-    .update({ status: 'active' })
-    .eq('id', id);
-
-  if (error) { window.toast?.('Ошибка'); return; }
+  const { data, error } = await sb.rpc('admin_approve_question', { p_id: id });
+  if (error || !data?.ok) { window.toast?.('Ошибка: ' + (error?.message || data?.reason)); return; }
 
   const card = document.getElementById(`qcard-${id}`);
   if (card) {
@@ -157,11 +155,8 @@ window._qmodApprove = async function(id) {
 };
 
 window._qmodDelete = async function(id) {
-  const { error } = await sb.from('questions')
-    .delete()
-    .eq('id', id);
-
-  if (error) { window.toast?.('Ошибка удаления: ' + error.message); return; }
+  const { data, error } = await sb.rpc('admin_delete_question', { p_id: id });
+  if (error || !data?.ok) { window.toast?.('Ошибка: ' + (error?.message || data?.reason)); return; }
 
   const card = document.getElementById(`qcard-${id}`);
   if (card) card.remove();
