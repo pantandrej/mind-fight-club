@@ -4,7 +4,7 @@ import { sb } from './services/supabase.js';
 const PAGE = 20;
 let _offset = 0;
 let _total  = 0;
-let _filter = 'active'; // 'active' | 'all'
+let _filter = 'all'; // 'active' | 'all'
 
 export async function loadQModeration() {
   const inner = document.getElementById('qmod-inner');
