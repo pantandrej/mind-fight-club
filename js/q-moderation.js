@@ -28,7 +28,6 @@ function _renderFilter(inner) {
   const counter = document.getElementById('qmod-counter');
   if (counter) counter.textContent = `${_total} вопросов`;
 
-  // filter bar at top
   let bar = document.getElementById('qmod-filter-bar');
   if (!bar) {
     bar = document.createElement('div');
@@ -37,13 +36,13 @@ function _renderFilter(inner) {
     inner.prepend(bar);
   }
   bar.innerHTML = `
-    <button onclick="window._qmodFilter('active')"
-      style="flex:1;padding:9px;border-radius:10px;border:1px solid ${_filter==='active'?'var(--gold)':'var(--border)'};background:${_filter==='active'?'rgba(240,192,64,.12)':'var(--bg2)'};color:${_filter==='active'?'var(--gold)':'var(--muted)'};font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
-      Активные
-    </button>
     <button onclick="window._qmodFilter('all')"
       style="flex:1;padding:9px;border-radius:10px;border:1px solid ${_filter==='all'?'var(--accent)':'var(--border)'};background:${_filter==='all'?'rgba(108,99,255,.12)':'var(--bg2)'};color:${_filter==='all'?'var(--accent2)':'var(--muted)'};font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
-      Все (кроме удалённых)
+      Все
+    </button>
+    <button onclick="window._qmodFilter('active')"
+      style="flex:1;padding:9px;border-radius:10px;border:1px solid ${_filter==='active'?'#4ade80':'var(--border)'};background:${_filter==='active'?'rgba(74,222,128,.12)':'var(--bg2)'};color:${_filter==='active'?'#4ade80':'var(--muted)'};font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
+      ✅ Одобренные
     </button>`;
 }
 
@@ -66,7 +65,6 @@ async function _loadPage(inner, reset = false) {
     return;
   }
 
-  // Remove loading text and old list if reset
   if (reset) {
     document.getElementById('qmod-loading')?.remove();
     document.getElementById('qmod-list')?.remove();
@@ -83,7 +81,6 @@ async function _loadPage(inner, reset = false) {
 
   (data || []).forEach(q => list.appendChild(_buildCard(q)));
 
-  // Load more button
   document.getElementById('qmod-load-more')?.remove();
   if (_offset + PAGE < _total) {
     const btn = document.createElement('button');
@@ -101,6 +98,8 @@ function _buildCard(q) {
   card.style.cssText = 'background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:14px;position:relative';
 
   const text = q.question_ru || q.question_text || '';
+  const isApproved = q.status === 'active';
+
   const answers = (q.answers_json || []).map((ans, i) => {
     const correct = i === q.correct_index;
     return `<div style="display:flex;align-items:center;gap:6px;margin-top:5px">
@@ -109,9 +108,33 @@ function _buildCard(q) {
     </div>`;
   }).join('');
 
-  const statusBadge = q.status !== 'active'
-    ? `<span style="font-size:10px;background:rgba(248,113,113,.15);color:#f87171;border-radius:6px;padding:2px 7px;font-weight:700;margin-left:6px">${q.status}</span>`
-    : '';
+  const statusBadge = isApproved
+    ? `<span style="font-size:10px;background:rgba(74,222,128,.15);color:#4ade80;border-radius:6px;padding:2px 7px;font-weight:700;margin-left:6px">✅ одобрен</span>`
+    : (q.status && q.status !== 'active'
+      ? `<span style="font-size:10px;background:rgba(248,113,113,.15);color:#f87171;border-radius:6px;padding:2px 7px;font-weight:700;margin-left:6px">${q.status}</span>`
+      : '');
+
+  const actionButtons = isApproved
+    ? `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <button onclick="window._qmodUnapprove('${q.id}')"
+          style="padding:10px;border-radius:10px;border:1px solid rgba(240,192,64,.4);background:rgba(240,192,64,.1);color:var(--gold);font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">
+          ↩ Отменить
+        </button>
+        <button onclick="window._qmodDelete('${q.id}')"
+          style="padding:10px;border-radius:10px;border:1px solid rgba(248,113,113,.4);background:rgba(248,113,113,.1);color:#f87171;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">
+          🗑 Удалить
+        </button>
+      </div>`
+    : `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <button onclick="window._qmodApprove('${q.id}')"
+          style="padding:10px;border-radius:10px;border:1px solid rgba(74,222,128,.4);background:rgba(74,222,128,.1);color:#4ade80;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">
+          ✅ Подходит
+        </button>
+        <button onclick="window._qmodDelete('${q.id}')"
+          style="padding:10px;border-radius:10px;border:1px solid rgba(248,113,113,.4);background:rgba(248,113,113,.1);color:#f87171;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">
+          🗑 Удалить
+        </button>
+      </div>`;
 
   card.innerHTML = `
     <div style="font-size:13px;font-weight:800;line-height:1.4;margin-bottom:8px;padding-right:24px">
@@ -119,16 +142,7 @@ function _buildCard(q) {
     </div>
     <div style="margin-bottom:12px">${answers}</div>
     ${q.category ? `<div style="font-size:10px;color:var(--muted);margin-bottom:10px">📂 ${_esc(q.category)}${q.source_type?' · '+_esc(q.source_type):''}</div>` : ''}
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-      <button onclick="window._qmodApprove('${q.id}')"
-        style="padding:10px;border-radius:10px;border:1px solid rgba(74,222,128,.4);background:rgba(74,222,128,.1);color:#4ade80;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">
-        ✅ Подходит
-      </button>
-      <button onclick="window._qmodDelete('${q.id}')"
-        style="padding:10px;border-radius:10px;border:1px solid rgba(248,113,113,.4);background:rgba(248,113,113,.1);color:#f87171;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">
-        🗑 Удалить
-      </button>
-    </div>`;
+    ${actionButtons}`;
 
   return card;
 }
@@ -142,7 +156,15 @@ window._qmodFilter = async function(f) {
 window._qmodApprove = async function(id) {
   const { data, error } = await sb.rpc('admin_approve_question', { p_id: id });
   if (error || !data?.ok) { window.toast?.('Ошибка: ' + (error?.message || data?.reason)); return; }
+  const card = document.getElementById(`qcard-${id}`);
+  if (card) card.remove();
+  _total = Math.max(0, _total - 1);
+  _updateCounter();
+};
 
+window._qmodUnapprove = async function(id) {
+  const { data, error } = await sb.rpc('admin_unapprove_question', { p_id: id });
+  if (error || !data?.ok) { window.toast?.('Ошибка: ' + (error?.message || data?.reason)); return; }
   const card = document.getElementById(`qcard-${id}`);
   if (card) card.remove();
   _total = Math.max(0, _total - 1);
@@ -152,7 +174,6 @@ window._qmodApprove = async function(id) {
 window._qmodDelete = async function(id) {
   const { data, error } = await sb.rpc('admin_delete_question', { p_id: id });
   if (error || !data?.ok) { window.toast?.('Ошибка: ' + (error?.message || data?.reason)); return; }
-
   const card = document.getElementById(`qcard-${id}`);
   if (card) card.remove();
   _total = Math.max(0, _total - 1);
