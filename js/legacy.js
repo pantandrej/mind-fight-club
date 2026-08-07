@@ -1445,6 +1445,7 @@ function showProfile(){
   // Load stats from DB
   loadProfileStats();
   renderProfileCity();
+  _checkOrgStatus();
   if(isAdmin()) loadAdminDashboard();
   updatePushBtn();
   // Translate labels
@@ -11860,7 +11861,6 @@ if(_origRunHC_v87){
 async function showOrganizerCabinet(){
   if(!currentUser){ toast('Войдите чтобы стать организатором'); return; }
 
-  // Check organizer status from server
   try{
     const {data, error} = await sb.from('organizer_profiles')
       .select('status')
@@ -11873,13 +11873,14 @@ async function showOrganizerCabinet(){
       return;
     }
 
+    _updateOrgBtn(data?.status);
+
     if(!data){
-      // Not applied yet — show application form
       showScreen('organizer-apply');
       return;
     }
     if(data.status === 'pending'){
-      toast('⏳ Ваша заявка на рассмотрении. Мы напишем вам.');
+      toast('⏳ Заявка на рассмотрении. Мы напишем вам.');
       return;
     }
     if(data.status === 'suspended'){
@@ -11890,20 +11891,37 @@ async function showOrganizerCabinet(){
       showScreen('organizer-apply');
       return;
     }
-    // Approved — show full cabinet
-    showScreen('organizer-cabinet');
-    loadOrgPasses();
-    updateOrgRefLink();
-    updateOrgStats();
-    // Load advanced analytics (new module)
-    setTimeout(() => window.loadOrgAnalytics?.(), 800);
-    // Populate master-franchise dropdown for branch registration
-    loadMasterFranchiseOptions();
+    // Approved → новая панель организатора
+    showScreen('my-quizzes');
+    window.loadMyQuizzes?.();
   } catch(e){
     console.error('[Org] showOrganizerCabinet:', e.message);
     toast('Ошибка: ' + e.message);
   }
 }
+
+function _updateOrgBtn(status){
+  const btn = document.getElementById('org-panel-btn');
+  if(!btn) return;
+  const labels = {
+    pending:  ['⏳ Заявка на рассмотрении', 'Мы сообщим о решении в ближайшее время'],
+    approved: ['🏟️ Панель организатора',    'Управление вашими квизами'],
+    suspended:['🚫 Аккаунт приостановлен',  'Обратитесь в поддержку'],
+  };
+  const [title, sub] = labels[status] || ['🏟️ Проводишь квизы?', 'Зарегистрировать свой квиз в Brain Fight Club'];
+  btn.innerHTML = `${title}<br><span style="font-size:12px;font-weight:400;opacity:.7">${sub}</span>`;
+}
+
+// Проверяем статус организатора при загрузке профиля
+async function _checkOrgStatus(){
+  if(!currentUser) return;
+  try{
+    const {data} = await sb.from('organizer_profiles')
+      .select('status').eq('user_id', currentUser.id).maybeSingle();
+    _updateOrgBtn(data?.status);
+  }catch(e){}
+}
+window._checkOrgStatus = _checkOrgStatus;
 
 // ── Franchise: load master brands into dropdown ───────────────────
 async function loadMasterFranchiseOptions(){
