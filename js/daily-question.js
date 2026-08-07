@@ -34,13 +34,18 @@ export async function loadDailyQuestion() {
 
   const { data: questions } = await sb
     .from('questions')
-    .select('id, q, a, correct_index')
+    .select('id, question_ru, question_text, answers_json, correct_index')
     .eq('status', 'active')
     .range(offset, offset)
     .limit(1);
 
   if (!questions?.length) return;
-  const q = questions[0];
+  const raw = questions[0];
+  const q = {
+    ...raw,
+    q: raw.question_ru || raw.question_text || '',
+    a: raw.answers_json || [],
+  };
 
   // Show the teaser card
   el.style.display = 'block';
