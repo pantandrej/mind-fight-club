@@ -4,7 +4,7 @@ import { sb } from './services/supabase.js';
 const PAGE = 20;
 let _offset = 0;
 let _total  = 0;
-let _filter = 'all'; // 'active' | 'all'
+let _filter = 'pending'; // 'pending' | 'active'
 
 export async function loadQModeration() {
   const inner = document.getElementById('qmod-inner');
@@ -15,7 +15,7 @@ export async function loadQModeration() {
 
   let countQuery = sb.from('questions').select('id', { count: 'exact', head: true });
   if (_filter === 'active') countQuery = countQuery.eq('status', 'active');
-  else countQuery = countQuery.neq('status', 'deleted');
+  else countQuery = countQuery.neq('status', 'active').neq('status', 'deleted');
   const { count } = await countQuery;
 
   _total = count || 0;
@@ -35,9 +35,9 @@ function _renderFilter(inner) {
     inner.prepend(bar);
   }
   bar.innerHTML = `
-    <button onclick="window._qmodFilter('all')"
-      style="flex:1;padding:9px;border-radius:10px;border:1px solid ${_filter==='all'?'var(--accent)':'var(--border)'};background:${_filter==='all'?'rgba(108,99,255,.12)':'var(--bg2)'};color:${_filter==='all'?'var(--accent2)':'var(--muted)'};font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
-      Все
+    <button onclick="window._qmodFilter('pending')"
+      style="flex:1;padding:9px;border-radius:10px;border:1px solid ${_filter==='pending'?'var(--accent)':'var(--border)'};background:${_filter==='pending'?'rgba(108,99,255,.12)':'var(--bg2)'};color:${_filter==='pending'?'var(--accent2)':'var(--muted)'};font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
+      🗂 На сортировку
     </button>
     <button onclick="window._qmodFilter('active')"
       style="flex:1;padding:9px;border-radius:10px;border:1px solid ${_filter==='active'?'#4ade80':'var(--border)'};background:${_filter==='active'?'rgba(74,222,128,.12)':'var(--bg2)'};color:${_filter==='active'?'#4ade80':'var(--muted)'};font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
@@ -54,7 +54,7 @@ async function _loadPage(inner, reset = false) {
   if (_filter === 'active') {
     query = query.eq('status', 'active');
   } else {
-    query = query.neq('status', 'deleted');
+    query = query.neq('status', 'active').neq('status', 'deleted');
   }
 
   const { data, error } = await query;
@@ -108,9 +108,7 @@ function _buildCard(q) {
 
   const statusBadge = isApproved
     ? `<span style="font-size:10px;background:rgba(74,222,128,.15);color:#4ade80;border-radius:6px;padding:2px 7px;font-weight:700;margin-left:6px">✅ одобрен</span>`
-    : (q.status && q.status !== 'active'
-      ? `<span style="font-size:10px;background:rgba(248,113,113,.15);color:#f87171;border-radius:6px;padding:2px 7px;font-weight:700;margin-left:6px">${q.status}</span>`
-      : '');
+    : '';
 
   const actionButtons = isApproved
     ? `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
@@ -130,7 +128,7 @@ function _buildCard(q) {
         </button>
         <button onclick="window._qmodDelete('${q.id}')"
           style="padding:10px;border-radius:10px;border:1px solid rgba(248,113,113,.4);background:rgba(248,113,113,.1);color:#f87171;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">
-          🗑 Удалить
+          ❌ Не подходит
         </button>
       </div>`;
 
