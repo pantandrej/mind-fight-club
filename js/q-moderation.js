@@ -110,8 +110,13 @@ function _buildCard(q) {
     ? `<span style="font-size:10px;background:rgba(74,222,128,.15);color:#4ade80;border-radius:6px;padding:2px 7px;font-weight:700;margin-left:6px">✅ одобрен</span>`
     : '';
 
+  const editBtn = `<button onclick="window._qmodEdit('${q.id}')"
+    style="padding:10px;border-radius:10px;border:1px solid rgba(108,99,255,.4);background:rgba(108,99,255,.1);color:var(--accent2);font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">
+    ✏️ Редактировать
+  </button>`;
+
   const actionButtons = isApproved
-    ? `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+    ? `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
         <button onclick="window._qmodUnapprove('${q.id}')"
           style="padding:10px;border-radius:10px;border:1px solid rgba(240,192,64,.4);background:rgba(240,192,64,.1);color:var(--gold);font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">
           ↩ Отменить
@@ -120,8 +125,8 @@ function _buildCard(q) {
           style="padding:10px;border-radius:10px;border:1px solid rgba(248,113,113,.4);background:rgba(248,113,113,.1);color:#f87171;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">
           🗑 Удалить
         </button>
-      </div>`
-    : `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      </div>${editBtn}`
+    : `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
         <button onclick="window._qmodApprove('${q.id}')"
           style="padding:10px;border-radius:10px;border:1px solid rgba(74,222,128,.4);background:rgba(74,222,128,.1);color:#4ade80;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">
           ✅ Подходит
@@ -130,16 +135,19 @@ function _buildCard(q) {
           style="padding:10px;border-radius:10px;border:1px solid rgba(248,113,113,.4);background:rgba(248,113,113,.1);color:#f87171;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">
           ❌ Не подходит
         </button>
-      </div>`;
+      </div>${editBtn}`;
 
   card.innerHTML = `
-    <div style="font-size:13px;font-weight:800;line-height:1.4;margin-bottom:8px;padding-right:24px">
-      ${_esc(text)}${statusBadge}
-    </div>
-    <div style="margin-bottom:12px">${answers}</div>
-    ${q.category ? `<div style="font-size:10px;color:var(--muted);margin-bottom:10px">📂 ${_esc(q.category)}${q.source_type?' · '+_esc(q.source_type):''}</div>` : ''}
-    ${actionButtons}`;
+    <div id="qcard-view-${q.id}">
+      <div style="font-size:13px;font-weight:800;line-height:1.4;margin-bottom:8px;padding-right:24px">
+        ${_esc(text)}${statusBadge}
+      </div>
+      <div style="margin-bottom:12px">${answers}</div>
+      ${q.category ? `<div style="font-size:10px;color:var(--muted);margin-bottom:10px">📂 ${_esc(q.category)}${q.source_type?' · '+_esc(q.source_type):''}</div>` : ''}
+      ${actionButtons}
+    </div>`;
 
+  card._qdata = q;
   return card;
 }
 
@@ -175,6 +183,116 @@ window._qmodDelete = async function(id) {
   _total = Math.max(0, _total - 1);
   _updateCounter();
 };
+
+window._qmodEdit = function(id) {
+  const card = document.getElementById(`qcard-${id}`);
+  if (!card) return;
+  const q = card._qdata;
+  if (!q) return;
+
+  const view = document.getElementById(`qcard-view-${id}`);
+  if (!view) return;
+
+  const text = q.question_ru || q.question_text || '';
+  const answers = q.answers_json || [];
+
+  const answerInputs = answers.map((ans, i) => `
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+      <button type="button" onclick="window._qmodSetCorrect('${id}',${i})"
+        id="qcorr-${id}-${i}"
+        style="width:20px;height:20px;border-radius:50%;flex-shrink:0;border:1px solid ${i===q.correct_index?'rgba(74,222,128,.6)':'var(--border)'};background:${i===q.correct_index?'rgba(74,222,128,.2)':'rgba(255,255,255,.06)'};cursor:pointer;font-size:9px;color:${i===q.correct_index?'#4ade80':'var(--muted)'}">
+        ${i===q.correct_index?'✓':String.fromCharCode(65+i)}
+      </button>
+      <input id="qans-${id}-${i}" value="${_esc(ans)}"
+        style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--text);font-family:inherit">
+    </div>`).join('');
+
+  view.innerHTML = `
+    <div style="margin-bottom:10px">
+      <label style="font-size:10px;color:var(--muted);font-weight:700;letter-spacing:1px">ВОПРОС</label>
+      <textarea id="qtext-${id}" rows="3"
+        style="width:100%;margin-top:4px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;font-weight:700;color:var(--text);font-family:inherit;resize:vertical;box-sizing:border-box">${_esc(text)}</textarea>
+    </div>
+    <div style="margin-bottom:12px">
+      <label style="font-size:10px;color:var(--muted);font-weight:700;letter-spacing:1px">ВАРИАНТЫ (нажми кружок — правильный)</label>
+      <div id="qans-list-${id}" style="margin-top:6px">${answerInputs}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <button onclick="window._qmodSaveEdit('${id}')"
+        style="padding:10px;border-radius:10px;border:1px solid rgba(108,99,255,.5);background:rgba(108,99,255,.15);color:var(--accent2);font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">
+        💾 Сохранить
+      </button>
+      <button onclick="window._qmodCancelEdit('${id}')"
+        style="padding:10px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--muted);font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">
+        Отмена
+      </button>
+    </div>`;
+  view._editCorrect = q.correct_index;
+};
+
+window._qmodSetCorrect = function(id, idx) {
+  const card = document.getElementById(`qcard-${id}`);
+  if (!card) return;
+  const q = card._qdata;
+  const view = document.getElementById(`qcard-view-${id}`);
+  view._editCorrect = idx;
+  (q.answers_json || []).forEach((_, i) => {
+    const btn = document.getElementById(`qcorr-${id}-${i}`);
+    if (!btn) return;
+    const active = i === idx;
+    btn.style.border = `1px solid ${active?'rgba(74,222,128,.6)':'var(--border)'}`;
+    btn.style.background = active ? 'rgba(74,222,128,.2)' : 'rgba(255,255,255,.06)';
+    btn.style.color = active ? '#4ade80' : 'var(--muted)';
+    btn.textContent = active ? '✓' : String.fromCharCode(65+i);
+  });
+};
+
+window._qmodSaveEdit = async function(id) {
+  const card = document.getElementById(`qcard-${id}`);
+  if (!card) return;
+  const q = card._qdata;
+  const view = document.getElementById(`qcard-view-${id}`);
+
+  const newText = document.getElementById(`qtext-${id}`)?.value?.trim();
+  if (!newText) { window.toast?.('Введите текст вопроса'); return; }
+
+  const newAnswers = (q.answers_json || []).map((_, i) =>
+    document.getElementById(`qans-${id}-${i}`)?.value?.trim() || ''
+  );
+  const newCorrect = view._editCorrect ?? q.correct_index;
+
+  const { data, error } = await sb.rpc('admin_update_question', {
+    p_id: id,
+    p_text: newText,
+    p_answers: newAnswers,
+    p_correct: newCorrect,
+  });
+  if (error || !data?.ok) { window.toast?.('Ошибка: ' + (error?.message || data?.reason)); return; }
+
+  q.question_ru = newText;
+  q.question_text = newText;
+  q.answers_json = newAnswers;
+  q.correct_index = newCorrect;
+  card._qdata = q;
+  _rebuildCardView(card, q);
+  window.toast?.('Сохранено ✓');
+};
+
+window._qmodCancelEdit = function(id) {
+  const card = document.getElementById(`qcard-${id}`);
+  if (!card) return;
+  _rebuildCardView(card, card._qdata);
+};
+
+function _rebuildCardView(card, q) {
+  const tmpCard = _buildCard(q);
+  const newView = tmpCard.querySelector(`[id^="qcard-view-"]`);
+  const oldView = card.querySelector(`[id^="qcard-view-"]`);
+  if (oldView && newView) {
+    card.replaceChild(newView, oldView);
+    card._qdata = q;
+  }
+}
 
 function _updateCounter() {
   const el = document.getElementById('qmod-counter');
