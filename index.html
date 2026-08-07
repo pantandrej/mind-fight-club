@@ -1519,6 +1519,14 @@
           </div>
         </section>
 
+        <!-- My Quizzes -->
+        <div class="prf-section">
+          <button onclick="showScreen('my-quizzes');window.loadMyQuizzes?.()" style="width:100%;background:rgba(108,99,255,.1);border:1px solid rgba(108,99,255,.35);border-radius:14px;padding:14px;font-size:14px;font-weight:800;color:var(--accent2);cursor:pointer;font-family:inherit;text-align:left">
+            🧠 Мои квизы<br>
+            <span style="font-size:12px;font-weight:400;opacity:.7">Зарегистрировать свой квиз или управлять существующим</span>
+          </button>
+        </div>
+
         <!-- Admin -->
         <div id="admin-dashboard" class="prf-section" style="display:none">
           <button onclick="showScreen('admin')" style="width:100%;background:rgba(240,192,64,.1);border:1px solid var(--gold);border-radius:14px;padding:14px;font-size:14px;font-weight:800;color:var(--gold);cursor:pointer;font-family:inherit">
@@ -1688,6 +1696,13 @@
 
   <div style="width:100%;max-width:600px;padding:12px 16px 100px;display:flex;flex-direction:column;gap:10px">
 
+    <!-- Quiz Management -->
+    <button onclick="showScreen('admin-quizzes');window._adminQuizTab='pending';window.loadAdminQuizzes?.()"
+      style="width:100%;background:linear-gradient(135deg,rgba(108,99,255,.12),rgba(168,85,247,.06));border:1.5px solid rgba(108,99,255,.4);border-radius:16px;padding:18px;font-size:15px;font-weight:800;color:var(--accent2);cursor:pointer;font-family:inherit;text-align:left">
+      🧠 Квизы<br>
+      <span style="font-size:12px;font-weight:400;opacity:.7">Заявки и управление страницами квизов</span>
+    </button>
+
     <!-- Question Moderation -->
     <button onclick="showScreen('q-moderation');window.loadQModeration?.()"
       style="width:100%;background:linear-gradient(135deg,rgba(240,192,64,.12),rgba(240,150,0,.06));border:1.5px solid var(--gold);border-radius:16px;padding:18px;font-size:15px;font-weight:800;color:var(--gold);cursor:pointer;font-family:inherit;text-align:left">
@@ -1830,6 +1845,46 @@
     </label>
   </div>
   <div id="qmod-inner" style="padding:12px 16px 100px;width:100%;max-width:600px;box-sizing:border-box"></div>
+</div>
+
+<!-- ── My Quizzes Screen ── -->
+<div class="screen" id="my-quizzes" style="justify-content:flex-start;padding:0">
+  <div class="hdr" style="position:sticky;top:0;z-index:10;backdrop-filter:blur(12px);background:rgba(10,10,20,.9)">
+    <button onclick="showScreen('profile')" style="background:none;border:none;color:var(--text);font-size:22px;cursor:pointer;padding:0 4px">‹</button>
+    <div style="font-size:13px;font-weight:800;color:var(--accent2)">🧠 Мои квизы</div>
+    <button onclick="showScreen('quiz-create');window.loadQuizCreate?.()" style="background:rgba(108,99,255,.15);border:1px solid rgba(108,99,255,.4);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:800;color:var(--accent2);cursor:pointer;font-family:inherit">+ Новый</button>
+  </div>
+  <div id="my-quizzes-list" style="padding:12px 16px 100px;width:100%;max-width:600px;box-sizing:border-box"></div>
+</div>
+
+<!-- ── Quiz Create Screen ── -->
+<div class="screen" id="quiz-create" style="justify-content:flex-start;padding:0">
+  <div class="hdr" style="position:sticky;top:0;z-index:10;backdrop-filter:blur(12px);background:rgba(10,10,20,.9)">
+    <button onclick="showScreen('my-quizzes')" style="background:none;border:none;color:var(--text);font-size:22px;cursor:pointer;padding:0 4px">‹</button>
+    <div style="font-size:13px;font-weight:800">Новый квиз</div>
+    <div></div>
+  </div>
+  <div id="quiz-create-inner" style="padding:16px 16px 100px;width:100%;max-width:600px;box-sizing:border-box"></div>
+</div>
+
+<!-- ── Quiz Edit Screen ── -->
+<div class="screen" id="quiz-edit" style="justify-content:flex-start;padding:0">
+  <div class="hdr" style="position:sticky;top:0;z-index:10;backdrop-filter:blur(12px);background:rgba(10,10,20,.9)">
+    <button onclick="showScreen('my-quizzes');window.loadMyQuizzes?.()" style="background:none;border:none;color:var(--text);font-size:22px;cursor:pointer;padding:0 4px">‹</button>
+    <div style="font-size:13px;font-weight:800">Редактировать квиз</div>
+    <div></div>
+  </div>
+  <div id="quiz-edit-inner" style="padding:16px 16px 100px;width:100%;max-width:600px;box-sizing:border-box"></div>
+</div>
+
+<!-- ── Admin Quizzes Screen ── -->
+<div class="screen" id="admin-quizzes" style="justify-content:flex-start;padding:0">
+  <div class="hdr" style="position:sticky;top:0;z-index:10;backdrop-filter:blur(12px);background:rgba(10,10,20,.9)">
+    <button onclick="showScreen('admin')" style="background:none;border:none;color:var(--text);font-size:22px;cursor:pointer;padding:0 4px">‹</button>
+    <div style="font-size:13px;font-weight:800;color:var(--gold)">🧠 Квизы</div>
+    <div></div>
+  </div>
+  <div id="admin-quizzes-inner" style="padding:12px 16px 100px;width:100%;max-width:600px;box-sizing:border-box"></div>
 </div>
 
 <div class="screen" id="admin-import" style="justify-content:flex-start">
@@ -3667,6 +3722,14 @@ window._pickTeamEmoji = async function(emoji) {
     catch(e2) { console.warn('emoji save:', e2.message); }
   }
 };
+</script>
+
+<script type="module">
+  import { loadMyQuizzes, loadQuizCreate, loadAdminQuizzes } from '/js/quiz-manage.js';
+  import '/js/q-moderation.js';
+  window.loadMyQuizzes    = loadMyQuizzes;
+  window.loadQuizCreate   = loadQuizCreate;
+  window.loadAdminQuizzes = loadAdminQuizzes;
 </script>
 </body>
 </html>

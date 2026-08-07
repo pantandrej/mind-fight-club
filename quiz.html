@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BFC — Квиз</title>
+  <meta property="og:type" content="website">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0a14; --bg2: #12121f; --border: rgba(255,255,255,.08);
+      --text: #f0f0f8; --muted: rgba(240,240,248,.45);
+      --accent: #6c63ff; --accent2: #a78bfa; --gold: #f0c040;
+    }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; }
+    .page { max-width: 560px; margin: 0 auto; padding: 24px 16px 60px; }
+    .logo-wrap { display: flex; flex-direction: column; align-items: center; padding: 32px 0 24px; }
+    .logo-img { width: 96px; height: 96px; border-radius: 24px; object-fit: cover; background: var(--bg2); border: 2px solid var(--border); }
+    .logo-placeholder { width: 96px; height: 96px; border-radius: 24px; background: linear-gradient(135deg, rgba(108,99,255,.3), rgba(168,85,247,.2)); border: 2px solid rgba(108,99,255,.4); display: flex; align-items: center; justify-content: center; font-size: 40px; }
+    .quiz-name { font-size: 24px; font-weight: 900; text-align: center; margin-top: 14px; }
+    .quiz-slug { font-size: 12px; color: var(--muted); text-align: center; margin-top: 4px; }
+    .quiz-desc { font-size: 14px; color: var(--muted); line-height: 1.6; text-align: center; margin-top: 12px; }
+    .section { background: var(--bg2); border: 0.5px solid var(--border); border-radius: 18px; padding: 18px; margin-top: 16px; }
+    .section-title { font-size: 10px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+    .social-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+    .social-btn { display: flex; align-items: center; gap: 7px; padding: 9px 14px; background: rgba(255,255,255,.05); border: 0.5px solid var(--border); border-radius: 10px; text-decoration: none; color: var(--text); font-size: 13px; font-weight: 700; }
+    .social-btn:hover { background: rgba(255,255,255,.1); }
+    .offer-text { font-size: 14px; line-height: 1.6; color: var(--text); white-space: pre-line; }
+    .app-btn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; margin-top: 20px; padding: 16px; background: linear-gradient(135deg, #6c63ff, #a78bfa); border: none; border-radius: 16px; color: #fff; font-size: 15px; font-weight: 800; cursor: pointer; text-decoration: none; }
+    .error { text-align: center; padding: 80px 20px; color: var(--muted); }
+    .loader { text-align: center; padding: 80px; color: var(--muted); font-size: 14px; }
+    .bfc-badge { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 32px; padding-top: 20px; border-top: 0.5px solid var(--border); }
+    .bfc-badge a { font-size: 12px; color: var(--muted); text-decoration: none; font-weight: 700; }
+  </style>
+</head>
+<body>
+<div class="page" id="root">
+  <div class="loader">Загрузка...</div>
+</div>
+
+<script>
+const SUPA_URL = 'https://nhmidxkohjpcnhjucuuh.supabase.co';
+const SUPA_KEY = 'sb_publishable_lFVRCP-PPnGnNzn9G60A3A_gTy40vMs';
+
+const slug = location.pathname.replace(/^\/quiz\//, '').replace(/\/$/, '');
+
+async function loadQuiz() {
+  const root = document.getElementById('root');
+  if (!slug) { root.innerHTML = '<div class="error">Квиз не найден</div>'; return; }
+
+  const res = await fetch(`${SUPA_URL}/rest/v1/rpc/get_quiz_by_slug`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY },
+    body: JSON.stringify({ p_slug: slug }),
+  });
+  const json = await res.json();
+  if (!json?.ok) { root.innerHTML = '<div class="error">Квиз не найден или ещё не опубликован 🙁</div>'; return; }
+
+  const q = json.quiz;
+  const sl = q.social_links || {};
+
+  document.title = `${q.name} — BFC`;
+
+  const socialBtns = [
+    sl.vk        && `<a class="social-btn" href="${esc(sl.vk)}" target="_blank">🔵 ВКонтакте</a>`,
+    sl.tg        && `<a class="social-btn" href="${esc(sl.tg)}" target="_blank">✈️ Telegram</a>`,
+    sl.instagram && `<a class="social-btn" href="${esc(sl.instagram)}" target="_blank">📸 Instagram</a>`,
+    sl.youtube   && `<a class="social-btn" href="${esc(sl.youtube)}" target="_blank">▶️ YouTube</a>`,
+    q.website_url && `<a class="social-btn" href="${esc(q.website_url)}" target="_blank">🌐 Сайт</a>`,
+  ].filter(Boolean).join('');
+
+  root.innerHTML = `
+    <div class="logo-wrap">
+      ${q.logo_url
+        ? `<img class="logo-img" src="${esc(q.logo_url)}" alt="${esc(q.name)}">`
+        : `<div class="logo-placeholder">🧠</div>`}
+      <div class="quiz-name">${esc(q.name)}</div>
+      <div class="quiz-slug">bfc.ru/quiz/${esc(q.slug)}</div>
+      ${q.description ? `<div class="quiz-desc">${esc(q.description)}</div>` : ''}
+    </div>
+
+    ${socialBtns ? `
+    <div class="section">
+      <div class="section-title">Мы здесь</div>
+      <div class="social-grid">${socialBtns}</div>
+    </div>` : ''}
+
+    ${q.newcomer_offer ? `
+    <div class="section" style="border-color:rgba(240,192,64,.25);background:rgba(240,192,64,.06)">
+      <div class="section-title" style="color:var(--gold)">🎁 Новичкам</div>
+      <div class="offer-text">${esc(q.newcomer_offer)}</div>
+    </div>` : ''}
+
+    <a class="app-btn" href="/">
+      ⚡ Открыть Brain Fight Club
+    </a>
+
+    <div class="bfc-badge">
+      <a href="/">Brain Fight Club — тренируй интеллект</a>
+    </div>`;
+}
+
+function esc(s) {
+  return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+loadQuiz();
+</script>
+</body>
+</html>
