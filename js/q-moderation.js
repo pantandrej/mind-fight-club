@@ -303,4 +303,31 @@ function _esc(s) {
   return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+window._qmodImportFile = async function(input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  input.value = '';
+
+  let questions;
+  try {
+    questions = JSON.parse(await file.text());
+  } catch {
+    window.toast?.('Ошибка: невалидный JSON');
+    return;
+  }
+  if (!Array.isArray(questions) || !questions.length) {
+    window.toast?.('Файл пустой или не массив');
+    return;
+  }
+
+  window.toast?.(`Загружаю ${questions.length} вопросов...`);
+  const { data, error } = await sb.rpc('admin_import_questions', { p_questions: questions });
+  if (error || !data?.ok) {
+    window.toast?.('Ошибка: ' + (error?.message || data?.reason));
+    return;
+  }
+  window.toast?.(`✅ Загружено ${data.imported} вопросов → На сортировку`);
+  if (_filter === 'pending') loadQModeration();
+};
+
 window.loadQModeration = loadQModeration;
