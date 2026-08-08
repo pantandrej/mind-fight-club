@@ -11915,6 +11915,8 @@ function _updateOrgBtn(status){
 // Проверяем статус организатора при загрузке профиля
 async function _checkOrgStatus(){
   if(!currentUser) return;
+  // Admins always have full organizer access
+  if(isAdmin()){ _updateOrgBtn('approved'); return; }
   try{
     const {data} = await sb.from('organizer_profiles')
       .select('status').eq('user_id', currentUser.id).maybeSingle();

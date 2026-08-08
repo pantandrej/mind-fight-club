@@ -1202,6 +1202,7 @@ function maybeAskPushAfterGame(){
   if(localStorage.getItem(PUSH_ASKED_KEY)) return;
   // Show a gentle in-app prompt first
   const overlay = document.createElement('div');
+  overlay.id = 'push-ask-overlay';
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;display:flex;align-items:flex-end;justify-content:center;padding:20px';
   overlay.innerHTML = `
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:24px 20px;max-width:400px;width:100%;text-align:center">
@@ -1212,11 +1213,11 @@ function maybeAskPushAfterGame(){
           ? 'Включи уведомления — узнаешь первым, когда кто-то бросит вызов или начнётся турнир.'
           : 'Enable notifications to know when someone challenges you or a tournament starts.'}
       </div>
-      <button onclick="requestPushPermission('post_game');this.closest('[style]').remove()"
+      <button onclick="requestPushPermission('post_game');document.getElementById('push-ask-overlay')?.remove()"
         style="width:100%;background:var(--accent);border:none;border-radius:12px;padding:13px;font-size:15px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit;margin-bottom:10px">
         🔔 ${lang==='ru'?'Включить уведомления':'Enable notifications'}
       </button>
-      <button onclick="this.closest('[style]').remove();localStorage.setItem('${PUSH_ASKED_KEY}','1')"
+      <button onclick="document.getElementById('push-ask-overlay')?.remove();localStorage.setItem('${PUSH_ASKED_KEY}','1')"
         style="width:100%;background:transparent;border:none;color:var(--muted);font-size:13px;cursor:pointer;font-family:inherit;padding:6px">
         ${lang==='ru'?'Не сейчас':'Not now'}
       </button>

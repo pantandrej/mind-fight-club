@@ -797,9 +797,8 @@ async function loadPublishedQuickQuestionsFromDB(){
     const {data, error} = await sb
       .from('questions')
       .select('*')
-      .eq('status', 'published')
-      .eq('source_type', 'official_general')
-      .order('created_at', {ascending: false})
+      .eq('status', 'active')
+      .order('approved_at', {ascending: false})
       .limit(1000);
     if(error) throw error;
     const rows = data || [];
@@ -1839,10 +1838,8 @@ export async function loadBattleQuestions(lang = 'ru') {
       const { data, error } = await sb
         .from('questions')
         .select('*')
-        .eq('status', 'published')
-        .filter('answers_ru', 'not.is', null);
-        // Note: Supabase REST doesn't support jsonb_array_length directly.
-        // We fetch candidates and filter in JS.
+        .eq('status', 'active');
+        // Filter by answer count done in JS below
 
       if (!error && data && data.length > 0) {
         const candidates = data
