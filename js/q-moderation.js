@@ -48,7 +48,7 @@ function _renderFilter(inner) {
 async function _loadPage(inner, reset = false) {
   let query = sb.from('questions')
     .select('id, question_text, question_ru, answers_json, correct_index, status, category, source_type, approved_at')
-    .order(_filter === 'active' ? 'approved_at' : 'id', { ascending: false })
+    .order(_filter === 'active' ? 'approved_at' : 'id', { ascending: false, nullsFirst: false })
     .range(_offset, _offset + PAGE - 1);
 
   if (_filter === 'active') {
