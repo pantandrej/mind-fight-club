@@ -217,6 +217,9 @@ export async function loadAdminQuizzes() {
 
   const tab = window._adminQuizTab || 'pending';
   el.innerHTML = `
+    <button onclick="showScreen('quiz-create');window.loadQuizCreate?.()" style="width:100%;margin-bottom:12px;padding:12px;border-radius:12px;border:1px dashed rgba(108,99,255,.5);background:rgba(108,99,255,.08);color:var(--accent2);font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">
+      ➕ Создать квиз
+    </button>
     <div style="display:flex;gap:8px;margin-bottom:14px">
       ${['pending','active','rejected'].map(t => `
         <button onclick="window._adminQuizTab='${t}';loadAdminQuizzes()"
