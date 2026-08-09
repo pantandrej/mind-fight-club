@@ -81,12 +81,44 @@ async function _loadPage(inner, reset = false) {
 
   document.getElementById('qmod-load-more')?.remove();
   if (_offset + PAGE < _total) {
-    const btn = document.createElement('button');
-    btn.id = 'qmod-load-more';
-    btn.textContent = `Ещё ${Math.min(PAGE, _total - _offset - PAGE)} вопросов`;
-    btn.style.cssText = 'width:100%;margin-top:8px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit';
-    btn.onclick = () => { _offset += PAGE; _loadPage(inner); };
-    inner.appendChild(btn);
+    const remaining = _total - _offset - PAGE;
+    const wrap = document.createElement('div');
+    wrap.id = 'qmod-load-more';
+    wrap.style.cssText = 'display:flex;gap:8px;margin-top:8px';
+
+    const moreBtn = document.createElement('button');
+    moreBtn.textContent = `Ещё ${Math.min(PAGE, remaining)} вопросов`;
+    moreBtn.style.cssText = 'flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit';
+    moreBtn.onclick = () => { _offset += PAGE; _loadPage(inner); };
+
+    const allBtn = document.createElement('button');
+    allBtn.textContent = `Показать все (${_total})`;
+    allBtn.style.cssText = 'flex:1;background:rgba(108,99,255,.1);border:1px solid rgba(108,99,255,.4);border-radius:12px;padding:12px;font-size:13px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit';
+    allBtn.onclick = async () => {
+      wrap.remove();
+      const loadingAll = document.createElement('div');
+      loadingAll.style.cssText = 'text-align:center;padding:12px;color:var(--muted);font-size:13px';
+      loadingAll.textContent = 'Загрузка всех вопросов...';
+      inner.appendChild(loadingAll);
+      let fetchOffset = _offset + PAGE;
+      while (fetchOffset < _total) {
+        let q2 = sb.from('questions')
+          .select('id, question_text, question_ru, answers_json, correct_index, status, category, source_type, approved_at')
+          .order(_filter === 'active' ? 'approved_at' : 'id', { ascending: false, nullsFirst: false })
+          .range(fetchOffset, fetchOffset + PAGE - 1);
+        if (_filter === 'active') q2 = q2.eq('status', 'active');
+        else q2 = q2.neq('status', 'active').neq('status', 'deleted');
+        const { data: d2 } = await q2;
+        (d2 || []).forEach(q => list.appendChild(_buildCard(q)));
+        fetchOffset += PAGE;
+        _offset = fetchOffset - PAGE;
+      }
+      loadingAll.remove();
+    };
+
+    wrap.appendChild(moreBtn);
+    wrap.appendChild(allBtn);
+    inner.appendChild(wrap);
   }
 }
 
