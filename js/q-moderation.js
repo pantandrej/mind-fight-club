@@ -6,20 +6,40 @@ const PAGE = 20;
 let _offset = 0;
 let _total  = 0;
 let _filter = 'pending'; // 'pending' | 'active'
+let _pendingCache = null; // все pending-вопросы, загруженные без OR-фильтра
+
+// Два параллельных запроса вместо OR (OR ломается через Vercel прокси)
+async function _fetchPendingAll() {
+  const SEL = 'id,question_text,question_ru,answers_json,correct_index,status,category,source_type,approved_at';
+  const hdrs = { cache: 'no-store', headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` } };
+  const ts = Date.now();
+  const [r1, r2] = await Promise.all([
+    fetch(`${SUPA_URL}/rest/v1/questions?select=${SEL}&status=is.null&order=id.desc&limit=5000&_=${ts}a`, hdrs),
+    fetch(`${SUPA_URL}/rest/v1/questions?select=${SEL}&status=eq.published&order=id.desc&limit=5000&_=${ts}b`, hdrs),
+  ]);
+  const d1 = r1.ok ? await r1.json() : [];
+  const d2 = r2.ok ? await r2.json() : [];
+  const all = [...(Array.isArray(d1) ? d1 : []), ...(Array.isArray(d2) ? d2 : [])];
+  all.sort((a, b) => (b.id > a.id ? 1 : -1));
+  return all;
+}
 
 export async function loadQModeration() {
   const inner = document.getElementById('qmod-inner');
   if (!inner) return;
 
   _offset = 0;
+  _pendingCache = null;
   inner.innerHTML = `<div id="qmod-loading" style="text-align:center;padding:40px;color:var(--muted)">Загрузка...</div>`;
 
-  let countQuery = sb.from('questions').select('id', { count: 'exact', head: true });
-  if (_filter === 'active') countQuery = countQuery.eq('status', 'active');
-  else countQuery = countQuery.or('status.is.null,status.eq.published');
-  const { count } = await countQuery;
+  if (_filter === 'active') {
+    const { count } = await sb.from('questions').select('id', { count: 'exact', head: true }).eq('status', 'active');
+    _total = count || 0;
+  } else {
+    _pendingCache = await _fetchPendingAll();
+    _total = _pendingCache.length;
+  }
 
-  _total = count || 0;
   _renderFilter(inner);
   await _loadPage(inner, true);
 }
@@ -47,18 +67,22 @@ function _renderFilter(inner) {
 }
 
 async function _loadPage(inner, reset = false) {
-  let query = sb.from('questions')
-    .select('id, question_text, question_ru, answers_json, correct_index, status, category, source_type, approved_at')
-    .order(_filter === 'active' ? 'approved_at' : 'id', { ascending: false, nullsFirst: false })
-    .range(_offset, _offset + PAGE - 1);
+  let data, error;
 
   if (_filter === 'active') {
-    query = query.eq('status', 'active');
+    const res = await sb.from('questions')
+      .select('id, question_text, question_ru, answers_json, correct_index, status, category, source_type, approved_at')
+      .eq('status', 'active')
+      .order('approved_at', { ascending: false, nullsFirst: false })
+      .range(_offset, _offset + PAGE - 1);
+    data = res.data; error = res.error;
   } else {
-    query = query.or('status.is.null,status.eq.published');
+    // Читаем из кеша (OR-фильтр ломается через Vercel прокси)
+    if (!_pendingCache) _pendingCache = await _fetchPendingAll();
+    data = _pendingCache.slice(_offset, _offset + PAGE);
+    error = null;
   }
 
-  const { data, error } = await query;
   if (error) {
     inner.innerHTML += `<div style="color:var(--red);padding:12px">Ошибка: ${error.message}</div>`;
     return;
@@ -102,16 +126,18 @@ async function _loadPage(inner, reset = false) {
       loadingAll.textContent = 'Загрузка всех вопросов...';
       inner.appendChild(loadingAll);
 
-      // Используем .range(0, total-1) — тот же путь что и начальная загрузка (.range работает, .limit нет)
-      const total = _total || 2000;
-      let allQuery = sb.from('questions')
-        .select('id, question_text, question_ru, answers_json, correct_index, status, category, source_type, approved_at')
-        .order(_filter === 'active' ? 'approved_at' : 'id', { ascending: false, nullsFirst: false })
-        .range(0, total - 1);
-      if (_filter === 'active') allQuery = allQuery.eq('status', 'active');
-      else allQuery = allQuery.or('status.is.null,status.eq.published');
-
-      const { data: allRows, error: allErr } = await allQuery;
+      let allRows, allErr;
+      if (_filter === 'active') {
+        const res = await sb.from('questions')
+          .select('id, question_text, question_ru, answers_json, correct_index, status, category, source_type, approved_at')
+          .eq('status', 'active')
+          .order('approved_at', { ascending: false, nullsFirst: false })
+          .range(0, (_total || 2000) - 1);
+        allRows = res.data; allErr = res.error;
+      } else {
+        if (!_pendingCache) _pendingCache = await _fetchPendingAll();
+        allRows = _pendingCache; allErr = null;
+      }
 
       loadingAll.remove();
       if (allErr) {
@@ -203,6 +229,8 @@ function _afterCardRemove(id) {
   const card = document.getElementById(`qcard-${id}`);
   if (card) card.remove();
   _total = Math.max(0, _total - 1);
+  // Удалить из кеша pending, чтобы пагинация не сдвигалась
+  if (_pendingCache) _pendingCache = _pendingCache.filter(q => q.id !== id);
   _updateCounter();
   // Если список опустел — перезагрузить следующую порцию
   const list = document.getElementById('qmod-list');
