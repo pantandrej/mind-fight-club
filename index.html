@@ -220,6 +220,9 @@
     <!-- Daily Logic Widget -->
     <div id="daily-logic-wrap" style="margin-bottom:16px;display:none"></div>
 
+    <!-- Супервопрос дня от квизов -->
+    <div id="quiz-daily-wrap" style="display:none"></div>
+
     <!-- PWA install banner -->
     <div id="pwa-install-banner" style="display:none;background:rgba(108,99,255,.12);border:1px solid rgba(108,99,255,.3);border-radius:14px;padding:12px 14px;margin-bottom:12px;display:none;align-items:center;gap:12px">
       <div style="font-size:28px">📲</div>
@@ -3726,10 +3729,12 @@ window._pickTeamEmoji = async function(emoji) {
 
 <script type="module">
   import { loadMyQuizzes, loadQuizCreate, loadAdminQuizzes } from '/js/quiz-manage.js';
+  import { loadQuizDailyQuestion } from '/js/quiz-daily-question.js';
   import '/js/q-moderation.js';
-  window.loadMyQuizzes    = loadMyQuizzes;
-  window.loadQuizCreate   = loadQuizCreate;
-  window.loadAdminQuizzes = loadAdminQuizzes;
+  window.loadMyQuizzes          = loadMyQuizzes;
+  window.loadQuizCreate         = loadQuizCreate;
+  window.loadAdminQuizzes       = loadAdminQuizzes;
+  window.loadQuizDailyQuestion  = loadQuizDailyQuestion;
 </script>
 </body>
 </html>

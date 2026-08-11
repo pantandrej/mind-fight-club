@@ -31,10 +31,11 @@ export function showScreen(name) {
   // Lazy render for screens that need it
   setTimeout(() => {
     try {
-      if (name === 'shop'    && typeof window.renderShop        === 'function') window.renderShop();
-      if (name === 'teams'   && typeof window.renderTeamsScreen  === 'function') window.renderTeamsScreen();
-      if (name === 'profile' && typeof window.showProfile        === 'function') window.showProfile();
-      if (name === 'admin'   && typeof window.loadAdminGames     === 'function') window.loadAdminGames();
+      if (name === 'shop'    && typeof window.renderShop           === 'function') window.renderShop();
+      if (name === 'teams'   && typeof window.renderTeamsScreen   === 'function') window.renderTeamsScreen();
+      if (name === 'profile' && typeof window.showProfile         === 'function') window.showProfile();
+      if (name === 'admin'   && typeof window.loadAdminGames      === 'function') window.loadAdminGames();
+      if (name === 'home'    && typeof window.loadQuizDailyQuestion === 'function') window.loadQuizDailyQuestion();
     } catch (e) { console.error('Screen render error:', e); }
   }, 50);
 }

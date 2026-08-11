@@ -159,7 +159,39 @@ window.loadQuizEdit = async function(id) {
     <a href="/quiz/${q.slug}" target="_blank"
       style="display:flex;align-items:center;justify-content:center;gap:6px;width:100%;margin-top:10px;padding:12px;background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.3);border-radius:12px;color:#4ade80;font-size:13px;font-weight:700;text-decoration:none">
       🔗 Открыть страницу квиза
-    </a>` : ''}`;
+    </a>
+    <div style="margin-top:20px">
+      <div style="font-size:12px;font-weight:800;letter-spacing:1px;color:var(--muted);margin-bottom:10px">🔥 СУПЕРВОПРОС ДНЯ</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.5">
+        Загрузи картинку с вопросом. Админ выберет дату публикации.<br>
+        Игроки увидят его на главном экране и смогут ответить текстом.
+      </div>
+      <div id="qdq-my-list-${q.id}" style="margin-bottom:12px"></div>
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:14px;padding:16px">
+        <div style="font-size:13px;font-weight:800;margin-bottom:12px">➕ Новый вопрос</div>
+        <label style="font-size:10px;font-weight:800;letter-spacing:1px;color:var(--muted)">КАРТИНКА ВОПРОСА</label>
+        <div style="margin-top:6px;margin-bottom:12px">
+          <label id="qdq-img-label-${q.id}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;height:120px;border:1.5px dashed var(--border);border-radius:12px;cursor:pointer;font-size:12px;color:var(--muted)">
+            📷 Нажми чтобы выбрать фото
+            <input type="file" accept="image/*" onchange="window._qdqPreviewImg('${q.id}', this)" style="display:none">
+          </label>
+          <img id="qdq-img-preview-${q.id}" style="display:none;width:100%;border-radius:12px;margin-top:8px;max-height:240px;object-fit:contain">
+        </div>
+        <label style="font-size:10px;font-weight:800;letter-spacing:1px;color:var(--muted)">ПРАВИЛЬНЫЙ ОТВЕТ</label>
+        <input id="qdq-answer-${q.id}" type="text" placeholder="Точная фраза ответа"
+          style="width:100%;margin-top:6px;margin-bottom:10px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;font-size:13px;color:var(--text);font-family:inherit;box-sizing:border-box;outline:none">
+        <label style="font-size:10px;font-weight:800;letter-spacing:1px;color:var(--muted)">ВАРИАНТЫ-ПОДСКАЗКИ (необязательно, через запятую)</label>
+        <input id="qdq-hints-${q.id}" type="text" placeholder="Например: Пушкин, Толстой, Чехов"
+          style="width:100%;margin-top:6px;margin-bottom:12px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;font-size:13px;color:var(--text);font-family:inherit;box-sizing:border-box;outline:none">
+        <button onclick="window._qdqSubmit('${q.id}')"
+          style="width:100%;padding:12px;background:linear-gradient(135deg,#6c63ff,#a78bfa);border:none;border-radius:12px;color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">
+          Отправить на проверку
+        </button>
+      </div>
+    </div>` : ''}`;
+
+  // Загружаем существующие вопросы организатора
+  if (q.status === 'active') _qdqLoadMyQuestions(q.id);
 };
 
 window._saveQuizEdit = async function(id) {
@@ -216,15 +248,18 @@ export async function loadAdminQuizzes() {
   if (!el) return;
 
   const tab = window._adminQuizTab || 'pending';
+  const tabs = ['pending','active','rejected','superq'];
+  const tabLabels = { pending:'⏳ Заявки', active:'✅ Активные', rejected:'❌ Отклонённые', superq:'🔥 Супервопросы' };
+
   el.innerHTML = `
     <button onclick="showScreen('quiz-create');window.loadQuizCreate?.()" style="width:100%;margin-bottom:12px;padding:12px;border-radius:12px;border:1px dashed rgba(108,99,255,.5);background:rgba(108,99,255,.08);color:var(--accent2);font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">
       ➕ Создать квиз
     </button>
-    <div style="display:flex;gap:8px;margin-bottom:14px">
-      ${['pending','active','rejected'].map(t => `
+    <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">
+      ${tabs.map(t => `
         <button onclick="window._adminQuizTab='${t}';loadAdminQuizzes()"
-          style="flex:1;padding:8px;border-radius:10px;border:1px solid ${tab===t?'var(--accent)':'var(--border)'};background:${tab===t?'rgba(108,99,255,.15)':'var(--bg2)'};color:${tab===t?'var(--accent2)':'var(--muted)'};font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">
-          ${{pending:'⏳ Заявки',active:'✅ Активные',rejected:'❌ Отклонённые'}[t]}
+          style="flex:1;min-width:70px;padding:8px 6px;border-radius:10px;border:1px solid ${tab===t?'var(--accent)':'var(--border)'};background:${tab===t?'rgba(108,99,255,.15)':'var(--bg2)'};color:${tab===t?'var(--accent2)':'var(--muted)'};font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">
+          ${tabLabels[t]}
         </button>`).join('')}
     </div>
     <div id="admin-quizzes-list"><div style="color:var(--muted);text-align:center;padding:30px">Загрузка...</div></div>`;
@@ -235,6 +270,9 @@ export async function loadAdminQuizzes() {
 
   if (error || !data?.ok) { list.innerHTML = `<div style="color:var(--red)">${error?.message || data?.reason}</div>`; return; }
   const quizzes = data.quizzes || [];
+
+  // Вкладка супервопросов обрабатывается отдельно
+  if (tab === 'superq') { _adminLoadSuperQuestions(list); return; }
 
   if (!quizzes.length) { list.innerHTML = '<div style="color:var(--muted);text-align:center;padding:20px">Пусто</div>'; return; }
 
@@ -277,6 +315,84 @@ export async function loadAdminQuizzes() {
     </div>`).join('');
 }
 
+// ── Супервопрос: функции организатора ────────────────────────────
+
+async function _qdqLoadMyQuestions(quizId) {
+  const el = document.getElementById(`qdq-my-list-${quizId}`);
+  if (!el) return;
+  const { data, error } = await sb
+    .from('quiz_daily_questions')
+    .select('id,image_url,answer_text,scheduled_date,status,submitted_at')
+    .eq('quiz_id', quizId)
+    .order('submitted_at', { ascending: false })
+    .limit(10);
+  if (error || !data?.length) { el.innerHTML = ''; return; }
+  const statusLabel = { pending:'⏳ На проверке', approved:'✅ Одобрен', rejected:'❌ Отклонён' };
+  const statusColor = { pending:'var(--gold)', approved:'#4ade80', rejected:'#f87171' };
+  el.innerHTML = data.map(q => `
+    <div style="display:flex;align-items:center;gap:10px;background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:10px;margin-bottom:6px">
+      <img src="${_esc(q.image_url)}" style="width:48px;height:48px;border-radius:8px;object-fit:cover;flex-shrink:0">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Ответ: ${_esc(q.answer_text)}</div>
+        <div style="font-size:11px;color:${statusColor[q.status]||'var(--muted)'}">
+          ${statusLabel[q.status]||q.status}${q.scheduled_date ? ' · '+q.scheduled_date : ''}
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+window._qdqPreviewImg = function(quizId, input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  const preview = document.getElementById(`qdq-img-preview-${quizId}`);
+  const label   = document.getElementById(`qdq-img-label-${quizId}`);
+  if (!preview) return;
+  preview.src = URL.createObjectURL(file);
+  preview.style.display = 'block';
+  if (label) label.style.display = 'none';
+};
+
+window._qdqSubmit = async function(quizId) {
+  const fileInput = document.querySelector(`#qdq-img-label-${quizId} input[type=file]`);
+  const answer    = document.getElementById(`qdq-answer-${quizId}`)?.value?.trim();
+  const hints     = document.getElementById(`qdq-hints-${quizId}`)?.value?.trim() || null;
+  const file      = fileInput?.files?.[0];
+
+  if (!file)   { window.toast?.('Выбери картинку'); return; }
+  if (!answer) { window.toast?.('Введи правильный ответ'); return; }
+
+  window.toast?.('Загружаю...');
+  const uid = getState().currentUser?.id;
+  const ext = file.name.split('.').pop();
+  const path = `qdq/${quizId}/${Date.now()}.${ext}`;
+
+  const { error: upErr } = await sb.storage.from('quiz-media').upload(path, file, { upsert: false });
+  if (upErr) { window.toast?.('Ошибка загрузки: ' + upErr.message); return; }
+
+  const imageUrl = `${STORAGE_URL}/${path}`;
+
+  const { error } = await sb.from('quiz_daily_questions').insert({
+    quiz_id:      quizId,
+    image_url:    imageUrl,
+    answer_text:  answer,
+    hint_options: hints,
+  });
+
+  if (error) { window.toast?.('Ошибка: ' + error.message); return; }
+  window.toast?.('✅ Вопрос отправлен на проверку!');
+  _qdqLoadMyQuestions(quizId);
+  // Сброс формы
+  if (fileInput) fileInput.value = '';
+  const preview = document.getElementById(`qdq-img-preview-${quizId}`);
+  const label   = document.getElementById(`qdq-img-label-${quizId}`);
+  if (preview) { preview.style.display = 'none'; }
+  if (label)   { label.style.display   = 'flex'; }
+  const ans = document.getElementById(`qdq-answer-${quizId}`);
+  const hnt = document.getElementById(`qdq-hints-${quizId}`);
+  if (ans) ans.value = '';
+  if (hnt) hnt.value = '';
+};
+
 window._adminQuizApprove = async function(id) {
   const { data, error } = await sb.rpc('admin_approve_quiz', { p_id: id });
   if (error || !data?.ok) { window.toast?.('Ошибка: ' + (error?.message || data?.reason)); return; }
@@ -289,6 +405,91 @@ window._adminQuizReject = async function(id) {
   const { data, error } = await sb.rpc('admin_reject_quiz', { p_id: id, p_reason: reason || null });
   if (error || !data?.ok) { window.toast?.('Ошибка: ' + (error?.message || data?.reason)); return; }
   window.toast?.('Квиз отклонён');
+  loadAdminQuizzes();
+};
+
+// ── Супервопросы: админ ───────────────────────────────────────────
+
+async function _adminLoadSuperQuestions(list) {
+  list.innerHTML = '<div style="color:var(--muted);text-align:center;padding:20px">Загрузка...</div>';
+
+  const { data, error } = await sb
+    .from('quiz_daily_questions')
+    .select('id,image_url,answer_text,hint_options,scheduled_date,status,submitted_at,quiz_id,quizzes(name,slug)')
+    .order('submitted_at', { ascending: false })
+    .limit(50);
+
+  if (error) { list.innerHTML = `<div style="color:var(--red)">${error.message}</div>`; return; }
+  if (!data?.length) { list.innerHTML = '<div style="color:var(--muted);text-align:center;padding:20px">Нет вопросов</div>'; return; }
+
+  const statusColor = { pending:'var(--gold)', approved:'#4ade80', rejected:'#f87171' };
+  const statusLabel = { pending:'⏳ Ожидает', approved:'✅ Одобрен', rejected:'❌ Отклонён' };
+
+  list.innerHTML = data.map(q => `
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:10px">
+      <div style="display:flex;gap:10px;margin-bottom:10px">
+        <img src="${_esc(q.image_url)}" style="width:72px;height:72px;border-radius:10px;object-fit:cover;flex-shrink:0">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:800;margin-bottom:2px">${_esc(q.quizzes?.name||'Квиз')}</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Ответ: <strong style="color:var(--text)">${_esc(q.answer_text)}</strong></div>
+          ${q.hint_options ? `<div style="font-size:10px;color:var(--muted)">Подсказки: ${_esc(q.hint_options)}</div>` : ''}
+          <div style="font-size:11px;color:${statusColor[q.status]||'var(--muted)'};margin-top:4px;font-weight:700">
+            ${statusLabel[q.status]||q.status}${q.scheduled_date ? ' · '+q.scheduled_date : ''}
+          </div>
+        </div>
+      </div>
+      ${q.status === 'pending' ? `
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <button onclick="window._adminSuperQApprove('${q.id}')"
+            style="flex:1;padding:8px;border-radius:10px;border:1px solid rgba(74,222,128,.4);background:rgba(74,222,128,.1);color:#4ade80;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">
+            ✅ Одобрить
+          </button>
+          <button onclick="window._adminSuperQReject('${q.id}')"
+            style="flex:1;padding:8px;border-radius:10px;border:1px solid rgba(248,113,113,.4);background:rgba(248,113,113,.1);color:#f87171;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">
+            ❌ Отклонить
+          </button>
+        </div>` : ''}
+      ${q.status === 'approved' ? `
+        <div style="display:flex;gap:8px">
+          <input id="qdq-date-${q.id}" type="date" value="${q.scheduled_date||''}"
+            style="flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:13px;color:var(--text);font-family:inherit">
+          <button onclick="window._adminSuperQSetDate('${q.id}')"
+            style="padding:8px 14px;border-radius:10px;border:1px solid rgba(108,99,255,.4);background:rgba(108,99,255,.15);color:var(--accent2);font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">
+            📅 Дата
+          </button>
+        </div>` : ''}
+    </div>`).join('');
+}
+
+window._adminSuperQApprove = async function(id) {
+  const { error } = await sb.from('quiz_daily_questions')
+    .update({ status: 'approved', approved_at: new Date().toISOString() })
+    .eq('id', id);
+  if (error) { window.toast?.('Ошибка: ' + error.message); return; }
+  window.toast?.('✅ Вопрос одобрен — теперь выбери дату');
+  loadAdminQuizzes();
+};
+
+window._adminSuperQReject = async function(id) {
+  const { error } = await sb.from('quiz_daily_questions')
+    .update({ status: 'rejected' })
+    .eq('id', id);
+  if (error) { window.toast?.('Ошибка: ' + error.message); return; }
+  window.toast?.('Вопрос отклонён');
+  loadAdminQuizzes();
+};
+
+window._adminSuperQSetDate = async function(id) {
+  const date = document.getElementById(`qdq-date-${id}`)?.value;
+  if (!date) { window.toast?.('Выбери дату'); return; }
+  const { error } = await sb.from('quiz_daily_questions')
+    .update({ scheduled_date: date })
+    .eq('id', id);
+  if (error) {
+    window.toast?.(error.message.includes('unique') ? 'На этот день уже запланирован вопрос' : 'Ошибка: ' + error.message);
+    return;
+  }
+  window.toast?.(`✅ Запланировано на ${date}`);
   loadAdminQuizzes();
 };
 
