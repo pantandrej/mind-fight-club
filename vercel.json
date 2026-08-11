@@ -1,6 +1,7 @@
 {
   "outputDirectory": ".",
   "rewrites": [
+    { "source": "/sb/:path*", "destination": "https://nhmidxkohjpcnhjucuuh.supabase.co/:path*" },
     { "source": "/quiz/:slug", "destination": "/quiz.html" }
   ]
 }

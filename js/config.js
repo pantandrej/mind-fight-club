@@ -1,7 +1,11 @@
 // ── App configuration ─────────────────────────────────────────────
 // All environment constants. No logic here.
 
-export const SUPA_URL = 'https://nhmidxkohjpcnhjucuuh.supabase.co';
+// В production запросы идут через Vercel-прокси (обходит блокировку Supabase в РФ).
+// На localhost — напрямую к Supabase (VPN у разработчика).
+export const SUPA_URL = (typeof window !== 'undefined' && window.location.hostname !== 'localhost')
+  ? `${window.location.origin}/sb`
+  : 'https://nhmidxkohjpcnhjucuuh.supabase.co';
 export const SUPA_KEY = 'sb_publishable_lFVRCP-PPnGnNzn9G60A3A_gTy40vMs';
 
 export const DEV_MODE = false;
