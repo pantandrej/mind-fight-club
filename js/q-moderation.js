@@ -189,31 +189,35 @@ window._qmodFilter = async function(f) {
   if (inner) await loadQModeration();
 };
 
-window._qmodApprove = async function(id) {
-  const { data, error } = await sb.rpc('admin_approve_question', { p_id: id });
-  if (error || !data?.ok) { window.toast?.('Ошибка: ' + (error?.message || data?.reason)); return; }
+function _afterCardRemove(id) {
   const card = document.getElementById(`qcard-${id}`);
   if (card) card.remove();
   _total = Math.max(0, _total - 1);
   _updateCounter();
+  // Если список опустел — перезагрузить следующую порцию
+  const list = document.getElementById('qmod-list');
+  if (list && list.children.length === 0 && _total > 0) {
+    const inner = document.getElementById('qmod-inner');
+    if (inner) _loadPage(inner, true);
+  }
+}
+
+window._qmodApprove = async function(id) {
+  const { data, error } = await sb.rpc('admin_approve_question', { p_id: id });
+  if (error || !data?.ok) { window.toast?.('Ошибка: ' + (error?.message || data?.reason)); return; }
+  _afterCardRemove(id);
 };
 
 window._qmodUnapprove = async function(id) {
   const { data, error } = await sb.rpc('admin_unapprove_question', { p_id: id });
   if (error || !data?.ok) { window.toast?.('Ошибка: ' + (error?.message || data?.reason)); return; }
-  const card = document.getElementById(`qcard-${id}`);
-  if (card) card.remove();
-  _total = Math.max(0, _total - 1);
-  _updateCounter();
+  _afterCardRemove(id);
 };
 
 window._qmodDelete = async function(id) {
   const { data, error } = await sb.rpc('admin_delete_question', { p_id: id });
   if (error || !data?.ok) { window.toast?.('Ошибка: ' + (error?.message || data?.reason)); return; }
-  const card = document.getElementById(`qcard-${id}`);
-  if (card) card.remove();
-  _total = Math.max(0, _total - 1);
-  _updateCounter();
+  _afterCardRemove(id);
 };
 
 window._qmodEdit = function(id) {
