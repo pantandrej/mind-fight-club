@@ -87,7 +87,7 @@ async function renderChallengeLeaderboard(type, listEl) {
     const medal = medals[i] || `<span style="color:var(--muted);font-size:13px">#${rank}</span>`;
     const tb = tiebreakers[tid] || 0;
     return `
-      <div style="display:flex;align-items:center;gap:12px;padding:12px;background:${rank <= 3 ? 'rgba(108,99,255,.08)' : 'var(--bg2)'};border:1px solid ${rank <= 3 ? 'rgba(108,99,255,.25)' : 'var(--border)'};border-radius:14px;margin-bottom:8px">
+      <div onclick="window.loadTeamProfile && window.loadTeamProfile('${tid}')" style="cursor:pointer;display:flex;align-items:center;gap:12px;padding:12px;background:${rank <= 3 ? 'rgba(108,99,255,.08)' : 'var(--bg2)'};border:1px solid ${rank <= 3 ? 'rgba(108,99,255,.25)' : 'var(--border)'};border-radius:14px;margin-bottom:8px;-webkit-tap-highlight-color:transparent">
         <div style="width:32px;text-align:center;font-size:18px;flex-shrink:0">${medal}</div>
         <div style="flex:1;min-width:0">
           <div style="font-size:14px;font-weight:${rank <= 3 ? '900' : '700'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${team.name}</div>
@@ -97,6 +97,7 @@ async function renderChallengeLeaderboard(type, listEl) {
           <div style="font-size:16px;font-weight:900;color:${rank <= 3 ? 'var(--gold)' : 'var(--text)'}">${pts}</div>
           <div style="font-size:10px;color:var(--muted)">очков</div>
           ${tb > 0 ? `<div style="font-size:10px;color:var(--accent2)">⚡${tb}</div>` : ''}
+          <div style="font-size:10px;color:var(--accent2);margin-top:2px">→</div>
         </div>
       </div>`;
   }).join('');

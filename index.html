@@ -3631,6 +3631,9 @@ console.log('✅ Firebase Tournaments module loaded');
 <!-- ── My Team Screen ── -->
 <div class="screen" id="my-team-screen" style="justify-content:flex-start;padding:0"></div>
 
+<!-- ── Team Profile Screen (public) ── -->
+<div class="screen" id="team-profile-screen" style="justify-content:flex-start;padding:0"></div>
+
 <!-- ── Scout Form Screen ── -->
 <div class="screen" id="scout-form-screen" style="justify-content:flex-start;padding:0"></div>
 
@@ -3730,11 +3733,13 @@ window._pickTeamEmoji = async function(emoji) {
 <script type="module">
   import { loadMyQuizzes, loadQuizCreate, loadAdminQuizzes } from '/js/quiz-manage.js';
   import { loadQuizDailyQuestion } from '/js/quiz-daily-question.js';
+  import { loadTeamProfile } from '/js/team-profile.js';
   import '/js/q-moderation.js';
   window.loadMyQuizzes          = loadMyQuizzes;
   window.loadQuizCreate         = loadQuizCreate;
   window.loadAdminQuizzes       = loadAdminQuizzes;
   window.loadQuizDailyQuestion  = loadQuizDailyQuestion;
+  window.loadTeamProfile        = loadTeamProfile;
 </script>
 </body>
 </html>

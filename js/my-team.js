@@ -26,7 +26,7 @@ export async function loadMyTeam() {
 
   const weekStart = _getWeekStart();
   const [teamRes, membersRes, tiebreakRes, barRankRes, onlineRankRes, brainRes] = await Promise.all([
-    sb.from('teams').select('id,name,city').eq('id', me.team_id).single(),
+    sb.from('teams').select('id,name,city,motto,banner_url,avatar_url,emoji').eq('id', me.team_id).single(),
     sb.from('profiles').select('id,display_name,neurons,avatar_url,is_scout').eq('team_id', me.team_id).order('neurons', { ascending: false }),
     sb.rpc('get_team_tiebreaker', { p_team_id: me.team_id }),
     _getTeamRank(me.team_id, 'bar_quiz'),
@@ -56,7 +56,7 @@ export async function loadMyTeam() {
   const isAdmin = typeof window.isAdmin === 'function' ? window.isAdmin() : false;
   const brainPoints = brainRes.data?.points ?? 0;
 
-  _renderMyTeam(el, { team, members, tiebreak, barRankRes, onlineRankRes, activeSet, currentUser, isAdmin, brainPoints });
+  _renderMyTeam(el, { team, members, tiebreak, barRankRes, onlineRankRes, activeSet, currentUser, isAdmin, brainPoints, myTeamId: me.team_id });
 }
 
 function _renderNoTeam(el) {
@@ -122,10 +122,11 @@ function _getWeekStart() {
   return mon.toISOString().slice(0, 10);
 }
 
-function _renderMyTeam(el, { team, members, tiebreak, barRankRes, onlineRankRes, activeSet, currentUser, isAdmin, brainPoints }) {
+function _renderMyTeam(el, { team, members, tiebreak, barRankRes, onlineRankRes, activeSet, currentUser, isAdmin, brainPoints, myTeamId }) {
   const bar    = barRankRes;
   const online = onlineRankRes;
   const massBonus = activeSet.size * 5;
+  const emoji  = team.emoji || '🏟️';
 
   const crownFor = (i) => {
     if (i === 0) return '<span style="font-size:16px">👑</span>';
@@ -154,20 +155,84 @@ function _renderMyTeam(el, { team, members, tiebreak, barRankRes, onlineRankRes,
     <div class="hdr" style="position:sticky;top:0;z-index:10;backdrop-filter:blur(12px);background:rgba(10,10,20,.85)">
       <button onclick="showScreen('home')" style="background:none;border:none;color:var(--text);font-size:22px;cursor:pointer;padding:0 4px">‹</button>
       <div style="font-size:15px;font-weight:900">🏟️ Моя Команда</div>
-      <div style="width:30px"></div>
+      <button onclick="window._mtToggleEdit()" style="background:none;border:none;color:var(--accent2);font-size:12px;font-weight:700;cursor:pointer;padding:0">✏️ Ред.</button>
     </div>
 
     <div style="padding:16px;display:flex;flex-direction:column;gap:16px">
 
-      <div style="background:linear-gradient(135deg,rgba(108,99,255,.2),rgba(168,85,247,.15));border:1px solid rgba(108,99,255,.3);border-radius:20px;padding:20px;text-align:center">
-        <div style="font-size:40px;margin-bottom:8px">🏟️</div>
-        <div style="font-size:22px;font-weight:900;margin-bottom:4px">${team.name}</div>
-        ${team.city ? `<div style="font-size:13px;color:var(--muted)">📍 ${team.city}</div>` : ''}
-        <div style="font-size:11px;color:var(--muted);margin-top:8px;word-break:break-all;opacity:.5">ID: ${team.id}</div>
-        <div style="margin-top:12px;display:inline-flex;align-items:center;gap:6px;background:rgba(108,99,255,.15);border-radius:20px;padding:8px 16px">
-          <span style="font-size:16px">⚡</span>
-          <span style="font-size:18px;font-weight:900">${tiebreak}</span>
-          <span style="font-size:12px;color:var(--muted)">командных нейронов</span>
+      <!-- Баннер + аватар -->
+      <div style="border-radius:20px;overflow:hidden;border:1px solid rgba(108,99,255,.3);position:relative">
+        <div style="height:140px;overflow:hidden;background:linear-gradient(135deg,rgba(108,99,255,.3),rgba(168,85,247,.2))">
+          ${team.banner_url
+            ? `<img src="${team.banner_url}" style="width:100%;height:100%;object-fit:cover">`
+            : ''}
+        </div>
+        <!-- Аватар -->
+        <div style="position:absolute;top:100px;left:50%;transform:translateX(-50%)">
+          <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));border:3px solid var(--bg);display:flex;align-items:center;justify-content:center;font-size:28px;overflow:hidden">
+            ${team.avatar_url
+              ? `<img src="${team.avatar_url}" style="width:100%;height:100%;object-fit:cover">`
+              : emoji}
+          </div>
+        </div>
+        <!-- Текст под аватаром -->
+        <div style="background:var(--bg2);padding:44px 16px 16px;text-align:center">
+          <div style="font-size:20px;font-weight:900;margin-bottom:4px">${team.name}</div>
+          ${team.city ? `<div style="font-size:12px;color:var(--muted)">📍 ${team.city}</div>` : ''}
+          ${team.motto ? `<div style="font-size:12px;color:var(--accent2);font-style:italic;margin-top:4px">"${team.motto}"</div>` : ''}
+          <div style="margin-top:10px;display:inline-flex;align-items:center;gap:6px;background:rgba(108,99,255,.15);border-radius:20px;padding:6px 14px">
+            <span style="font-size:14px">⚡</span>
+            <span style="font-size:16px;font-weight:900">${tiebreak}</span>
+            <span style="font-size:11px;color:var(--muted)">командных нейронов</span>
+          </div>
+          <!-- Инвайт -->
+          <div style="margin-top:10px">
+            <button onclick="window._mtCopyInvite('${team.id}')"
+              style="background:rgba(108,99,255,.15);border:1px solid rgba(108,99,255,.3);border-radius:20px;padding:7px 16px;font-size:12px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit">
+              🔗 Пригласить в команду
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Редактор профиля команды (скрыт по умолчанию) -->
+      <div id="mt-edit-section" style="display:none;background:var(--bg2);border:1px solid rgba(108,99,255,.3);border-radius:18px;padding:18px">
+        <div style="font-size:13px;font-weight:800;margin-bottom:14px">✏️ Редактировать команду</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div>
+            <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Название</div>
+            <input id="mt-edit-name" value="${_escAttr(team.name)}" maxlength="50"
+              style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--text);font-family:inherit;outline:none;box-sizing:border-box">
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Город</div>
+            <input id="mt-edit-city" value="${_escAttr(team.city || '')}" maxlength="60"
+              style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--text);font-family:inherit;outline:none;box-sizing:border-box">
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Девиз (мотто)</div>
+            <input id="mt-edit-motto" value="${_escAttr(team.motto || '')}" maxlength="100" placeholder="Ваш девиз..."
+              style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--text);font-family:inherit;outline:none;box-sizing:border-box">
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Эмодзи аватар</div>
+            <input id="mt-edit-emoji" value="${_escAttr(team.emoji || '🏟️')}" maxlength="4"
+              style="width:80px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:18px;text-align:center;color:var(--text);font-family:inherit;outline:none">
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Баннер (URL картинки)</div>
+            <input id="mt-edit-banner" value="${_escAttr(team.banner_url || '')}" placeholder="https://..." type="url"
+              style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--text);font-family:inherit;outline:none;box-sizing:border-box">
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Аватар команды (URL)</div>
+            <input id="mt-edit-avatar" value="${_escAttr(team.avatar_url || '')}" placeholder="https://..." type="url"
+              style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--text);font-family:inherit;outline:none;box-sizing:border-box">
+          </div>
+          <button onclick="window._mtSaveProfile('${myTeamId}')"
+            style="background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit">
+            Сохранить
+          </button>
         </div>
       </div>
 
@@ -380,5 +445,85 @@ window._mtLeaveTeam = async function() {
     loadMyTeam();
   }
 };
+
+// ── Инвайт-ссылка ────────────────────────────────────────────────
+window._mtCopyInvite = function(teamId) {
+  const url = `${window.location.origin}/?join=${teamId}`;
+  navigator.clipboard.writeText(url).then(() => {
+    window.toast?.('✅ Ссылка скопирована!');
+  }).catch(() => {
+    window.toast?.('Ссылка: ' + url);
+  });
+};
+
+// ── Редактирование профиля команды ────────────────────────────────
+window._mtToggleEdit = function() {
+  const s = document.getElementById('mt-edit-section');
+  if (s) s.style.display = s.style.display === 'none' ? 'block' : 'none';
+};
+
+window._mtSaveProfile = async function(teamId) {
+  const { currentUser } = getState();
+  if (!currentUser) return;
+
+  const name      = document.getElementById('mt-edit-name')?.value?.trim();
+  const city      = document.getElementById('mt-edit-city')?.value?.trim() || null;
+  const motto     = document.getElementById('mt-edit-motto')?.value?.trim() || null;
+  const emoji     = document.getElementById('mt-edit-emoji')?.value?.trim() || null;
+  const bannerUrl = document.getElementById('mt-edit-banner')?.value?.trim() || null;
+  const avatarUrl = document.getElementById('mt-edit-avatar')?.value?.trim() || null;
+
+  if (!name) { window.toast?.('Введи название команды'); return; }
+
+  const { data, error } = await sb.rpc('update_team_profile', {
+    p_team_id:    teamId,
+    p_name:       name,
+    p_city:       city,
+    p_motto:      motto,
+    p_emoji:      emoji,
+    p_banner_url: bannerUrl,
+    p_avatar_url: avatarUrl,
+  });
+
+  if (error || !data?.ok) {
+    window.toast?.('Ошибка сохранения');
+    console.error(error, data);
+  } else {
+    window.toast?.('✅ Профиль команды обновлён');
+    loadMyTeam();
+  }
+};
+
+// ── Вступить через инвайт-ссылку ─────────────────────────────────
+window._mtJoinViaLink = async function(teamId) {
+  const { currentUser } = getState();
+  if (!currentUser) return; // auth не завершена, подождём
+
+  // Проверяем что пользователь ещё не в этой команде
+  const { data: me } = await sb.from('profiles')
+    .select('team_id').eq('id', currentUser.id).single();
+  if (me?.team_id === teamId) return; // уже в этой команде
+
+  // Загружаем название команды
+  const { data: team } = await sb.from('teams').select('name').eq('id', teamId).single();
+  if (!team) return;
+
+  if (!confirm(`Вступить в команду «${team.name}»?`)) return;
+
+  const { error } = await sb.from('profiles').update({ team_id: teamId }).eq('id', currentUser.id);
+  if (error) {
+    window.toast?.('Ошибка при вступлении');
+  } else {
+    window.toast?.(`✅ Ты в команде «${team.name}»!`);
+    // Убираем ?join из URL
+    history.replaceState({}, '', window.location.pathname);
+    window.showScreen('my-team-screen');
+    loadMyTeam();
+  }
+};
+
+function _escAttr(s) {
+  return String(s || '').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
 
 window.loadMyTeam = loadMyTeam;

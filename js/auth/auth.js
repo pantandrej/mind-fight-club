@@ -300,6 +300,10 @@ function _redirectAfterAuth() {
     const clubId = p.get('join_club');
     setTimeout(() => window.joinClubFromLink?.(clubId), 500);
   }
+  if (p.get('join')) {
+    const teamId = p.get('join');
+    setTimeout(() => window._mtJoinViaLink?.(teamId), 600);
+  }
 }
 
 // ── Called once per session after sign-in ─────────────────────────

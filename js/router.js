@@ -35,7 +35,8 @@ export function showScreen(name) {
       if (name === 'teams'   && typeof window.renderTeamsScreen   === 'function') window.renderTeamsScreen();
       if (name === 'profile' && typeof window.showProfile         === 'function') window.showProfile();
       if (name === 'admin'   && typeof window.loadAdminGames      === 'function') window.loadAdminGames();
-      if (name === 'home'    && typeof window.loadQuizDailyQuestion === 'function') window.loadQuizDailyQuestion();
+      if (name === 'home'        && typeof window.loadQuizDailyQuestion === 'function') window.loadQuizDailyQuestion();
+      if (name === 'team-profile' && typeof window._teamProfileRefresh  === 'function') window._teamProfileRefresh();
     } catch (e) { console.error('Screen render error:', e); }
   }, 50);
 }
