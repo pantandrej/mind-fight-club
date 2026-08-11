@@ -15,7 +15,7 @@ export async function loadQModeration() {
 
   let countQuery = sb.from('questions').select('id', { count: 'exact', head: true });
   if (_filter === 'active') countQuery = countQuery.eq('status', 'active');
-  else countQuery = countQuery.or('status.is.null,status.eq.published').neq('status', 'deleted');
+  else countQuery = countQuery.or('status.is.null,status.eq.published');
   const { count } = await countQuery;
 
   _total = count || 0;
@@ -54,7 +54,7 @@ async function _loadPage(inner, reset = false) {
   if (_filter === 'active') {
     query = query.eq('status', 'active');
   } else {
-    query = query.or('status.is.null,status.eq.published').neq('status', 'deleted');
+    query = query.or('status.is.null,status.eq.published');
   }
 
   const { data, error } = await query;
