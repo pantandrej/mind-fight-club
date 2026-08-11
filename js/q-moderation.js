@@ -102,17 +102,23 @@ async function _loadPage(inner, reset = false) {
       loadingAll.textContent = 'Загрузка всех вопросов...';
       inner.appendChild(loadingAll);
 
+      // Используем .range(0, total-1) — тот же путь что и начальная загрузка (.range работает, .limit нет)
+      const total = _total || 2000;
       let allQuery = sb.from('questions')
         .select('id, question_text, question_ru, answers_json, correct_index, status, category, source_type, approved_at')
         .order(_filter === 'active' ? 'approved_at' : 'id', { ascending: false, nullsFirst: false })
-        .limit(2000);
+        .range(0, total - 1);
       if (_filter === 'active') allQuery = allQuery.eq('status', 'active');
       else allQuery = allQuery.or('status.is.null,status.eq.published');
 
       const { data: allRows, error: allErr } = await allQuery;
 
       loadingAll.remove();
-      if (allErr) { window.toast?.('Ошибка: ' + allErr.message); return; }
+      if (allErr) {
+        const currentList2 = document.getElementById('qmod-list');
+        if (currentList2) currentList2.insertAdjacentHTML('beforebegin', `<div style="color:red;padding:12px;font-size:13px">Ошибка загрузки: ${allErr.message}</div>`);
+        return;
+      }
       const currentList = document.getElementById('qmod-list');
       if (currentList) currentList.innerHTML = '';
       (allRows || []).forEach(q => currentList?.appendChild(_buildCard(q)));
