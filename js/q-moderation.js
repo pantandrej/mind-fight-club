@@ -107,7 +107,7 @@ async function _loadPage(inner, reset = false) {
           .order(_filter === 'active' ? 'approved_at' : 'id', { ascending: false, nullsFirst: false })
           .range(fetchOffset, fetchOffset + PAGE - 1);
         if (_filter === 'active') q2 = q2.eq('status', 'active');
-        else q2 = q2.neq('status', 'active').neq('status', 'deleted');
+        else q2 = q2.or('status.is.null,status.eq.published');
         const { data: d2 } = await q2;
         (d2 || []).forEach(q => list.appendChild(_buildCard(q)));
         fetchOffset += PAGE;
