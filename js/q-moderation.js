@@ -102,35 +102,22 @@ async function _loadPage(inner, reset = false) {
       loadingAll.textContent = 'Загрузка всех вопросов...';
       inner.appendChild(loadingAll);
 
-      const SEL = 'id,question_text,question_ru,answers_json,correct_index,status,category,source_type,approved_at';
-      const hdrs = { cache: 'no-store', headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` } };
-      const ts = Date.now();
-      let allRows = [], e2 = null;
-      try {
-        if (_filter === 'active') {
-          const resp = await fetch(`${SUPA_URL}/rest/v1/questions?select=${SEL}&status=eq.active&order=approved_at.desc.nullslast&limit=2000&_=${ts}`, hdrs);
-          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-          allRows = await resp.json();
-        } else {
-          // Два запроса: NULL и published — обходим OR через прокси
-          const [rNull, rPub] = await Promise.all([
-            fetch(`${SUPA_URL}/rest/v1/questions?select=${SEL}&status=is.null&order=id.desc&limit=2000&_=${ts}a`, hdrs),
-            fetch(`${SUPA_URL}/rest/v1/questions?select=${SEL}&status=eq.published&order=id.desc&limit=2000&_=${ts}b`, hdrs),
-          ]);
-          const dNull = rNull.ok ? await rNull.json() : [];
-          const dPub  = rPub.ok  ? await rPub.json()  : [];
-          allRows = [...(Array.isArray(dNull)?dNull:[]), ...(Array.isArray(dPub)?dPub:[])];
-          allRows.sort((a, b) => (b.id > a.id ? 1 : -1));
-        }
-      } catch (err) { e2 = err.message; }
+      let allQuery = sb.from('questions')
+        .select('id, question_text, question_ru, answers_json, correct_index, status, category, source_type, approved_at')
+        .order(_filter === 'active' ? 'approved_at' : 'id', { ascending: false, nullsFirst: false })
+        .limit(2000);
+      if (_filter === 'active') allQuery = allQuery.eq('status', 'active');
+      else allQuery = allQuery.or('status.is.null,status.eq.published');
+
+      const { data: allRows, error: allErr } = await allQuery;
 
       loadingAll.remove();
-      if (e2) { window.toast?.('Ошибка: ' + e2); return; }
+      if (allErr) { window.toast?.('Ошибка: ' + allErr.message); return; }
       const currentList = document.getElementById('qmod-list');
       if (currentList) currentList.innerHTML = '';
-      allRows.forEach(q => currentList?.appendChild(_buildCard(q)));
+      (allRows || []).forEach(q => currentList?.appendChild(_buildCard(q)));
       _offset = _total;
-      window.toast?.(`Загружено ${allRows.length} вопросов`);
+      window.toast?.(`Загружено ${(allRows||[]).length} вопросов`);
     };
 
     wrap.appendChild(moreBtn);
