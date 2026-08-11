@@ -495,7 +495,7 @@ window.openTournamentsListScreen = async function() {
 
   const { data: rows } = await sb.from('tournaments')
     .select('*')
-    .or('is_private.is.null,is_private.eq.false')
+    .not('is_private', 'is', true)
     .order('starts_at', { ascending: false })
     .limit(20);
 

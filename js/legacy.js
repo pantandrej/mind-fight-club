@@ -1611,7 +1611,7 @@ async function loadDuelHistory() {
 
   const { data: sessions } = await sb
     .from('game_sessions')
-    .select('id, mode, score, correct_answers, questions_count, won, started_at, opponent_name')
+    .select('id, mode, score, correct_answers, questions_count, won, started_at')
     .eq('user_id', currentUser.id)
     .in('mode', ['friend_battle', 'random_battle', 'virtual_battle'])
     .order('started_at', { ascending: false })
@@ -1627,7 +1627,7 @@ async function loadDuelHistory() {
     const won   = s.won;
     const date  = new Date(s.started_at).toLocaleDateString('ru', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
     const mode  = s.mode === 'friend_battle' ? 'Друг' : s.mode === 'random_battle' ? 'Случайный' : 'Бот';
-    const opp   = s.opponent_name || mode;
+    const opp   = mode;
     const result = won === true ? '🏆 Победа' : won === false ? '💀 Поражение' : '🤝 Ничья';
     const color  = won === true ? 'var(--green, #4ade80)' : won === false ? 'var(--red, #f87171)' : 'var(--muted)';
     const acc    = s.questions_count > 0 ? Math.round((s.correct_answers || 0) / s.questions_count * 100) : 0;
@@ -3780,7 +3780,7 @@ async function checkLiveOfficialTournament(){
   if(!item) return;
   try{
     const {data} = await sb.from('official_tournaments').select('code,title')
-      .eq('status','live').or('is_private.is.null,is_private.eq.false').limit(1).maybeSingle();
+      .eq('status','live').eq('is_private', false).limit(1).maybeSingle();
     if(data){
       item.style.display = 'flex';
       document.getElementById('pm-official').textContent = data.title||'Официальный турнир';
