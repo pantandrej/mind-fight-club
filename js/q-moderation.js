@@ -1,5 +1,6 @@
 // ── Question Moderation ───────────────────────────────────────────
 import { sb } from './services/supabase.js';
+import { SUPA_URL, SUPA_KEY } from './config.js';
 
 const PAGE = 20;
 let _offset = 0;
@@ -100,12 +101,21 @@ async function _loadPage(inner, reset = false) {
       loadingAll.style.cssText = 'text-align:center;padding:12px;color:var(--muted);font-size:13px';
       loadingAll.textContent = 'Загрузка всех вопросов...';
       inner.appendChild(loadingAll);
-      let q2 = sb.from('questions')
-        .select('id, question_text, question_ru, answers_json, correct_index, status, category, source_type, approved_at')
-        .order(_filter === 'active' ? 'approved_at' : 'id', { ascending: false, nullsFirst: false });
-      if (_filter === 'active') q2 = q2.eq('status', 'active');
-      else q2 = q2.or('status.is.null,status.eq.published');
-      const { data: d2, error: e2 } = await q2;
+
+      const filterClause = _filter === 'active'
+        ? 'status=eq.active'
+        : 'or=(status.is.null,status.eq.published)';
+      const orderCol = _filter === 'active' ? 'approved_at' : 'id';
+      const url = `${SUPA_URL}/rest/v1/questions?select=id,question_text,question_ru,answers_json,correct_index,status,category,source_type,approved_at&${filterClause}&order=${orderCol}.desc.nullslast&limit=2000&_=${Date.now()}`;
+      let d2 = null, e2 = null;
+      try {
+        const resp = await fetch(url, {
+          cache: 'no-store',
+          headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` },
+        });
+        if (!resp.ok) { e2 = { message: `HTTP ${resp.status}` }; } else { d2 = await resp.json(); }
+      } catch (err) { e2 = { message: err.message }; }
+
       loadingAll.remove();
       if (e2) { inner.appendChild(Object.assign(document.createElement('div'), { textContent: 'Ошибка: ' + e2.message, style: 'color:red;padding:12px' })); return; }
       const currentList = document.getElementById('qmod-list');
