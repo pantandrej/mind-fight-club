@@ -231,6 +231,7 @@ function blockQuickPlayIfLocked(){
 
 // Flag to prevent showScore from running twice for the same round
 let _scoreShownForGame = false;
+let _speedNeurons = 0; // накопленные нейроны за скорость (timeLeft за каждый верный ответ)
 let _roundAnswers = []; // tracks picked index per question for AI review
 // Session flag: once quick play finishes, any restart attempt → daily-limit
 let _quickPlayCompletedThisSession = false;
@@ -916,6 +917,7 @@ function startExtractedPack(data, packTitle, importKey){
   if(window._syncStateToLegacy) window._syncStateToLegacy();
 
   setState({ qIdx: 0, correctCount: 0, streak: 0, bestStreak: 0, roundScore: 0 });
+  _speedNeurons = 0;
   _gameStartTime=Date.now(); _gameId=null;
   buildDots('prog-dots', curQ.length);
   track('pack_started', {pack:importKey, mode:'extracted', count:curQ.length});
@@ -1161,6 +1163,7 @@ function pick(i){
     correctCount += 1;
     streak += 1;
     _roundScore += pts;
+    _speedNeurons += Math.max(1, Math.min(30, timeLeft));
     if(streak>bestStreak)bestStreak=streak;
     _syncQuizStateToStore();
     updNeurons();
@@ -1377,16 +1380,23 @@ function showScore(){
   // Sync team score async (club aggregation)
   if(window.syncTeamScoreAfterGame) window.syncTeamScoreAfterGame();
 
-  // p_client_amount = кол-во верных ответов; сервер умножает × 2 (max 20)
-  if(correctCount > 0 && _gameId){
-    awardNeurons(correctCount, 'quiz_reward', 'quiz:' + _gameId).then(result => {
-      if(result) updNeurons();
-    });
-  } else if(correctCount > 0) {
-    // Гость: локально +2 за каждый верный, cap 20
-    const localAward = Math.min(correctCount * 2, 20);
-    setState({ neurons: getState().neurons + localAward, xp: getState().xp + localAward, roundScore: localAward });
-    updNeurons();
+  // Нейроны за скорость: sum(timeLeft) за каждый верный ответ (1–30 за вопрос)
+  if(_speedNeurons > 0){
+    const { currentUser } = getState();
+    if(currentUser && _gameId){
+      awardCurrency({
+        operationType: 'speed_answer',
+        operationKey:  'speed:' + _gameId,
+        guestPreviewAmount: _speedNeurons,
+      }).then(res => { if(res?.neurons) setState({ neurons: res.neurons }); updNeurons(); });
+    } else if(!currentUser) {
+      setState({ neurons: getState().neurons + _speedNeurons });
+      updNeurons();
+    }
+    // Баллы Brain Fights: +1 за каждый верный ответ, макс 10/день
+    if(currentUser && correctCount > 0){
+      sb.rpc('record_training_bf', { p_user_id: currentUser.id, p_correct: correctCount }).catch(() => {});
+    }
   }
   window.saveGameStats?.(correctCount,curQ.length,bestStreak);
   completeGameRow(correctCount, curQ.length); // no addSeasonPoints inside

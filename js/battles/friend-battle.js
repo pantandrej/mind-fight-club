@@ -13,7 +13,7 @@ import { track } from '../services/analytics.js';
 // DUEL — clean rewrite
 // ═══════════════════════════════════════════
 let duelCode=null,duelRole=null,duelPoll=null;
-let duelQs=[],duelIdx=0,duelMyScore=0,duelOppScore=0,duelMyCorrect=0;
+let duelQs=[],duelIdx=0,duelMyScore=0,duelOppScore=0,duelMyCorrect=0,_duelSpeedNeurons=0;
 let duelAnswered=false,duelTimer=null,duelTimeLeft=0,duelMaxT=0;
 let _oppPollInterval=null; // continuous opponent-score watcher during real duel
 let duelMyName='You',duelOppNameStr='Соперник';
@@ -68,7 +68,7 @@ async function createDuel(){
 
   duelCode=randCode();duelRole='host';
   duelMyName=currentUser?.user_metadata?.full_name?.split(' ')[0]||'Хост';
-  duelMyScore=0;duelOppScore=0;duelQs=[];duelIdx=0;duelMyCorrect=0;
+  duelMyScore=0;duelOppScore=0;duelQs=[];duelIdx=0;duelMyCorrect=0;_duelSpeedNeurons=0;
 
   const { error: createErr } = await sb.from('duel_rooms').upsert({
     code: duelCode, host_score: 0, guest_score: 0,
@@ -112,7 +112,7 @@ async function joinDuel(){
 
   duelCode=code;duelRole='guest';
   duelMyName=currentUser?.user_metadata?.full_name?.split(' ')[0]||'Guest'+(Math.floor(Math.random()*99)+1);
-  duelMyScore=0;duelOppScore=0;duelQs=[];duelIdx=0;duelMyCorrect=0;
+  duelMyScore=0;duelOppScore=0;duelQs=[];duelIdx=0;duelMyCorrect=0;_duelSpeedNeurons=0;
 
   await sb.from('duel_rooms').update({status:'ready'}).eq('code',code);
   track('duel_joined', {code});
@@ -457,6 +457,7 @@ async function pickDuel(i){
     correctBtn.className='ans correct';
     triggerCorrectAnimation(pts, correctBtn);
     duelMyScore+=pts;duelMyCorrect++;updateDuelScores();
+    _duelSpeedNeurons += Math.max(1, Math.min(30, duelTimeLeft));
     showFb('d-fb','✓ +'+pts,true);setMyDot(duelIdx, pts, true);
   } else {
     document.querySelectorAll('#d-answers .ans')[i].className='ans wrong';
@@ -569,22 +570,31 @@ async function _saveDuelStats(myS, oppS, win) {
   } else {
     localStorage.setItem(_streakKey, '0');
   }
-  // Award duel win via economy — fixed 50 neurons, server-determined.
-  // Per-question score (myS/oppS) is purely the in-battle comparison
-  // metric; it never gets converted to currency.
+  // Нейроны за скорость (за каждый верный ответ независимо от победы/поражения)
+  if (_duelSpeedNeurons > 0) {
+    try {
+      const { currentUser } = getState();
+      if (currentUser) {
+        const res = await window.sb.rpc('award_currency', {
+          p_operation_type: 'speed_answer',
+          p_operation_key:  'dspeed:' + duelCode + ':' + currentUser.id,
+          p_client_amount:  _duelSpeedNeurons,
+        });
+        if (!res.error && res.data?.neurons) {
+          setState({ neurons: res.data.neurons });
+          updNeurons();
+        }
+      }
+    } catch(e) { console.error('[duel] speed neurons exception:', e.message); }
+  }
+  // Brain Fights: +3 балла за победу, макс 3 в день
   if (win) {
     try {
-      const res = await window.sb.rpc('award_currency', {
-        p_operation_type: 'duel_win',
-        p_operation_key:  'duel_win:' + duelCode,
-      });
-      if (res.error) {
-        console.error('[duel] award_currency failed:', res.error.message);
-      } else if (res.data?.ok) {
-        setState({ neurons: res.data.neurons, xp: res.data.xp });
-        updNeurons();
+      const { currentUser } = getState();
+      if (currentUser) {
+        window.sb.rpc('record_duel_win_bf', { p_user_id: currentUser.id }).catch(() => {});
       }
-    } catch(e) { console.error('[duel] award_currency exception:', e.message); }
+    } catch(e) { /* silent */ }
   }
   // Check achievements async
   if (window.checkAchievements) {
