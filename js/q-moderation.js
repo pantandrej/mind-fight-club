@@ -102,27 +102,35 @@ async function _loadPage(inner, reset = false) {
       loadingAll.textContent = 'Загрузка всех вопросов...';
       inner.appendChild(loadingAll);
 
-      const filterClause = _filter === 'active'
-        ? 'status=eq.active'
-        : 'or=' + encodeURIComponent('(status.is.null,status.eq.published)');
-      const orderCol = _filter === 'active' ? 'approved_at' : 'id';
-      const url = `${SUPA_URL}/rest/v1/questions?select=id,question_text,question_ru,answers_json,correct_index,status,category,source_type,approved_at&${filterClause}&order=${orderCol}.desc.nullsfirst&limit=2000&_=${Date.now()}`;
-      let d2 = null, e2 = null;
+      const SEL = 'id,question_text,question_ru,answers_json,correct_index,status,category,source_type,approved_at';
+      const hdrs = { cache: 'no-store', headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` } };
+      const ts = Date.now();
+      let allRows = [], e2 = null;
       try {
-        const resp = await fetch(url, {
-          cache: 'no-store',
-          headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` },
-        });
-        if (!resp.ok) { e2 = { message: `HTTP ${resp.status}` }; } else { d2 = await resp.json(); }
-      } catch (err) { e2 = { message: err.message }; }
+        if (_filter === 'active') {
+          const resp = await fetch(`${SUPA_URL}/rest/v1/questions?select=${SEL}&status=eq.active&order=approved_at.desc.nullslast&limit=2000&_=${ts}`, hdrs);
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+          allRows = await resp.json();
+        } else {
+          // Два запроса: NULL и published — обходим OR через прокси
+          const [rNull, rPub] = await Promise.all([
+            fetch(`${SUPA_URL}/rest/v1/questions?select=${SEL}&status=is.null&order=id.desc&limit=2000&_=${ts}a`, hdrs),
+            fetch(`${SUPA_URL}/rest/v1/questions?select=${SEL}&status=eq.published&order=id.desc&limit=2000&_=${ts}b`, hdrs),
+          ]);
+          const dNull = rNull.ok ? await rNull.json() : [];
+          const dPub  = rPub.ok  ? await rPub.json()  : [];
+          allRows = [...(Array.isArray(dNull)?dNull:[]), ...(Array.isArray(dPub)?dPub:[])];
+          allRows.sort((a, b) => (b.id > a.id ? 1 : -1));
+        }
+      } catch (err) { e2 = err.message; }
 
       loadingAll.remove();
-      if (e2) { inner.appendChild(Object.assign(document.createElement('div'), { textContent: 'Ошибка: ' + e2.message, style: 'color:red;padding:12px' })); return; }
+      if (e2) { window.toast?.('Ошибка: ' + e2); return; }
       const currentList = document.getElementById('qmod-list');
       if (currentList) currentList.innerHTML = '';
-      (d2 || []).forEach(q => currentList?.appendChild(_buildCard(q)));
+      allRows.forEach(q => currentList?.appendChild(_buildCard(q)));
       _offset = _total;
-      window.toast?.(`Загружено ${(d2||[]).length} вопросов`);
+      window.toast?.(`Загружено ${allRows.length} вопросов`);
     };
 
     wrap.appendChild(moreBtn);
