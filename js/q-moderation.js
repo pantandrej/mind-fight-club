@@ -104,9 +104,9 @@ async function _loadPage(inner, reset = false) {
 
       const filterClause = _filter === 'active'
         ? 'status=eq.active'
-        : 'or=(status.is.null,status.eq.published)';
+        : 'or=' + encodeURIComponent('(status.is.null,status.eq.published)');
       const orderCol = _filter === 'active' ? 'approved_at' : 'id';
-      const url = `${SUPA_URL}/rest/v1/questions?select=id,question_text,question_ru,answers_json,correct_index,status,category,source_type,approved_at&${filterClause}&order=${orderCol}.desc.nullslast&limit=2000&_=${Date.now()}`;
+      const url = `${SUPA_URL}/rest/v1/questions?select=id,question_text,question_ru,answers_json,correct_index,status,category,source_type,approved_at&${filterClause}&order=${orderCol}.desc.nullsfirst&limit=2000&_=${Date.now()}`;
       let d2 = null, e2 = null;
       try {
         const resp = await fetch(url, {
