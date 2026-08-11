@@ -100,18 +100,19 @@ async function _loadPage(inner, reset = false) {
       loadingAll.style.cssText = 'text-align:center;padding:12px;color:var(--muted);font-size:13px';
       loadingAll.textContent = 'Загрузка всех вопросов...';
       inner.appendChild(loadingAll);
-      list.innerHTML = '';
       let q2 = sb.from('questions')
         .select('id, question_text, question_ru, answers_json, correct_index, status, category, source_type, approved_at')
-        .order(_filter === 'active' ? 'approved_at' : 'id', { ascending: false, nullsFirst: false })
-        .limit(2000);
+        .order(_filter === 'active' ? 'approved_at' : 'id', { ascending: false, nullsFirst: false });
       if (_filter === 'active') q2 = q2.eq('status', 'active');
       else q2 = q2.or('status.is.null,status.eq.published');
       const { data: d2, error: e2 } = await q2;
-      if (e2) { loadingAll.textContent = 'Ошибка: ' + e2.message; return; }
-      (d2 || []).forEach(q => list.appendChild(_buildCard(q)));
-      _offset = _total;
       loadingAll.remove();
+      if (e2) { inner.appendChild(Object.assign(document.createElement('div'), { textContent: 'Ошибка: ' + e2.message, style: 'color:red;padding:12px' })); return; }
+      const currentList = document.getElementById('qmod-list');
+      if (currentList) currentList.innerHTML = '';
+      (d2 || []).forEach(q => currentList?.appendChild(_buildCard(q)));
+      _offset = _total;
+      window.toast?.(`Загружено ${(d2||[]).length} вопросов`);
     };
 
     wrap.appendChild(moreBtn);
