@@ -11860,6 +11860,7 @@ if(_origRunHC_v87){
 
 async function showOrganizerCabinet(){
   if(!currentUser){ toast('Войдите чтобы стать организатором'); return; }
+  if(isAdmin()){ showScreen('my-quizzes'); window.loadMyQuizzes?.(); return; }
 
   try{
     const {data, error} = await sb.from('organizer_profiles')
