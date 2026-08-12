@@ -478,19 +478,15 @@ window._qdqFullscreen = function(src) {
 };
 
 window._adminSuperQApprove = async function(id) {
-  const { error } = await sb.from('quiz_daily_questions')
-    .update({ status: 'approved', approved_at: new Date().toISOString() })
-    .eq('id', id);
-  if (error) { window.toast?.('Ошибка: ' + error.message); return; }
+  const { data, error } = await sb.rpc('admin_approve_superquestion', { p_id: id });
+  if (error || !data?.ok) { window.toast?.('Ошибка: ' + (error?.message || data?.reason)); return; }
   window.toast?.('✅ Вопрос одобрен — теперь выбери дату');
   loadAdminQuizzes();
 };
 
 window._adminSuperQReject = async function(id) {
-  const { error } = await sb.from('quiz_daily_questions')
-    .update({ status: 'rejected' })
-    .eq('id', id);
-  if (error) { window.toast?.('Ошибка: ' + error.message); return; }
+  const { data, error } = await sb.rpc('admin_reject_superquestion', { p_id: id });
+  if (error || !data?.ok) { window.toast?.('Ошибка: ' + (error?.message || data?.reason)); return; }
   window.toast?.('Вопрос отклонён');
   loadAdminQuizzes();
 };
@@ -498,11 +494,10 @@ window._adminSuperQReject = async function(id) {
 window._adminSuperQSetDate = async function(id) {
   const date = document.getElementById(`qdq-date-${id}`)?.value;
   if (!date) { window.toast?.('Выбери дату'); return; }
-  const { error } = await sb.from('quiz_daily_questions')
-    .update({ scheduled_date: date })
-    .eq('id', id);
-  if (error) {
-    window.toast?.(error.message.includes('unique') ? 'На этот день уже запланирован вопрос' : 'Ошибка: ' + error.message);
+  const { data, error } = await sb.rpc('admin_set_superquestion_date', { p_id: id, p_date: date });
+  if (error || !data?.ok) {
+    const msg = error?.message || data?.reason || '';
+    window.toast?.(msg.includes('unique') ? 'На этот день уже запланирован вопрос' : 'Ошибка: ' + msg);
     return;
   }
   window.toast?.(`✅ Запланировано на ${date}`);

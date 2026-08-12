@@ -10,17 +10,23 @@ export async function loadQuizDailyQuestion() {
 
   const today = new Date().toISOString().slice(0, 10);
 
-  const { data, error } = await sb
+  const { data: qdq, error } = await sb
     .from('quiz_daily_questions')
-    .select('id,image_url,hint_options,quiz_id,quizzes(name,slug,logo_url)')
+    .select('id,image_url,hint_options,quiz_id')
     .eq('status', 'approved')
     .eq('scheduled_date', today)
     .limit(1)
     .maybeSingle();
 
-  if (error || !data) { wrap.style.display = 'none'; return; }
-  const q = data;
-  if (!q) { wrap.style.display = 'none'; return; }
+  if (error || !qdq) { wrap.style.display = 'none'; return; }
+
+  const { data: quiz } = await sb
+    .from('quizzes')
+    .select('name,slug,logo_url')
+    .eq('id', qdq.quiz_id)
+    .maybeSingle();
+
+  const q = { ...qdq, quizzes: quiz || {} };
 
   // Проверяем, отвечал ли уже
   const { currentUser } = getState();
