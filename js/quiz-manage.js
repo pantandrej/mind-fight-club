@@ -428,9 +428,10 @@ async function _adminLoadSuperQuestions(list) {
   list.innerHTML = data.map(q => `
     <div style="background:var(--bg);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:10px">
       <div style="display:flex;gap:10px;margin-bottom:10px">
-        <a href="${_esc(q.image_url)}" target="_blank" rel="noopener" style="flex-shrink:0;display:block">
-          <img src="${_esc(q.image_url)}" style="width:72px;height:72px;border-radius:10px;object-fit:cover;display:block;cursor:zoom-in">
-        </a>
+        <div style="flex-shrink:0;display:flex;flex-direction:column;gap:4px;align-items:center">
+          <img src="${_esc(q.image_url)}" style="width:80px;height:80px;border-radius:10px;object-fit:cover;display:block">
+          <button onclick="window.open('${_esc(q.image_url)}','_blank')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--muted);cursor:pointer;font-family:inherit;font-weight:700">🔍 Открыть</button>
+        </div>
         <div style="flex:1;min-width:0">
           <div style="font-size:12px;font-weight:800;margin-bottom:2px">${_esc(q.quizzes?.name||'Квиз')}</div>
           <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Ответ: <strong style="color:var(--text)">${_esc(q.answer_text)}</strong></div>
