@@ -117,39 +117,46 @@ async function _loadPage(inner, reset = false) {
     allBtn.style.cssText = 'flex:1;background:rgba(108,99,255,.1);border:1px solid rgba(108,99,255,.4);border-radius:12px;padding:12px;font-size:13px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit';
     allBtn.onclick = async () => {
       wrap.remove();
-      const loadingAll = document.createElement('div');
-      loadingAll.style.cssText = 'text-align:center;padding:12px;color:var(--muted);font-size:13px';
-      loadingAll.textContent = 'Загрузка всех вопросов...';
-      inner.appendChild(loadingAll);
+      try {
+        const cont = document.getElementById('qmod-inner');
+        if (!cont) { window.toast?.('ERR: qmod-inner не найден'); return; }
 
-      let allRows, allErr;
-      if (_filter === 'active') {
-        const res = await sb.from('questions')
-          .select('id, question_text, question_ru, answers_json, correct_index, status, category, source_type, approved_at')
-          .eq('status', 'active')
-          .order('approved_at', { ascending: false, nullsFirst: false })
-          .range(0, (_total || 2000) - 1);
-        allRows = res.data; allErr = res.error;
-      } else {
-        if (!_pendingCache) _pendingCache = await _fetchPendingAll();
-        allRows = _pendingCache; allErr = null;
+        const loadingAll = document.createElement('div');
+        loadingAll.style.cssText = 'text-align:center;padding:12px;color:var(--muted);font-size:13px';
+        loadingAll.textContent = 'Загрузка всех вопросов...';
+        cont.appendChild(loadingAll);
+
+        let allRows;
+        if (_filter === 'active') {
+          const res = await sb.from('questions')
+            .select(SEL)
+            .eq('status', 'active')
+            .order('approved_at', { ascending: false, nullsFirst: false })
+            .range(0, (_total || 2000) - 1);
+          if (res.error) throw res.error;
+          allRows = res.data;
+        } else {
+          if (!_pendingCache) _pendingCache = await _fetchPendingAll();
+          allRows = _pendingCache;
+        }
+
+        loadingAll.remove();
+        window.toast?.(`Загружено ${(allRows||[]).length} вопросов`);
+
+        cont.querySelector('#qmod-list')?.remove();
+        const newList = document.createElement('div');
+        newList.id = 'qmod-list';
+        newList.style.cssText = 'display:flex;flex-direction:column;gap:10px';
+        (allRows || []).forEach(q => {
+          try { newList.appendChild(_buildCard(q)); } catch(e) { console.error('qmod card', q?.id, e); }
+        });
+        cont.appendChild(newList);
+        _offset = _total;
+        cont.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } catch(err) {
+        window.toast?.('Ошибка: ' + (err?.message || err));
+        console.error('[qmod showAll]', err);
       }
-
-      loadingAll.remove();
-      if (allErr) { inner.insertAdjacentHTML('beforeend', `<div style="color:red;padding:12px;font-size:13px">Ошибка загрузки: ${allErr.message}</div>`); return; }
-
-      // Удаляем старый список и создаём новый (надёжнее, чем innerHTML)
-      inner.querySelector('#qmod-list')?.remove();
-      const newList = document.createElement('div');
-      newList.id = 'qmod-list';
-      newList.style.cssText = 'display:flex;flex-direction:column;gap:10px';
-      (allRows || []).forEach(q => {
-        try { newList.appendChild(_buildCard(q)); } catch(e) { console.error('qmod card error', q?.id, e); }
-      });
-      inner.appendChild(newList);
-      _offset = _total;
-      newList.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      window.toast?.(`Загружено ${(allRows||[]).length} вопросов`);
     };
 
     wrap.appendChild(moreBtn);
