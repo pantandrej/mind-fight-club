@@ -57,7 +57,7 @@ function _renderQuestion(wrap, q, alreadyAnswered) {
           : `<div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,rgba(108,99,255,.3),rgba(168,85,247,.2));display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🧠</div>`}
         <div style="flex:1;min-width:0">
           <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Супервопрос от</div>
-          <div style="font-size:13px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(quiz.name || 'Квиз')}</div>
+          <a href="/quiz/${_esc(quiz.slug || '')}" style="font-size:13px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);text-decoration:none">${_esc(quiz.name || 'Квиз')}</a>
         </div>
         <a href="/quiz/${_esc(quiz.slug || '')}" style="font-size:11px;font-weight:700;color:var(--accent2);text-decoration:none;flex-shrink:0">Открыть →</a>
       </div>
