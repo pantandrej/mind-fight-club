@@ -140,18 +140,19 @@ async function _loadPage(inner, reset = false) {
       }
 
       loadingAll.remove();
-      if (allErr) {
-        const currentList2 = document.getElementById('qmod-list');
-        if (currentList2) currentList2.insertAdjacentHTML('beforebegin', `<div style="color:red;padding:12px;font-size:13px">Ошибка загрузки: ${allErr.message}</div>`);
-        return;
-      }
-      const currentList = document.getElementById('qmod-list');
-      if (currentList) currentList.innerHTML = '';
+      if (allErr) { inner.insertAdjacentHTML('beforeend', `<div style="color:red;padding:12px;font-size:13px">Ошибка загрузки: ${allErr.message}</div>`); return; }
+
+      // Удаляем старый список и создаём новый (надёжнее, чем innerHTML)
+      inner.querySelector('#qmod-list')?.remove();
+      const newList = document.createElement('div');
+      newList.id = 'qmod-list';
+      newList.style.cssText = 'display:flex;flex-direction:column;gap:10px';
       (allRows || []).forEach(q => {
-        try { currentList?.appendChild(_buildCard(q)); } catch(e) { console.error('qmod card error', q?.id, e); }
+        try { newList.appendChild(_buildCard(q)); } catch(e) { console.error('qmod card error', q?.id, e); }
       });
+      inner.appendChild(newList);
       _offset = _total;
-      currentList?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      newList.scrollIntoView({ behavior: 'smooth', block: 'start' });
       window.toast?.(`Загружено ${(allRows||[]).length} вопросов`);
     };
 
