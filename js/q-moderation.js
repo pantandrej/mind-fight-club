@@ -147,8 +147,11 @@ async function _loadPage(inner, reset = false) {
       }
       const currentList = document.getElementById('qmod-list');
       if (currentList) currentList.innerHTML = '';
-      (allRows || []).forEach(q => currentList?.appendChild(_buildCard(q)));
+      (allRows || []).forEach(q => {
+        try { currentList?.appendChild(_buildCard(q)); } catch(e) { console.error('qmod card error', q?.id, e); }
+      });
       _offset = _total;
+      currentList?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       window.toast?.(`Загружено ${(allRows||[]).length} вопросов`);
     };
 
