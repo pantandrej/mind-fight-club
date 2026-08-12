@@ -428,7 +428,7 @@ async function _adminLoadSuperQuestions(list) {
   list.innerHTML = data.map(q => `
     <div style="background:var(--bg);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:10px">
       <div style="display:flex;gap:10px;margin-bottom:10px">
-        <img src="${_esc(q.image_url)}" style="width:72px;height:72px;border-radius:10px;object-fit:cover;flex-shrink:0">
+        <img src="${_esc(q.image_url)}" onclick="window._qdqFullscreen(this.src)" style="width:72px;height:72px;border-radius:10px;object-fit:cover;flex-shrink:0;cursor:zoom-in">
         <div style="flex:1;min-width:0">
           <div style="font-size:12px;font-weight:800;margin-bottom:2px">${_esc(q.quizzes?.name||'Квиз')}</div>
           <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Ответ: <strong style="color:var(--text)">${_esc(q.answer_text)}</strong></div>
@@ -460,6 +460,17 @@ async function _adminLoadSuperQuestions(list) {
         </div>` : ''}
     </div>`).join('');
 }
+
+window._qdqFullscreen = function(src) {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:zoom-out';
+  overlay.onclick = () => overlay.remove();
+  const img = document.createElement('img');
+  img.src = src;
+  img.style.cssText = 'max-width:95vw;max-height:95vh;border-radius:12px;object-fit:contain';
+  overlay.appendChild(img);
+  document.body.appendChild(overlay);
+};
 
 window._adminSuperQApprove = async function(id) {
   const { error } = await sb.from('quiz_daily_questions')
