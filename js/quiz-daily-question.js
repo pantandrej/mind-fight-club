@@ -3,27 +3,23 @@ import { sb }       from './services/supabase.js';
 import { getState, setState } from './state.js';
 import { updNeurons } from './economy/wallet.js';
 
-const SUPA_URL = window.location.hostname === 'localhost'
-  ? 'https://nhmidxkohjpcnhjucuuh.supabase.co'
-  : `${window.location.origin}/sb`;
-const SUPA_KEY = 'sb_publishable_lFVRCP-PPnGnNzn9G60A3A_gTy40vMs';
-
 // ── Загрузка и рендер блока ───────────────────────────────────────
 export async function loadQuizDailyQuestion() {
   const wrap = document.getElementById('quiz-daily-wrap');
   if (!wrap) return;
 
   const today = new Date().toISOString().slice(0, 10);
-  const ts    = Date.now();
 
-  const r = await fetch(
-    `${SUPA_URL}/rest/v1/quiz_daily_questions?select=id,image_url,hint_options,quiz_id,quizzes(name,slug,logo_url)&status=eq.approved&scheduled_date=eq.${today}&limit=1&_=${ts}`,
-    { cache: 'no-store', headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` } }
-  );
+  const { data, error } = await sb
+    .from('quiz_daily_questions')
+    .select('id,image_url,hint_options,quiz_id,quizzes(name,slug,logo_url)')
+    .eq('status', 'approved')
+    .eq('scheduled_date', today)
+    .limit(1)
+    .maybeSingle();
 
-  if (!r.ok) return;
-  const data = await r.json();
-  const q = data?.[0];
+  if (error || !data) { wrap.style.display = 'none'; return; }
+  const q = data;
   if (!q) { wrap.style.display = 'none'; return; }
 
   // Проверяем, отвечал ли уже

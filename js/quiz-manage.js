@@ -453,14 +453,16 @@ async function _adminLoadSuperQuestions(list) {
           </button>
         </div>` : ''}
       ${q.status === 'approved' ? `
+        <div style="margin-bottom:6px;font-size:11px;font-weight:800;color:var(--muted)">📅 ДАТА ПОКАЗА НА ГЛАВНОЙ:</div>
         <div style="display:flex;gap:8px">
           <input id="qdq-date-${q.id}" type="date" value="${q.scheduled_date||''}"
-            style="flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:13px;color:var(--text);font-family:inherit">
+            style="flex:1;background:var(--bg2);border:1px solid rgba(108,99,255,.4);border-radius:10px;padding:8px 12px;font-size:13px;color:var(--text);font-family:inherit">
           <button onclick="window._adminSuperQSetDate('${q.id}')"
             style="padding:8px 14px;border-radius:10px;border:1px solid rgba(108,99,255,.4);background:rgba(108,99,255,.15);color:var(--accent2);font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">
-            📅 Дата
+            💾 Сохранить
           </button>
-        </div>` : ''}
+        </div>
+        <div style="font-size:10px;color:var(--muted);margin-top:5px">Вопрос появится блоком на главном экране приложения в выбранный день</div>` : ''}
     </div>`).join('');
 }
 
