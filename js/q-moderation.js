@@ -1,6 +1,5 @@
 // ── Question Moderation ───────────────────────────────────────────
 import { sb } from './services/supabase.js';
-import { SUPA_URL, SUPA_KEY } from './config.js';
 
 const PAGE = 20;
 let _offset = 0;
@@ -8,18 +7,15 @@ let _total  = 0;
 let _filter = 'pending'; // 'pending' | 'active'
 let _pendingCache = null; // все pending-вопросы, загруженные без OR-фильтра
 
-// Два параллельных запроса вместо OR (OR ломается через Vercel прокси)
+const SEL = 'id,question_text,question_ru,answers_json,correct_index,status,category,source_type,approved_at';
+
+// Два параллельных запроса через sb-клиент (OR ломается через Vercel прокси)
 async function _fetchPendingAll() {
-  const SEL = 'id,question_text,question_ru,answers_json,correct_index,status,category,source_type,approved_at';
-  const hdrs = { cache: 'no-store', headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` } };
-  const ts = Date.now();
   const [r1, r2] = await Promise.all([
-    fetch(`${SUPA_URL}/rest/v1/questions?select=${SEL}&status=is.null&order=id.desc&limit=5000&_=${ts}a`, hdrs),
-    fetch(`${SUPA_URL}/rest/v1/questions?select=${SEL}&status=eq.published&order=id.desc&limit=5000&_=${ts}b`, hdrs),
+    sb.from('questions').select(SEL).is('status', null).order('id', { ascending: false }).limit(5000),
+    sb.from('questions').select(SEL).eq('status', 'published').order('id', { ascending: false }).limit(5000),
   ]);
-  const d1 = r1.ok ? await r1.json() : [];
-  const d2 = r2.ok ? await r2.json() : [];
-  const all = [...(Array.isArray(d1) ? d1 : []), ...(Array.isArray(d2) ? d2 : [])];
+  const all = [...(r1.data || []), ...(r2.data || [])];
   all.sort((a, b) => (b.id > a.id ? 1 : -1));
   return all;
 }
