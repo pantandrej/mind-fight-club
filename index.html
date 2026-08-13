@@ -221,7 +221,7 @@
     <div id="daily-logic-wrap" style="margin-bottom:16px;display:none"></div>
 
     <!-- Супервопрос дня от квизов -->
-    <div id="quiz-daily-wrap" style="display:none"></div>
+    <div id="quiz-daily-wrap" style="display:none;flex-direction:column"></div>
 
     <!-- PWA install banner -->
     <div id="pwa-install-banner" style="display:none;background:rgba(108,99,255,.12);border:1px solid rgba(108,99,255,.3);border-radius:14px;padding:12px 14px;margin-bottom:12px;display:none;align-items:center;gap:12px">
@@ -2183,6 +2183,16 @@
         <div class="play-menu-sub">Онлайн-турниры с живым рейтингом</div>
       </div>
     </div>
+    <!-- СУПЕРВОПРОС ДНЯ -->
+    <div class="play-menu-item" id="pm-superq-item" onclick="showScreen('home');setTimeout(()=>{document.getElementById('quiz-daily-wrap')?.scrollIntoView({behavior:'smooth'})},150)">
+      <div class="play-menu-icon">🧠</div>
+      <div class="play-menu-info">
+        <div class="play-menu-title">Супервопрос дня</div>
+        <div class="play-menu-sub">Вопрос от квиза · +5 BF за правильный ответ</div>
+      </div>
+      <div class="play-menu-badge" style="background:linear-gradient(135deg,#6c63ff,#a78bfa)" id="pm-superq-badge">🔥 BF</div>
+    </div>
+
     <!-- АКТИВНОСТИ / ПАКИ -->
     <div class="play-menu-item" onclick="showMyPacks()">
       <div class="play-menu-icon">🎯</div>

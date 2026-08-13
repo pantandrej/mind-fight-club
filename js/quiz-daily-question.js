@@ -47,7 +47,8 @@ function _renderQuestion(wrap, q, alreadyAnswered) {
   const quiz  = q.quizzes || {};
   const hints = q.hint_options ? q.hint_options.split(',').map(s => s.trim()).filter(Boolean) : [];
 
-  wrap.style.display = 'block';
+  wrap.style.display = 'flex';
+  wrap.style.flexDirection = 'column';
 
   // Компактная плашка — при нажатии разворачивается
   const logo = quiz.logo_url
@@ -60,7 +61,7 @@ function _renderQuestion(wrap, q, alreadyAnswered) {
     </div>` : '';
 
   wrap.innerHTML = `
-    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:18px;overflow:hidden;margin:12px 0">
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:18px;overflow:hidden;flex:1;display:flex;flex-direction:column">
       <!-- Компактная шапка — нажать чтобы ответить -->
       <div id="qdq-teaser" onclick="document.getElementById('qdq-full').style.display='block';this.style.cursor='default'"
            style="padding:12px 16px;display:flex;align-items:center;gap:10px;cursor:pointer">
@@ -94,12 +95,13 @@ function _renderQuestion(wrap, q, alreadyAnswered) {
 
 function _renderAnswered(wrap, q, ans) {
   const quiz = q.quizzes || {};
-  wrap.style.display = 'block';
+  wrap.style.display = 'flex';
+  wrap.style.flexDirection = 'column';
   const logo = quiz.logo_url
     ? `<img src="${_esc(quiz.logo_url)}" style="width:32px;height:32px;border-radius:8px;object-fit:cover;flex-shrink:0">`
     : `<div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,rgba(108,99,255,.3),rgba(168,85,247,.2));display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🧠</div>`;
   wrap.innerHTML = `
-    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:18px;overflow:hidden;margin:12px 0">
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:18px;overflow:hidden;flex:1;display:flex;flex-direction:column;justify-content:center">
       <div style="padding:12px 16px;display:flex;align-items:center;gap:10px">
         ${logo}
         <div style="flex:1;min-width:0">
