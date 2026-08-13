@@ -2774,7 +2774,7 @@
     <button class="nav-item active" id="nav-home" onclick="showScreen('home')"><div class="nav-icon">🏠</div><div class="nav-label" id="nav-home-label">Главная</div></button>
     <button class="nav-item" id="nav-quiz" onclick="showPlayMenu()"><div class="nav-icon">⚡</div><div class="nav-label" id="nav-play-label">Режимы игры</div></button>
     <button class="nav-item" id="nav-duel" onclick="showScreen('duel')"><div class="nav-icon">⚔️</div><div class="nav-label" id="nav-duel-label">Дуэль</div></button>
-    <button class="nav-item" id="nav-teams" onclick="showScreen('my-team-screen');window.loadMyTeam?.()"><div class="nav-icon">🏟️</div><div class="nav-label">Мой Клан</div></button>
+    <button class="nav-item" id="nav-teams-list-screen" onclick="window.loadTeamsList?.()"><div class="nav-icon">🏟️</div><div class="nav-label">Команды</div></button>
     <button class="nav-item" id="nav-tournament" onclick="showCupScreen()"><div class="nav-icon">🏆</div><div class="nav-label" id="nav-cup-label">Турнир</div></button>
     <button class="nav-item" id="nav-profile" onclick="showScreen('profile')"><div class="nav-icon">👤</div><div class="nav-label" id="nav-profile-label">Профиль</div></button>
     <button class="nav-item" id="nav-scout" style="display:none" onclick="showScreen('scout-form-screen');window.loadScoutForm?.()"><div class="nav-icon">🎯</div><div class="nav-label">Ввод</div></button>
@@ -3628,6 +3628,9 @@ console.log('✅ Firebase Tournaments module loaded');
   </div>
 </div>
 
+<!-- ── Teams List Screen ── -->
+<div class="screen" id="teams-list-screen" style="justify-content:flex-start;padding:0;overflow-y:auto"></div>
+
 <!-- ── My Team Screen ── -->
 <div class="screen" id="my-team-screen" style="justify-content:flex-start;padding:0"></div>
 
@@ -3738,6 +3741,7 @@ window._pickTeamEmoji = async function(emoji) {
   import { loadQuizDailyQuestion } from '/js/quiz-daily-question.js';
   import { loadTeamProfile } from '/js/team-profile.js';
   import { loadQuizProfile } from '/js/quiz-profile.js';
+  import { loadTeamsList } from '/js/teams-list.js';
   import '/js/q-moderation.js';
   window.loadMyQuizzes          = loadMyQuizzes;
   window.loadQuizCreate         = loadQuizCreate;
@@ -3745,6 +3749,7 @@ window._pickTeamEmoji = async function(emoji) {
   window.loadQuizDailyQuestion  = loadQuizDailyQuestion;
   window.loadTeamProfile        = loadTeamProfile;
   window.loadQuizProfile        = loadQuizProfile;
+  window.loadTeamsList          = loadTeamsList;
 
   // Route /quiz/slug → quiz-profile-screen inside SPA
   const _quizSlugMatch = location.pathname.match(/^\/quiz\/([^/]+)\/?$/);

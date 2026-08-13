@@ -10,7 +10,7 @@ export async function loadTeamProfile(teamId) {
   if (!el) return;
 
   el.innerHTML = `<div style="padding:60px;text-align:center;color:var(--muted)">Загрузка...</div>`;
-  window.showScreen('team-profile');
+  window.showScreen('team-profile-screen');
 
   const [teamRes, membersRes] = await Promise.all([
     sb.from('teams').select('id,name,city,motto,banner_url,avatar_url,emoji').eq('id', teamId).single(),
@@ -77,7 +77,7 @@ function _renderTeamProfile(el, { team, members, barRank, onlineRank, brainPoint
 
   el.innerHTML = `
     <div class="hdr" style="position:sticky;top:0;z-index:10;backdrop-filter:blur(12px);background:rgba(10,10,20,.85)">
-      <button onclick="history.back()" style="background:none;border:none;color:var(--text);font-size:22px;cursor:pointer;padding:0 4px">‹</button>
+      <button onclick="window.loadTeamsList?.()" style="background:none;border:none;color:var(--text);font-size:22px;cursor:pointer;padding:0 4px">‹</button>
       <div style="font-size:15px;font-weight:900">${_esc(team.name)}</div>
       ${isMyTeam ? `<button onclick="window.showScreen('my-team')" style="background:none;border:none;color:var(--accent2);font-size:12px;font-weight:700;cursor:pointer">Моя</button>` : `<div style="width:40px"></div>`}
     </div>
