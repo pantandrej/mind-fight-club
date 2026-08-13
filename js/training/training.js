@@ -802,15 +802,17 @@ function normalizeDBQuestionForQuickPlay(row){
 // Loads published questions from Supabase for Quick Play use.
 // Returns normalised + validated array, or [] on error.
 async function loadPublishedQuickQuestionsFromDB(){
+  const SUPA_URL = 'https://nhmidxkohjpcnhjucuuh.supabase.co';
+  const SUPA_KEY = 'sb_publishable_lFVRCP-PPnGnNzn9G60A3A_gTy40vMs';
   try{
-    const {data, error} = await sb
-      .from('questions')
-      .select('*')
-      .eq('status', 'active')
-      .order('approved_at', {ascending: false})
-      .limit(1000);
-    if(error) throw error;
-    const rows = data || [];
+    // Direct fetch bypasses Vercel proxy — avoids 400 errors on large selects
+    const r = await fetch(
+      `${SUPA_URL}/rest/v1/questions?status=eq.active&order=approved_at.desc&limit=2000` +
+      `&select=id,question_text,answers_ru,correct_index,category,image_url,audio_url`,
+      { headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` } }
+    );
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const rows = await r.json();
     const normalised = rows
       .map(row => normalizeDBQuestionForQuickPlay(row))
       .filter(q => q && isPlayableQuestion(q));
@@ -1838,87 +1840,57 @@ if (typeof getTodayKey         !== 'undefined') window.getTodayKey         = get
 
 
 // ── loadBattleQuestions ───────────────────────────────────────────
-// Loads exactly 5 questions from DB with strict answer counts per
-// BATTLE_QUESTION_PROGRESSION = [2, 3, 4, 5, 6].
-// Uses jsonb_array_length(answers_ru) filter so each slot is correct.
-// Falls back to ALL_Q_BASE only if DB returns nothing for that slot.
-// Returns array of 5 normalised {cat,q,a,c,t} or null if not enough.
+// Loads exactly 5 approved DB questions [2,3,4,5,6 options].
+// Uses direct Supabase fetch (no Vercel proxy) with a single request.
+// NO fallback to local/seed questions — only admin-approved DB questions.
 export async function loadBattleQuestions(lang = 'ru') {
   const PROGRESSION = [2, 3, 4, 5, 6];
+  const SUPA_URL = 'https://nhmidxkohjpcnhjucuuh.supabase.co';
+  const SUPA_KEY = 'sb_publishable_lFVRCP-PPnGnNzn9G60A3A_gTy40vMs';
+
+  // Single request — load all active questions at once
+  let dbRows = [];
+  try {
+    const r = await fetch(
+      `${SUPA_URL}/rest/v1/questions?status=eq.active&select=id,question_text,answers_ru,correct_index,category`,
+      { headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` } }
+    );
+    if (r.ok) dbRows = await r.json();
+  } catch (e) {
+    console.warn('[battle] DB fetch failed:', e.message);
+    return null;
+  }
+
+  if (!dbRows.length) {
+    console.warn('[battle] No active questions in DB');
+    return null;
+  }
+
+  // Normalize and group by answer count
+  const byCount = { 2: [], 3: [], 4: [], 5: [], 6: [] };
+  for (const row of dbRows) {
+    const answers = Array.isArray(row.answers_ru) ? row.answers_ru : [];
+    const n = answers.length;
+    if (n >= 2 && n <= 6 && row.question_text?.trim().length > 3) {
+      const ci = row.correct_index ?? 0;
+      if (ci >= 0 && ci < n) {
+        byCount[n].push({ id: row.id, cat: row.category || 'GENERAL', q: row.question_text, a: answers, c: ci });
+      }
+    }
+  }
+
   const result = [];
   const usedIds = new Set();
 
   for (const optCount of PROGRESSION) {
-    let question = null;
-
-    // 1. Try DB — filter by jsonb_array_length(answers_ru) = optCount
-    try {
-      const { data, error } = await sb
-        .from('questions')
-        .select('*')
-        .eq('status', 'active');
-        // Filter by answer count done in JS below
-
-      if (!error && data && data.length > 0) {
-        const candidates = data
-          .map(row => normalizeDBQuestionForQuickPlay(row))
-          .filter(q => {
-            if (!q || usedIds.has(q.id)) return false;
-            if (!Array.isArray(q.a) || q.a.length !== optCount) return false;
-            if (!q.q || q.q.trim().length < 3) return false;
-            if (q.c < 0 || q.c >= q.a.length) return false;
-            return true;
-          });
-        if (candidates.length > 0) {
-          question = candidates[Math.floor(Math.random() * candidates.length)];
-          usedIds.add(question.id);
-        }
-      }
-    } catch (e) {
-      console.warn('[battle] DB fetch failed for optCount=' + optCount, e.message);
+    const pool = byCount[optCount].filter(q => !usedIds.has(q.id));
+    if (!pool.length) {
+      console.warn('[battle] No approved DB questions for optCount=' + optCount);
+      return null; // strict — no fallback to seed questions
     }
-
-    // 2. Fallback: ALL_Q / ALL_Q_BASE — but ONLY if it has exactly optCount answers
-    if (!question) {
-      const localPool = (typeof ALL_Q !== 'undefined' ? ALL_Q : [])
-        .filter(q => {
-          if (!q || usedIds.has(q.id || q.q)) return false;
-          const answers = Array.isArray(q.a) ? q.a
-            : (Array.isArray(q.a?.ru) ? q.a.ru : null);
-          if (!answers || answers.length !== optCount) return false;
-          const text = (typeof q.q === 'string') ? q.q : (q.q?.ru || q.q?.en || '');
-          return text.trim().length > 2;
-        });
-
-      if (localPool.length > 0) {
-        const picked = localPool[Math.floor(Math.random() * localPool.length)];
-        const answers = Array.isArray(picked.a) ? picked.a : picked.a.ru;
-        const text = (typeof picked.q === 'string') ? picked.q : (picked.q?.ru || picked.q?.en || '');
-        question = {
-          id:  picked.id || picked.q,
-          cat: picked.cat || 'GENERAL',
-          q:   text,
-          a:   answers,
-          c:   picked.c ?? 0,
-          t:   30,
-        };
-        usedIds.add(question.id);
-      }
-    }
-
-    if (!question) {
-      console.warn('[battle] No question found for optCount=' + optCount);
-      return null; // can't build a valid battle
-    }
-
-    // Canonical format — plain text, pre-adapted, same for both players
-    result.push({
-      cat: question.cat || 'GENERAL',
-      q:   question.q,
-      a:   question.a,   // exactly optCount answers
-      c:   question.c,   // correct index
-      t:   30,
-    });
+    const picked = pool[Math.floor(Math.random() * pool.length)];
+    usedIds.add(picked.id);
+    result.push({ cat: picked.cat, q: picked.q, a: picked.a, c: picked.c, t: 30 });
   }
 
   console.log('[BFC] loadBattleQuestions:', result.length, 'questions', result.map(q => q.a.length + ' opts'));
