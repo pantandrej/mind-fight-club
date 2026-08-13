@@ -94,7 +94,7 @@ function _renderAnswered(wrap, q, ans) {
           : `<div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,rgba(108,99,255,.3),rgba(168,85,247,.2));display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🧠</div>`}
         <div style="flex:1">
           <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Супервопрос от</div>
-          <div style="font-size:13px;font-weight:800">${_esc(quiz.name || 'Квиз')}</div>
+          <span onclick="window.open('/quiz/${_esc(quiz.slug || '')}','_blank')" style="font-size:13px;font-weight:800;cursor:pointer;text-decoration:underline;text-underline-offset:2px">${_esc(quiz.name || 'Квиз')}</span>
         </div>
         <a href="/quiz/${_esc(quiz.slug || '')}" style="font-size:11px;font-weight:700;color:var(--accent2);text-decoration:none">Открыть →</a>
       </div>
