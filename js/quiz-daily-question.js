@@ -44,41 +44,50 @@ export async function loadQuizDailyQuestion() {
 }
 
 function _renderQuestion(wrap, q, alreadyAnswered) {
-  const quiz    = q.quizzes || {};
-  const hints   = q.hint_options ? q.hint_options.split(',').map(s => s.trim()).filter(Boolean) : [];
+  const quiz  = q.quizzes || {};
+  const hints = q.hint_options ? q.hint_options.split(',').map(s => s.trim()).filter(Boolean) : [];
 
   wrap.style.display = 'block';
+
+  // Компактная плашка — при нажатии разворачивается
+  const logo = quiz.logo_url
+    ? `<img src="${_esc(quiz.logo_url)}" style="width:32px;height:32px;border-radius:8px;object-fit:cover;flex-shrink:0">`
+    : `<div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,rgba(108,99,255,.3),rgba(168,85,247,.2));display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🧠</div>`;
+
+  const hintsHtml = hints.length ? `
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">
+      ${hints.map(h => `<button onclick="document.getElementById('qdq-input').value='${_esc(h)}'" style="background:rgba(108,99,255,.12);border:1px solid rgba(108,99,255,.3);border-radius:20px;padding:5px 12px;font-size:12px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit">${_esc(h)}</button>`).join('')}
+    </div>` : '';
+
   wrap.innerHTML = `
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:18px;overflow:hidden;margin:12px 0">
-      <!-- Шапка квиза -->
-      <div style="padding:12px 16px;display:flex;align-items:center;gap:10px;border-bottom:0.5px solid var(--border)">
-        ${quiz.logo_url
-          ? `<img src="${quiz.logo_url}" style="width:32px;height:32px;border-radius:8px;object-fit:cover;flex-shrink:0">`
-          : `<div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,rgba(108,99,255,.3),rgba(168,85,247,.2));display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🧠</div>`}
+      <!-- Компактная шапка — нажать чтобы ответить -->
+      <div id="qdq-teaser" onclick="document.getElementById('qdq-full').style.display='block';this.style.cursor='default'"
+           style="padding:12px 16px;display:flex;align-items:center;gap:10px;cursor:pointer">
+        ${logo}
         <div style="flex:1;min-width:0">
-          <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Супервопрос от</div>
-          <span onclick="window._openQuizProfile('${_esc(quiz.slug || '')}')" style="font-size:13px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--accent2);cursor:pointer">${_esc(quiz.name || 'Квиз')}</span>
+          <div style="font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">🔥 Супервопрос дня</div>
+          <span onclick="event.stopPropagation();window._openQuizProfile('${_esc(quiz.slug || '')}')"
+                style="font-size:13px;font-weight:800;color:var(--accent2);cursor:pointer">${_esc(quiz.name || 'Квиз')}</span>
         </div>
-        <a href="/quiz/${_esc(quiz.slug || '')}" style="font-size:11px;font-weight:700;color:var(--accent2);text-decoration:none;flex-shrink:0">Открыть →</a>
+        <div style="font-size:12px;font-weight:700;color:var(--accent2);flex-shrink:0">Ответить →</div>
       </div>
-      <!-- Картинка вопроса -->
-      <img src="${_esc(q.image_url)}" style="width:100%;max-height:320px;object-fit:contain;background:#000;display:block">
-      <!-- Поле ответа -->
-      <div style="padding:14px 16px">
-        ${hints.length ? `
-          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">
-            ${hints.map(h => `<button onclick="document.getElementById('qdq-input').value='${_esc(h)}'" style="background:rgba(108,99,255,.12);border:1px solid rgba(108,99,255,.3);border-radius:20px;padding:5px 12px;font-size:12px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit">${_esc(h)}</button>`).join('')}
-          </div>` : ''}
-        <div style="display:flex;gap:8px">
-          <input id="qdq-input" type="text" placeholder="Введи ответ..."
-            style="flex:1;padding:12px 14px;border-radius:12px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);font-size:14px;font-family:inherit;outline:none"
-            onkeydown="if(event.key==='Enter')window._submitQuizDailyAnswer('${q.id}')">
-          <button onclick="window._submitQuizDailyAnswer('${q.id}')"
-            style="padding:12px 18px;background:linear-gradient(135deg,#6c63ff,#a78bfa);border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;flex-shrink:0">
-            Ответить
-          </button>
+      <!-- Полный вопрос: скрыт по умолчанию -->
+      <div id="qdq-full" style="display:none">
+        <img src="${_esc(q.image_url)}" style="width:100%;max-height:320px;object-fit:contain;background:#000;display:block">
+        <div style="padding:14px 16px">
+          ${hintsHtml}
+          <div style="display:flex;gap:8px">
+            <input id="qdq-input" type="text" placeholder="Введи ответ..."
+              style="flex:1;padding:12px 14px;border-radius:12px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);font-size:14px;font-family:inherit;outline:none"
+              onkeydown="if(event.key==='Enter')window._submitQuizDailyAnswer('${q.id}')">
+            <button onclick="window._submitQuizDailyAnswer('${q.id}')"
+              style="padding:12px 18px;background:linear-gradient(135deg,#6c63ff,#a78bfa);border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;flex-shrink:0">
+              Ответить
+            </button>
+          </div>
+          <div id="qdq-result" style="margin-top:10px;min-height:20px"></div>
         </div>
-        <div id="qdq-result" style="margin-top:10px;min-height:20px"></div>
       </div>
     </div>`;
 }
