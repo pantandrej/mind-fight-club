@@ -3634,6 +3634,9 @@ console.log('✅ Firebase Tournaments module loaded');
 <!-- ── Team Profile Screen (public) ── -->
 <div class="screen" id="team-profile-screen" style="justify-content:flex-start;padding:0"></div>
 
+<!-- ── Quiz Profile Screen (inside SPA) ── -->
+<div class="screen" id="quiz-profile-screen" style="justify-content:flex-start;padding:0;overflow-y:auto"></div>
+
 <!-- ── Scout Form Screen ── -->
 <div class="screen" id="scout-form-screen" style="justify-content:flex-start;padding:0"></div>
 
@@ -3734,12 +3737,28 @@ window._pickTeamEmoji = async function(emoji) {
   import { loadMyQuizzes, loadQuizCreate, loadAdminQuizzes } from '/js/quiz-manage.js';
   import { loadQuizDailyQuestion } from '/js/quiz-daily-question.js';
   import { loadTeamProfile } from '/js/team-profile.js';
+  import { loadQuizProfile } from '/js/quiz-profile.js';
   import '/js/q-moderation.js';
   window.loadMyQuizzes          = loadMyQuizzes;
   window.loadQuizCreate         = loadQuizCreate;
   window.loadAdminQuizzes       = loadAdminQuizzes;
   window.loadQuizDailyQuestion  = loadQuizDailyQuestion;
   window.loadTeamProfile        = loadTeamProfile;
+  window.loadQuizProfile        = loadQuizProfile;
+
+  // Route /quiz/slug → quiz-profile-screen inside SPA
+  const _quizSlugMatch = location.pathname.match(/^\/quiz\/([^/]+)\/?$/);
+  if (_quizSlugMatch) {
+    window.addEventListener('DOMContentLoaded', () => {
+      window.showScreen?.('quiz-profile-screen');
+      loadQuizProfile(_quizSlugMatch[1]);
+    }, { once: true });
+    // Also fire if DOM already loaded
+    if (document.readyState !== 'loading') {
+      window.showScreen?.('quiz-profile-screen');
+      loadQuizProfile(_quizSlugMatch[1]);
+    }
+  }
 </script>
 </body>
 </html>
