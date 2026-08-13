@@ -95,25 +95,20 @@ function _renderQuestion(wrap, q, alreadyAnswered) {
 function _renderAnswered(wrap, q, ans) {
   const quiz = q.quizzes || {};
   wrap.style.display = 'block';
+  const logo = quiz.logo_url
+    ? `<img src="${_esc(quiz.logo_url)}" style="width:32px;height:32px;border-radius:8px;object-fit:cover;flex-shrink:0">`
+    : `<div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,rgba(108,99,255,.3),rgba(168,85,247,.2));display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🧠</div>`;
   wrap.innerHTML = `
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:18px;overflow:hidden;margin:12px 0">
-      <div style="padding:12px 16px;display:flex;align-items:center;gap:10px;border-bottom:0.5px solid var(--border)">
-        ${quiz.logo_url
-          ? `<img src="${quiz.logo_url}" style="width:32px;height:32px;border-radius:8px;object-fit:cover;flex-shrink:0">`
-          : `<div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,rgba(108,99,255,.3),rgba(168,85,247,.2));display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🧠</div>`}
-        <div style="flex:1">
-          <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Супервопрос от</div>
-          <span onclick="window.open('/quiz/${_esc(quiz.slug || '')}','_blank')" style="font-size:13px;font-weight:800;cursor:pointer;text-decoration:underline;text-underline-offset:2px">${_esc(quiz.name || 'Квиз')}</span>
+      <div style="padding:12px 16px;display:flex;align-items:center;gap:10px">
+        ${logo}
+        <div style="flex:1;min-width:0">
+          <div style="font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">🔥 Супервопрос дня</div>
+          <span onclick="window._openQuizProfile('${_esc(quiz.slug || '')}')" style="font-size:13px;font-weight:800;color:var(--accent2);cursor:pointer">${_esc(quiz.name || 'Квиз')}</span>
         </div>
-        <a href="/quiz/${_esc(quiz.slug || '')}" style="font-size:11px;font-weight:700;color:var(--accent2);text-decoration:none">Открыть →</a>
-      </div>
-      <img src="${_esc(q.image_url)}" style="width:100%;max-height:320px;object-fit:contain;background:#000;display:block;opacity:.7">
-      <div style="padding:14px 16px;text-align:center">
-        <div style="font-size:22px;margin-bottom:6px">${ans.is_correct ? '✅' : '❌'}</div>
-        <div style="font-size:14px;font-weight:800;color:${ans.is_correct ? '#4ade80' : 'var(--red)'}">
-          ${ans.is_correct ? 'Верно! +5 очков BF' : `Неверно · Твой ответ: «${_esc(ans.answer_text)}»`}
+        <div style="font-size:13px;font-weight:800;color:${ans.is_correct ? '#4ade80' : 'var(--red)'};flex-shrink:0">
+          ${ans.is_correct ? '✅ +5 BF' : '❌ +1 BF'}
         </div>
-        ${!ans.is_correct ? `<div style="font-size:12px;color:var(--muted);margin-top:4px">+1 очко BF за попытку</div>` : ''}
       </div>
     </div>`;
 }
