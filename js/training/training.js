@@ -148,7 +148,12 @@ function getLocalPlayedQuestionIds(mode='quick'){
   try{
     const raw = localStorage.getItem(PLAYED_QUESTION_IDS_KEY);
     const data = raw ? JSON.parse(raw) : {};
-    return new Set((data[mode] || []).map(String));
+    // localStorage doesn't track timestamps — use remote (DB) as source of truth for history
+    // Local set is only used as a within-session dedup (remote has the 60-day window)
+    // To avoid blocking users who've cleared DB but still have local history,
+    // we cap local history at 500 most-recent entries (rough heuristic)
+    const ids = (data[mode] || []).map(String);
+    return new Set(ids.slice(-500));
   }catch(e){ return new Set(); }
 }
 
@@ -168,11 +173,14 @@ function addLocalPlayedQuestionId(questionId, mode='quick'){
 async function getRemotePlayedQuestionIds(mode='quick'){
   if(!currentUser?.id) return new Set();
   try{
+    // Only exclude questions seen within the last 60 days — older ones repeat
+    const cutoff = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString();
     const {data, error} = await sb
       .from('user_question_history')
       .select('question_id')
       .eq('user_id', currentUser.id)
       .eq('mode', mode)
+      .gte('first_seen_at', cutoff)
       .limit(10000);
     if(error) throw error;
     return new Set((data || []).map(r => String(r.question_id)));
