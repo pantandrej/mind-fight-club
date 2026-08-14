@@ -42,7 +42,7 @@ function simulateBotAnswer(q, qIndex){
     const correct = Math.random() < skill;
     let botPts = 0;
     if(correct){
-      botPts = Math.max(1, Math.round((q.a?.length||2) * 15 * duelTimeLeft / duelMaxT));
+      botPts = Math.max(1, duelTimeLeft);
       duelOppScore += botPts;
       updateDuelScores();
     }
@@ -420,7 +420,7 @@ function renderDuelTimer(){
   fill.style.width=pct+'%';fill.style.background=pct<35?'#e05555':pct<60?'#f0a050':'#6c63ff';
   const tv=document.getElementById('d-t-val');
   tv.textContent=duelTimeLeft+'s';tv.style.color=duelTimeLeft<=5?'#e05555':duelTimeLeft<=10?'#f0a050':'#8b83ff';
-  const _q=duelQs[duelIdx]; document.getElementById('d-p-val').textContent='+'+(duelTimeLeft>0?Math.round((_q?.a?.length||2)*15*duelTimeLeft/duelMaxT):1);
+  const _q=duelQs[duelIdx]; document.getElementById('d-p-val').textContent='+'+(duelTimeLeft>0?duelTimeLeft:1);
 }
 function duelTick(){if(duelTimeLeft<=0){clearInterval(duelTimer);duelExpire();return;}duelTimeLeft--;renderDuelTimer();}
 function duelExpire(){
@@ -451,7 +451,7 @@ async function pickDuel(i){
   if(duelAnswered)return;duelAnswered=true;clearInterval(duelTimer);
   const q=duelQs[duelIdx];
   document.querySelectorAll('#d-answers .ans').forEach(b=>b.disabled=true);
-  const pts=Math.max(1, Math.round((q.a?.length||2) * 15 * duelTimeLeft / duelMaxT));
+  const pts=Math.max(1, duelTimeLeft);
   if(i===q.c){
     const correctBtn = document.querySelectorAll('#d-answers .ans')[i];
     correctBtn.className='ans correct';
