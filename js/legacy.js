@@ -1697,28 +1697,51 @@ async function _checkOrgApplications() {
 window.loadAdminOrgApplications = async function() {
   const list = document.getElementById('admin-org-list');
   if (!list) return;
+  list.innerHTML = '<div style="color:var(--muted);font-size:12px">⏳ Загрузка...</div>';
 
   const { data } = await sb.from('organizer_profiles')
     .select('user_id, display_name, contact_email, city, about, status, created_at')
     .order('created_at', { ascending: false })
-    .limit(20);
+    .limit(50);
 
   if (!data?.length) { list.innerHTML = '<div style="color:var(--muted);font-size:12px">Нет заявок</div>'; return; }
 
-  list.innerHTML = data.map(r => `
-    <div style="border-bottom:0.5px solid var(--border);padding:10px 0;font-size:12px">
-      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-        <span style="font-weight:800">${r.display_name || '—'}</span>
-        <span style="background:${r.status==='pending'?'rgba(240,192,64,.15)':'rgba(74,222,128,.15)'};color:${r.status==='pending'?'var(--gold)':'var(--green)'};border-radius:6px;padding:2px 8px">${r.status}</span>
+  const statusColor = { pending: 'var(--gold)', approved: 'var(--green)', rejected: 'var(--red)' };
+  const statusBg    = { pending: 'rgba(240,192,64,.12)', approved: 'rgba(74,222,128,.12)', rejected: 'rgba(224,85,85,.1)' };
+  const statusLabel = { pending: '⏳ Ожидает', approved: '✓ Одобрен', rejected: '✗ Отклонён' };
+
+  list.innerHTML = data.map(r => {
+    const about = r.about || '';
+    // Extract phone and social from about (added by submitOrgApplication)
+    const lines = about.split('\n');
+    const descLines = lines.filter(l => !l.startsWith('📞') && !l.startsWith('🔗'));
+    const phoneLine = lines.find(l => l.startsWith('📞')) || '';
+    const socialLine = lines.find(l => l.startsWith('🔗')) || '';
+    const desc = descLines.join(' ').trim();
+
+    const emailHref = `mailto:${r.contact_email}?subject=Brain Fight Club — заявка организатора`;
+    const whatsappNum = phoneLine.replace(/📞\s*/,'').replace(/[^0-9+]/g,'');
+    const whatsappHref = whatsappNum ? `https://wa.me/${whatsappNum.replace('+','')}` : '';
+
+    return `
+    <div data-uid="${r.user_id}" style="border-bottom:0.5px solid var(--border);padding:14px 0">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+        <div style="font-size:14px;font-weight:900">${r.display_name || '—'}</div>
+        <span style="background:${statusBg[r.status]||statusBg.pending};color:${statusColor[r.status]||statusColor.pending};border-radius:8px;padding:3px 10px;font-size:10px;font-weight:800;flex-shrink:0;margin-left:8px">${statusLabel[r.status]||r.status}</span>
       </div>
-      <div style="color:var(--muted)">${r.contact_email} · ${r.city || 'город не указан'}</div>
-      <div style="color:var(--muted);margin-top:3px;line-height:1.4">${(r.about||'').slice(0,120)}</div>
-      ${r.status === 'pending' ? `
-        <div style="display:flex;gap:6px;margin-top:8px">
-          <button onclick="approveOrg('${r.user_id}')" style="background:rgba(74,222,128,.15);border:0.5px solid var(--green);border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;color:var(--green);cursor:pointer;font-family:inherit">✓ Одобрить</button>
-          <button onclick="rejectOrg('${r.user_id}')" style="background:rgba(224,85,85,.1);border:0.5px solid rgba(224,85,85,.3);border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;color:var(--red);cursor:pointer;font-family:inherit">✗ Отклонить</button>
-        </div>` : ''}
-    </div>`).join('');
+      <div style="font-size:12px;color:var(--muted);margin-bottom:4px">📍 ${r.city || 'город не указан'} · 📅 ${new Date(r.created_at).toLocaleDateString('ru')}</div>
+      ${desc ? `<div style="font-size:12px;line-height:1.5;margin-bottom:6px">${desc}</div>` : ''}
+      ${phoneLine ? `<div style="font-size:12px;color:var(--muted)">${phoneLine}</div>` : ''}
+      ${socialLine ? `<div style="font-size:12px;color:var(--muted)">${socialLine}</div>` : ''}
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">
+        <a href="${emailHref}" style="background:rgba(108,99,255,.12);border:0.5px solid rgba(108,99,255,.3);border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;color:var(--accent2);text-decoration:none">✉️ ${r.contact_email}</a>
+        ${whatsappHref ? `<a href="${whatsappHref}" target="_blank" style="background:rgba(37,211,102,.1);border:0.5px solid rgba(37,211,102,.3);border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;color:#25d366;text-decoration:none">💬 WhatsApp</a>` : ''}
+        ${r.status !== 'approved' ? `<button onclick="approveOrg('${r.user_id}')" style="background:rgba(74,222,128,.15);border:0.5px solid var(--green);border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;color:var(--green);cursor:pointer;font-family:inherit">✓ Одобрить</button>` : ''}
+        ${r.status !== 'rejected' ? `<button onclick="rejectOrg('${r.user_id}')" style="background:rgba(224,85,85,.1);border:0.5px solid rgba(224,85,85,.3);border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;color:var(--red);cursor:pointer;font-family:inherit">✗ Отклонить</button>` : ''}
+        <button onclick="deleteOrg('${r.user_id}')" style="background:none;border:0.5px solid var(--border);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
 };
 
 window.approveOrg = async function(userId) {
@@ -1736,6 +1759,14 @@ window.rejectOrg = async function(userId) {
     .eq('user_id', userId);
   if (error) { toast('Ошибка: ' + error.message); return; }
   toast('Заявка отклонена');
+  window.loadAdminOrgApplications();
+};
+
+window.deleteOrg = async function(userId) {
+  if (!confirm('Удалить заявку организатора? Это действие необратимо.')) return;
+  const { error } = await sb.from('organizer_profiles').delete().eq('user_id', userId);
+  if (error) { toast('Ошибка: ' + error.message); return; }
+  toast('Заявка удалена');
   window.loadAdminOrgApplications();
 };
 
