@@ -631,15 +631,9 @@ function endDuel(data){
   _saveDuelStats(myS, oppS, win);
   stopIntegrity();
   track('duel_completed', {result: win?'win':tie?'tie':'lose', my_score: myS, opp_score: oppS, bot: !!window._isBotDuel});
-  // ── Начисляем XP клубу за бой ──
-  const _clubBattlePts = win ? 80 : tie ? 40 : 20;
-  if(window._syncClubScore) window._syncClubScore(_clubBattlePts);
-  if(window._syncQuizScore) window._syncQuizScore(Math.round(_clubBattlePts*0.5));
-  window.awardWeeklyNeurons?.(_clubBattlePts);
   document.getElementById('d-result-icon').textContent=win?'🏆':tie?'🤝':'😤';
-  // Показываем клубные очки
   const _dClubEl = document.getElementById('d-club-bonus');
-  if(_dClubEl) _dClubEl.textContent = (win?'+80':tie?'+40':'+20') + ' ⚡ клубу';
+  if(_dClubEl) _dClubEl.style.display = 'none';
   // Показываем share-card
   const _sc = document.getElementById('d-share-card');
   if(_sc){

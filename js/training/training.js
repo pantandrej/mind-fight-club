@@ -1420,26 +1420,6 @@ function showScore(){
     // Single idempotent RPC call
     activateReferral();
     updateDailyStreakOnQuickPlayComplete();
-    // Award weekly club neurons (fire-and-forget)
-    window.awardWeeklyNeurons?.(_roundScore || correctCount * 2);
-    // Daily goal bonus — 50 ⚡ once per day for completing Quick Play
-    const goalBonus = claimDailyGoalBonus();
-    if(goalBonus > 0){
-      // Show a bonus card on score screen
-      setTimeout(()=>{
-        const existing = document.getElementById('sc-daily-goal-card');
-        if(existing) existing.remove();
-        const card = document.createElement('div');
-        card.id = 'sc-daily-goal-card';
-        card.style.cssText = 'width:100%;background:rgba(68,204,136,.12);border:1px solid rgba(68,204,136,.35);border-radius:14px;padding:12px 16px;margin:8px 0;text-align:center';
-        card.innerHTML = `
-          <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--green);margin-bottom:4px">🎯 ДНЕВНАЯ ЦЕЛЬ ВЫПОЛНЕНА</div>
-          <div style="font-size:20px;font-weight:800;color:var(--gold)">+${goalBonus} ⚡</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:4px">Сыграй 10 вопросов сегодня — бонус начислен!</div>`;
-        const statsRow = document.querySelector('.stats-row');
-        if(statsRow) statsRow.insertAdjacentElement('afterend', card);
-      }, 600);
-    }
     // Ask for push permission after game (best moment — user just had fun)
     setTimeout(()=>maybeAskPushAfterGame(), 2200);
   }
