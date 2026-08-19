@@ -115,17 +115,17 @@
     grid-column: 1 / -1;
     display: flex;
     align-items: center;
-    gap: 40px;
+    gap: 24px;
     text-align: left;
-    padding: 32px 36px;
+    padding: 16px 24px;
   }
   .home-hero > * { flex: 1; }
-  .home-hero::after { content: '🧠'; font-size: 90px; flex: 0 0 auto; line-height: 1; }
+  .home-hero::after { content: '🧠'; font-size: 56px; flex: 0 0 auto; line-height: 1; }
   .home-hero::before { display: none; }
 
-  .hero-title { font-size: 32px; margin-bottom: 10px; }
-  .hero-sub { font-size: 15px; margin-bottom: 24px; }
-  .play-btn { max-width: 280px; }
+  .hero-title { font-size: 22px; margin-bottom: 4px; }
+  .hero-sub { font-size: 13px; margin-bottom: 14px; }
+  .play-btn { max-width: 200px; }
 
   /* Mode grid 4 columns */
   .mode-grid { grid-template-columns: repeat(4,1fr); gap: 12px; grid-column: 1 / -1; }
