@@ -25,13 +25,14 @@ export async function loadMyTeam() {
   }
 
   const weekStart = _getWeekStart();
-  const [teamRes, membersRes, tiebreakRes, barRankRes, onlineRankRes, brainRes] = await Promise.all([
-    sb.from('teams').select('id,name,city,motto,banner_url,avatar_url,emoji').eq('id', me.team_id).single(),
+  const [teamRes, membersRes, tiebreakRes, barRankRes, onlineRankRes, brainRes, treasuryRes] = await Promise.all([
+    sb.from('teams').select('id,name,city,motto,banner_url,avatar_url,emoji,treasury_neurons').eq('id', me.team_id).single(),
     sb.from('profiles').select('id,display_name,neurons,avatar_url,is_scout').eq('team_id', me.team_id).order('neurons', { ascending: false }),
     sb.rpc('get_team_tiebreaker', { p_team_id: me.team_id }),
     _getTeamRank(me.team_id, 'bar_quiz'),
     _getTeamRank(me.team_id, 'online_quiz'),
     sb.from('team_weekly_brain_fights').select('points').eq('team_id', me.team_id).eq('week_start', weekStart).maybeSingle(),
+    sb.from('team_treasury_ledger').select('amount,created_at,profiles(display_name)').eq('team_id', me.team_id).order('created_at', { ascending: false }).limit(5),
   ]);
 
   const team     = teamRes.data;
@@ -55,8 +56,9 @@ export async function loadMyTeam() {
 
   const isAdmin = typeof window.isAdmin === 'function' ? window.isAdmin() : false;
   const brainPoints = brainRes.data?.points ?? 0;
+  const treasuryContribs = treasuryRes.data || [];
 
-  _renderMyTeam(el, { team, members, tiebreak, barRankRes, onlineRankRes, activeSet, currentUser, isAdmin, brainPoints, myTeamId: me.team_id });
+  _renderMyTeam(el, { team, members, tiebreak, barRankRes, onlineRankRes, activeSet, currentUser, isAdmin, brainPoints, myTeamId: me.team_id, treasuryContribs });
 }
 
 function _renderNoTeam(el) {
@@ -122,7 +124,7 @@ function _getWeekStart() {
   return mon.toISOString().slice(0, 10);
 }
 
-function _renderMyTeam(el, { team, members, tiebreak, barRankRes, onlineRankRes, activeSet, currentUser, isAdmin, brainPoints, myTeamId }) {
+function _renderMyTeam(el, { team, members, tiebreak, barRankRes, onlineRankRes, activeSet, currentUser, isAdmin, brainPoints, myTeamId, treasuryContribs }) {
   const bar    = barRankRes;
   const online = onlineRankRes;
   const massBonus = activeSet.size * 5;
@@ -319,6 +321,34 @@ function _renderMyTeam(el, { team, members, tiebreak, barRankRes, onlineRankRes,
           Каждый день: ТОП-3 нейронов + ${activeSet.size} активных × 5 = <strong style="color:var(--text)">${massBonus + tiebreak}</strong> очков сегодня<br>
           Итоги в воскресенье 23:59 UTC → рейтинг
         </div>
+      </div>
+
+      <!-- Казна команды -->
+      <div id="mt-treasury-card" style="background:linear-gradient(135deg,rgba(245,196,0,.08),rgba(255,160,0,.05));border:1px solid rgba(245,196,0,.25);border-radius:18px;padding:20px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div>
+            <div style="font-size:14px;font-weight:800">💰 Казна команды</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">Общий фонд нейронов</div>
+          </div>
+          <div style="text-align:right">
+            <div id="mt-treasury-amount" style="font-size:28px;font-weight:900;color:#f5c400">${team.treasury_neurons || 0}</div>
+            <div style="font-size:10px;color:var(--muted)">⚡ нейронов</div>
+          </div>
+        </div>
+        <button onclick="window._mtOpenDonate()"
+          style="width:100%;background:rgba(245,196,0,.15);border:1px solid rgba(245,196,0,.35);border-radius:12px;padding:10px;font-size:13px;font-weight:700;color:#f5c400;cursor:pointer;font-family:inherit">
+          💛 Внести вклад
+        </button>
+        ${treasuryContribs.length ? `
+        <div style="margin-top:14px">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:8px;font-weight:700;text-transform:uppercase;letter-spacing:.05em">Последние взносы</div>
+          ${treasuryContribs.map(c => `
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:12px">
+              <span style="color:var(--muted)">${c.profiles?.display_name || 'Игрок'}</span>
+              <span style="font-weight:700;color:#f5c400">+${c.amount} ⚡</span>
+            </div>
+          `).join('')}
+        </div>` : ''}
       </div>
 
       ${scoutSection}
@@ -520,6 +550,69 @@ window._mtJoinViaLink = async function(teamId) {
     window.showScreen('my-team-screen');
     loadMyTeam();
   }
+};
+
+// ── Казна: открыть модалку ────────────────────────────────────────
+window._mtOpenDonate = function() {
+  const existing = document.getElementById('mt-donate-overlay');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'mt-donate-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;display:flex;align-items:flex-end;justify-content:center';
+  overlay.innerHTML = `
+    <div style="background:var(--bg2);border-radius:24px 24px 0 0;padding:28px 24px 40px;width:100%;max-width:480px;box-sizing:border-box">
+      <div style="font-size:16px;font-weight:900;margin-bottom:4px">💰 Внести вклад в казну</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:20px">Нейроны перейдут в общий фонд команды</div>
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        ${[50, 100, 300].map(n => `
+          <button onclick="document.getElementById('mt-donate-input').value=${n}"
+            style="flex:1;background:rgba(245,196,0,.12);border:1px solid rgba(245,196,0,.3);border-radius:12px;padding:12px 0;font-size:15px;font-weight:900;color:#f5c400;cursor:pointer;font-family:inherit">
+            ${n}
+          </button>
+        `).join('')}
+      </div>
+      <input id="mt-donate-input" type="number" min="1" placeholder="Или введи своё число"
+        style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:12px 14px;font-size:15px;color:var(--text);font-family:inherit;outline:none;box-sizing:border-box;margin-bottom:14px"/>
+      <button onclick="window._mtDonate()"
+        style="width:100%;background:linear-gradient(135deg,#f5c400,#ff9800);border:none;border-radius:14px;padding:14px;font-size:15px;font-weight:900;color:#fff;cursor:pointer;font-family:inherit">
+        Внести ⚡
+      </button>
+      <button onclick="document.getElementById('mt-donate-overlay').remove()"
+        style="width:100%;background:transparent;border:none;border-radius:14px;padding:10px;font-size:13px;color:var(--muted);cursor:pointer;font-family:inherit;margin-top:4px">
+        Отмена
+      </button>
+    </div>`;
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+};
+
+window._mtDonate = async function() {
+  const input = document.getElementById('mt-donate-input');
+  const amount = parseInt(input?.value, 10);
+  if (!amount || amount <= 0) { window.toast?.('Введи сумму'); return; }
+
+  const btn = document.querySelector('#mt-donate-overlay button[onclick*="_mtDonate"]');
+  if (btn) btn.disabled = true;
+
+  const { data, error } = await sb.rpc('donate_to_team', { p_amount: amount });
+  document.getElementById('mt-donate-overlay')?.remove();
+
+  if (error || !data?.ok) {
+    const reason = data?.reason;
+    if (reason === 'insufficient_neurons') {
+      window.toast?.(`Недостаточно нейронов (у тебя ${data.balance} ⚡)`);
+    } else {
+      window.toast?.('Ошибка при взносе');
+      console.error(error, data);
+    }
+    return;
+  }
+
+  window.toast?.(`✅ Внесено ${amount} ⚡ в казну!`);
+  const treasuryEl = document.getElementById('mt-treasury-amount');
+  if (treasuryEl) treasuryEl.textContent = data.treasury;
+  loadMyTeam();
 };
 
 function _escAttr(s) {
