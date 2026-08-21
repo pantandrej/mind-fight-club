@@ -146,9 +146,18 @@ async function joinDuel(){
 
 function startDuelPoll(){
   if(duelPoll)clearInterval(duelPoll);
+  // 3-minute lobby timeout — if opponent never shows or game never starts, go back
+  const _lobbyDeadline = Date.now() + 3 * 60 * 1000;
   duelPoll=setInterval(async()=>{
     const {data}=await sb.from('duel_rooms').select('*').eq('code',duelCode).single();
     if(!data)return;
+    // Auto-abandon if stuck in lobby for > 3 minutes
+    if(Date.now() > _lobbyDeadline && data.status !== 'started'){
+      clearInterval(duelPoll);
+      window.toast?.('⏱ Соперник не вышел на бой — возврат в меню');
+      showScreen('play-menu');
+      return;
+    }
     // Host sees guest joined
     if(duelRole==='host'&&data.status==='ready'){
       document.getElementById('opp-name-wait').textContent='Соперник';
@@ -516,13 +525,16 @@ async function duelNextQ(){
       } catch(e) { console.error('[duel] final score write failed:', e); }
 
       const _waitStart = Date.now();
-      let waitDots = 0;
+      const _WAIT_TIMEOUT = 45000; // 45s then declare win
       let _waitEnded = false;
       const waitPoll = setInterval(async() => {
         if(_waitEnded) return;
-        waitDots = (waitDots + 1) % 4;
+        const elapsed = Date.now() - _waitStart;
+        const remaining = Math.max(0, Math.ceil((_WAIT_TIMEOUT - elapsed) / 1000));
         const txt = document.getElementById('d-q-text');
-        if(txt) txt.textContent = `⏳ Ждём соперника${'.'.repeat(waitDots + 1)}`;
+        if(txt) txt.textContent = elapsed < 10000
+          ? '⏳ Ждём соперника...'
+          : `⏳ Ждём соперника... (${remaining}с)`;
 
         try {
           const {data} = await sb.from('duel_rooms').select('*').eq('code',duelCode).single();
@@ -531,11 +543,10 @@ async function duelNextQ(){
           // Opponent done: they set their done flag OR their score appeared AND 5s passed
           const oppDoneFlagSet = data[oppDoneField] === true;
           const oppScoreSaved  = (data[oppField] ?? -1) >= 0;
-          const elapsed        = Date.now() - _waitStart;
           // End if: opp done flag, OR opp score present+5s waited, OR 45s hard timeout
           const shouldEnd = oppDoneFlagSet
             || (oppScoreSaved && elapsed > 5000)
-            || elapsed > 45000;
+            || elapsed > _WAIT_TIMEOUT;
 
           if(shouldEnd){
             _waitEnded = true;
