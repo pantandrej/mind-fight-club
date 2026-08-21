@@ -1574,7 +1574,7 @@
 
         <!-- Rules + Neurons -->
         <section class="prf-section">
-          <button id="profile-rules-btn" class="prf-wide-btn" onclick="showScreen('rules')">
+          <button id="profile-rules-btn" class="prf-wide-btn" onclick="window._rulesFrom='profile';showScreen('rules')">
             <span>📖 Как это работает / Правила</span>
             <span style="color:var(--accent);font-size:18px;font-weight:900">›</span>
           </button>
@@ -2164,7 +2164,7 @@
 <!-- RULES SCREEN -->
 <div class="screen" id="rules">
   <div class="hdr">
-    <button onclick="showScreen('home')" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 4px">←</button>
+    <button onclick="showScreen(window._rulesFrom||'home')" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 4px">←</button>
     <div class="logo">BFC</div>
     <div class="hdr-right"></div>
   </div>
@@ -3174,7 +3174,7 @@ console.log('✅ Firebase Tournaments module loaded');
   };
 
   window.saveBio = async function() {
-    const { currentUser } = window._bfcState?.() || {};
+    const currentUser = window.currentUser || window._bfcState?.()?.currentUser;
     if (!currentUser || !window.sb) return;
     const bio = document.getElementById('profile-bio-input').value.trim();
     await window.sb.from('profiles').update({ bio }).eq('id', currentUser.id);
@@ -3195,7 +3195,7 @@ console.log('✅ Firebase Tournaments module loaded');
     const file = input.files[0];
     if (!file) return;
     if (file.size > 2 * 1024 * 1024) { window.toast?.('Файл слишком большой (макс 2 МБ)'); return; }
-    const { currentUser } = window._bfcState?.() || {};
+    const currentUser = window.currentUser || window._bfcState?.()?.currentUser;
     if (!currentUser || !window.sb) { window.toast?.('Войдите чтобы сохранить фото'); return; }
 
     window.toast?.('⏳ Загружаем...');
@@ -3226,7 +3226,7 @@ console.log('✅ Firebase Tournaments module loaded');
   };
 
   window.loadProfileExtras = async function() {
-    const { currentUser } = window._bfcState?.() || {};
+    const currentUser = window.currentUser || window._bfcState?.()?.currentUser;
     if (!currentUser || !window.sb) return;
 
     const { data: p } = await window.sb.from('profiles')

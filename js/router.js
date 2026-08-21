@@ -23,6 +23,11 @@ export function showScreen(name) {
 
   window.scrollTo(0, 0);
 
+  // Persist screen for page-refresh restore (auth.js reads bfc_last_screen)
+  const _persistable = ['profile', 'shop', 'leaderboard', 'my-team-screen', 'teams-list-screen'];
+  if (_persistable.includes(name)) sessionStorage.setItem('bfc_last_screen', name);
+  else if (name === 'home') sessionStorage.removeItem('bfc_last_screen');
+
   // Stop quiz integrity timer when leaving game screens
   if (NON_GAME_SCREENS.has(name) && typeof window.stopIntegrity === 'function') {
     window.stopIntegrity();

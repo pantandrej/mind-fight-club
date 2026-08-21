@@ -289,7 +289,14 @@ function _redirectAfterAuth() {
     if (el) el.value = tournCode;
     return;
   }
-  showScreen('home');
+  const _savedScreen = sessionStorage.getItem('bfc_last_screen');
+  const _safeScreens = ['profile', 'home', 'shop', 'leaderboard', 'my-team-screen', 'teams-list-screen'];
+  if (_savedScreen && _safeScreens.includes(_savedScreen)) {
+    sessionStorage.removeItem('bfc_last_screen');
+    showScreen(_savedScreen);
+  } else {
+    showScreen('home');
+  }
   if (hypeSlug) setTimeout(() => window.openHypeGame?.(hypeSlug), 150);
   if (p.get('u') || p.get('uid')) {
     const uname = p.get('u');

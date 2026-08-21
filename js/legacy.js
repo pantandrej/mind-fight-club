@@ -1530,7 +1530,9 @@ async function loadProfileStats(){
     if(!data) return;
 
     const setText = (id, val) => { const el=document.getElementById(id); if(el) el.textContent=val; };
-    setText('ps-neurons',       data.neurons   || 0);
+    // Use state neurons (more up-to-date than view) — fallback to DB value
+    const _stateNeurons = window._appState?.getState().neurons;
+    setText('ps-neurons',       _stateNeurons != null ? _stateNeurons : (data.neurons || 0));
     setText('ps-games',         data.games_played || 0);
     setText('ps-streak',        data.best_streak  || 0);
     setText('ps-acc',           (data.accuracy_pct || 0) + '%');
@@ -13458,8 +13460,9 @@ window.submitCreateClub = async function() {
   if (!name) { if(errEl) errEl.textContent = 'Введи название'; return; }
   if (!currentUser) { if(errEl) errEl.textContent = 'Нужно войти'; return; }
 
+  const _clubCode = Math.random().toString(36).slice(2, 8).toUpperCase();
   const { data: club, error } = await sb.from('clubs').insert({
-    name, emoji, description: desc || null, owner_id: currentUser.id
+    name, emoji, description: desc || null, owner_id: currentUser.id, code: _clubCode
   }).select().single();
   if (error) { if(errEl) errEl.textContent = error.code === '23505' ? 'Такое название уже занято' : error.message; return; }
 
