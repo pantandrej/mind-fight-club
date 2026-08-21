@@ -1485,8 +1485,8 @@ function showProfile(){
     shareBtn.style.cssText = 'width:100%;margin-bottom:8px;background:rgba(108,99,255,.12);border:0.5px solid var(--accent2);color:var(--accent2);border-radius:14px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit';
     shareBtn.textContent = '🔗 Поделиться профилем';
     shareBtn.onclick = () => {
-      const displayName = document.getElementById('profile-name')?.textContent || '';
-      navigator.clipboard.writeText(location.origin + '?u=' + encodeURIComponent(displayName))
+      const uid = currentUser?.id || '';
+      navigator.clipboard.writeText(location.origin + '?uid=' + uid)
         .then(() => window.toast?.('🔗 Ссылка на профиль скопирована!'));
     };
     signoutBtn.parentElement.insertBefore(shareBtn, signoutBtn);
@@ -12882,6 +12882,8 @@ window.updatePushBtn = updatePushBtn;
   if (saved === 'light') {
     document.documentElement.setAttribute('data-theme', 'light');
     window.addEventListener('DOMContentLoaded', () => { _applyThemeButtons('light'); });
+  } else {
+    window.addEventListener('DOMContentLoaded', () => { _applyThemeButtons('dark'); });
   }
 })();
 
@@ -12942,17 +12944,24 @@ window.openPublicProfile = async function(username, userId) {
   modal.style.display = 'flex';
 
   try {
-    let query = sb.from('player_stats').select('*');
-    if (userId) query = query.eq('user_id', userId);
-    else query = query.eq('display_name', username);
-    const { data } = await query.single();
-    if (!data) {
+    // Resolve user_id: prefer explicit userId param, fallback to display_name lookup
+    let resolvedId = userId;
+    if (!resolvedId && username) {
+      const { data: p } = await sb.from('profiles').select('id').ilike('display_name', username).maybeSingle();
+      resolvedId = p?.id;
+    }
+    if (!resolvedId) {
+      document.getElementById('pub-profile-inner').innerHTML = '<div style="color:var(--muted)">Профиль не найден</div>';
+      return;
+    }
+    const { data } = await sb.rpc('get_public_profile', { p_user_id: resolvedId });
+    if (!data?.ok) {
       document.getElementById('pub-profile-inner').innerHTML = '<div style="color:var(--muted)">Профиль не найден</div>';
       return;
     }
     const initial = (data.display_name || username || '?')[0].toUpperCase();
     const rankHTML = _rankBadgeHTML(data.xp || 0);
-    const shareUrl = location.origin + '?u=' + encodeURIComponent(data.display_name || username || '');
+    const shareUrl = location.origin + '?uid=' + resolvedId;
     document.getElementById('pub-profile-inner').innerHTML = `
       <div style="width:72px;height:72px;border-radius:50%;background:rgba(108,99,255,.2);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:32px;font-weight:900;color:var(--accent2)">${initial}</div>
       <div style="font-size:20px;font-weight:900;margin-bottom:4px">${data.display_name || username || '—'}</div>
@@ -13142,9 +13151,9 @@ window.showAddFriendModal = async function() {
               <div style="font-size:13px;font-weight:700;color:var(--text)">${u.display_name || 'Игрок'}</div>
               ${u.city ? `<div style="font-size:11px;color:var(--muted)">${u.city}</div>` : ''}
             </div>
-            <button onclick="submitAddFriend('${u.id}','${(u.display_name||'').replace(/'/g,"\\'")}')"
-              style="background:var(--accent);border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit;flex-shrink:0">
-              Выбрать
+            <button onclick="window.openPublicProfile('${(u.display_name||'').replace(/'/g,"\\'")}','${u.id}');document.getElementById('add-friend-modal').remove()"
+              style="background:rgba(108,99,255,.15);border:1px solid rgba(108,99,255,.3);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit;flex-shrink:0">
+              Профиль
             </button>
           </div>`;
         }).join('');
@@ -13391,8 +13400,11 @@ window.showCreateClubModal = function() {
   modal.innerHTML = `<div style="background:var(--bg2);border-radius:24px 24px 0 0;padding:24px;width:100%;max-width:480px">
     <div style="font-size:18px;font-weight:900;margin-bottom:16px">Создать клуб</div>
     <div style="display:flex;gap:8px;margin-bottom:8px">
-      <input id="club-emoji-input" value="🧠" maxlength="2"
-        style="width:56px;text-align:center;font-size:24px;background:var(--bg3);border:0.5px solid var(--border);border-radius:12px;padding:10px;color:var(--text);font-family:inherit;outline:none" />
+      <div style="position:relative">
+        <input id="club-emoji-input" value="🧠" maxlength="2" title="Иконка клуба — введи любой эмодзи"
+          style="width:56px;text-align:center;font-size:24px;background:var(--bg3);border:0.5px solid var(--border);border-radius:12px;padding:10px;color:var(--text);font-family:inherit;outline:none;cursor:text" />
+        <div style="font-size:9px;color:var(--muted);text-align:center;margin-top:2px">иконка</div>
+      </div>
       <input id="club-name-input" placeholder="Название клуба" maxlength="40"
         style="flex:1;background:var(--bg3);border:0.5px solid var(--border);border-radius:12px;padding:12px;font-size:14px;color:var(--text);font-family:inherit;outline:none" />
     </div>

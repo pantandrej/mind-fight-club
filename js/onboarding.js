@@ -7,8 +7,7 @@ const STEPS = [
     icon: '🧠',
     title: 'Добро пожаловать в Brain Fight Club!',
     text:  'Квиз-платформа для тех, кто любит думать. Тематические паки, живые турниры и баттлы с друзьями.',
-    btn:   'Начать играть →',
-    cta:   { label: '⚡ Сыграть прямо сейчас', action: "window.finishOnboarding();window.showScreen?.('play-menu')" },
+    btn:   '⚡ Сыграть прямо сейчас',
   },
 ];
 
@@ -53,6 +52,7 @@ function nextStep() {
   _step++;
   if (_step >= STEPS.length) {
     finishOnboarding();
+    window.showScreen?.('play-menu');
   } else {
     _render();
   }
