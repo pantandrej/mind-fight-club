@@ -1530,9 +1530,10 @@ async function loadProfileStats(){
     if(!data) return;
 
     const setText = (id, val) => { const el=document.getElementById(id); if(el) el.textContent=val; };
-    // Use state neurons (more up-to-date than view) — fallback to DB value
-    const _stateNeurons = window._appState?.getState().neurons;
-    setText('ps-neurons',       _stateNeurons != null ? _stateNeurons : (data.neurons || 0));
+    // Take max of state and DB — state may lag if award RPC is still in-flight
+    const _stateNeurons = window._appState?.getState().neurons ?? 0;
+    const _dbNeurons = data.neurons ?? 0;
+    setText('ps-neurons', Math.max(_stateNeurons, _dbNeurons));
     setText('ps-games',         data.games_played || 0);
     setText('ps-streak',        data.best_streak  || 0);
     setText('ps-acc',           (data.accuracy_pct || 0) + '%');
