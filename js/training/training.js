@@ -93,7 +93,8 @@ let currentPackKey  = null;   // import_key for pack games
 const QUICK_PLAY_LOCK_KEY = 'mfc_quick_play_lock_v1';
 
 function todayKey(){
-  return new Date().toISOString().slice(0,10);
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
 
 function getQuickPlayLock(){
