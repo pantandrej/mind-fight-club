@@ -1316,11 +1316,11 @@ function showScore(){
   // _roundScore already accumulated in pick() - DO NOT overwrite here
   _cityRank = null;
 
-  // Show round score with count-up animation (fixed: 2 нейрона за верный ответ)
+  // Show speed neurons earned (sum of timeLeft for each correct answer)
   const scNeuronsEl = document.getElementById('sc-neurons');
   scNeuronsEl.textContent = '0';
   let n = 0;
-  const target = Math.min(correctCount * 2, 20);
+  const target = _speedNeurons;
   const step = Math.max(1, Math.ceil(target / 30));
   const countUp = setInterval(()=>{
     n = Math.min(n + step, target);
@@ -1347,7 +1347,7 @@ function showScore(){
 
   // Update "neurons earned" label
   const scNeuronsLbl = document.getElementById('sc-neurons-lbl');
-  if(scNeuronsLbl) scNeuronsLbl.textContent = lang==='ru' ? 'XP + нейронов заработано' : 'neurons earned this game';
+  if(scNeuronsLbl) scNeuronsLbl.textContent = lang==='ru' ? 'нейронов заработано' : 'neurons earned';
   const earned=[];
   if(checkBadges('first'))earned.push('first');
   if(bestStreak>=3&&checkBadges('streak3'))earned.push('streak3');
