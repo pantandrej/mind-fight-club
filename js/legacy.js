@@ -13798,6 +13798,16 @@ window.gcLoadFromFile = function(input) {
             }
           })(qi, q), 0);
         }
+        // Renumber: info slides → "— РАУНД —", real questions → sequential 1,2,3…
+        setTimeout(() => {
+          let realN = 0;
+          for (let i = 0; i < _gcQCount; i++) {
+            const lbl = document.querySelector(`#gc-q-${i} div[style*="font-weight:800"][style*="color:var(--muted)"]`);
+            if (!lbl) continue;
+            if (lbl.textContent === '— РАУНД —') continue;
+            lbl.textContent = 'ВОПРОС ' + (++realN);
+          }
+        }, 50);
         toast('✅ Файл загружен — ' + (_gcData.slides||[]).length + ' слайдов, ' + qs.length + ' вопросов');
       } else {
         toast('✅ Файл загружен — ' + (_gcData.slides||[]).length + ' слайдов');
