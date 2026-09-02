@@ -13781,18 +13781,20 @@ window.gcLoadFromFile = function(input) {
             });
             if (q.correct !== null && q.correct !== undefined) gcSelectCorrect(qi, q.correct);
             if (q.question_type === 'info') {
-              // hide options block: gc-opts is inside a wrapper div
+              // relabel header
+              const lbl = document.querySelector(`#gc-q-${qi} [style*="font-weight:800"][style*="color:var(--muted)"]`);
+              if (lbl && lbl.textContent.startsWith('ВОПРОС')) lbl.textContent = '— РАУНД —';
+              // hide options block
               const optsEl = document.getElementById(`gc-opts-${qi}`);
               if (optsEl) {
                 let wrap = optsEl.parentElement;
                 if (wrap) wrap.style.display = 'none';
               }
-              // also hide the correct-answer label
-              const bodyEl = document.getElementById(`gc-body-${qi}`);
-              if (bodyEl) {
-                const labels = bodyEl.querySelectorAll('[style*="margin-bottom:10px"]');
-                labels.forEach(el => { if (el.querySelector(`#gc-opts-${qi}`)) el.style.display = 'none'; });
-              }
+              // hide slide-a, text, media fields
+              const saDiv = document.getElementById(`gc-sa-${qi}`)?.closest('div[style*="grid"]');
+              if (saDiv) { const saCol = saDiv.children[1]; if(saCol) saCol.style.display='none'; }
+              const txtEl = document.getElementById(`gc-qtxt-${qi}`)?.parentElement;
+              if (txtEl) txtEl.style.display = 'none';
             }
           })(qi, q), 0);
         }
