@@ -393,9 +393,8 @@ export async function ensureProfile() {
     .eq('id', currentUser.id)
     .maybeSingle();
 
-  // Profile display_name is the source of truth — never overwrite user-set name with VK-derived one
-  const display_name = existing?.display_name || derived_name;
-  // Make name available globally for share/challenge mechanics
+  // Profile display_name is source of truth; localStorage is fallback if Supabase save was slow
+  const display_name = existing?.display_name || localStorage.getItem('mfc_display_name') || derived_name;
   window._currentUserName = display_name;
 
   if (existing) {

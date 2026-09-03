@@ -84,8 +84,8 @@ async function createTournament(){
   tRole    = 'host';
   tMyUserId = currentUser.id; // must be real auth.uid() — no guest IDs
   tMyName  = window._currentUserName
-             || currentUser?.user_metadata?.full_name
-             || localStorage.getItem('mfc_display_name');
+             || localStorage.getItem('mfc_display_name')
+             || currentUser?.user_metadata?.full_name;
   // Try profile fetch — most reliable source
   try {
     const {data:prof} = await sb.from('profiles').select('display_name').eq('id',tMyUserId).single();
@@ -93,14 +93,6 @@ async function createTournament(){
       tMyName = window._currentUserName = prof.display_name;
     }
   } catch(_){}
-  // Try direct auth.getUser() if still no name
-  if(!tMyName || tMyName === 'Игрок'){
-    try {
-      const { data: { user: authUser } } = await sb.auth.getUser();
-      const n = authUser?.user_metadata?.full_name;
-      if(n && n !== 'Игрок') tMyName = window._currentUserName = n;
-    } catch(_){}
-  }
   if(!tMyName || tMyName === 'Игрок') tMyName = 'Хост';
   tQs=[]; tIdx=0; tMyScore=0; tAnsweredThisQ=false;
 
@@ -185,21 +177,14 @@ async function joinTournament(){
   tRole     = 'guest';
   tMyUserId = currentUser.id; // real auth.uid() required
   tMyName   = window._currentUserName
-              || currentUser?.user_metadata?.full_name
-              || localStorage.getItem('mfc_display_name');
+              || localStorage.getItem('mfc_display_name')
+              || currentUser?.user_metadata?.full_name;
   try {
     const {data:prof} = await sb.from('profiles').select('display_name').eq('id',tMyUserId).single();
     if(prof?.display_name && prof.display_name !== 'Игрок') {
       tMyName = window._currentUserName = prof.display_name;
     }
   } catch(_){}
-  if(!tMyName || tMyName === 'Игрок'){
-    try {
-      const { data: { user: authUser } } = await sb.auth.getUser();
-      const n = authUser?.user_metadata?.full_name;
-      if(n && n !== 'Игрок') tMyName = window._currentUserName = n;
-    } catch(_){}
-  }
   if(!tMyName || tMyName === 'Игрок') tMyName = 'Игрок'+(Math.floor(Math.random()*99)+1);
   tQs=[]; tIdx=0; tMyScore=0; tAnsweredThisQ=false;
 
