@@ -20,6 +20,7 @@ let _tServerTimeOffset = 0;
 let _tHeartbeatTimer = null;
 let _tSyncPoll = null;
 let _tSyncCountdown = null;
+let _tPreselectedPackId = null;
 
 // ── Tournament logic ───────────────────────────────────────────────
 // NOTE: tHostAdvanceQuestion requires fbTournAdvance or fbTournUpdateConditional.
@@ -556,11 +557,11 @@ async function tLoadPackOptions(){
 
 async function startTournament(){
   let questions = [];
-  const packId = document.getElementById('t-pack-select')?.value;
+  const packId = _tPreselectedPackId || document.getElementById('t-pack-select')?.value;
   try{
     if(packId){
       const {data: pqs, error} = await sb.from('game_pack_questions')
-        .select('position, questions(question_text,question_ru,answers_json,answers_ru,correct_index,audio_url,video_url,question_type,slide_q_url,slide_a_url)')
+        .select('position, questions(question_text,question_ru,answers_json,answers_ru,correct_index,audio_url,video_url,question_type,slide_img_url,answer_slide_img_url,image_url)')
         .eq('game_pack_id', packId).order('position',{ascending:true});
       if(error) throw error;
       if(pqs && pqs.length > 0){
@@ -576,7 +577,7 @@ async function startTournament(){
               a:   {ru: a},
               c:   q.correct_index ?? 0,
               t:   timeMap[a.length] || 30,
-              img: q.slide_q_url,
+              img: q.slide_img_url || q.image_url,
               audio: q.audio_url,
               video: q.video_url
             };
@@ -737,6 +738,11 @@ function resetTournament(){
 
 
 // ── window exports ────────────────────────────────────────────────
+Object.defineProperty(window, '_tPreselectedPackId', {
+  get(){ return _tPreselectedPackId; },
+  set(v){ _tPreselectedPackId = v; },
+  configurable: true
+});
 window.createTournament = createTournament;
 window.joinTournament   = joinTournament;
 window.startTournament  = startTournament;

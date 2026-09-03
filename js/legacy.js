@@ -4426,13 +4426,14 @@ async function loadAdminGames(){
 }
 
 function adminLaunchTournament(packId){
+  if(typeof _tPreselectedPackId !== 'undefined') window._tPreselectedPackId = packId;
   showScreen('tournament');
   setTimeout(async ()=>{
     if(typeof createTournament === 'function') await createTournament();
     setTimeout(()=>{
       const sel = document.getElementById('t-pack-select');
-      if(sel) sel.value = packId;
-    }, 800);
+      if(sel && packId) sel.value = packId;
+    }, 1000);
   }, 200);
 }
 
