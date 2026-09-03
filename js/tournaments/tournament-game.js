@@ -433,6 +433,13 @@ function tRevealAnswer(){
     showFb('t-fb', '✓ +'+tMyEarnedPts, true);
     setDot('t-prog-dots', tIdx, 'done');
     tPlaySound(true);
+    // Write score to Firebase so leaderboard reflects it immediately
+    if(window.fbTournPatch && tMyUserId){
+      window.fbTournPatch(tCode, {
+        [`participants.${tMyUserId}.score`]: tMyScore,
+        [`participants.${tMyUserId}.is_correct`]: true,
+      }).catch(()=>{});
+    }
   } else if(tMySelectedIdx !== -1){
     showFb('t-fb', correctKnown ? '✗ '+(q.a[q.c]||'') : '✗', false);
     setDot('t-prog-dots', tIdx, 'miss');
@@ -517,9 +524,17 @@ async function tWriteAnswer(selectedIdx){
     const {error} = await window.fbTournWriteAnswer(tCode, tMyUserId, tIdx, tQVersion, answerData);
     if(error) console.error('[T] writeAnswer error:', error);
   } else if(window.fbTournPatch){
-    // Patch participant data directly into Firebase room
-    const patch = {};
-    patch[`participants.${tMyUserId}`] = answerData;
+    // Patch individual fields — never replace the whole participant object (would wipe score/name)
+    const uid = tMyUserId;
+    const patch = {
+      [`participants.${uid}.name`]:         tMyName,
+      [`participants.${uid}.q_answered`]:   tIdx,
+      [`participants.${uid}.q_version`]:    tQVersion,
+      [`participants.${uid}.selected_idx`]: selectedIdx,
+      [`participants.${uid}.speed_pts`]:    selectedIdx >= 0 ? tMyEarnedPts : 0,
+      [`participants.${uid}.answered_at`]:  Date.now(),
+      [`participants.${uid}.last_seen`]:    Date.now(),
+    };
     await window.fbTournPatch(tCode, patch).catch(e=>console.error('[T] writeAnswer patch error:', e));
   }
   // Note: no Supabase fallback — tournaments.players column does not exist
@@ -582,9 +597,10 @@ async function tMaybeAdvanceAsHost(){
   }
 }
 
-async function tHostAdvanceQuestion(room){
+async function tHostAdvanceQuestion(roomArg){
   if(_tAdvanceLock) return;
   _tAdvanceLock = true;
+  let room = roomArg;
 
   const expectedVersion = tQVersion; // CAS guard
   const nextIdx     = tIdx + 1;
@@ -597,6 +613,12 @@ async function tHostAdvanceQuestion(room){
 
   // Show answer slide for 7 seconds before advancing
   await new Promise(r=>setTimeout(r, 7000));
+
+  // Re-read room for fresh participant data (answers may have arrived during the pause)
+  if(window.fbTournGet){
+    const freshRoom = await window.fbTournGet(tCode).catch(()=>null);
+    if(freshRoom) room = freshRoom;
+  }
 
   // Compute scores for this question — speed-based (1pt per remaining second)
   const participants = room.participants || room.players || {};
