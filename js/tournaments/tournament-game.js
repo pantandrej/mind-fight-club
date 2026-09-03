@@ -280,9 +280,11 @@ function tLoadQFromRoom(room){
     tDeadlineMs = Date.now() + tSecondsForQ(q) * 1000;
   }
 
-  document.getElementById('t-cat-pill').textContent     = q.cat || '—';
+  const isInfo = q.question_type === 'info';
+
+  document.getElementById('t-cat-pill').textContent     = isInfo ? 'РАУНД' : (q.cat || '—');
   document.getElementById('t-q-counter').textContent    = (tIdx+1) + '/' + tQs.length;
-  document.getElementById('t-q-text').textContent       = q.q;
+  document.getElementById('t-q-text').textContent       = isInfo ? '' : q.q;
   document.getElementById('t-my-score-display').textContent = tMyScore;
   renderQMedia('t-media-container', q);
   document.getElementById('t-fb').className = 'fb';
@@ -294,8 +296,18 @@ function tLoadQFromRoom(room){
   nextBtn.disabled     = false;
   nextBtn.style.opacity = '';
 
-  // Render answers
+  // Info slide: hide answers, auto-advance after 5s
   const ans = document.getElementById('t-answers'); ans.innerHTML='';
+  if(isInfo){
+    tAnsweredThisQ = true; // prevent timer expire logic from triggering wrong answer
+    setDot('t-prog-dots', tIdx, 'done');
+    tTimer = setTimeout(()=>{
+      tIdx++;
+      if(tIdx < tQs.length) tLoadQFromRoom({ question_deadline_at: Date.now() + tSecondsForQ(tQs[tIdx]) * 1000 });
+    }, 5000);
+    return;
+  }
+
   q.a.forEach((a,i)=>{
     const b = document.createElement('button'); b.className='ans';
     b.innerHTML = '<span class="ans-l">' + answerLetter(i) + '</span><span>' + a + '</span>';
@@ -566,22 +578,24 @@ async function startTournament(){
       if(error) throw error;
       if(pqs && pqs.length > 0){
         questions = pqs
-          .filter(pq => pq.questions?.question_type !== 'info')
           .map(pq=>{
             const q = pq.questions;
+            if(!q) return null;
             const a = q.answers_ru || q.answers_json || [];
             const timeMap = {2:30,3:35,4:40,5:45,6:50};
+            const isInfo = q.question_type === 'info';
             return {
-              cat: 'Турнир',
+              cat:           isInfo ? 'info' : 'Турнир',
+              question_type: q.question_type,
               q:   {ru: q.question_ru || q.question_text || ''},
-              a:   {ru: a},
-              c:   q.correct_index ?? 0,
-              t:   timeMap[a.length] || 30,
+              a:   {ru: isInfo ? [] : a},
+              c:   isInfo ? 0 : (q.correct_index ?? 0),
+              t:   isInfo ? 5 : (timeMap[a.length] || 30),
               img: q.slide_img_url || q.image_url,
               audio: q.audio_url,
               video: q.video_url
             };
-          });
+          }).filter(Boolean);
         toast('✅ Загружено ' + questions.length + ' вопросов из пака');
       }
     }
