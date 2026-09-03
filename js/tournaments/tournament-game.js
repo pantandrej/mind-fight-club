@@ -76,15 +76,16 @@ async function createTournament(){
   tRole    = 'host';
   tMyUserId = currentUser.id; // must be real auth.uid() — no guest IDs
   tMyName  = window._currentUserName
-             || currentUser?.user_metadata?.full_name?.split(' ')[0]
+             || currentUser?.user_metadata?.full_name
              || localStorage.getItem('mfc_display_name');
-  if(!tMyName){
-    try {
-      const {data:prof} = await sb.from('profiles').select('display_name').eq('id',tMyUserId).single();
-      if(prof?.display_name) tMyName = window._currentUserName = prof.display_name;
-    } catch(_){}
-  }
-  if(!tMyName) tMyName = 'Хост';
+  // Always try profile fetch — VK metadata might have wrong name or not set yet
+  try {
+    const {data:prof} = await sb.from('profiles').select('display_name').eq('id',tMyUserId).single();
+    if(prof?.display_name && prof.display_name !== 'Игрок') {
+      tMyName = window._currentUserName = prof.display_name;
+    }
+  } catch(_){}
+  if(!tMyName || tMyName === 'Игрок') tMyName = currentUser?.user_metadata?.full_name || 'Хост';
   tQs=[]; tIdx=0; tMyScore=0; tAnsweredThisQ=false;
 
   const roomData = {
@@ -158,15 +159,15 @@ async function joinTournament(){
   tRole     = 'guest';
   tMyUserId = currentUser.id; // real auth.uid() required
   tMyName   = window._currentUserName
-              || currentUser?.user_metadata?.full_name?.split(' ')[0]
+              || currentUser?.user_metadata?.full_name
               || localStorage.getItem('mfc_display_name');
-  if(!tMyName){
-    try {
-      const {data:prof} = await sb.from('profiles').select('display_name').eq('id',tMyUserId).single();
-      if(prof?.display_name) tMyName = window._currentUserName = prof.display_name;
-    } catch(_){}
-  }
-  if(!tMyName) tMyName = 'Игрок'+(Math.floor(Math.random()*99)+1);
+  try {
+    const {data:prof} = await sb.from('profiles').select('display_name').eq('id',tMyUserId).single();
+    if(prof?.display_name && prof.display_name !== 'Игрок') {
+      tMyName = window._currentUserName = prof.display_name;
+    }
+  } catch(_){}
+  if(!tMyName || tMyName === 'Игрок') tMyName = currentUser?.user_metadata?.full_name || ('Игрок'+(Math.floor(Math.random()*99)+1));
   tQs=[]; tIdx=0; tMyScore=0; tAnsweredThisQ=false;
 
   // Register participant — use user_id as key (not name)
@@ -457,15 +458,13 @@ async function tWriteAnswer(selectedIdx){
   if(window.fbTournWriteAnswer){
     const {error} = await window.fbTournWriteAnswer(tCode, tMyUserId, tIdx, tQVersion, answerData);
     if(error) console.error('[T] writeAnswer error:', error);
-  } else {
-    // Supabase fallback: note this fallback is limited (see fix #8 notes)
-    const {data: room, error: rErr} = await sb.from('tournaments').select('players').eq('code',tCode).single();
-    if(rErr){ console.error('[T] fetchRoom error:', rErr.message); return; }
-    const players = room?.players || {};
-    players[tMyUserId] = answerData;
-    const {error: uErr} = await sb.from('tournaments').update({players}).eq('code',tCode);
-    if(uErr) console.error('[T] updateAnswer error:', uErr.message);
+  } else if(window.fbTournPatch){
+    // Patch participant data directly into Firebase room
+    const patch = {};
+    patch[`participants.${tMyUserId}`] = answerData;
+    await window.fbTournPatch(tCode, patch).catch(e=>console.error('[T] writeAnswer patch error:', e));
   }
+  // Note: no Supabase fallback — tournaments.players column does not exist
 
   if(tRole === 'host'){
     tMaybeAdvanceAsHost();
