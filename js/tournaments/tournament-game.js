@@ -111,6 +111,16 @@ async function createTournament(){
     }).catch(e=>{ console.error('[T] create error:', e); toast('Ошибка создания комнаты'); return; });
   }
 
+  // Patch Firebase with resolved name in case it changed during async profile fetch
+  if(window.fbTournPatch){
+    window.fbTournPatch(tCode, {
+      host_name: tMyName,
+      [`participants.${tMyUserId}.name`]: tMyName
+    }).catch(()=>{});
+  }
+
+  console.log('[T] createTournament: tMyName=', tMyName, '_currentUserName=', window._currentUserName);
+
   document.getElementById('t-code-display').textContent = tCode;
   document.getElementById('t-link-txt').textContent = location.origin+location.pathname+'?tourn='+tCode;
   document.getElementById('t-start-btn').style.display = 'block';
@@ -401,21 +411,26 @@ function tLocalExpire(){
 
   if(!isInfo) tRevealAnswer(); // show correct answer to everyone
 
-  if(tAnsweredThisQ){
-    if(tRole === 'host'){
-      if(isInfo){
-        tHostAdvanceQuestion({ participants: {}, participant_ids: [tMyUserId] });
-      } else {
-        tMaybeAdvanceAsHost();
-      }
+  if(!tAnsweredThisQ){
+    // Timed out without answering
+    tAnsweredThisQ = true;
+    if(!isInfo){
+      tWriteAnswer(-1);
+      tShowWaitingAfterAnswer();
     }
-    return;
   }
-  // Timed out without answering
-  tAnsweredThisQ = true;
-  if(!isInfo){
-    tWriteAnswer(-1);
-    tShowWaitingAfterAnswer();
+
+  // Host always advances when deadline passes — reset lock in case earlier attempt got stuck
+  if(tRole === 'host'){
+    _tAdvanceLock = false;
+    if(isInfo){
+      tHostAdvanceQuestion({ participants: {}, participant_ids: [tMyUserId] });
+    } else {
+      // Read fresh room state then advance
+      (window.fbTournGet ? window.fbTournGet(tCode) : Promise.resolve(null)).then(room => {
+        tHostAdvanceQuestion(room || { participants: {}, participant_ids: [tMyUserId] });
+      });
+    }
   }
 }
 
@@ -465,10 +480,7 @@ async function tWriteAnswer(selectedIdx){
     await window.fbTournPatch(tCode, patch).catch(e=>console.error('[T] writeAnswer patch error:', e));
   }
   // Note: no Supabase fallback — tournaments.players column does not exist
-
-  if(tRole === 'host'){
-    tMaybeAdvanceAsHost();
-  }
+  // Host advances only via tLocalExpire (deadline) — not immediately on answer
 }
 
 function tShowWaitingAfterAnswer(){
