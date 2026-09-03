@@ -11,6 +11,7 @@ let tIdx        = 0;
 let tMyScore    = 0;
 let tAnsweredThisQ = false;
 let tMySelectedIdx = -1; // locally selected answer index (revealed after deadline)
+let tMyEarnedPts   = 0;  // points earned this question (speed-based)
 let tTimer      = null;
 let tDeadlineMs = 0;
 let tQVersion   = 0;
@@ -287,6 +288,7 @@ function tLoadQFromRoom(room){
   if(tTimer){ clearInterval(tTimer); tTimer=null; }
   tAnsweredThisQ = false;
   tMySelectedIdx = -1;
+  tMyEarnedPts   = 0;
   _tAdvanceLock  = false;
 
   const q = tQs[tIdx];
@@ -358,7 +360,10 @@ function tTickFromDeadline(){
   const cd = document.getElementById('t-countdown');
   if(cd){ cd.textContent=remaining; cd.style.color=remaining<=5?'#e05555':remaining<=10?'#f0a050':'#8b83ff'; }
   const pv = document.getElementById('t-p-val');
-  if(pv && q){ pv.textContent = (!q.question_type || q.question_type !== 'info') ? '+' + getFixedPoints(Array.isArray(q.a) ? q.a.length : 2) : ''; }
+  if(pv && q){
+    const isInfo = q.question_type === 'info';
+    pv.textContent = isInfo ? '' : (tAnsweredThisQ ? '+'+tMyEarnedPts : '+'+Math.max(1, remaining));
+  }
 }
 
 function tRenderTimer(){
@@ -370,16 +375,15 @@ function tRevealAnswer(){
   const q = tQs[tIdx];
   if(!q || q.question_type === 'info') return;
   const correctKnown = q.c !== undefined && q.c !== null;
-  const pts = getFixedPoints(Array.isArray(q.a) ? q.a.length : 2);
   document.querySelectorAll('#t-answers .ans').forEach((b,i)=>{
     b.disabled = true;
     if(correctKnown && i === q.c) b.className = 'ans correct';
     else if(i === tMySelectedIdx && tMySelectedIdx !== -1) b.className = 'ans wrong';
   });
   if(tMySelectedIdx !== -1 && correctKnown && tMySelectedIdx === q.c){
-    tMyScore += pts;
+    tMyScore += tMyEarnedPts;
     document.getElementById('t-my-score-display').textContent = tMyScore;
-    showFb('t-fb', '✓ +'+pts, true);
+    showFb('t-fb', '✓ +'+tMyEarnedPts, true);
     setDot('t-prog-dots', tIdx, 'done');
   } else if(tMySelectedIdx !== -1){
     showFb('t-fb', correctKnown ? '✗ '+(q.a[q.c]||'') : '✗', false);
@@ -422,7 +426,9 @@ async function tPickAnswer(i){
   // Keep timer running so countdown stays visible and deadline triggers advance
 
   const q   = tQs[tIdx];
-  const pts = getFixedPoints(q.a.length);
+  // Speed-based: 1 point per remaining second (30 on 1st second, 1 on 30th)
+  const remaining = Math.ceil((tDeadlineMs - Date.now()) / 1000);
+  tMyEarnedPts = Math.max(1, Math.min(30, remaining));
   document.querySelectorAll('#t-answers .ans').forEach(b=>b.disabled=true);
 
   // Mark selected only — reveal correct answer after deadline (like Kahoot)
@@ -443,9 +449,9 @@ async function tWriteAnswer(selectedIdx){
     q_answered:  tIdx,
     q_version:   tQVersion,
     selected_idx: selectedIdx,  // -1 = timed out
+    speed_pts:   selectedIdx >= 0 ? tMyEarnedPts : 0, // speed-based points (host validates correctness)
     answered_at: Date.now(),
     last_seen:   Date.now()
-    // NOTE: is_correct and points intentionally omitted — not trusted from client
   };
 
   if(window.fbTournWriteAnswer){
@@ -538,14 +544,14 @@ async function tHostAdvanceQuestion(room){
   // Short pause so everyone sees correct answer
   await new Promise(r=>setTimeout(r, 2500));
 
-  // Compute scores for this question — host knows correct index
+  // Compute scores for this question — speed-based (1pt per remaining second)
   const currentQ = tQs[tIdx];
   if(currentQ && currentQ.c !== undefined && currentQ.question_type !== 'info'){
     const correctIdx = currentQ.c;
-    const pts = getFixedPoints(Array.isArray(currentQ.a) ? currentQ.a.length : 2);
     const scoreUpdates = {};
     Object.entries(participants).forEach(([uid, p])=>{
       if(p.q_answered === tIdx && p.selected_idx === correctIdx){
+        const pts = Math.max(1, Math.min(30, p.speed_pts || 1));
         const newScore = (p.score||0) + pts;
         scoreUpdates[`participants.${uid}.score`] = newScore;
         scoreUpdates[`participants.${uid}.is_correct`] = true;
