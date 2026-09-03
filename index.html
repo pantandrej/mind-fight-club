@@ -562,6 +562,12 @@
         <div class="lb-hdr"><span id="t-players-label">Игроков вошло</span><span id="t-player-count">0/50</span></div>
         <div id="t-players-list"></div>
       </div>
+      <div id="t-pack-selector" style="display:none;width:100%;margin-bottom:10px">
+        <div style="font-size:11px;font-weight:800;color:var(--muted);margin-bottom:6px">ВЫБРАТЬ ПАК ВОПРОСОВ</div>
+        <select id="t-pack-select" style="width:100%;background:var(--bg3);border:0.5px solid var(--border);border-radius:12px;padding:10px 14px;font-size:13px;color:var(--text);font-family:inherit;outline:none">
+          <option value="">— Случайные вопросы —</option>
+        </select>
+      </div>
       <button class="big-btn gold" id="t-start-btn" onclick="startTournament()" style="display:none">🏆 Старт!</button>
       <div class="wait-txt" id="t-wait-txt"><div class="pulse-dot"></div><span id="t-wait-label">Ждём начала от хоста...</span></div>
     </div>
@@ -1663,6 +1669,13 @@
       style="width:100%;background:linear-gradient(135deg,rgba(108,99,255,.15),rgba(108,99,255,.05));border:1.5px solid var(--accent);border-radius:16px;padding:18px;font-size:15px;font-weight:800;color:var(--accent2);cursor:pointer;font-family:inherit;text-align:left">
       🎮 Конструктор игр<br>
       <span style="font-size:12px;font-weight:400;opacity:.7">Загрузи game.json → расставь ответы → опубликуй турнир</span>
+    </button>
+
+    <!-- Launch live tournament -->
+    <button onclick="showScreen('tournament');setTimeout(()=>document.getElementById('t-create-btn')?.click(),200)"
+      style="width:100%;background:linear-gradient(135deg,rgba(240,192,64,.15),rgba(240,130,0,.06));border:1.5px solid var(--gold);border-radius:16px;padding:18px;font-size:15px;font-weight:800;color:var(--gold);cursor:pointer;font-family:inherit;text-align:left">
+      ⚡ Запустить турнир<br>
+      <span style="font-size:12px;font-weight:400;opacity:.7">Создать комнату, выбрать пак и позвать игроков</span>
     </button>
 
     <!-- Games list -->
