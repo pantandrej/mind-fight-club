@@ -344,7 +344,9 @@ function tLoadQFromRoom(room){
   const realCount = tRealQCount();
   document.getElementById('t-cat-pill').textContent     = isInfo ? 'РАУНД' : (q.cat || '—');
   document.getElementById('t-q-counter').textContent    = isInfo ? '' : (realIdx+1) + '/' + realCount;
-  document.getElementById('t-q-text').textContent       = isInfo ? '' : q.q;
+  // Show question text only if there's no question slide image
+  const qTextEl = document.getElementById('t-q-text');
+  qTextEl.textContent = (isInfo || q.img) ? '' : q.q;
   document.getElementById('t-my-score-display').textContent = tMyScore;
   renderQMedia('t-media-container', q);
   document.getElementById('t-fb').className = 'fb';
@@ -462,8 +464,8 @@ function tRevealAnswer(){
   // Switch to answer slide if available
   if(q.img_a){
     const mc = document.getElementById('t-media-container');
-    if(mc) mc.innerHTML = `<div class="q-media" style="aspect-ratio:16/9;overflow:hidden;border-radius:12px;background:#000">
-      <img src="${q.img_a}" style="width:100%;height:100%;object-fit:cover;object-position:top;display:block">
+    if(mc) mc.innerHTML = `<div class="q-media" style="border-radius:12px;overflow:hidden;background:#000">
+      <img src="${q.img_a}" style="width:100%;height:auto;display:block">
     </div>`;
   }
 }
@@ -621,7 +623,7 @@ async function tHostAdvanceQuestion(roomArg){
   const nextQ       = tQs[nextIdx];
   const deadlineSec = nextQ ? tSecondsForQ(nextQ) : 0;
   const serverNow   = localToServer(Date.now());
-  const newDeadline = serverNow + deadlineSec * 1000 + 1500;
+  const newDeadline = serverNow + deadlineSec * 1000 + 3000;
   const newVersion  = expectedVersion + 1;
 
   // Show answer slide for 7 seconds before advancing
@@ -817,7 +819,7 @@ async function startTournament(){
     current_question_index:  0,
     question_version:        1,
     question_started_at:     nowMs,
-    question_deadline_at:    nowMs + deadlineSec * 1000 + 1500
+    question_deadline_at:    nowMs + deadlineSec * 1000 + 3000
   };
 
   if(window.fbTournUpdate){
