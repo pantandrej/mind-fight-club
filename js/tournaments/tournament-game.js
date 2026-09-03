@@ -350,15 +350,22 @@ function tRenderTimer(){
 }
 
 function tLocalExpire(){
-  if(tAnsweredThisQ) return;
+  if(tAnsweredThisQ){
+    // Already answered — for host, trigger advance since deadline passed
+    if(tRole === 'host') tMaybeAdvanceAsHost();
+    return;
+  }
   tAnsweredThisQ = true;
   const q = tQs[tIdx];
   document.querySelectorAll('#t-answers .ans').forEach((b,i)=>{
-    b.disabled=true; if(i===q.c) b.className='ans correct';
+    b.disabled=true;
+    const correctKnown = q.c !== undefined && q.c !== null;
+    if(correctKnown && i===q.c) b.className='ans correct';
   });
-  showFb('t-fb','⏱ '+q.a[q.c], false);
+  const correctKnown = q.c !== undefined && q.c !== null;
+  showFb('t-fb', correctKnown ? '⏱ '+(q.a[q.c]||'') : '⏱', false);
   setDot('t-prog-dots', tIdx, 'miss');
-  tWriteAnswer(-1); // timed out — correctness computed server-side
+  tWriteAnswer(-1);
   tShowWaitingAfterAnswer();
 }
 
@@ -367,7 +374,7 @@ async function tPickAnswer(i){
   // Check deadline — no answer after server deadline
   if(Date.now() > tDeadlineMs + 500){ tLocalExpire(); return; }
   tAnsweredThisQ = true;
-  if(tTimer){ clearInterval(tTimer); tTimer=null; }
+  // Keep timer running so countdown stays visible and deadline triggers advance
 
   const q   = tQs[tIdx];
   const pts = getFixedPoints(q.a.length);
