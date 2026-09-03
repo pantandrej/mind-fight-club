@@ -24,6 +24,8 @@
 .ans:disabled{cursor:default}
 .ans.correct{background:rgba(68,204,136,.13);border-color:var(--green);color:var(--green)}
 .ans.wrong{background:rgba(224,85,85,.1);border-color:rgba(224,85,85,.45);color:rgba(230,110,110,.9)}
+.ans.selected{background:rgba(139,131,255,.15);border-color:#8b83ff;color:#8b83ff}
+.ans.selected .ans-l{background:#8b83ff;color:#fff}
 .ans-l{width:26px;height:26px;border-radius:7px;background:rgba(255,255,255,.07);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:var(--muted);flex-shrink:0;transition:all .15s}
 .ans.correct .ans-l{background:var(--green);color:#fff}
 .ans.wrong .ans-l{background:rgba(224,85,85,.5);color:#fff}

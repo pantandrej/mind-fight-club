@@ -10,6 +10,7 @@ let tQs         = [];
 let tIdx        = 0;
 let tMyScore    = 0;
 let tAnsweredThisQ = false;
+let tMySelectedIdx = -1; // locally selected answer index (revealed after deadline)
 let tTimer      = null;
 let tDeadlineMs = 0;
 let tQVersion   = 0;
@@ -75,7 +76,14 @@ async function createTournament(){
   tMyUserId = currentUser.id; // must be real auth.uid() — no guest IDs
   tMyName  = window._currentUserName
              || currentUser?.user_metadata?.full_name?.split(' ')[0]
-             || localStorage.getItem('mfc_display_name') || 'Хост';
+             || localStorage.getItem('mfc_display_name');
+  if(!tMyName){
+    try {
+      const {data:prof} = await sb.from('profiles').select('display_name').eq('id',tMyUserId).single();
+      if(prof?.display_name) tMyName = window._currentUserName = prof.display_name;
+    } catch(_){}
+  }
+  if(!tMyName) tMyName = 'Хост';
   tQs=[]; tIdx=0; tMyScore=0; tAnsweredThisQ=false;
 
   const roomData = {
@@ -150,7 +158,14 @@ async function joinTournament(){
   tMyUserId = currentUser.id; // real auth.uid() required
   tMyName   = window._currentUserName
               || currentUser?.user_metadata?.full_name?.split(' ')[0]
-              || localStorage.getItem('mfc_display_name') || 'Игрок'+(Math.floor(Math.random()*99)+1);
+              || localStorage.getItem('mfc_display_name');
+  if(!tMyName){
+    try {
+      const {data:prof} = await sb.from('profiles').select('display_name').eq('id',tMyUserId).single();
+      if(prof?.display_name) tMyName = window._currentUserName = prof.display_name;
+    } catch(_){}
+  }
+  if(!tMyName) tMyName = 'Игрок'+(Math.floor(Math.random()*99)+1);
   tQs=[]; tIdx=0; tMyScore=0; tAnsweredThisQ=false;
 
   // Register participant — use user_id as key (not name)
@@ -271,6 +286,7 @@ function tBeginGame(room){
 function tLoadQFromRoom(room){
   if(tTimer){ clearInterval(tTimer); tTimer=null; }
   tAnsweredThisQ = false;
+  tMySelectedIdx = -1;
   _tAdvanceLock  = false;
 
   const q = tQs[tIdx];
@@ -349,13 +365,40 @@ function tRenderTimer(){
   tTickFromDeadline();
 }
 
+function tRevealAnswer(){
+  // Show correct/wrong result after deadline — called from tLocalExpire
+  const q = tQs[tIdx];
+  if(!q || q.question_type === 'info') return;
+  const correctKnown = q.c !== undefined && q.c !== null;
+  const pts = getFixedPoints(Array.isArray(q.a) ? q.a.length : 2);
+  document.querySelectorAll('#t-answers .ans').forEach((b,i)=>{
+    b.disabled = true;
+    if(correctKnown && i === q.c) b.className = 'ans correct';
+    else if(i === tMySelectedIdx && tMySelectedIdx !== -1) b.className = 'ans wrong';
+  });
+  if(tMySelectedIdx !== -1 && correctKnown && tMySelectedIdx === q.c){
+    tMyScore += pts;
+    document.getElementById('t-my-score-display').textContent = tMyScore;
+    showFb('t-fb', '✓ +'+pts, true);
+    setDot('t-prog-dots', tIdx, 'done');
+  } else if(tMySelectedIdx !== -1){
+    showFb('t-fb', correctKnown ? '✗ '+(q.a[q.c]||'') : '✗', false);
+    setDot('t-prog-dots', tIdx, 'miss');
+  } else {
+    showFb('t-fb', correctKnown ? '⏱ '+(q.a[q.c]||'') : '⏱', false);
+    setDot('t-prog-dots', tIdx, 'miss');
+  }
+}
+
 function tLocalExpire(){
+  const q = tQs[tIdx];
+  const isInfo = q && q.question_type === 'info';
+
+  if(!isInfo) tRevealAnswer(); // show correct answer to everyone
+
   if(tAnsweredThisQ){
-    // Already answered (e.g. info slide) — host advances directly
     if(tRole === 'host'){
-      const q = tQs[tIdx];
-      if(q && q.question_type === 'info'){
-        // Info slides don't write answers to Firebase — advance directly
+      if(isInfo){
         tHostAdvanceQuestion({ participants: {}, participant_ids: [tMyUserId] });
       } else {
         tMaybeAdvanceAsHost();
@@ -363,18 +406,12 @@ function tLocalExpire(){
     }
     return;
   }
+  // Timed out without answering
   tAnsweredThisQ = true;
-  const q = tQs[tIdx];
-  document.querySelectorAll('#t-answers .ans').forEach((b,i)=>{
-    b.disabled=true;
-    const correctKnown = q.c !== undefined && q.c !== null;
-    if(correctKnown && i===q.c) b.className='ans correct';
-  });
-  const correctKnown = q.c !== undefined && q.c !== null;
-  showFb('t-fb', correctKnown ? '⏱ '+(q.a[q.c]||'') : '⏱', false);
-  setDot('t-prog-dots', tIdx, 'miss');
-  tWriteAnswer(-1);
-  tShowWaitingAfterAnswer();
+  if(!isInfo){
+    tWriteAnswer(-1);
+    tShowWaitingAfterAnswer();
+  }
 }
 
 async function tPickAnswer(i){
@@ -388,19 +425,10 @@ async function tPickAnswer(i){
   const pts = getFixedPoints(q.a.length);
   document.querySelectorAll('#t-answers .ans').forEach(b=>b.disabled=true);
 
-  const correctKnown = q.c !== undefined && q.c !== null;
-  if(correctKnown && i === q.c){
-    document.querySelectorAll('#t-answers .ans')[i].className='ans correct';
-    tMyScore += pts;
-    document.getElementById('t-my-score-display').textContent = tMyScore;
-    showFb('t-fb', '✓ +'+pts, true);
-    setDot('t-prog-dots', tIdx, 'done');
-  } else {
-    document.querySelectorAll('#t-answers .ans')[i].className='ans wrong';
-    if(correctKnown) document.querySelectorAll('#t-answers .ans')[q.c].className='ans correct';
-    showFb('t-fb', correctKnown ? '✗ '+(q.a[q.c]||'') : '✗', false);
-    setDot('t-prog-dots', tIdx, 'miss');
-  }
+  // Mark selected only — reveal correct answer after deadline (like Kahoot)
+  tMySelectedIdx = i;
+  document.querySelectorAll('#t-answers .ans')[i].className='ans selected';
+  showFb('t-fb', '⏳ Ждём окончания времени…', false);
 
   await tWriteAnswer(i); // only selected_idx — server derives correctness
   tShowWaitingAfterAnswer();
@@ -478,7 +506,9 @@ async function tMaybeAdvanceAsHost(){
   const total          = Math.max(1, participantIds.length);
 
   // Count answers for THIS question version only
+  // Host's own answer may not yet be reflected in Firebase — count locally
   const answeredCount = participantIds.filter(uid => {
+    if(uid === tMyUserId && tAnsweredThisQ) return true;
     const p = participants[uid];
     return p && p.q_answered >= tIdx && p.q_version === tQVersion;
   }).length;
