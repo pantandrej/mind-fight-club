@@ -13767,7 +13767,53 @@ window.gcLoadFromUrl = async function() {
     const res = await fetch(url);
     _gcData = await res.json();
     _gcShowLoaded();
-    toast('✅ game.json загружен — ' + (_gcData.slides||[]).length + ' слайдов');
+    const qs = _gcData.questions || [];
+    if (qs.length) {
+      // Restore meta if present
+      if (_gcData.name) document.getElementById('gc-name').value = _gcData.name;
+      if (_gcData.code) document.getElementById('gc-code').value = _gcData.code;
+      if (_gcData.type) document.getElementById('gc-type').value = _gcData.type;
+      if (_gcData.time) document.getElementById('gc-time').value = _gcData.time;
+      for (let i = 0; i < qs.length; i++) {
+        const q = qs[i];
+        gcAddQuestion();
+        const qi = _gcQCount - 1;
+        setTimeout(((qi, q) => () => {
+          if (q.sq) { document.getElementById(`gc-sq-${qi}`).value = q.sq; gcUpdatePreview(qi,'q'); }
+          if (q.sa) { document.getElementById(`gc-sa-${qi}`).value = q.sa; gcUpdatePreview(qi,'a'); }
+          if (q.text) document.getElementById(`gc-qtxt-${qi}`).value = q.text;
+          if (q.media) { const s = document.getElementById(`gc-media-${qi}`); if(s) s.value = q.media; }
+          (q.opts||[]).forEach((opt, ai) => {
+            let el = document.getElementById(`gc-opt-txt-${qi}-${ai}`);
+            if (!el) { gcAddOption(qi); el = document.getElementById(`gc-opt-txt-${qi}-${ai}`); }
+            if (el && opt) el.value = opt;
+          });
+          if (q.correct !== null && q.correct !== undefined) gcSelectCorrect(qi, q.correct);
+          if (q.question_type === 'info') {
+            const lbl = document.querySelector(`#gc-q-${qi} [style*="font-weight:800"][style*="color:var(--muted)"]`);
+            if (lbl && lbl.textContent.startsWith('ВОПРОС')) lbl.textContent = '— РАУНД —';
+            const optsEl = document.getElementById(`gc-opts-${qi}`);
+            if (optsEl?.parentElement) optsEl.parentElement.style.display = 'none';
+            const saDiv = document.getElementById(`gc-sa-${qi}`)?.closest('div[style*="grid"]');
+            if (saDiv) { const saCol = saDiv.children[1]; if(saCol) saCol.style.display='none'; }
+            const txtEl = document.getElementById(`gc-qtxt-${qi}`)?.parentElement;
+            if (txtEl) txtEl.style.display = 'none';
+          }
+        })(qi, q), 0);
+      }
+      setTimeout(() => {
+        let realN = 0;
+        for (let i = 0; i < _gcQCount; i++) {
+          const lbl = document.querySelector(`#gc-q-${i} div[style*="font-weight:800"][style*="color:var(--muted)"]`);
+          if (!lbl) continue;
+          if (lbl.textContent === '— РАУНД —') continue;
+          lbl.textContent = 'ВОПРОС ' + (++realN);
+        }
+      }, 50);
+      toast('✅ Загружено — ' + (_gcData.slides||[]).length + ' слайдов, ' + qs.length + ' карточек');
+    } else {
+      toast('✅ game.json загружен — ' + (_gcData.slides||[]).length + ' слайдов');
+    }
   } catch(e) { toast('❌ ' + e.message); }
 };
 
