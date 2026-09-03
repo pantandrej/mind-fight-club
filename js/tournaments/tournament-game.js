@@ -24,6 +24,14 @@ let _tSyncPoll = null;
 let _tSyncCountdown = null;
 let _tPreselectedPackId = null;
 
+// ── Helpers: real question index (excluding info slides) ──────────
+function tRealQIdx(absIdx){
+  const q = tQs[absIdx];
+  if(!q || q.question_type === 'info') return -1;
+  return tQs.slice(0, absIdx).filter(q => q.question_type !== 'info').length;
+}
+function tRealQCount(){ return tQs.filter(q => q.question_type !== 'info').length; }
+
 // ── Tournament logic ───────────────────────────────────────────────
 // NOTE: tHostAdvanceQuestion requires fbTournAdvance or fbTournUpdateConditional.
 // Without one of these, the tournament will NOT start (unsafe fallback removed).
@@ -306,7 +314,7 @@ function tBeginGame(room){
   tQVersion = room.question_version       ?? 0;
   tMyScore  = 0;
   showTournSection('t-game');
-  buildDots('t-prog-dots', tQs.length);
+  buildDots('t-prog-dots', tRealQCount());
   tLoadQFromRoom(room);
 }
 
@@ -332,8 +340,10 @@ function tLoadQFromRoom(room){
 
   const isInfo = q.question_type === 'info';
 
+  const realIdx = tRealQIdx(tIdx);
+  const realCount = tRealQCount();
   document.getElementById('t-cat-pill').textContent     = isInfo ? 'РАУНД' : (q.cat || '—');
-  document.getElementById('t-q-counter').textContent    = (tIdx+1) + '/' + tQs.length;
+  document.getElementById('t-q-counter').textContent    = isInfo ? '' : (realIdx+1) + '/' + realCount;
   document.getElementById('t-q-text').textContent       = isInfo ? '' : q.q;
   document.getElementById('t-my-score-display').textContent = tMyScore;
   renderQMedia('t-media-container', q);
@@ -351,7 +361,7 @@ function tLoadQFromRoom(room){
   if(isInfo){
     tAnsweredThisQ = true;
     tDeadlineMs = Date.now() + 15000;
-    setDot('t-prog-dots', tIdx, 'done');
+    // info slides don't get a dot — they're not counted in real question progress
     tRenderTimer();
     tTimer = setInterval(tTickFromDeadline, 250);
     return;
@@ -364,7 +374,7 @@ function tLoadQFromRoom(room){
     ans.appendChild(b);
   });
 
-  setDot('t-prog-dots', tIdx, 'active');
+  if(realIdx >= 0) setDot('t-prog-dots', realIdx, 'active');
   tRenderTimer();
 
   // Local countdown using server deadline
@@ -427,11 +437,12 @@ function tRevealAnswer(){
     else if(i === tMySelectedIdx && tMySelectedIdx !== -1) b.className = 'ans wrong';
   });
   const isCorrect = tMySelectedIdx !== -1 && correctKnown && tMySelectedIdx === q.c;
+  const _rd = tRealQIdx(tIdx);
   if(isCorrect){
     tMyScore += tMyEarnedPts;
     document.getElementById('t-my-score-display').textContent = tMyScore;
     showFb('t-fb', '✓ +'+tMyEarnedPts, true);
-    setDot('t-prog-dots', tIdx, 'done');
+    if(_rd >= 0) setDot('t-prog-dots', _rd, 'done');
     tPlaySound(true);
     // Write score to Firebase so leaderboard reflects it immediately
     if(window.fbTournPatch && tMyUserId){
@@ -442,11 +453,11 @@ function tRevealAnswer(){
     }
   } else if(tMySelectedIdx !== -1){
     showFb('t-fb', correctKnown ? '✗ '+(q.a[q.c]||'') : '✗', false);
-    setDot('t-prog-dots', tIdx, 'miss');
+    if(_rd >= 0) setDot('t-prog-dots', _rd, 'miss');
     tPlaySound(false);
   } else {
     showFb('t-fb', correctKnown ? '⏱ '+(q.a[q.c]||'') : '⏱', false);
-    setDot('t-prog-dots', tIdx, 'miss');
+    if(_rd >= 0) setDot('t-prog-dots', _rd, 'miss');
   }
   // Switch to answer slide if available
   if(q.img_a){
@@ -694,8 +705,9 @@ function tRenderSpectatorView(room){
   const q = tQs[room.current_question_index] || tQs[0];
   if(!q) return;
   document.getElementById('t-q-text').textContent = q.q;
+  const _sRi = tRealQIdx(room.current_question_index);
   document.getElementById('t-q-counter').textContent =
-    (room.current_question_index+1) + '/' + tQs.length;
+    _sRi >= 0 ? (_sRi+1) + '/' + tRealQCount() : '';
   document.querySelectorAll('#t-answers .ans').forEach((b,i)=>{
     b.disabled = true; b.style.opacity='0.5';
   });
@@ -827,19 +839,20 @@ async function startTournament(){
   tQVersion = 1;
   tDeadlineMs = startData.question_deadline_at;
   showTournSection('t-game');
-  buildDots('t-prog-dots', tQs.length);
+  buildDots('t-prog-dots', tRealQCount());
   tLoadQFromRoom(startData);
 }
 
 function tRenderPlayerList(participants){
   const el = document.getElementById('t-players-list'); if(!el) return;
-  const entries = Object.values(participants);
+  const entries = Object.entries(participants).map(([uid,p])=>({...p,_uid:uid}));
   document.getElementById('t-player-count').textContent = entries.length + '/50';
   el.innerHTML = entries.map(p=>{
-    const isMe = p.name === tMyName;
+    const isMe = p._uid === tMyUserId;
+    const displayName = isMe ? (tMyName || p.name || 'Игрок') : (p.name || 'Игрок');
     return `<div class="lb-row${isMe?' me':''}">
-      <div class="lb-av" style="background:rgba(108,99,255,.15);color:var(--accent2)">${_esc((p.name||'?')[0].toUpperCase())}</div>
-      <div class="lb-name">${_esc(p.name||'Игрок')}</div>
+      <div class="lb-av" style="background:rgba(108,99,255,.15);color:var(--accent2)">${_esc((displayName||'?')[0].toUpperCase())}</div>
+      <div class="lb-name">${_esc(displayName)}</div>
       <div class="lb-score">${p.score||0}</div>
     </div>`;
   }).join('');
@@ -847,15 +860,19 @@ function tRenderPlayerList(participants){
 
 function tRenderLeaderboardFromRoom(participants){
   const el = document.getElementById('t-live-lb'); if(!el) return;
-  const sorted = Object.values(participants).sort((a,b)=>(b.score||0)-(a.score||0));
+  const sorted = Object.entries(participants)
+    .map(([uid,p])=>({...p,_uid:uid}))
+    .sort((a,b)=>(b.score||0)-(a.score||0));
   const medals = ['🥇','🥈','🥉'];
   el.innerHTML = sorted.map((p,i)=>{
-    const isMe = p.name === tMyName;
+    const isMe = p._uid === tMyUserId;
+    const displayName = isMe ? (tMyName || p.name || 'Игрок') : (p.name || 'Игрок');
+    const displayScore = isMe ? tMyScore : (p.score||0);
     return `<div class="lb-row${isMe?' me':''}">
       <div class="lb-rank">${medals[i]||i+1}</div>
-      <div class="lb-av" style="background:rgba(108,99,255,.15);color:var(--accent2)">${_esc((p.name||'?')[0].toUpperCase())}</div>
-      <div class="lb-name">${_esc(p.name||'Игрок')}</div>
-      <div class="lb-score${isMe?' me':''}">${p.score||0}</div>
+      <div class="lb-av" style="background:rgba(108,99,255,.15);color:var(--accent2)">${_esc((displayName||'?')[0].toUpperCase())}</div>
+      <div class="lb-name">${_esc(displayName)}</div>
+      <div class="lb-score${isMe?' me':''}">${displayScore}</div>
     </div>`;
   }).join('');
 }
@@ -863,19 +880,23 @@ function tRenderLeaderboardFromRoom(participants){
 function tShowResults(participants){
   tCleanup();
   if(_tHeartbeatTimer){ clearInterval(_tHeartbeatTimer); _tHeartbeatTimer=null; }
-  const sorted = Object.values(participants).sort((a,b)=>(b.score||0)-(a.score||0));
+  const sorted = Object.entries(participants)
+    .map(([uid,p])=>({...p,_uid:uid}))
+    .sort((a,b)=>(b.score||0)-(a.score||0));
   const medals = ['🥇','🥈','🥉'];
   document.getElementById('t-final-lb').innerHTML = sorted.map((p,i)=>{
-    const isMe = p.name === tMyName;
+    const isMe = p._uid === tMyUserId;
+    const displayName = isMe ? (tMyName || p.name || 'Игрок') : (p.name || 'Игрок');
+    const displayScore = isMe ? tMyScore : (p.score||0);
     return `<div class="lb-row${isMe?' me':''}">
       <div class="lb-rank">${medals[i]||i+1}</div>
-      <div class="lb-av" style="background:rgba(108,99,255,.15);color:var(--accent2)">${_esc((p.name||'?')[0].toUpperCase())}</div>
-      <div class="lb-name">${_esc(p.name||'Игрок')}</div>
-      <div class="lb-score${isMe?' me':''}">${p.score||0}</div>
+      <div class="lb-av" style="background:rgba(108,99,255,.15);color:var(--accent2)">${_esc((displayName||'?')[0].toUpperCase())}</div>
+      <div class="lb-name">${_esc(displayName)}</div>
+      <div class="lb-score${isMe?' me':''}">${displayScore}</div>
     </div>`;
   }).join('');
 
-  const myEntry = sorted.find(p=>p.name===tMyName);
+  const myEntry = sorted.find(p=>p._uid===tMyUserId);
   if(myEntry){
     const myPlace = sorted.indexOf(myEntry)+1;
     const _tc = JSON.parse(localStorage.getItem('mfc_club_fb')||'null');
