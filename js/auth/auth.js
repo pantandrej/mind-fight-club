@@ -384,18 +384,24 @@ export async function ensureProfile() {
   if (!currentUser) return;
 
   const city         = localStorage.getItem('mfc_city') || null;
-  const display_name = currentUser.user_metadata?.full_name
+  // Derived from auth provider (VK name or email prefix)
+  const derived_name = currentUser.user_metadata?.full_name
     || currentUser.email?.split('@')[0] || 'Игрок';
-  // Make name available globally for share/challenge mechanics
-  window._currentUserName = display_name;
 
   const { data: existing } = await sb.from('profiles')
-    .select('id,total_score,ref_code')
+    .select('id,total_score,ref_code,display_name')
     .eq('id', currentUser.id)
     .maybeSingle();
 
+  // Profile display_name is the source of truth — never overwrite user-set name with VK-derived one
+  const display_name = existing?.display_name || derived_name;
+  // Make name available globally for share/challenge mechanics
+  window._currentUserName = display_name;
+
   if (existing) {
-    const updates = { display_name, updated_at: new Date().toISOString() };
+    const updates = { updated_at: new Date().toISOString() };
+    // Only set display_name if profile has none yet
+    if (!existing.display_name) updates.display_name = derived_name;
     if (city && !existing.city) updates.city = city;
     if (!existing.ref_code) {
       const code = Math.random().toString(36).slice(2, 10).toUpperCase();

@@ -463,7 +463,7 @@ function tRevealAnswer(){
   if(q.img_a){
     const mc = document.getElementById('t-media-container');
     if(mc) mc.innerHTML = `<div class="q-media" style="aspect-ratio:16/9;overflow:hidden;border-radius:12px;background:#000">
-      <img src="${q.img_a}" style="width:100%;height:100%;object-fit:cover;display:block">
+      <img src="${q.img_a}" style="width:100%;height:100%;object-fit:cover;object-position:top;display:block">
     </div>`;
   }
 }
