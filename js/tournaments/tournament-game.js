@@ -44,7 +44,11 @@ function localToServer(ms){ return ms + _tServerTimeOffset; }
 
 function serverToLocal(ms){ return ms - _tServerTimeOffset; }
 
-function tSecondsForQ(q){ return (q && q.a ? Math.min(q.a.length, 6) : 2) * 10; }
+function tSecondsForQ(q){
+  if(!q) return 30;
+  if(q.question_type === 'info') return 15;
+  return 30;
+}
 
 function showTournSection(id){
   document.querySelectorAll('.tourn-section').forEach(s=>s.classList.toggle('active',s.id===id));
@@ -302,14 +306,10 @@ function tLoadQFromRoom(room){
   const ans = document.getElementById('t-answers'); ans.innerHTML='';
   if(isInfo){
     tAnsweredThisQ = true;
+    tDeadlineMs = Date.now() + 15000;
     setDot('t-prog-dots', tIdx, 'done');
-    tTimer = setTimeout(()=>{
-      if(tRole === 'host'){
-        tHostAdvanceQuestion({ participants: {}, participant_ids: [] });
-      } else {
-        // Guest waits for host to advance via Firebase
-      }
-    }, 5000);
+    tRenderTimer();
+    tTimer = setInterval(tTickFromDeadline, 250);
     return;
   }
 
@@ -621,7 +621,7 @@ async function startTournament(){
               q:   {ru: q.question_ru || q.question_text || ''},
               a:   {ru: isInfo ? [] : a},
               c:   isInfo ? 0 : (q.correct_index ?? 0),
-              t:   isInfo ? 5 : (timeMap[a.length] || 30),
+              t:   isInfo ? 15 : 30,
               img: q.slide_img_url || q.image_url,
               audio: q.audio_url,
               video: q.video_url
