@@ -539,7 +539,7 @@ function tRenderSpectatorView(room){
 
 async function tLoadPackOptions(){
   try{
-    const {data} = await sb.from('game_packs').select('id,title_ru,import_key').eq('status','published').order('title_ru');
+    const {data} = await sb.from('game_packs').select('id,title_ru,import_key,status').order('title_ru');
     const sel = document.getElementById('t-pack-select');
     if(!sel || !data) return;
     // Remove existing dynamic options
@@ -547,7 +547,8 @@ async function tLoadPackOptions(){
     data.forEach(p=>{
       const opt = document.createElement('option');
       opt.value = p.id;
-      opt.textContent = p.title_ru || p.import_key || p.id;
+      const statusTag = p.status === 'published' ? '' : ' [черновик]';
+      opt.textContent = (p.title_ru || p.import_key || p.id) + statusTag;
       sel.appendChild(opt);
     });
   } catch(e){ console.error('tLoadPackOptions', e); }
