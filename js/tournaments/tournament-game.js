@@ -342,7 +342,7 @@ function tTickFromDeadline(){
   const cd = document.getElementById('t-countdown');
   if(cd){ cd.textContent=remaining; cd.style.color=remaining<=5?'#e05555':remaining<=10?'#f0a050':'#8b83ff'; }
   const pv = document.getElementById('t-p-val');
-  if(pv && q){ pv.textContent = '+' + getFixedPoints(q.a.length); }
+  if(pv && q){ pv.textContent = (!q.question_type || q.question_type !== 'info') ? '+' + getFixedPoints(Array.isArray(q.a) ? q.a.length : 2) : ''; }
 }
 
 function tRenderTimer(){
@@ -351,8 +351,16 @@ function tRenderTimer(){
 
 function tLocalExpire(){
   if(tAnsweredThisQ){
-    // Already answered — for host, trigger advance since deadline passed
-    if(tRole === 'host') tMaybeAdvanceAsHost();
+    // Already answered (e.g. info slide) — host advances directly
+    if(tRole === 'host'){
+      const q = tQs[tIdx];
+      if(q && q.question_type === 'info'){
+        // Info slides don't write answers to Firebase — advance directly
+        tHostAdvanceQuestion({ participants: {}, participant_ids: [tMyUserId] });
+      } else {
+        tMaybeAdvanceAsHost();
+      }
+    }
     return;
   }
   tAnsweredThisQ = true;
