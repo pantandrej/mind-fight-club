@@ -368,7 +368,8 @@ async function tPickAnswer(i){
   const pts = getFixedPoints(q.a.length);
   document.querySelectorAll('#t-answers .ans').forEach(b=>b.disabled=true);
 
-  if(i === q.c){
+  const correctKnown = q.c !== undefined && q.c !== null;
+  if(correctKnown && i === q.c){
     document.querySelectorAll('#t-answers .ans')[i].className='ans correct';
     tMyScore += pts;
     document.getElementById('t-my-score-display').textContent = tMyScore;
@@ -376,8 +377,8 @@ async function tPickAnswer(i){
     setDot('t-prog-dots', tIdx, 'done');
   } else {
     document.querySelectorAll('#t-answers .ans')[i].className='ans wrong';
-    document.querySelectorAll('#t-answers .ans')[q.c].className='ans correct';
-    showFb('t-fb', '✗ '+q.a[q.c], false);
+    if(correctKnown) document.querySelectorAll('#t-answers .ans')[q.c].className='ans correct';
+    showFb('t-fb', correctKnown ? '✗ '+(q.a[q.c]||'') : '✗', false);
     setDot('t-prog-dots', tIdx, 'miss');
   }
 
@@ -653,7 +654,8 @@ async function startTournament(){
   };
 
   if(window.fbTournUpdate){
-    const {error} = await window.fbTournUpdate(tCode, startData);
+    const res = await window.fbTournUpdate(tCode, startData);
+    const error = res?.error;
     if(error){ toast('Ошибка старта: ' + error); return; }
   } else {
     const {error} = await sb.from('tournaments').update({
