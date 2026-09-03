@@ -556,6 +556,7 @@ async function tHostAdvanceQuestion(room){
   await new Promise(r=>setTimeout(r, 2500));
 
   // Compute scores for this question — speed-based (1pt per remaining second)
+  const participants = room.participants || room.players || {};
   const currentQ = tQs[tIdx];
   if(currentQ && currentQ.c !== undefined && currentQ.question_type !== 'info'){
     const correctIdx = currentQ.c;
