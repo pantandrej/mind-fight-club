@@ -3076,14 +3076,38 @@ import { doc as fbDoc, setDoc as fbSetDoc, getDoc as fbGetDoc,
 // db уже доступен как переменная выше
 
 // ── Создать комнату ──
-window.fbTournCreate = async function(code, hostName) {
-  await fbSetDoc(fbDoc(db, 'rooms', code), {
+window.fbTournCreate = async function(code, hostName, roomData) {
+  // roomData is authoritative if provided; legacy fallback uses hostName as key
+  const data = roomData || {
     code,
     status: 'waiting',
     questions: null,
-    players: { [hostName]: { score: 0, done: false, isHost: true } },
-    created_at: new Date().toISOString()
+    participants: { [hostName]: { name: hostName, score: 0, q_answered: -1, last_seen: Date.now(), isHost: true } },
+    created_at: Date.now()
+  };
+  await fbSetDoc(fbDoc(db, 'rooms', code), data);
+};
+
+// ── Присоединиться к комнате (записать участника) ──
+window.fbTournJoin = async function(code, uid, participantData) {
+  await fbUpdateDoc(fbDoc(db, 'rooms', code), {
+    [`participants.${uid}`]: participantData,
   });
+};
+
+// ── Точечное обновление полей комнаты (dot-notation) ──
+window.fbTournPatch = async function(code, fields) {
+  await fbUpdateDoc(fbDoc(db, 'rooms', code), fields);
+};
+
+// ── Записать ответ участника ──
+window.fbTournWriteAnswer = async function(code, uid, qIdx, qVersion, answerData) {
+  const patch = {};
+  for (const [k, v] of Object.entries(answerData)) {
+    patch[`participants.${uid}.${k}`] = v;
+  }
+  await fbUpdateDoc(fbDoc(db, 'rooms', code), patch);
+  return {};
 };
 
 // ── Получить комнату ──
