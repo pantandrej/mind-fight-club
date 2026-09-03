@@ -97,6 +97,9 @@ async function createTournament(){
   document.getElementById('t-link-txt').textContent = location.origin+location.pathname+'?tourn='+tCode;
   document.getElementById('t-start-btn').style.display = 'block';
   document.getElementById('t-wait-txt').style.display  = 'none';
+  // Show pack selector for host and load available packs
+  const packSel = document.getElementById('t-pack-selector');
+  if(packSel){ packSel.style.display = 'block'; tLoadPackOptions(); }
   showTournSection('t-waiting');
   tListenRoom();
   checkBadges('tourn'); if (typeof window.renderBadges === 'function') window.renderBadges();
@@ -532,26 +535,70 @@ function tRenderSpectatorView(room){
   if(nextBtn){ nextBtn.style.display='none'; }
 }
 
+async function tLoadPackOptions(){
+  try{
+    const {data} = await sb.from('game_packs').select('id,title_ru,import_key').eq('status','published').order('title_ru');
+    const sel = document.getElementById('t-pack-select');
+    if(!sel || !data) return;
+    // Remove existing dynamic options
+    Array.from(sel.options).forEach(o=>{ if(o.value) o.remove(); });
+    data.forEach(p=>{
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.title_ru || p.import_key || p.id;
+      sel.appendChild(opt);
+    });
+  } catch(e){ console.error('tLoadPackOptions', e); }
+}
+
 async function startTournament(){
   let questions = [];
+  const packId = document.getElementById('t-pack-select')?.value;
   try{
-    const {data: tqs, error} = await sb.from('tournament_questions')
-      .select('*').eq('active',true).order('position',{ascending:true});
-    if(error) throw error;
-    if(tqs && tqs.length > 0){
-      const shuffled = [...tqs].sort(()=>Math.random()-.5).slice(0,30);
-      questions = shuffled.map(q=>({
-        cat: q.cat || 'Турнир',
-        q:   {ru: q.question_ru||q.q, en: q.question_en||q.q},
-        a:   {ru: q.answers_ru||q.a,  en: q.answers_en||q.a},
-        c:   q.correct_index ?? q.c ?? 0,
-        t:   q.time_seconds || (((q.answers_ru||q.a||[]).length)*10) || 30
-      }));
-      toast('✅ Загружено ' + questions.length + ' вопросов');
-    } else {
-      const raw = [...ALL_Q].sort(()=>Math.random()-.5).slice(0,30);
-      questions = raw.map(q=>({cat:q.cat, q:q.q, a:q.a, c:q.c, t:q.t}));
-      toast('⚠️ Используем общую базу');
+    if(packId){
+      const {data: pqs, error} = await sb.from('game_pack_questions')
+        .select('position, questions(question_text,question_ru,answers_json,answers_ru,correct_index,audio_url,video_url,question_type,slide_q_url,slide_a_url)')
+        .eq('game_pack_id', packId).order('position',{ascending:true});
+      if(error) throw error;
+      if(pqs && pqs.length > 0){
+        questions = pqs
+          .filter(pq => pq.questions?.question_type !== 'info')
+          .map(pq=>{
+            const q = pq.questions;
+            const a = q.answers_ru || q.answers_json || [];
+            const timeMap = {2:30,3:35,4:40,5:45,6:50};
+            return {
+              cat: 'Турнир',
+              q:   {ru: q.question_ru || q.question_text || ''},
+              a:   {ru: a},
+              c:   q.correct_index ?? 0,
+              t:   timeMap[a.length] || 30,
+              img: q.slide_q_url,
+              audio: q.audio_url,
+              video: q.video_url
+            };
+          });
+        toast('✅ Загружено ' + questions.length + ' вопросов из пака');
+      }
+    }
+    if(!questions.length){
+      const {data: tqs, error} = await sb.from('tournament_questions')
+        .select('*').eq('active',true).order('position',{ascending:true});
+      if(!error && tqs && tqs.length > 0){
+        const shuffled = [...tqs].sort(()=>Math.random()-.5).slice(0,30);
+        questions = shuffled.map(q=>({
+          cat: q.cat || 'Турнир',
+          q:   {ru: q.question_ru||q.q, en: q.question_en||q.q},
+          a:   {ru: q.answers_ru||q.a,  en: q.answers_en||q.a},
+          c:   q.correct_index ?? q.c ?? 0,
+          t:   q.time_seconds || (((q.answers_ru||q.a||[]).length)*10) || 30
+        }));
+        toast('✅ Загружено ' + questions.length + ' вопросов');
+      } else {
+        const raw = [...ALL_Q].sort(()=>Math.random()-.5).slice(0,30);
+        questions = raw.map(q=>({cat:q.cat, q:q.q, a:q.a, c:q.c, t:q.t}));
+        toast('⚠️ Используем общую базу');
+      }
     }
   } catch(e){
     const raw = [...ALL_Q].sort(()=>Math.random()-.5).slice(0,30);
