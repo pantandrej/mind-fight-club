@@ -18,6 +18,8 @@ let tPoll       = null;
 let _tAdvanceLock = false;
 let _tServerTimeOffset = 0;
 let _tHeartbeatTimer = null;
+let _tSyncPoll = null;
+let _tSyncCountdown = null;
 
 // ── Tournament logic ───────────────────────────────────────────────
 // NOTE: tHostAdvanceQuestion requires fbTournAdvance or fbTournUpdateConditional.
