@@ -542,16 +542,17 @@ async function tHostAdvanceQuestion(room){
     const {ok, error} = await window.fbTournUpdateConditional(tCode, expectedVersion, updateData);
     if(!ok){ _tAdvanceLock=false; return; } // version mismatch — already advanced
     if(error){ console.error('[T] advance conditional error:', error); _tAdvanceLock=false; return; }
+  } else if(window.fbTournUpdate){
+    // Fallback: plain Firebase update (no CAS, sufficient for single-host rooms)
+    const res = await window.fbTournUpdate(tCode, updateData);
+    if(res?.error){ console.error('[T] advance FB error:', res.error); _tAdvanceLock=false; return; }
   } else {
-    // Supabase CAS fallback — safe for 100+ players when Firebase is unavailable
-    // Uses question_version as optimistic lock (only writes if version matches)
-    const { error, count } = await sb.from('tournaments')
-      .update({ ...updateData, question_version: newVersion })
-      .eq('code', tCode)
-      .eq('question_version', expectedVersion)
-      .select('id', { count: 'exact', head: true });
+    // Supabase fallback (status + question_version only — no current_question_index)
+    const sbData = isLast
+      ? { status: 'done', question_version: newVersion }
+      : { status: 'playing', question_version: newVersion };
+    const { error } = await sb.from('tournaments').update(sbData).eq('code', tCode);
     if(error){ console.error('[T] advance SB error:', error.message); _tAdvanceLock=false; return; }
-    if(count === 0){ _tAdvanceLock=false; return; } // version mismatch — already advanced
 
     // Broadcast new state to all subscribers via Realtime (zero polling)
     if(window._tRealtimeCh){
