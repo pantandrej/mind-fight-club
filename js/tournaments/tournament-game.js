@@ -69,7 +69,8 @@ async function createTournament(){
   tCode    = randCode();
   tRole    = 'host';
   tMyUserId = currentUser.id; // must be real auth.uid() — no guest IDs
-  tMyName  = currentUser?.user_metadata?.full_name?.split(' ')[0]
+  tMyName  = window._currentUserName
+             || currentUser?.user_metadata?.full_name?.split(' ')[0]
              || localStorage.getItem('mfc_display_name') || 'Хост';
   tQs=[]; tIdx=0; tMyScore=0; tAnsweredThisQ=false;
 
@@ -143,7 +144,8 @@ async function joinTournament(){
   tCode     = code;
   tRole     = 'guest';
   tMyUserId = currentUser.id; // real auth.uid() required
-  tMyName   = currentUser?.user_metadata?.full_name?.split(' ')[0]
+  tMyName   = window._currentUserName
+              || currentUser?.user_metadata?.full_name?.split(' ')[0]
               || localStorage.getItem('mfc_display_name') || 'Игрок'+(Math.floor(Math.random()*99)+1);
   tQs=[]; tIdx=0; tMyScore=0; tAnsweredThisQ=false;
 
@@ -299,11 +301,14 @@ function tLoadQFromRoom(room){
   // Info slide: hide answers, auto-advance after 5s
   const ans = document.getElementById('t-answers'); ans.innerHTML='';
   if(isInfo){
-    tAnsweredThisQ = true; // prevent timer expire logic from triggering wrong answer
+    tAnsweredThisQ = true;
     setDot('t-prog-dots', tIdx, 'done');
     tTimer = setTimeout(()=>{
-      tIdx++;
-      if(tIdx < tQs.length) tLoadQFromRoom({ question_deadline_at: Date.now() + tSecondsForQ(tQs[tIdx]) * 1000 });
+      if(tRole === 'host'){
+        tHostAdvanceQuestion({ participants: {}, participant_ids: [] });
+      } else {
+        // Guest waits for host to advance via Firebase
+      }
     }, 5000);
     return;
   }
@@ -487,6 +492,24 @@ async function tHostAdvanceQuestion(room){
 
   // Short pause so everyone sees correct answer
   await new Promise(r=>setTimeout(r, 2500));
+
+  // Compute scores for this question — host knows correct index
+  const currentQ = tQs[tIdx];
+  if(currentQ && currentQ.c !== undefined && currentQ.question_type !== 'info'){
+    const correctIdx = currentQ.c;
+    const pts = getFixedPoints(Array.isArray(currentQ.a) ? currentQ.a.length : 2);
+    const scoreUpdates = {};
+    Object.entries(participants).forEach(([uid, p])=>{
+      if(p.q_answered === tIdx && p.selected_idx === correctIdx){
+        const newScore = (p.score||0) + pts;
+        scoreUpdates[`participants.${uid}.score`] = newScore;
+        scoreUpdates[`participants.${uid}.is_correct`] = true;
+      }
+    });
+    if(Object.keys(scoreUpdates).length > 0 && window.fbTournPatch){
+      await window.fbTournPatch(tCode, scoreUpdates).catch(e=>console.error('[T] score patch:', e));
+    }
+  }
 
   const updateData = isLast
     ? { status: 'done',    current_question_index: nextIdx, question_version: newVersion }
