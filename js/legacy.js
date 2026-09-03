@@ -4416,9 +4416,24 @@ async function loadAdminGames(){
           🗑
         </button>
       </div>
+      <button onclick="adminLaunchTournament('${p.id}')"
+        style="margin-top:6px;width:100%;padding:7px 0;border-radius:8px;border:none;background:rgba(240,192,64,.15);color:var(--gold);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">
+        ⚡ Запустить турнир с этим паком
+      </button>
     </div>`;
   }
   el.innerHTML = html || '<div style="color:var(--muted);font-size:12px">Нет игр</div>';
+}
+
+function adminLaunchTournament(packId){
+  showScreen('tournament');
+  setTimeout(async ()=>{
+    if(typeof createTournament === 'function') await createTournament();
+    setTimeout(()=>{
+      const sel = document.getElementById('t-pack-select');
+      if(sel) sel.value = packId;
+    }, 800);
+  }, 200);
 }
 
 async function adminSetPackStatus(packId, newStatus){
