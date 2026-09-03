@@ -78,14 +78,22 @@ async function createTournament(){
   tMyName  = window._currentUserName
              || currentUser?.user_metadata?.full_name
              || localStorage.getItem('mfc_display_name');
-  // Always try profile fetch — VK metadata might have wrong name or not set yet
+  // Try profile fetch — most reliable source
   try {
     const {data:prof} = await sb.from('profiles').select('display_name').eq('id',tMyUserId).single();
     if(prof?.display_name && prof.display_name !== 'Игрок') {
       tMyName = window._currentUserName = prof.display_name;
     }
   } catch(_){}
-  if(!tMyName || tMyName === 'Игрок') tMyName = currentUser?.user_metadata?.full_name || 'Хост';
+  // Try direct auth.getUser() if still no name
+  if(!tMyName || tMyName === 'Игрок'){
+    try {
+      const { data: { user: authUser } } = await sb.auth.getUser();
+      const n = authUser?.user_metadata?.full_name;
+      if(n && n !== 'Игрок') tMyName = window._currentUserName = n;
+    } catch(_){}
+  }
+  if(!tMyName || tMyName === 'Игрок') tMyName = 'Хост';
   tQs=[]; tIdx=0; tMyScore=0; tAnsweredThisQ=false;
 
   const roomData = {
@@ -177,7 +185,14 @@ async function joinTournament(){
       tMyName = window._currentUserName = prof.display_name;
     }
   } catch(_){}
-  if(!tMyName || tMyName === 'Игрок') tMyName = currentUser?.user_metadata?.full_name || ('Игрок'+(Math.floor(Math.random()*99)+1));
+  if(!tMyName || tMyName === 'Игрок'){
+    try {
+      const { data: { user: authUser } } = await sb.auth.getUser();
+      const n = authUser?.user_metadata?.full_name;
+      if(n && n !== 'Игрок') tMyName = window._currentUserName = n;
+    } catch(_){}
+  }
+  if(!tMyName || tMyName === 'Игрок') tMyName = 'Игрок'+(Math.floor(Math.random()*99)+1);
   tQs=[]; tIdx=0; tMyScore=0; tAnsweredThisQ=false;
 
   // Register participant — use user_id as key (not name)
@@ -381,6 +396,26 @@ function tRenderTimer(){
   tTickFromDeadline();
 }
 
+function tPlaySound(correct){
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    if(correct){
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.setValueAtTime(1100, ctx.currentTime + 0.1);
+    } else {
+      osc.frequency.setValueAtTime(300, ctx.currentTime);
+      osc.frequency.setValueAtTime(220, ctx.currentTime + 0.15);
+    }
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.4);
+  } catch(_){}
+}
+
 function tRevealAnswer(){
   // Show correct/wrong result after deadline — called from tLocalExpire
   const q = tQs[tIdx];
@@ -391,17 +426,25 @@ function tRevealAnswer(){
     if(correctKnown && i === q.c) b.className = 'ans correct';
     else if(i === tMySelectedIdx && tMySelectedIdx !== -1) b.className = 'ans wrong';
   });
-  if(tMySelectedIdx !== -1 && correctKnown && tMySelectedIdx === q.c){
+  const isCorrect = tMySelectedIdx !== -1 && correctKnown && tMySelectedIdx === q.c;
+  if(isCorrect){
     tMyScore += tMyEarnedPts;
     document.getElementById('t-my-score-display').textContent = tMyScore;
     showFb('t-fb', '✓ +'+tMyEarnedPts, true);
     setDot('t-prog-dots', tIdx, 'done');
+    tPlaySound(true);
   } else if(tMySelectedIdx !== -1){
     showFb('t-fb', correctKnown ? '✗ '+(q.a[q.c]||'') : '✗', false);
     setDot('t-prog-dots', tIdx, 'miss');
+    tPlaySound(false);
   } else {
     showFb('t-fb', correctKnown ? '⏱ '+(q.a[q.c]||'') : '⏱', false);
     setDot('t-prog-dots', tIdx, 'miss');
+  }
+  // Switch to answer slide if available
+  if(q.img_a){
+    const mc = document.getElementById('t-media-container');
+    if(mc) mc.innerHTML = `<div class="q-media"><img src="${q.img_a}" style="width:100%;border-radius:12px;display:block"></div>`;
   }
 }
 
@@ -552,8 +595,8 @@ async function tHostAdvanceQuestion(room){
   const newDeadline = serverNow + deadlineSec * 1000 + 1500;
   const newVersion  = expectedVersion + 1;
 
-  // Short pause so everyone sees correct answer
-  await new Promise(r=>setTimeout(r, 2500));
+  // Show answer slide for 7 seconds before advancing
+  await new Promise(r=>setTimeout(r, 7000));
 
   // Compute scores for this question — speed-based (1pt per remaining second)
   const participants = room.participants || room.players || {};
@@ -679,7 +722,8 @@ async function startTournament(){
               a:   {ru: isInfo ? [] : a},
               c:   isInfo ? 0 : (q.correct_index ?? 0),
               t:   isInfo ? 15 : 30,
-              img: q.slide_img_url || q.image_url,
+              img:   q.slide_img_url || q.image_url,
+              img_a: q.answer_slide_img_url || null,
               audio: q.audio_url,
               video: q.video_url
             };
