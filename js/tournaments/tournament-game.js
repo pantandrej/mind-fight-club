@@ -334,8 +334,8 @@ function tTickFromDeadline(){
   const pct = Math.min(remaining / totalSec * 100, 100);
   const fill = document.getElementById('t-timer-fill');
   if(fill){ fill.style.width=pct+'%'; fill.style.background=pct<35?'#e05555':pct<60?'#f0a050':'#6c63ff'; }
-  const tv = document.getElementById('t-t-val');
-  if(tv){ tv.textContent=remaining+'s'; tv.style.color=remaining<=5?'#e05555':remaining<=10?'#f0a050':'#8b83ff'; }
+  const cd = document.getElementById('t-countdown');
+  if(cd){ cd.textContent=remaining; cd.style.color=remaining<=5?'#e05555':remaining<=10?'#f0a050':'#8b83ff'; }
   const pv = document.getElementById('t-p-val');
   if(pv && q){ pv.textContent = '+' + getFixedPoints(q.a.length); }
 }

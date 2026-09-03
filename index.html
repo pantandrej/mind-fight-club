@@ -579,9 +579,12 @@
       </div>
       <div class="prog-dots" id="t-prog-dots"></div>
       <div class="meta"><span class="cat-pill" id="t-cat-pill">—</span><span class="q-counter" id="t-q-counter">1/10</span></div>
-      <div class="timer-wrap">
-        <div class="timer-bg"><div class="timer-fill" id="t-timer-fill"></div></div>
-        <div class="timer-row"><span class="t-val" id="t-t-val">20s</span><span class="p-val" id="t-p-val">+20</span></div>
+      <div style="display:flex;align-items:center;gap:10px;margin:4px 0 8px">
+        <div id="t-countdown" style="font-size:36px;font-weight:900;font-variant-numeric:tabular-nums;min-width:48px;text-align:center;color:#8b83ff;line-height:1">—</div>
+        <div style="flex:1">
+          <div class="timer-bg" style="height:6px"><div class="timer-fill" id="t-timer-fill"></div></div>
+        </div>
+        <div class="p-val" id="t-p-val" style="font-size:13px;font-weight:800;color:var(--gold)">+30</div>
       </div>
       <div id="t-media-container"></div>
       <div class="q-text" id="t-q-text">—</div>

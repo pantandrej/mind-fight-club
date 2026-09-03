@@ -236,7 +236,9 @@ function _redirectAfterAuth() {
   if (typeof window.checkAndStartOnboarding === 'function') window.checkAndStartOnboarding();
 
   const p = new URLSearchParams(window.location.search);
-  if (p.get('pack')) {
+  // Don't auto-launch pack if this is a VK auth callback (code+type params present)
+  const isVKReturn = p.get('code') && p.get('type') === 'code_v2';
+  if (p.get('pack') && !isVKReturn) {
     const el = document.getElementById('pack-landing-overlay');
     if (el) el.remove();
     setTimeout(() => window.playDBPack?.(p.get('pack')), 300);
