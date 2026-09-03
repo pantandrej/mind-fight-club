@@ -1074,7 +1074,14 @@ function loadQ(){
 
   const ans=document.getElementById('answers');ans.innerHTML='';
 
-  if(!qNorm.a||qNorm.a.length<2){
+  // Info slides (round headers) — show slide, auto-advance after 4s
+  if(qNorm.question_type === 'info' || !qNorm.a || qNorm.a.length < 2){
+    if(qNorm.question_type === 'info'){
+      setDot('prog-dots',qIdx,'done');
+      document.getElementById('next-btn').className='next-btn show';
+      setTimeout(()=>{ if(qIdx === (curQ.indexOf(qNorm))) nextQ(); }, 4000);
+      return;
+    }
     console.error('[MFC-NOANSWERS] a='+JSON.stringify(qNorm.a)+' answers_json='+JSON.stringify(qNorm.answers_json)+' answers_ru='+JSON.stringify(qNorm.answers_ru));
     track('question_render_error',{id:qNorm._id,q:(qNorm.q||'').slice(0,50)});
     const errDiv=document.createElement('div');
@@ -1083,7 +1090,7 @@ function loadQ(){
       +'<button onclick="nextQ()" style="background:var(--bg3);border:0.5px solid var(--border);border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit">Пропустить вопрос</button>';
     ans.appendChild(errDiv);
     setDot('prog-dots',qIdx,'active');
-    return; // don't start timer
+    return;
   }
 
   // Only multiple_choice — always show answer buttons
