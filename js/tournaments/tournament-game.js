@@ -1014,7 +1014,7 @@ function tRenderLeaderboardFromRoom(participants){
   el.innerHTML = sorted.map((p,i)=>{
     const isMe = p._uid === tMyUserId;
     const displayName = isMe ? (tMyName || p.name || 'Игрок') : (p.name || 'Игрок');
-    const displayScore = isMe ? tMyScore : (p.score||0);
+    const displayScore = p.score || 0;
     return `<div class="lb-row${isMe?' me':''}">
       <div class="lb-rank">${medals[i]||i+1}</div>
       <div class="lb-av" style="background:rgba(0,237,181,.15);color:var(--accent2)">${_esc((displayName||'?')[0].toUpperCase())}</div>
@@ -1034,7 +1034,7 @@ function tShowResults(participants){
   document.getElementById('t-final-lb').innerHTML = sorted.map((p,i)=>{
     const isMe = p._uid === tMyUserId;
     const displayName = isMe ? (tMyName || p.name || 'Игрок') : (p.name || 'Игрок');
-    const displayScore = isMe ? tMyScore : (p.score||0);
+    const displayScore = p.score || 0;
     return `<div class="lb-row${isMe?' me':''}">
       <div class="lb-rank">${medals[i]||i+1}</div>
       <div class="lb-av" style="background:rgba(0,237,181,.15);color:var(--accent2)">${_esc((displayName||'?')[0].toUpperCase())}</div>
