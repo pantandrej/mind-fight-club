@@ -506,11 +506,11 @@ function tLocalExpire(){
   if(tRole === 'host'){
     _tAdvanceLock = false;
     if(isInfo){
-      tHostAdvanceQuestion({ participants: {}, participant_ids: [tMyUserId] });
+      tHostAdvanceQuestion({ participants: {}, participant_ids: [tMyUserId] }, 0);
     } else {
-      // Read fresh room state then advance
+      // Read fresh room state then advance after 5s (answer already shown via tRevealAnswer)
       (window.fbTournGet ? window.fbTournGet(tCode) : Promise.resolve(null)).then(room => {
-        tHostAdvanceQuestion(room || { participants: {}, participant_ids: [tMyUserId] });
+        tHostAdvanceQuestion(room || { participants: {}, participant_ids: [tMyUserId] }, 5000);
       });
     }
   }
@@ -648,11 +648,11 @@ async function tMaybeAdvanceAsHost(){
   // Advance when all answered OR deadline passed
   // Disconnected players: deadline ensures they never block forever
   if(answeredCount >= total || deadlinePassed){
-    await tHostAdvanceQuestion(room);
+    await tHostAdvanceQuestion(room, 5000);
   }
 }
 
-async function tHostAdvanceQuestion(roomArg){
+async function tHostAdvanceQuestion(roomArg, pauseMs = 0){
   if(_tAdvanceLock) return;
   _tAdvanceLock = true;
   let room = roomArg;
@@ -664,8 +664,8 @@ async function tHostAdvanceQuestion(roomArg){
   const deadlineSec = nextQ ? tSecondsForQ(nextQ) : 0;
   const newVersion  = expectedVersion + 1;
 
-  // Show answer slide for 7 seconds before advancing
-  await new Promise(r=>setTimeout(r, 7000));
+  // Wait before advancing (caller controls duration)
+  if(pauseMs > 0) await new Promise(r=>setTimeout(r, pauseMs));
 
   // Compute server time AFTER the pause so question_started_at is accurate for guests
   const serverNow   = localToServer(Date.now());
