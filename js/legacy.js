@@ -13668,8 +13668,13 @@ window.gcAddQuestion = function() {
     </div>
 
     <div style="margin-bottom:10px">
-      <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Аудио URL (необязательно)</div>
-      <input type="text" id="gc-media-${qi}" placeholder="https://…/audio.mp3" style="${_gcIS}">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Медиа (необязательно)</div>
+      ${mediaOpts
+        ? `<select id="gc-media-${qi}" style="${_gcIS}">
+            <option value="">Без медиа</option>${mediaOpts}
+           </select>`
+        : `<input type="text" id="gc-media-${qi}" placeholder="URL аудио или видео (mp3, mp4…)" style="${_gcIS}">`
+      }
     </div>
   </div>`;
   const container = document.getElementById('gc-questions');
