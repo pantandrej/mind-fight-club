@@ -589,7 +589,7 @@ function tUpdateWaitDisplay(participants, room){
       _tAnswerRevealed = true;
     }
     if(tRole === 'host'){
-      const delay = isInfo ? 1000 : 5000;
+      const delay = isInfo ? 0 : 5000;
       setTimeout(() => {
         (window.fbTournGet ? window.fbTournGet(tCode) : Promise.resolve(null)).then(r => {
           tHostAdvanceQuestion(r || room);
