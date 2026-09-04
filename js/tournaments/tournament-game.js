@@ -469,7 +469,7 @@ function tRevealAnswer(){
     renderQMedia('t-media-container', { ...q, img: q.img_a, audio: null, video: null });
   }
   // Countdown while answer is shown so players know game isn't frozen
-  tStartAnswerCountdown(5);
+  tStartAnswerCountdown(10);
 }
 
 function tStartAnswerCountdown(secs){
@@ -510,7 +510,7 @@ function tLocalExpire(){
     } else {
       // Read fresh room state then advance after 5s (answer already shown via tRevealAnswer)
       (window.fbTournGet ? window.fbTournGet(tCode) : Promise.resolve(null)).then(room => {
-        tHostAdvanceQuestion(room || { participants: {}, participant_ids: [tMyUserId] }, 5000);
+        tHostAdvanceQuestion(room || { participants: {}, participant_ids: [tMyUserId] }, 10000);
       });
     }
   }
@@ -606,7 +606,7 @@ function tUpdateWaitDisplay(participants, room){
       _tAnswerRevealed = true;
     }
     if(tRole === 'host'){
-      const delay = isInfo ? 0 : 5000;
+      const delay = isInfo ? 0 : 10000;
       setTimeout(() => {
         (window.fbTournGet ? window.fbTournGet(tCode) : Promise.resolve(null)).then(r => {
           tHostAdvanceQuestion(r || room);
@@ -648,7 +648,7 @@ async function tMaybeAdvanceAsHost(){
   // Advance when all answered OR deadline passed
   // Disconnected players: deadline ensures they never block forever
   if(answeredCount >= total || deadlinePassed){
-    await tHostAdvanceQuestion(room, 5000);
+    await tHostAdvanceQuestion(room, 10000);
   }
 }
 
