@@ -2419,7 +2419,7 @@ function renderQMedia(containerId, q){
     const hint = '';
     const vid = 'vid-'+containerId;
     container.innerHTML = `<div class="q-media">
-      <video id="${vid}" src="${q.video}" controls autoplay muted playsinline preload="auto"
+      <video id="${vid}" src="${q.video}" controls autoplay playsinline preload="auto"
         style="width:100%;max-height:240px;display:block;background:#000;border-radius:0">
       </video>
       <div class="q-media-hint">${hint}</div>
