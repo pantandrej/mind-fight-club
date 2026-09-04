@@ -383,7 +383,7 @@ function renderObQuestion(){
   container.innerHTML = '';
   q.a.forEach((ans, i) => {
     const btn = document.createElement('button');
-    btn.style.cssText = 'width:100%;padding:13px 16px;border-radius:12px;border:1.5px solid rgba(108,99,255,.35);background:rgba(108,99,255,.08);font-size:14px;font-weight:600;color:var(--text);cursor:pointer;font-family:inherit;text-align:left;transition:all .15s';
+    btn.style.cssText = 'width:100%;padding:13px 16px;border-radius:12px;border:1.5px solid rgba(0,237,181,.35);background:rgba(0,237,181,.08);font-size:14px;font-weight:600;color:var(--text);cursor:pointer;font-family:inherit;text-align:left;transition:all .15s';
     btn.textContent = String.fromCharCode(65+i) + '. ' + ans;
     btn.onclick = () => obPickAnswer(i, btn);
     container.appendChild(btn);

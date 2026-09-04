@@ -505,7 +505,7 @@ async function renderDBGamePacks(){
           ? '0.5px solid rgba(224,85,85,.25)'
           : (owned || isFree || isAdmin())
             ? '0.5px solid rgba(68,204,136,.3)'
-            : '0.5px solid rgba(108,99,255,.3)';
+            : '0.5px solid rgba(0,237,181,.3)';
       card.innerHTML = `<div class="pack-icon">${icon}</div>
         <div class="pack-name">${title}${draftLabel}${incompleteLabel}</div>
         <div class="pack-desc">${desc}</div>
@@ -1121,9 +1121,9 @@ function renderTimer(){
   const q=curQ[qIdx];
   const pct=(timeLeft/maxT)*100;
   const fill=document.getElementById('timer-fill');
-  fill.style.width=pct+'%';fill.style.background=pct<35?'#e05555':pct<60?'#f0a050':'#6c63ff';
+  fill.style.width=pct+'%';fill.style.background=pct<35?'#e05555':pct<60?'#f0a050':'var(--accent)';
   const tv=document.getElementById('t-val');
-  tv.textContent=timeLeft+'s';tv.style.color=timeLeft<=5?'#e05555':timeLeft<=10?'#f0a050':'#8b83ff';
+  tv.textContent=timeLeft+'s';tv.style.color=timeLeft<=5?'#e05555':timeLeft<=10?'#f0a050':'var(--accent2)';
   const pv=document.getElementById('p-val');
   if(pv) pv.textContent='+'+(q ? getTimedPoints((q.a||[]).length||2, timeLeft, maxT) : 30);
 }
@@ -1265,7 +1265,7 @@ async function loadScoreCityRank(){
 }
 
 function spawnConfetti(){
-  const colors = ['#6c63ff','#f0c040','#44cc88','#e05555','#8b83ff','#ff6b9d','#00d4ff'];
+  const colors = ['var(--accent)','#f0c040','#44cc88','#e05555','var(--accent2)','#ff6b9d','#00d4ff'];
   const scoreEl = document.getElementById('sc-neurons');
   const rect = scoreEl ? scoreEl.getBoundingClientRect() : {left: window.innerWidth/2, top: 120, width:0};
   for(let i = 0; i < 36; i++){
@@ -1305,7 +1305,7 @@ async function _loadPackLeaderboard(packMode, myScore){
     rowsEl.innerHTML = data.map((r,i)=>{
       const isMe = r.user_id === myId && r.score === myScore;
       const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}.`;
-      return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:10px;background:${isMe?'rgba(108,99,255,.18)':'var(--bg3)'};${isMe?'border:1px solid var(--accent);':''}">
+      return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:10px;background:${isMe?'rgba(0,237,181,.18)':'var(--bg3)'};${isMe?'border:1px solid var(--accent);':''}">
         <span style="font-size:16px;min-width:24px">${medal}</span>
         <span style="flex:1;font-size:13px;font-weight:${isMe?'800':'600'};color:${isMe?'var(--accent2)':'var(--text)'}">${nameMap[r.user_id]||'Игрок'}</span>
         <span style="font-size:13px;font-weight:800;color:var(--gold)">${r.score}</span>
@@ -1637,7 +1637,7 @@ function drawShareCard(){
   // Glow top-right
   ctx.save(); ctx.globalAlpha = 0.13;
   const g1 = ctx.createRadialGradient(W, 0, 0, W, 0, 620);
-  g1.addColorStop(0, '#8b83ff'); g1.addColorStop(1, 'transparent');
+  g1.addColorStop(0, 'var(--accent2)'); g1.addColorStop(1, 'transparent');
   ctx.fillStyle = g1; ctx.fillRect(0, 0, W, H); ctx.restore();
 
   // Glow bottom-left
@@ -1650,7 +1650,7 @@ function drawShareCard(){
   ctx.fillStyle = 'rgba(255,255,255,0.22)';
   ctx.font = 'bold 46px Arial'; ctx.textAlign = 'left';
   ctx.fillText('BRAIN FIGHT CLUB', 80, 98);
-  ctx.strokeStyle = 'rgba(108,99,255,0.4)'; ctx.lineWidth = 2;
+  ctx.strokeStyle = 'rgba(0,237,181,0.4)'; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(80, 118); ctx.lineTo(W-80, 118); ctx.stroke();
 
   // Score big number
@@ -1673,7 +1673,7 @@ function drawShareCard(){
   // City
   const city = document.getElementById('share-city')?.textContent || '';
   if (city && !city.includes('Добавь')) {
-    ctx.fillStyle = '#8b83ff'; ctx.font = 'bold 38px Arial';
+    ctx.fillStyle = 'var(--accent2)'; ctx.font = 'bold 38px Arial';
     ctx.fillText(city, W/2, 660);
   }
 
@@ -1685,7 +1685,7 @@ function drawShareCard(){
   }
 
   // Bottom line + CTA
-  ctx.strokeStyle = 'rgba(108,99,255,0.3)'; ctx.lineWidth = 2;
+  ctx.strokeStyle = 'rgba(0,237,181,0.3)'; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(80, H-150); ctx.lineTo(W-80, H-150); ctx.stroke();
   ctx.fillStyle = 'rgba(255,255,255,0.32)';
   ctx.font = '34px Arial';

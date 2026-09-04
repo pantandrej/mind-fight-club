@@ -231,7 +231,7 @@ async function loadLiveLeaderboard() {
     const medal  = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}.`;
     const name   = r.profiles?.display_name || 'Игрок';
     html += `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:10px;font-size:13px;
-      ${isMe ? 'background:rgba(108,99,255,.2);border:1px solid rgba(108,99,255,.4);font-weight:800' : 'background:rgba(255,255,255,.04)'}">
+      ${isMe ? 'background:rgba(0,237,181,.2);border:1px solid rgba(0,237,181,.4);font-weight:800' : 'background:rgba(255,255,255,.04)'}">
       <div style="min-width:26px;font-size:15px">${medal}</div>
       <div style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${isMe ? '👉 ' : ''}${name}</div>
       <div style="color:var(--accent2);font-weight:800;flex-shrink:0">⚡${r.score}</div>
@@ -294,7 +294,7 @@ async function loadLeaderboardAndRender() {
     const isMe  = user && r.user_id === user.id;
     const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}.`;
     const bonusBadge = i < 3 ? `<span style="font-size:10px;color:var(--gold);margin-left:4px">+${BONUSES[i]}⚡</span>` : '';
-    return gap + `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;${isMe ? 'background:rgba(108,99,255,.18);border:0.5px solid rgba(108,99,255,.4)' : ''}">
+    return gap + `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;${isMe ? 'background:rgba(0,237,181,.18);border:0.5px solid rgba(0,237,181,.4)' : ''}">
       <div style="font-size:18px;min-width:28px">${medal}</div>
       <div style="flex:1;font-weight:${isMe?'900':'400'}">${name}${isMe?' 👈':''}</div>
       <div style="text-align:right">

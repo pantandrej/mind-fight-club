@@ -405,9 +405,9 @@ function tTickFromDeadline(){
   const totalSec = tSecondsForQ(q);
   const pct = Math.min(remaining / totalSec * 100, 100);
   const fill = document.getElementById('t-timer-fill');
-  if(fill){ fill.style.width=pct+'%'; fill.style.background=pct<35?'#e05555':pct<60?'#f0a050':'#6c63ff'; }
+  if(fill){ fill.style.width=pct+'%'; fill.style.background=pct<35?'#e05555':pct<60?'#f0a050':'var(--accent)'; }
   const cd = document.getElementById('t-countdown');
-  if(cd){ cd.textContent=remaining; cd.style.color=remaining<=5?'#e05555':remaining<=10?'#f0a050':'#8b83ff'; }
+  if(cd){ cd.textContent=remaining; cd.style.color=remaining<=5?'#e05555':remaining<=10?'#f0a050':'var(--accent2)'; }
   const pv = document.getElementById('t-p-val');
   if(pv && q){
     const isInfo = q.question_type === 'info';
@@ -516,12 +516,12 @@ function tStartAnswerCountdown(secs){
   const end = Date.now() + secs * 1000;
   const fill = document.getElementById('t-timer-fill');
   const cd   = document.getElementById('t-countdown');
-  if(fill){ fill.style.background = '#6c63ff'; }
+  if(fill){ fill.style.background = 'var(--accent)'; }
   tTimer = setInterval(() => {
     const rem = Math.max(0, Math.ceil((end - Date.now()) / 1000));
     const pct = rem / secs * 100;
     if(fill){ fill.style.width = pct + '%'; }
-    if(cd){ cd.textContent = rem; cd.style.color = '#8b83ff'; }
+    if(cd){ cd.textContent = rem; cd.style.color = 'var(--accent2)'; }
     if(rem <= 0){ clearInterval(tTimer); tTimer = null; }
   }, 250);
 }
@@ -963,7 +963,7 @@ function tRenderPlayerList(participants){
     const isMe = p._uid === tMyUserId;
     const displayName = isMe ? (tMyName || p.name || 'Игрок') : (p.name || 'Игрок');
     return `<div class="lb-row${isMe?' me':''}">
-      <div class="lb-av" style="background:rgba(108,99,255,.15);color:var(--accent2)">${_esc((displayName||'?')[0].toUpperCase())}</div>
+      <div class="lb-av" style="background:rgba(0,237,181,.15);color:var(--accent2)">${_esc((displayName||'?')[0].toUpperCase())}</div>
       <div class="lb-name">${_esc(displayName)}</div>
       <div class="lb-score">${p.score||0}</div>
     </div>`;
@@ -982,7 +982,7 @@ function tRenderLeaderboardFromRoom(participants){
     const displayScore = isMe ? tMyScore : (p.score||0);
     return `<div class="lb-row${isMe?' me':''}">
       <div class="lb-rank">${medals[i]||i+1}</div>
-      <div class="lb-av" style="background:rgba(108,99,255,.15);color:var(--accent2)">${_esc((displayName||'?')[0].toUpperCase())}</div>
+      <div class="lb-av" style="background:rgba(0,237,181,.15);color:var(--accent2)">${_esc((displayName||'?')[0].toUpperCase())}</div>
       <div class="lb-name">${_esc(displayName)}</div>
       <div class="lb-score${isMe?' me':''}">${displayScore}</div>
     </div>`;
@@ -1002,7 +1002,7 @@ function tShowResults(participants){
     const displayScore = isMe ? tMyScore : (p.score||0);
     return `<div class="lb-row${isMe?' me':''}">
       <div class="lb-rank">${medals[i]||i+1}</div>
-      <div class="lb-av" style="background:rgba(108,99,255,.15);color:var(--accent2)">${_esc((displayName||'?')[0].toUpperCase())}</div>
+      <div class="lb-av" style="background:rgba(0,237,181,.15);color:var(--accent2)">${_esc((displayName||'?')[0].toUpperCase())}</div>
       <div class="lb-name">${_esc(displayName)}</div>
       <div class="lb-score${isMe?' me':''}">${displayScore}</div>
     </div>`;

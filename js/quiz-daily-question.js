@@ -53,11 +53,11 @@ function _renderQuestion(wrap, q, alreadyAnswered) {
   // Компактная плашка — при нажатии разворачивается
   const logo = quiz.logo_url
     ? `<img src="${_esc(quiz.logo_url)}" style="width:32px;height:32px;border-radius:8px;object-fit:cover;flex-shrink:0">`
-    : `<div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,rgba(108,99,255,.3),rgba(168,85,247,.2));display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🧠</div>`;
+    : `<div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,rgba(0,237,181,.3),rgba(168,85,247,.2));display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🧠</div>`;
 
   const hintsHtml = hints.length ? `
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">
-      ${hints.map(h => `<button onclick="document.getElementById('qdq-input').value='${_esc(h)}'" style="background:rgba(108,99,255,.12);border:1px solid rgba(108,99,255,.3);border-radius:20px;padding:5px 12px;font-size:12px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit">${_esc(h)}</button>`).join('')}
+      ${hints.map(h => `<button onclick="document.getElementById('qdq-input').value='${_esc(h)}'" style="background:rgba(0,237,181,.12);border:1px solid rgba(0,237,181,.3);border-radius:20px;padding:5px 12px;font-size:12px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit">${_esc(h)}</button>`).join('')}
     </div>` : '';
 
   wrap.innerHTML = `
@@ -83,7 +83,7 @@ function _renderQuestion(wrap, q, alreadyAnswered) {
               style="flex:1;padding:12px 14px;border-radius:12px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);font-size:14px;font-family:inherit;outline:none"
               onkeydown="if(event.key==='Enter')window._submitQuizDailyAnswer('${q.id}')">
             <button onclick="window._submitQuizDailyAnswer('${q.id}')"
-              style="padding:12px 18px;background:linear-gradient(135deg,#6c63ff,#a78bfa);border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;flex-shrink:0">
+              style="padding:12px 18px;background:linear-gradient(135deg,var(--accent),#a78bfa);border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;flex-shrink:0">
               Ответить
             </button>
           </div>
@@ -99,7 +99,7 @@ function _renderAnswered(wrap, q, ans) {
   wrap.style.flexDirection = 'column';
   const logo = quiz.logo_url
     ? `<img src="${_esc(quiz.logo_url)}" style="width:32px;height:32px;border-radius:8px;object-fit:cover;flex-shrink:0">`
-    : `<div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,rgba(108,99,255,.3),rgba(168,85,247,.2));display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🧠</div>`;
+    : `<div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,rgba(0,237,181,.3),rgba(168,85,247,.2));display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🧠</div>`;
   wrap.innerHTML = `
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:18px;overflow:hidden;flex:1;display:flex;flex-direction:column;justify-content:center">
       <div style="padding:12px 16px;display:flex;align-items:center;gap:10px">

@@ -1482,7 +1482,7 @@ function showProfile(){
     const shareBtn = document.createElement('button');
     shareBtn.id = 'profile-share-btn';
     shareBtn.className = signoutBtn.className;
-    shareBtn.style.cssText = 'width:100%;margin-bottom:8px;background:rgba(108,99,255,.12);border:0.5px solid var(--accent2);color:var(--accent2);border-radius:14px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit';
+    shareBtn.style.cssText = 'width:100%;margin-bottom:8px;background:rgba(0,237,181,.12);border:0.5px solid var(--accent2);color:var(--accent2);border-radius:14px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit';
     shareBtn.textContent = '🔗 Поделиться профилем';
     shareBtn.onclick = () => {
       const uid = currentUser?.id || '';
@@ -1737,7 +1737,7 @@ window.loadAdminOrgApplications = async function() {
       ${phoneLine ? `<div style="font-size:12px;color:var(--muted)">${phoneLine}</div>` : ''}
       ${socialLine ? `<div style="font-size:12px;color:var(--muted)">${socialLine}</div>` : ''}
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">
-        <a href="${emailHref}" style="background:rgba(108,99,255,.12);border:0.5px solid rgba(108,99,255,.3);border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;color:var(--accent2);text-decoration:none">✉️ ${r.contact_email}</a>
+        <a href="${emailHref}" style="background:rgba(0,237,181,.12);border:0.5px solid rgba(0,237,181,.3);border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;color:var(--accent2);text-decoration:none">✉️ ${r.contact_email}</a>
         ${whatsappHref ? `<a href="${whatsappHref}" target="_blank" style="background:rgba(37,211,102,.1);border:0.5px solid rgba(37,211,102,.3);border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;color:#25d366;text-decoration:none">💬 WhatsApp</a>` : ''}
         ${r.status !== 'approved' ? `<button onclick="approveOrg('${r.user_id}')" style="background:rgba(74,222,128,.15);border:0.5px solid var(--green);border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;color:var(--green);cursor:pointer;font-family:inherit">✓ Одобрить</button>` : ''}
         ${r.status !== 'rejected' ? `<button onclick="rejectOrg('${r.user_id}')" style="background:rgba(224,85,85,.1);border:0.5px solid rgba(224,85,85,.3);border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;color:var(--red);cursor:pointer;font-family:inherit">✗ Отклонить</button>` : ''}
@@ -2636,7 +2636,7 @@ async function loadOfficialTournament(code){
   badge.style.cssText = 'display:inline-block;border-radius:20px;padding:4px 14px;font-size:11px;font-weight:800;letter-spacing:1px;margin-bottom:12px';
   if(data.status==='live') badge.classList.add('ot-status-live');
   else if(data.status==='finished') badge.classList.add('ot-status-finished');
-  else { badge.style.background='rgba(108,99,255,.2)'; badge.style.border='0.5px solid var(--accent)'; badge.style.color='var(--accent2)'; }
+  else { badge.style.background='rgba(0,237,181,.2)'; badge.style.border='0.5px solid var(--accent)'; badge.style.color='var(--accent2)'; }
 
   document.getElementById('ot-title').textContent = data.title||'Официальный турнир';
   document.getElementById('ot-desc').textContent = data.description||'';
@@ -2705,7 +2705,7 @@ async function refreshOTPlayers(){
   listEl.innerHTML = list.map((p,i)=>`
     <div class="ot-player-row">
       <div class="lb-rank">${medals[i]||i+1}</div>
-      <div class="lb-av" style="background:rgba(108,99,255,.15);color:var(--accent2)">${(p.display_name||'?')[0].toUpperCase()}</div>
+      <div class="lb-av" style="background:rgba(0,237,181,.15);color:var(--accent2)">${(p.display_name||'?')[0].toUpperCase()}</div>
       <div class="lb-name">${p.display_name||'Игрок'}${p.finished_at?'<span style="margin-left:6px;font-size:10px;color:var(--green)">✓</span>':''}</div>
       ${otData.status!=='lobby'?`<div class="lb-score">${p.score}</div>`:''}
     </div>`).join('');
@@ -2865,7 +2865,7 @@ function _showOrgSlideOverlay(url, duration, onDone) {
         <div id="ot-org-bar" style="height:4px;background:var(--accent);border-radius:2px;width:100%;transition:width ${duration}ms linear"></div>
       </div>
       ${otData?.sync_mode
-        ? `<div style="width:100%;background:rgba(108,99,255,.15);border:0.5px solid rgba(108,99,255,.3);border-radius:14px;padding:14px;font-size:14px;font-weight:700;color:var(--muted);text-align:center" id="ot-org-next-btn">⏳ Слайд сменится автоматически</div>`
+        ? `<div style="width:100%;background:rgba(0,237,181,.15);border:0.5px solid rgba(0,237,181,.3);border-radius:14px;padding:14px;font-size:14px;font-weight:700;color:var(--muted);text-align:center" id="ot-org-next-btn">⏳ Слайд сменится автоматически</div>`
         : `<button id="ot-org-next-btn" onclick="window._orgSlideNext()" style="width:100%;background:var(--accent);border:none;border-radius:14px;padding:14px;font-size:16px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit">Далее →</button>`
       }`;
     requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -3124,7 +3124,7 @@ async function showOTFinished(){
   if(!currentUser){
     const prompt = document.createElement('div');
     prompt.id = 'ot-guest-save-prompt';
-    prompt.style.cssText = 'margin:12px 0;padding:14px 16px;background:rgba(108,99,255,.15);border:1px solid var(--accent);border-radius:14px;text-align:center';
+    prompt.style.cssText = 'margin:12px 0;padding:14px 16px;background:rgba(0,237,181,.15);border:1px solid var(--accent);border-radius:14px;text-align:center';
     prompt.innerHTML = `<div style="font-size:14px;font-weight:700;margin-bottom:8px">${lang==='ru'?'Войдите чтобы сохранить результат':'Sign in to save your result'}</div>
       <button onclick="showScreen('auth')" style="background:var(--accent);border:none;border-radius:10px;padding:10px 24px;font-size:14px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit">${lang==='ru'?'Войти / Зарегистрироваться':'Sign in / Register'}</button>`;
     document.getElementById('ot-my-result').insertAdjacentElement('afterend', prompt);
@@ -3180,9 +3180,9 @@ async function showOTFinished(){
     const dqMark = p.disqualified?'<span style="margin-left:4px;font-size:9px;color:var(--red);font-weight:800">DQ</span>':'';
     const scoreColor = p.disqualified?'var(--red)':'var(--accent2)';
     const scoreVal   = p.disqualified?'0':''+p.score;
-    return `<div style="display:flex;align-items:center;gap:4px;padding:6px 10px;border-bottom:0.5px solid var(--border);${isMe?'background:rgba(108,99,255,.08)':''}">
+    return `<div style="display:flex;align-items:center;gap:4px;padding:6px 10px;border-bottom:0.5px solid var(--border);${isMe?'background:rgba(0,237,181,.08)':''}">
       <div style="width:22px;flex-shrink:0;font-size:14px">${p.disqualified?'—':(medals[i]||i+1)}</div>
-      <div style="width:26px;height:26px;border-radius:50%;background:rgba(108,99,255,.15);color:var(--accent2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0">${(p.display_name||'?')[0].toUpperCase()}</div>
+      <div style="width:26px;height:26px;border-radius:50%;background:rgba(0,237,181,.15);color:var(--accent2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0">${(p.display_name||'?')[0].toUpperCase()}</div>
       <div style="min-width:60px;max-width:90px;font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.display_name}${dqMark}</div>
       <div style="display:flex;gap:2px;flex:1;overflow-x:auto;-webkit-overflow-scrolling:touch">${cells}</div>
       <div style="width:36px;text-align:right;font-size:13px;font-weight:900;color:${scoreColor};flex-shrink:0">${scoreVal}</div>
@@ -3369,7 +3369,7 @@ function showPrivateTournamentQR(id, code, accessCode, title, orgName){
     <div style="font-size:14px;font-weight:700;color:var(--accent2);margin-bottom:2px">${title}</div>
     ${orgName?`<div style="font-size:12px;color:var(--muted);margin-bottom:12px">${orgName}</div>`:'<div style="margin-bottom:12px"></div>'}
     <img src="${qrUrl}" alt="QR" style="width:180px;height:180px;border-radius:16px;background:#fff;padding:8px;box-sizing:border-box;margin-bottom:16px" />
-    <div style="background:rgba(108,99,255,.15);border:0.5px solid var(--accent);border-radius:12px;padding:10px;margin-bottom:12px">
+    <div style="background:rgba(0,237,181,.15);border:0.5px solid var(--accent);border-radius:12px;padding:10px;margin-bottom:12px">
       <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Код доступа</div>
       <div style="font-size:28px;font-weight:900;letter-spacing:4px;color:var(--accent2)">${accessCode}</div>
     </div>
@@ -3403,7 +3403,7 @@ async function loadAdminOTList(){
           ${ot.status==='lobby'?`<button onclick="adminStartOT('${ot.id}')" style="background:var(--green);border:none;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit">▶ Start</button>`:''}
           ${ot.status==='live'?`<button onclick="adminFinishOT('${ot.id}')" style="background:var(--red);border:none;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit">⏹ Finish</button>`:''}
           <button onclick="openOfficialTournament('${ot.code}')" style="background:var(--accent);border:none;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit">👁 View</button>
-          ${ot.status==='finished'?`<button onclick="showTournamentAnalytics('${ot.id}','${ot.title.replace(/'/g,"\\'")}') " style="background:rgba(108,99,255,.2);border:1px solid rgba(108,99,255,.4);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit">📊</button>`:''}
+          ${ot.status==='finished'?`<button onclick="showTournamentAnalytics('${ot.id}','${ot.title.replace(/'/g,"\\'")}') " style="background:rgba(0,237,181,.2);border:1px solid rgba(0,237,181,.4);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit">📊</button>`:''}
         </div>
       </div>
     </div>`).join('');
@@ -4394,7 +4394,7 @@ async function loadAdminGames(){
       <div style="font-size:11px;color:var(--muted);margin-bottom:6px;display:flex;align-items:center;gap:6px">
         🔗 <span style="user-select:all;color:var(--accent2)">${location.origin}/?pack=${p.import_key}</span>
         <button onclick="navigator.clipboard.writeText('${location.origin}/?pack=${p.import_key}').then(()=>toast('✅ Ссылка скопирована'))"
-          style="padding:2px 8px;border-radius:6px;border:none;background:rgba(108,99,255,.15);color:var(--accent2);font-size:11px;cursor:pointer;font-family:inherit">
+          style="padding:2px 8px;border-radius:6px;border:none;background:rgba(0,237,181,.15);color:var(--accent2);font-size:11px;cursor:pointer;font-family:inherit">
           Копировать
         </button>
       </div>
@@ -4404,7 +4404,7 @@ async function loadAdminGames(){
           ${p.status==='published'?'✅ Опубл.':'🟡 Черновик'}
         </button>
         <button onclick="playDBPack('${p.import_key}','${p.id}')"
-          style="flex:1;padding:7px 0;border-radius:8px;border:none;background:rgba(108,99,255,.15);color:var(--accent2);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">
+          style="flex:1;padding:7px 0;border-radius:8px;border:none;background:rgba(0,237,181,.15);color:var(--accent2);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">
           ▶ Играть
         </button>
         <button onclick="adminEditGame('${p.id}','${p.import_key}')"
@@ -5617,7 +5617,7 @@ async function loadTeamMembers(){
         const name = m.display_name||'Игрок';
         const isMe = currentUser && m.user_id === currentUser.id;
         const roleIcon = m.role==='captain'?'👑':'';
-        return '<div class="lb-row'+(isMe?' me':'')+'"><div class="lb-rank">'+(i+1)+'</div><div class="lb-av" style="background:rgba(108,99,255,.15);color:var(--accent2)">'+name[0].toUpperCase()+'</div><div class="lb-name">'+roleIcon+name+'</div><div class="lb-score">'+(m.score||0)+'</div></div>';
+        return '<div class="lb-row'+(isMe?' me':'')+'"><div class="lb-rank">'+(i+1)+'</div><div class="lb-av" style="background:rgba(0,237,181,.15);color:var(--accent2)">'+name[0].toUpperCase()+'</div><div class="lb-name">'+roleIcon+name+'</div><div class="lb-score">'+(m.score||0)+'</div></div>';
       }).join('');
       // Also update teams_v2 total_score directly (trigger may not exist yet)
       await sb.from('teams_v2').update({total_score: total}).eq('id', myTeam.id);
@@ -5633,7 +5633,7 @@ async function loadTeamMembers(){
   if(countEl) countEl.textContent = sorted.length;
   if(list) list.innerHTML = sorted.map(([name,d],i)=>{
     const isMe = name===(currentUser?.user_metadata?.full_name?.split(' ')[0]||'Игрок');
-    return '<div class="lb-row'+(isMe?' me':'')+'"><div class="lb-rank">'+(i+1)+'</div><div class="lb-av" style="background:rgba(108,99,255,.15);color:var(--accent2)">'+name[0].toUpperCase()+'</div><div class="lb-name">'+name+'</div><div class="lb-score">'+(d.neurons||0)+'</div></div>';
+    return '<div class="lb-row'+(isMe?' me':'')+'"><div class="lb-rank">'+(i+1)+'</div><div class="lb-av" style="background:rgba(0,237,181,.15);color:var(--accent2)">'+name[0].toUpperCase()+'</div><div class="lb-name">'+name+'</div><div class="lb-score">'+(d.neurons||0)+'</div></div>';
   }).join('');
 }
 
@@ -5702,7 +5702,7 @@ async function loadGlobalTeams(){
       el.innerHTML = '<div style="padding:14px;text-align:center">'
         +'<div style="font-size:11px;color:var(--muted);margin-bottom:8px">Week of '+weekDate+'</div>'
         +'<div class="lb-row me"><div class="lb-rank">—</div>'
-        +'<div class="lb-av" style="background:rgba(108,99,255,.15);color:var(--accent2)">'+(currentUser?currentUser.email[0].toUpperCase():'?')+'</div>'
+        +'<div class="lb-av" style="background:rgba(0,237,181,.15);color:var(--accent2)">'+(currentUser?currentUser.email[0].toUpperCase():'?')+'</div>'
         +'<div class="lb-name">'+(lang==='ru'?'Вы':'You')+'</div>'
         +'<div class="lb-score me">'+(local.points||0)+' pts</div></div></div>';
       return;
@@ -5714,7 +5714,7 @@ async function loadGlobalTeams(){
         const isMe = currentUser && row.user_id === currentUser.id;
         const name = isMe ? (currentUser.user_metadata?.full_name?.split(' ')[0]||currentUser.email?.split('@')[0]||'You') : 'Игрок';
         const cityTag = row.city ? '<span class="lb-city-tag">'+row.city+'</span>' : '';
-        return '<div class="lb-row'+(isMe?' me':'')+'"><div class="lb-rank">'+(medals[i]||i+1)+'</div><div class="lb-av" style="background:rgba(108,99,255,.15);color:var(--accent2)">'+name[0].toUpperCase()+'</div><div class="lb-name">'+name+cityTag+'</div><div class="lb-score'+(isMe?' me':'')+'">'+row.points+' pts</div></div>';
+        return '<div class="lb-row'+(isMe?' me':'')+'"><div class="lb-rank">'+(medals[i]||i+1)+'</div><div class="lb-av" style="background:rgba(0,237,181,.15);color:var(--accent2)">'+name[0].toUpperCase()+'</div><div class="lb-name">'+name+cityTag+'</div><div class="lb-score'+(isMe?' me':'')+'">'+row.points+' pts</div></div>';
       }).join('');
     return;
   }
@@ -5778,7 +5778,7 @@ async function loadGlobalTeams(){
         const isMe = currentUser&&p.id===currentUser.id;
         const cityTag = p.city?'<span class="lb-city-tag">'+p.city+'</span>':'';
         const name = p.display_name||'Игрок';
-        return '<div class="lb-row'+(isMe?' me':'')+'"><div class="lb-rank">'+(medals[i]||i+1)+'</div><div class="lb-av" style="background:rgba(108,99,255,.15);color:var(--accent2)">'+name[0].toUpperCase()+'</div><div class="lb-name">'+name+cityTag+'</div><div class="lb-score'+(isMe?' me':'')+'">'+p.neurons+'</div></div>';
+        return '<div class="lb-row'+(isMe?' me':'')+'"><div class="lb-rank">'+(medals[i]||i+1)+'</div><div class="lb-av" style="background:rgba(0,237,181,.15);color:var(--accent2)">'+name[0].toUpperCase()+'</div><div class="lb-name">'+name+cityTag+'</div><div class="lb-score'+(isMe?' me':'')+'">'+p.neurons+'</div></div>';
       }).join('');
       return;
     }
@@ -5788,7 +5788,7 @@ async function loadGlobalTeams(){
       const isMe = currentUser&&p.id===currentUser.id;
       const cityTag = p.city?'<span class="lb-city-tag">'+p.city+'</span>':'';
       const name = p.display_name||'Игрок';
-      return '<div class="lb-row'+(isMe?' me':'')+'"><div class="lb-rank">'+(medals[i]||i+1)+'</div><div class="lb-av" style="background:rgba(108,99,255,.15);color:var(--accent2)">'+name[0].toUpperCase()+'</div><div class="lb-name">'+name+cityTag+'</div><div class="lb-score'+(isMe?' me':'')+'">'+p.total_score+'</div></div>';
+      return '<div class="lb-row'+(isMe?' me':'')+'"><div class="lb-rank">'+(medals[i]||i+1)+'</div><div class="lb-av" style="background:rgba(0,237,181,.15);color:var(--accent2)">'+name[0].toUpperCase()+'</div><div class="lb-name">'+name+cityTag+'</div><div class="lb-score'+(isMe?' me':'')+'">'+p.total_score+'</div></div>';
     }).join('');
   }
 }
@@ -5890,7 +5890,7 @@ async function renderTeamCompetitionBanner(){
   }catch(e){ /* silent */ }
 
   banner.innerHTML = `
-    <div style="background:linear-gradient(135deg,rgba(108,99,255,.18),rgba(240,192,64,.12));border:1px solid rgba(240,192,64,.35);border-radius:16px;padding:14px 16px;margin-bottom:4px">
+    <div style="background:linear-gradient(135deg,rgba(0,237,181,.18),rgba(240,192,64,.12));border:1px solid rgba(240,192,64,.35);border-radius:16px;padding:14px 16px;margin-bottom:4px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
         <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--gold)">🏆 НЕДЕЛЬНЫЙ СЕЗОН</div>
         <div style="font-size:11px;color:var(--muted);font-weight:700">⏱ ${timeStr}</div>
@@ -6042,7 +6042,7 @@ const PACKS = [
   id:'disney',icon:'🏰',
   name:{ru:'Disney'},
   desc:{ru:'Мультфильмы, персонажи, песни и магия Disney'},
-  price:200,color:'rgba(108,99,255,.2)',
+  price:200,color:'rgba(0,237,181,.2)',
   questions:[
     {id:'q_ds_01',cat:'DISNEY',difficulty:'easy',
      q:{ru:'«Белоснежка и семь гномов» был первым полнометражным анимационным фильмом Disney?'},
@@ -6595,16 +6595,16 @@ async function redeemPartnerOffer(offerId){
   // Show confirmation modal
   const modal = document.createElement('div');
   modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
-  modal.innerHTML=`<div style="background:var(--bg2);border:0.5px solid rgba(108,99,255,.4);border-radius:20px;padding:28px 20px;max-width:380px;width:100%;text-align:center">
+  modal.innerHTML=`<div style="background:var(--bg2);border:0.5px solid rgba(0,237,181,.4);border-radius:20px;padding:28px 20px;max-width:380px;width:100%;text-align:center">
     <div style="font-size:48px;margin-bottom:12px">🎉</div>
     <div style="font-size:18px;font-weight:800;margin-bottom:6px">${_esc(offer.title)}</div>
     <div style="font-size:13px;color:var(--muted);margin-bottom:16px">Код для предъявления партнёру:</div>
-    <div style="background:var(--bg3);border:0.5px solid rgba(108,99,255,.3);border-radius:14px;padding:14px;margin-bottom:16px">
+    <div style="background:var(--bg3);border:0.5px solid rgba(0,237,181,.3);border-radius:14px;padding:14px;margin-bottom:16px">
       <div style="font-size:24px;font-weight:900;letter-spacing:3px;color:var(--accent2)">${_esc(code)}</div>
     </div>
     ${offer.partner_contact?`<div style="font-size:12px;color:var(--muted);margin-bottom:14px">Контакт: ${_esc(offer.partner_contact)}</div>`:''}
     <div style="display:flex;gap:10px">
-      <button onclick="navigator.clipboard.writeText('${_esc(code)}').catch(()=>{}); this.textContent='✅'" style="flex:1;background:rgba(108,99,255,.15);border:0.5px solid var(--accent);border-radius:10px;padding:10px;font-size:13px;font-weight:800;color:var(--accent2);cursor:pointer;font-family:inherit">📋 Скопировать</button>
+      <button onclick="navigator.clipboard.writeText('${_esc(code)}').catch(()=>{}); this.textContent='✅'" style="flex:1;background:rgba(0,237,181,.15);border:0.5px solid var(--accent);border-radius:10px;padding:10px;font-size:13px;font-weight:800;color:var(--accent2);cursor:pointer;font-family:inherit">📋 Скопировать</button>
       <button onclick="this.closest('div[style*=fixed]').remove()" style="flex:1;background:var(--bg3);border:0.5px solid var(--border);border-radius:10px;padding:10px;font-size:13px;font-weight:800;color:var(--muted);cursor:pointer;font-family:inherit">Закрыть</button>
     </div>
   </div>`;
@@ -10411,7 +10411,7 @@ function renderHomeNextGoal(){
         <div style="font-size:13px;font-weight:700;margin-bottom:2px">${g.text}</div>
         <div style="font-size:11px;color:var(--muted)">Ближайшая цель · ${goals.length} целей всего</div>
       </div>
-      ${g.action?`<button onclick="(${g.action.toString()})()" style="background:rgba(108,99,255,.2);border:0.5px solid rgba(108,99,255,.4);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit;white-space:nowrap">→</button>`:''}
+      ${g.action?`<button onclick="(${g.action.toString()})()" style="background:rgba(0,237,181,.2);border:0.5px solid rgba(0,237,181,.4);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit;white-space:nowrap">→</button>`:''}
     </div>`;
 }
 
@@ -10567,7 +10567,7 @@ window.openTicketCheckin = function() {
       <button onclick="document.getElementById('checkin-modal').remove()" style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;padding:0">←</button>
       <div style="font-size:18px;font-weight:900">Отметка на входе</div>
     </div>
-    <div style="background:rgba(108,99,255,.08);border:1px solid rgba(108,99,255,.25);border-radius:16px;padding:20px;margin-bottom:16px;text-align:center">
+    <div style="background:rgba(0,237,181,.08);border:1px solid rgba(0,237,181,.25);border-radius:16px;padding:20px;margin-bottom:16px;text-align:center">
       <div style="font-size:13px;color:var(--muted);margin-bottom:10px">Введи код билета участника</div>
       <input id="checkin-code-input" placeholder="BFC-XXXX-XXXX" maxlength="14"
         style="width:100%;text-align:center;font-size:20px;font-weight:900;letter-spacing:2px;background:var(--bg3);border:0.5px solid var(--border);border-radius:12px;padding:14px;color:var(--text);font-family:inherit;outline:none;box-sizing:border-box;margin-bottom:12px;text-transform:uppercase"
@@ -11234,7 +11234,7 @@ async function loadAdminImportsList(){
         </div>
         <div style="display:flex;gap:5px;flex-wrap:wrap">
           <button onclick="startTesterMode('import','${b.key}')" style="background:rgba(240,192,64,.1);border:0.5px solid var(--gold);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;color:var(--gold);cursor:pointer;font-family:inherit">🧪 В тестер</button>
-          <button onclick="openImportQuestions('${b.key}')" style="background:rgba(108,99,255,.1);border:0.5px solid var(--accent);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit">👁 Открыть</button>
+          <button onclick="openImportQuestions('${b.key}')" style="background:rgba(0,237,181,.1);border:0.5px solid var(--accent);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit">👁 Открыть</button>
           <button onclick="adminPublishImport('${b.key}')" style="background:rgba(74,222,128,.1);border:0.5px solid var(--green);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;color:var(--green);cursor:pointer;font-family:inherit">🚀 Опубликовать</button>
           <button onclick="adminImportSetStatus('${b.key}','fix')" style="background:rgba(240,192,64,.08);border:0.5px solid var(--gold);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;color:var(--gold);cursor:pointer;font-family:inherit">🟡 На правку</button>
           <button onclick="adminImportSetStatus('${b.key}','archived')" style="background:rgba(128,128,128,.1);border:0.5px solid var(--muted);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit">🗑 Скрыть</button>
@@ -12259,7 +12259,7 @@ async function loadQuizPasses(){
       const loc = p.location || p.city || '—';
       const priceN = p.price ?? p.price_neurons ?? 0;
       return `
-      <div style="background:var(--bg2);border:0.5px solid rgba(108,99,255,.3);border-radius:14px;padding:14px;display:flex;align-items:center;gap:12px;cursor:pointer" onclick="buyQuizPass('${_esc(p.id)}')">
+      <div style="background:var(--bg2);border:0.5px solid rgba(0,237,181,.3);border-radius:14px;padding:14px;display:flex;align-items:center;gap:12px;cursor:pointer" onclick="buyQuizPass('${_esc(p.id)}')">
         <div style="font-size:28px;flex-shrink:0">🎟️</div>
         <div style="flex:1">
           <div style="font-size:14px;font-weight:800">${_esc(p.title||'Квиз')}</div>
@@ -12328,16 +12328,16 @@ function showTicketScreen(purchaseData){
   modal.id = 'ticket-modal';
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
   modal.innerHTML = `
-    <div style="background:var(--bg2);border:0.5px solid rgba(108,99,255,.4);border-radius:20px;padding:28px;max-width:380px;width:100%;text-align:center">
+    <div style="background:var(--bg2);border:0.5px solid rgba(0,237,181,.4);border-radius:20px;padding:28px;max-width:380px;width:100%;text-align:center">
       <div style="font-size:48px;margin-bottom:12px">🎟️</div>
       <div style="font-size:18px;font-weight:800;margin-bottom:6px">Проходка куплена!</div>
       <div style="font-size:13px;color:var(--muted);margin-bottom:18px">Покажи код организатору на входе</div>
-      <div style="background:var(--bg3);border:0.5px solid rgba(108,99,255,.3);border-radius:14px;padding:16px;margin-bottom:16px">
+      <div style="background:var(--bg3);border:0.5px solid rgba(0,237,181,.3);border-radius:14px;padding:16px;margin-bottom:16px">
         <div style="font-size:11px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:1px">Код билета</div>
         <div style="font-size:28px;font-weight:900;letter-spacing:4px;color:var(--accent2)" id="ticket-code-display">${_esc(purchaseData.ticket_code||'—')}</div>
       </div>
       <div style="display:flex;gap:10px;margin-bottom:14px">
-        <button onclick="navigator.clipboard.writeText('${_esc(purchaseData.ticket_code||'')}').then(()=>toast('Скопировано!'))" style="flex:1;background:rgba(108,99,255,.15);border:0.5px solid var(--accent);border-radius:10px;padding:10px;font-size:13px;font-weight:800;color:var(--accent2);cursor:pointer;font-family:inherit">📋 Копировать</button>
+        <button onclick="navigator.clipboard.writeText('${_esc(purchaseData.ticket_code||'')}').then(()=>toast('Скопировано!'))" style="flex:1;background:rgba(0,237,181,.15);border:0.5px solid var(--accent);border-radius:10px;padding:10px;font-size:13px;font-weight:800;color:var(--accent2);cursor:pointer;font-family:inherit">📋 Копировать</button>
         <button onclick="document.getElementById('ticket-modal').remove()" style="flex:1;background:var(--bg3);border:0.5px solid var(--border);border-radius:10px;padding:10px;font-size:13px;font-weight:800;color:var(--muted);cursor:pointer;font-family:inherit">Закрыть</button>
       </div>
       <div style="font-size:11px;color:var(--muted);line-height:1.5">Организатор свяжется с вами для подтверждения деталей</div>
@@ -12412,7 +12412,7 @@ function showCorporateTournamentLobby(tourn){
       <div></div>
     </div>
     <div style="width:100%;max-width:560px;padding:16px 16px 100px;display:flex;flex-direction:column;gap:14px">
-      <div style="background:linear-gradient(135deg,var(--bg3),var(--bg2));border:0.5px solid rgba(108,99,255,.4);border-radius:18px;padding:24px 20px;text-align:center">
+      <div style="background:linear-gradient(135deg,var(--bg3),var(--bg2));border:0.5px solid rgba(0,237,181,.4);border-radius:18px;padding:24px 20px;text-align:center">
         ${org?.logo_url?`<img src="${_esc(org.logo_url)}" style="width:60px;height:60px;border-radius:12px;object-fit:cover;margin-bottom:12px" alt="logo">`:'<div style="font-size:48px;margin-bottom:12px">🏢</div>'}
         <div style="font-size:20px;font-weight:800;margin-bottom:6px">${_esc(tourn.title)}</div>
         ${tourn.description?`<div style="font-size:13px;color:var(--muted);margin-bottom:12px">${_esc(tourn.description)}</div>`:''}
@@ -12476,7 +12476,7 @@ async function loadCorporateLeaderboard(tournId, scoringMode){
     if(error || !data || !data.length){ el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:4px">Пока нет участников</div>'; return; }
     const medals = ['🥇','🥈','🥉'];
     el.innerHTML = data.map((r,i)=>`
-      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:0.5px solid rgba(108,99,255,.06)">
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:0.5px solid rgba(0,237,181,.06)">
         <div style="font-size:14px;font-weight:800;width:20px;text-align:center">${medals[i]||i+1}</div>
         <div style="flex:1;font-size:13px;font-weight:600">${_esc(r.name||r.profiles?.display_name||'Участник')}</div>
         <div style="font-size:13px;font-weight:800;color:var(--accent2)">${r.total_score||r.score||0}</div>
@@ -12746,7 +12746,7 @@ async function checkPremiumReturn(){
 function showPremiumCTA(trigger){
   track('premium_limit_upsell', { trigger });
   const cta = document.createElement('div');
-  cta.style.cssText = 'background:linear-gradient(135deg,rgba(240,192,64,.12),rgba(108,99,255,.08));border:0.5px solid rgba(240,192,64,.4);border-radius:14px;padding:14px 16px;margin:12px 0;cursor:pointer';
+  cta.style.cssText = 'background:linear-gradient(135deg,rgba(240,192,64,.12),rgba(0,237,181,.08));border:0.5px solid rgba(240,192,64,.4);border-radius:14px;padding:14px 16px;margin:12px 0;cursor:pointer';
   cta.innerHTML = `
     <div style="font-size:13px;font-weight:800;color:var(--gold);margin-bottom:4px">⭐ BFC Premium</div>
     <div style="font-size:12px;color:var(--muted);margin-bottom:10px">50 вопросов в день · 10 баттлов · Закрытые турниры</div>
@@ -12821,7 +12821,7 @@ window.showOppProfile = async function(userId, displayName) {
   const initial = (displayName || '?')[0].toUpperCase();
   modal.innerHTML = `<div style="background:var(--bg2);border-radius:24px 24px 0 0;padding:24px;width:100%;max-width:480px;border-top:0.5px solid var(--border)">
     <div style="text-align:center;margin-bottom:16px">
-      <div style="width:64px;height:64px;border-radius:50%;background:rgba(108,99,255,.2);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;font-size:28px;font-weight:900;color:var(--accent2)">${initial}</div>
+      <div style="width:64px;height:64px;border-radius:50%;background:rgba(0,237,181,.2);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;font-size:28px;font-weight:900;color:var(--accent2)">${initial}</div>
       <div style="font-size:18px;font-weight:900">${displayName || 'Соперник'}</div>
       <div id="opp-profile-rank" style="margin-top:6px"></div>
       <div id="opp-profile-loading" style="font-size:13px;color:var(--muted);margin-top:4px">Загрузка...</div>
@@ -12865,7 +12865,7 @@ window.showOppProfile = async function(userId, displayName) {
         friendBtnWrap.innerHTML = `<div style="text-align:center;font-size:13px;color:#4ade80;font-weight:700;padding:10px 0">✅ Уже в друзьях</div>`;
       } else {
         friendBtnWrap.innerHTML = `<button onclick="addFriendFromProfile('${targetId}','${(data.display_name||displayName||'').replace(/'/g,"\\'")}',this)"
-          style="width:100%;background:rgba(108,99,255,.15);border:1px solid rgba(108,99,255,.3);border-radius:14px;padding:12px;font-size:14px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit;margin-bottom:0">
+          style="width:100%;background:rgba(0,237,181,.15);border:1px solid rgba(0,237,181,.3);border-radius:14px;padding:12px;font-size:14px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit;margin-bottom:0">
           👥 Добавить в друзья
         </button>`;
       }
@@ -12988,7 +12988,7 @@ window.openPublicProfile = async function(username, userId) {
     const rankHTML = _rankBadgeHTML(data.xp || 0);
     const shareUrl = location.origin + '?uid=' + resolvedId;
     document.getElementById('pub-profile-inner').innerHTML = `
-      <div style="width:72px;height:72px;border-radius:50%;background:rgba(108,99,255,.2);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:32px;font-weight:900;color:var(--accent2)">${initial}</div>
+      <div style="width:72px;height:72px;border-radius:50%;background:rgba(0,237,181,.2);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:32px;font-weight:900;color:var(--accent2)">${initial}</div>
       <div style="font-size:20px;font-weight:900;margin-bottom:4px">${data.display_name || username || '—'}</div>
       ${data.city ? `<div style="font-size:13px;color:var(--muted);margin-bottom:8px">📍 ${data.city}</div>` : ''}
       <div style="margin-bottom:12px">${rankHTML}</div>
@@ -13007,7 +13007,7 @@ window.openPublicProfile = async function(username, userId) {
         </div>`).join('')}
       </div>
       <div id="pub-friend-btn-wrap" style="margin-bottom:8px"></div>
-      <button onclick="navigator.clipboard.writeText('${shareUrl}').then(()=>window.toast?.('🔗 Ссылка скопирована!'))" style="width:100%;background:rgba(108,99,255,.15);border:0.5px solid var(--accent2);border-radius:14px;padding:12px;font-size:14px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit;margin-bottom:8px">🔗 Поделиться профилем</button>
+      <button onclick="navigator.clipboard.writeText('${shareUrl}').then(()=>window.toast?.('🔗 Ссылка скопирована!'))" style="width:100%;background:rgba(0,237,181,.15);border:0.5px solid var(--accent2);border-radius:14px;padding:12px;font-size:14px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit;margin-bottom:8px">🔗 Поделиться профилем</button>
       <button onclick="document.getElementById('pub-profile-modal').remove()" style="width:100%;background:rgba(255,255,255,.07);border:0.5px solid var(--border);border-radius:14px;padding:12px;font-size:14px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit">Закрыть</button>
     `;
     // Friend button in public profile
@@ -13020,7 +13020,7 @@ window.openPublicProfile = async function(username, userId) {
         pubFriendWrap.innerHTML = `<div style="text-align:center;font-size:13px;color:#4ade80;font-weight:700;padding:10px 0">✅ Уже в друзьях</div>`;
       } else {
         pubFriendWrap.innerHTML = `<button onclick="addFriendFromProfile('${targetId}','${(data.display_name||'').replace(/'/g,"\\'")}',this)"
-          style="width:100%;background:rgba(108,99,255,.15);border:1px solid rgba(108,99,255,.3);border-radius:14px;padding:12px;font-size:14px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit">
+          style="width:100%;background:rgba(0,237,181,.15);border:1px solid rgba(0,237,181,.3);border-radius:14px;padding:12px;font-size:14px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit">
           👥 Добавить в друзья
         </button>`;
       }
@@ -13069,11 +13069,11 @@ async function loadFriends() {
       ? `<button onclick="event.stopPropagation();challengeFriend('${f.friend_id}','${(p?.display_name||'').replace(/'/g,"\\'")}')
           " style="background:var(--accent);border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit;animation:pulse 1.5s infinite">⚔️ Вызвать</button>`
       : `<button onclick="event.stopPropagation();challengeFriend('${f.friend_id}','${(p?.display_name||'').replace(/'/g,"\\'")}')
-          " style="background:rgba(108,99,255,.15);border:1px solid rgba(108,99,255,.3);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit">⚔️</button>`;
+          " style="background:rgba(0,237,181,.15);border:1px solid rgba(0,237,181,.3);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit">⚔️</button>`;
     return `<div onclick="window.showOppProfile('${f.friend_id}','${(p?.display_name||'').replace(/'/g,"\\'")}')
       " style="display:flex;align-items:center;gap:10px;padding:10px;background:${isOnline?'rgba(74,222,128,.06)':'rgba(255,255,255,.05)'};border:1px solid ${isOnline?'rgba(74,222,128,.2)':'rgba(255,255,255,.06)'};border-radius:12px;margin-bottom:6px;cursor:pointer">
       <div style="position:relative;width:36px;height:36px;flex-shrink:0">
-        <div style="width:36px;height:36px;border-radius:50%;background:rgba(108,99,255,.2);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:var(--accent2)">${(p?.display_name||'?')[0].toUpperCase()}</div>
+        <div style="width:36px;height:36px;border-radius:50%;background:rgba(0,237,181,.2);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:var(--accent2)">${(p?.display_name||'?')[0].toUpperCase()}</div>
         ${isOnline ? '<span style="position:absolute;bottom:0;right:0;width:10px;height:10px;border-radius:50%;background:#4ade80;border:2px solid var(--bg);box-shadow:0 0 6px #4ade80"></span>' : ''}
       </div>
       <div style="flex:1;min-width:0">
@@ -13177,7 +13177,7 @@ window.showAddFriendModal = async function() {
               ${u.city ? `<div style="font-size:11px;color:var(--muted)">${u.city}</div>` : ''}
             </div>
             <button onclick="window.openPublicProfile('${(u.display_name||'').replace(/'/g,"\\'")}','${u.id}');document.getElementById('add-friend-modal').remove()"
-              style="background:rgba(108,99,255,.15);border:1px solid rgba(108,99,255,.3);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit;flex-shrink:0">
+              style="background:rgba(0,237,181,.15);border:1px solid rgba(0,237,181,.3);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit;flex-shrink:0">
               Профиль
             </button>
           </div>`;
@@ -13260,7 +13260,7 @@ window.loadPendingChallenges = async function() {
   const pendingEl = document.getElementById('pending-challenges');
   if (!pendingEl || !data?.length) return;
   pendingEl.innerHTML = data.map(c => `
-    <div style="background:rgba(108,99,255,.1);border:1px solid rgba(108,99,255,.3);border-radius:12px;padding:12px;margin-bottom:8px">
+    <div style="background:rgba(0,237,181,.1);border:1px solid rgba(0,237,181,.3);border-radius:12px;padding:12px;margin-bottom:8px">
       <div style="font-size:13px;font-weight:700;margin-bottom:4px">⚔️ Тебя вызвали на дуэль!</div>
       <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Истекает через ${_timeUntil(c.expires_at)}</div>
       <button onclick="acceptAsyncChallenge('${c.id}')" style="width:100%;background:var(--accent);border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit">Принять вызов →</button>
@@ -13318,7 +13318,7 @@ async function loadMyClub() {
   const c = member.clubs;
   el.innerHTML = `
     <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--muted);margin-bottom:8px">МОЙ КЛУБ</div>
-    <div onclick="openClubDetail('${c.id}')" style="display:flex;align-items:center;gap:12px;background:rgba(108,99,255,.12);border:1px solid rgba(108,99,255,.3);border-radius:14px;padding:14px;cursor:pointer;margin-bottom:12px">
+    <div onclick="openClubDetail('${c.id}')" style="display:flex;align-items:center;gap:12px;background:rgba(0,237,181,.12);border:1px solid rgba(0,237,181,.3);border-radius:14px;padding:14px;cursor:pointer;margin-bottom:12px">
       <div style="font-size:28px">${c.emoji||'🧠'}</div>
       <div style="flex:1">
         <div style="font-size:14px;font-weight:800">${c.name}</div>
@@ -13371,7 +13371,7 @@ window.openClubDetail = async function(clubId) {
           <div style="font-size:11px;color:var(--muted)">Участников</div>
         </div>
       </div>
-      <button onclick="shareClubLink('${club.id}','${club.name.replace(/'/g,"\\'")}','${club.emoji||'🧠'}')" style="width:100%;background:rgba(108,99,255,.15);border:1px solid rgba(108,99,255,.3);border-radius:14px;padding:12px;font-size:14px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit;margin-bottom:10px">🔗 Поделиться ссылкой</button>
+      <button onclick="shareClubLink('${club.id}','${club.name.replace(/'/g,"\\'")}','${club.emoji||'🧠'}')" style="width:100%;background:rgba(0,237,181,.15);border:1px solid rgba(0,237,181,.3);border-radius:14px;padding:12px;font-size:14px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit;margin-bottom:10px">🔗 Поделиться ссылкой</button>
       ${!myMembership && club.member_count < 50 ? `<button onclick="joinClub('${club.id}')" style="width:100%;background:var(--accent);border:none;border-radius:14px;padding:14px;font-size:15px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit;margin-bottom:16px">Вступить в клуб</button>` : ''}
       ${myMembership ? `<button onclick="leaveClub('${club.id}')" style="width:100%;background:rgba(255,255,255,.07);border:0.5px solid var(--border);border-radius:14px;padding:12px;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit;margin-bottom:16px">Покинуть клуб</button>` : ''}
       <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--muted);margin-bottom:10px">🏅 УЧАСТНИКИ</div>
@@ -13380,7 +13380,7 @@ window.openClubDetail = async function(clubId) {
         const rank = window.getRank ? window.getRank(p?.xp||0) : {icon:'🥉'};
         return `<div style="display:flex;align-items:center;gap:10px;padding:10px;background:rgba(255,255,255,.04);border-radius:12px;margin-bottom:6px">
           <div style="font-size:14px;font-weight:900;color:var(--muted);width:24px">${i+1}</div>
-          <div style="width:36px;height:36px;border-radius:50%;background:rgba(108,99,255,.2);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:900;color:var(--accent2)">${(p?.display_name||'?')[0].toUpperCase()}</div>
+          <div style="width:36px;height:36px;border-radius:50%;background:rgba(0,237,181,.2);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:900;color:var(--accent2)">${(p?.display_name||'?')[0].toUpperCase()}</div>
           <div style="flex:1">
             <div style="font-size:13px;font-weight:700">${p?.display_name||'Игрок'} ${rank.icon}</div>
             <div style="font-size:11px;color:var(--muted)">${p?.neurons||0} ⚡</div>

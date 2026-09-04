@@ -38,7 +38,7 @@ function _render() {
       <div class="onb-icon">${s.icon}</div>
       <div class="onb-title">${s.title}</div>
       <div class="onb-text">${s.text}</div>
-      ${s.cta ? `<button onclick="${s.cta.action}" style="width:100%;background:rgba(108,99,255,.15);border:1px solid rgba(108,99,255,.4);border-radius:12px;padding:12px;font-size:13px;font-weight:800;color:var(--accent2);cursor:pointer;font-family:inherit;margin-bottom:8px">${s.cta.label} →</button>` : ''}
+      ${s.cta ? `<button onclick="${s.cta.action}" style="width:100%;background:rgba(0,237,181,.15);border:1px solid rgba(0,237,181,.4);border-radius:12px;padding:12px;font-size:13px;font-weight:800;color:var(--accent2);cursor:pointer;font-family:inherit;margin-bottom:8px">${s.cta.label} →</button>` : ''}
       <button class="big-btn onb-btn" id="onb-next-btn">${s.btn}</button>
       ${_step > 0 ? `<button class="onb-skip" id="onb-skip-btn">Пропустить</button>` : ''}
     </div>`;

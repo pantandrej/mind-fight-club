@@ -17,8 +17,8 @@ export async function generateShareCard({ title, score, correct, total, pct, ico
 
   // Glow circle behind icon
   const glow = ctx.createRadialGradient(W/2, 140, 0, W/2, 140, 120);
-  glow.addColorStop(0, 'rgba(108,99,255,0.35)');
-  glow.addColorStop(1, 'rgba(108,99,255,0)');
+  glow.addColorStop(0, 'rgba(0,237,181,0.35)');
+  glow.addColorStop(1, 'rgba(0,237,181,0)');
   ctx.fillStyle = glow;
   ctx.beginPath(); ctx.arc(W/2, 140, 120, 0, Math.PI*2); ctx.fill();
 
@@ -34,8 +34,8 @@ export async function generateShareCard({ title, score, correct, total, pct, ico
 
   // Score pill
   const pillW = 220, pillH = 60, pillX = W/2 - pillW/2, pillY = 168;
-  ctx.fillStyle = 'rgba(108,99,255,0.25)';
-  ctx.strokeStyle = 'rgba(108,99,255,0.6)';
+  ctx.fillStyle = 'rgba(0,237,181,0.25)';
+  ctx.strokeStyle = 'rgba(0,237,181,0.6)';
   ctx.lineWidth = 1.5;
   ctx.beginPath(); ctx.roundRect(pillX, pillY, pillW, pillH, 16); ctx.fill(); ctx.stroke();
   ctx.font = 'bold 36px system-ui, sans-serif';
@@ -75,7 +75,7 @@ export async function generateShareCard({ title, score, correct, total, pct, ico
 
   // BFC badge top-right
   ctx.font = 'bold 13px system-ui, sans-serif';
-  ctx.fillStyle = 'rgba(108,99,255,0.8)';
+  ctx.fillStyle = 'rgba(0,237,181,0.8)';
   ctx.textAlign = 'right';
   ctx.fillText('🧠 BRAIN FIGHT CLUB', W - 24, 36);
 

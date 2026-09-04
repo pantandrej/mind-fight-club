@@ -63,7 +63,7 @@ function _render(el, teams, myTeamId, rankData) {
       : `<div style="position:absolute;top:-4px;right:-4px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;font-size:10px;font-weight:900;color:var(--muted);padding:1px 5px">#${idx + 1}</div>`;
 
     const highlight = isMine
-      ? 'border-color:rgba(108,99,255,.5);background:rgba(108,99,255,.07);'
+      ? 'border-color:rgba(0,237,181,.5);background:rgba(0,237,181,.07);'
       : idx < 3
         ? 'border-color:rgba(240,192,64,.3);background:rgba(240,192,64,.04);'
         : '';
@@ -72,7 +72,7 @@ function _render(el, teams, myTeamId, rankData) {
       <div onclick="window.loadTeamProfile?.('${team.id}')"
            style="display:flex;align-items:center;gap:14px;padding:14px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:18px;cursor:pointer;${highlight}">
         <div style="position:relative;flex-shrink:0">
-          <div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,rgba(108,99,255,.25),rgba(168,85,247,.2));display:flex;align-items:center;justify-content:center;overflow:hidden;border:2px solid ${isMine ? 'rgba(108,99,255,.5)' : 'var(--border)'}">
+          <div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,rgba(0,237,181,.25),rgba(168,85,247,.2));display:flex;align-items:center;justify-content:center;overflow:hidden;border:2px solid ${isMine ? 'rgba(0,237,181,.5)' : 'var(--border)'}">
             ${avatar}
           </div>
           ${rankBadge}
@@ -80,7 +80,7 @@ function _render(el, teams, myTeamId, rankData) {
         <div style="flex:1;min-width:0">
           <div style="display:flex;align-items:center;gap:6px">
             <span style="font-size:15px;font-weight:${idx < 3 || isMine ? '900' : '800'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(team.name)}</span>
-            ${isMine ? `<span style="font-size:10px;font-weight:800;background:rgba(108,99,255,.2);color:var(--accent2);border-radius:6px;padding:1px 6px;flex-shrink:0">МОЯ</span>` : ''}
+            ${isMine ? `<span style="font-size:10px;font-weight:800;background:rgba(0,237,181,.2);color:var(--accent2);border-radius:6px;padding:1px 6px;flex-shrink:0">МОЯ</span>` : ''}
           </div>
           ${team.city ? `<div style="font-size:12px;color:var(--muted);margin-top:2px">📍 ${_esc(team.city)}</div>` : ''}
         </div>
@@ -94,7 +94,7 @@ function _render(el, teams, myTeamId, rankData) {
 
   const noTeamBanner = !myTeam ? `
     <div onclick="window.showScreen?.('my-team-screen');window.loadMyTeam?.()"
-         style="background:linear-gradient(135deg,rgba(108,99,255,.15),rgba(168,85,247,.1));border:1px solid rgba(108,99,255,.3);border-radius:18px;padding:20px 16px;margin-bottom:16px;cursor:pointer;display:flex;align-items:center;gap:14px">
+         style="background:linear-gradient(135deg,rgba(0,237,181,.15),rgba(168,85,247,.1));border:1px solid rgba(0,237,181,.3);border-radius:18px;padding:20px 16px;margin-bottom:16px;cursor:pointer;display:flex;align-items:center;gap:14px">
       <div style="font-size:36px">🏟️</div>
       <div style="flex:1">
         <div style="font-size:15px;font-weight:900;margin-bottom:4px">Вступить в команду</div>
@@ -105,7 +105,7 @@ function _render(el, teams, myTeamId, rankData) {
 
   const myTeamMgmtBtn = myTeam ? `
     <div onclick="window.showScreen?.('my-team-screen');window.loadMyTeam?.()"
-         style="background:rgba(108,99,255,.1);border:1px solid rgba(108,99,255,.3);border-radius:14px;padding:12px 16px;margin-bottom:12px;cursor:pointer;display:flex;align-items:center;gap:10px">
+         style="background:rgba(0,237,181,.1);border:1px solid rgba(0,237,181,.3);border-radius:14px;padding:12px 16px;margin-bottom:12px;cursor:pointer;display:flex;align-items:center;gap:10px">
       <span style="font-size:18px">⚙️</span>
       <span style="font-size:13px;font-weight:800;color:var(--accent2)">Управление моей командой</span>
       <span style="margin-left:auto;font-size:16px;color:var(--accent2)">→</span>

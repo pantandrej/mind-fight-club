@@ -56,7 +56,7 @@ function _renderPost(p) {
   return `
     <div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:16px;padding:16px;margin-bottom:10px">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-        <div style="width:42px;height:42px;border-radius:12px;background:rgba(108,99,255,.15);border:0.5px solid rgba(108,99,255,.3);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">
+        <div style="width:42px;height:42px;border-radius:12px;background:rgba(0,237,181,.15);border:0.5px solid rgba(0,237,181,.3);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">
           🧠
         </div>
         <div style="flex:1;min-width:0">

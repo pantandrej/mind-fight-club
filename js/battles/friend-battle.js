@@ -426,9 +426,9 @@ function loadDuelQ(){
 function renderDuelTimer(){
   const pct=(duelTimeLeft/duelMaxT)*100;
   const fill=document.getElementById('d-timer-fill');
-  fill.style.width=pct+'%';fill.style.background=pct<35?'#e05555':pct<60?'#f0a050':'#6c63ff';
+  fill.style.width=pct+'%';fill.style.background=pct<35?'#e05555':pct<60?'#f0a050':'var(--accent)';
   const tv=document.getElementById('d-t-val');
-  tv.textContent=duelTimeLeft+'s';tv.style.color=duelTimeLeft<=5?'#e05555':duelTimeLeft<=10?'#f0a050':'#8b83ff';
+  tv.textContent=duelTimeLeft+'s';tv.style.color=duelTimeLeft<=5?'#e05555':duelTimeLeft<=10?'#f0a050':'var(--accent2)';
   const _q=duelQs[duelIdx]; document.getElementById('d-p-val').textContent='+'+(duelTimeLeft>0?duelTimeLeft:1);
 }
 function duelTick(){if(duelTimeLeft<=0){clearInterval(duelTimer);duelExpire();return;}duelTimeLeft--;renderDuelTimer();}

@@ -397,7 +397,7 @@ async function _loadLeaderboard() {
     const pct  = row.max_score ? Math.round((row.score / row.max_score) * 100) : 0;
     const isMe = row.guest_name === _playerName;
     const el   = document.createElement('div');
-    el.style.cssText = `display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;${isMe ? 'background:rgba(108,99,255,.15);border:0.5px solid rgba(108,99,255,.3)' : ''}`;
+    el.style.cssText = `display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;${isMe ? 'background:rgba(0,237,181,.15);border:0.5px solid rgba(0,237,181,.3)' : ''}`;
     el.innerHTML = `
       <div style="font-size:13px;font-weight:800;color:var(--muted);min-width:22px">${i + 1}</div>
       <div style="flex:1;font-size:13px;font-weight:${isMe ? '800' : '600'}">${_esc(row.guest_name || 'Аноним')}</div>

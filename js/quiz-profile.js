@@ -46,7 +46,7 @@ export async function loadQuizProfile(slug) {
       <div style="font-size:18px;width:28px;text-align:center;flex-shrink:0">${medals[i] || (i+1)+'.'}</div>
       ${t.logo_url
         ? `<img src="${_esc(t.logo_url)}" style="width:36px;height:36px;border-radius:10px;object-fit:cover;flex-shrink:0">`
-        : `<div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,rgba(108,99,255,.3),rgba(168,85,247,.2));display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🧠</div>`}
+        : `<div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,rgba(0,237,181,.3),rgba(168,85,247,.2));display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🧠</div>`}
       <div style="flex:1;font-size:13px;font-weight:700">${_esc(t.name)}</div>
       <div style="font-size:12px;font-weight:800;color:var(--accent2)">${t.score || 0} BF</div>
     </div>`).join('');
@@ -57,7 +57,7 @@ export async function loadQuizProfile(slug) {
       <div style="display:flex;flex-direction:column;align-items:center;padding:32px 0 24px">
         ${q.logo_url
           ? `<img src="${_esc(q.logo_url)}" style="width:88px;height:88px;border-radius:22px;object-fit:cover;border:2px solid var(--border)">`
-          : `<div style="width:88px;height:88px;border-radius:22px;background:linear-gradient(135deg,rgba(108,99,255,.3),rgba(168,85,247,.2));border:2px solid rgba(108,99,255,.4);display:flex;align-items:center;justify-content:center;font-size:40px">🧠</div>`}
+          : `<div style="width:88px;height:88px;border-radius:22px;background:linear-gradient(135deg,rgba(0,237,181,.3),rgba(168,85,247,.2));border:2px solid rgba(0,237,181,.4);display:flex;align-items:center;justify-content:center;font-size:40px">🧠</div>`}
         <div style="font-size:22px;font-weight:900;text-align:center;margin-top:14px">${_esc(q.name)}</div>
         <div style="font-size:11px;color:var(--muted);margin-top:4px">bfc.ru/quiz/${_esc(q.slug)}</div>
         ${q.description ? `<div style="font-size:13px;color:var(--muted);line-height:1.6;text-align:center;margin-top:10px;max-width:320px">${_esc(q.description)}</div>` : ''}

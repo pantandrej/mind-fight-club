@@ -570,7 +570,7 @@ async function _renderBattleBoard() {
       return `
       <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg2);border-radius:14px;padding:10px 14px">
         <div style="display:flex;align-items:center;gap:10px">
-          <div style="width:36px;height:36px;border-radius:50%;background:rgba(108,99,255,.2);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:var(--accent2)">
+          <div style="width:36px;height:36px;border-radius:50%;background:rgba(0,237,181,.2);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:var(--accent2)">
             ${r.isBot ? r.bot.avatar : r.display_name[0].toUpperCase()}
           </div>
           <div>
@@ -579,7 +579,7 @@ async function _renderBattleBoard() {
           </div>
         </div>
         <button onclick="window._acceptBoardRow(${idx})"
-          style="background:linear-gradient(135deg,#6c63ff,#a855f7);border:none;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit">
+          style="background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit">
           ⚔️ Принять
         </button>
       </div>`;

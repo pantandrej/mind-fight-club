@@ -53,7 +53,7 @@ function _renderFilter(inner) {
   }
   bar.innerHTML = `
     <button onclick="window._qmodFilter('pending')"
-      style="flex:1;padding:9px;border-radius:10px;border:1px solid ${_filter==='pending'?'var(--accent)':'var(--border)'};background:${_filter==='pending'?'rgba(108,99,255,.12)':'var(--bg2)'};color:${_filter==='pending'?'var(--accent2)':'var(--muted)'};font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
+      style="flex:1;padding:9px;border-radius:10px;border:1px solid ${_filter==='pending'?'var(--accent)':'var(--border)'};background:${_filter==='pending'?'rgba(0,237,181,.12)':'var(--bg2)'};color:${_filter==='pending'?'var(--accent2)':'var(--muted)'};font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
       🗂 На сортировку
     </button>
     <button onclick="window._qmodFilter('active')"
@@ -114,7 +114,7 @@ async function _loadPage(inner, reset = false) {
 
     const allBtn = document.createElement('button');
     allBtn.textContent = `Показать все (${_total})`;
-    allBtn.style.cssText = 'flex:1;background:rgba(108,99,255,.1);border:1px solid rgba(108,99,255,.4);border-radius:12px;padding:12px;font-size:13px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit';
+    allBtn.style.cssText = 'flex:1;background:rgba(0,237,181,.1);border:1px solid rgba(0,237,181,.4);border-radius:12px;padding:12px;font-size:13px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit';
     allBtn.onclick = async () => {
       wrap.remove();
       try {
@@ -186,7 +186,7 @@ function _buildCard(q) {
     : '';
 
   const editBtn = `<button onclick="window._qmodEdit('${q.id}')"
-    style="padding:10px;border-radius:10px;border:1px solid rgba(108,99,255,.4);background:rgba(108,99,255,.1);color:var(--accent2);font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">
+    style="padding:10px;border-radius:10px;border:1px solid rgba(0,237,181,.4);background:rgba(0,237,181,.1);color:var(--accent2);font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">
     ✏️ Редактировать
   </button>`;
 
@@ -300,7 +300,7 @@ window._qmodEdit = function(id) {
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
       <button onclick="window._qmodSaveEdit('${id}')"
-        style="padding:10px;border-radius:10px;border:1px solid rgba(108,99,255,.5);background:rgba(108,99,255,.15);color:var(--accent2);font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">
+        style="padding:10px;border-radius:10px;border:1px solid rgba(0,237,181,.5);background:rgba(0,237,181,.15);color:var(--accent2);font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">
         💾 Сохранить
       </button>
       <button onclick="window._qmodCancelEdit('${id}')"

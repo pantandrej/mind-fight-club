@@ -163,8 +163,8 @@ function _renderMyTeam(el, { team, members, tiebreak, barRankRes, onlineRankRes,
     <div style="padding:16px;display:flex;flex-direction:column;gap:16px">
 
       <!-- Баннер + аватар -->
-      <div style="border-radius:20px;overflow:hidden;border:1px solid rgba(108,99,255,.3);position:relative">
-        <div style="height:140px;overflow:hidden;background:linear-gradient(135deg,rgba(108,99,255,.3),rgba(168,85,247,.2))">
+      <div style="border-radius:20px;overflow:hidden;border:1px solid rgba(0,237,181,.3);position:relative">
+        <div style="height:140px;overflow:hidden;background:linear-gradient(135deg,rgba(0,237,181,.3),rgba(168,85,247,.2))">
           ${team.banner_url
             ? `<img src="${team.banner_url}" style="width:100%;height:100%;object-fit:cover">`
             : ''}
@@ -182,7 +182,7 @@ function _renderMyTeam(el, { team, members, tiebreak, barRankRes, onlineRankRes,
           <div style="font-size:20px;font-weight:900;margin-bottom:4px">${team.name}</div>
           ${team.city ? `<div style="font-size:12px;color:var(--muted)">📍 ${team.city}</div>` : ''}
           ${team.motto ? `<div style="font-size:12px;color:var(--accent2);font-style:italic;margin-top:4px">"${team.motto}"</div>` : ''}
-          <div style="margin-top:10px;display:inline-flex;align-items:center;gap:6px;background:rgba(108,99,255,.15);border-radius:20px;padding:6px 14px">
+          <div style="margin-top:10px;display:inline-flex;align-items:center;gap:6px;background:rgba(0,237,181,.15);border-radius:20px;padding:6px 14px">
             <span style="font-size:14px">⚡</span>
             <span style="font-size:16px;font-weight:900">${tiebreak}</span>
             <span style="font-size:11px;color:var(--muted)">командных нейронов</span>
@@ -190,7 +190,7 @@ function _renderMyTeam(el, { team, members, tiebreak, barRankRes, onlineRankRes,
           <!-- Инвайт -->
           <div style="margin-top:10px">
             <button onclick="window._mtCopyInvite('${team.id}')"
-              style="background:rgba(108,99,255,.15);border:1px solid rgba(108,99,255,.3);border-radius:20px;padding:7px 16px;font-size:12px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit">
+              style="background:rgba(0,237,181,.15);border:1px solid rgba(0,237,181,.3);border-radius:20px;padding:7px 16px;font-size:12px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit">
               🔗 Пригласить в команду
             </button>
           </div>
@@ -198,7 +198,7 @@ function _renderMyTeam(el, { team, members, tiebreak, barRankRes, onlineRankRes,
       </div>
 
       <!-- Редактор профиля команды (скрыт по умолчанию) -->
-      <div id="mt-edit-section" style="display:none;background:var(--bg2);border:1px solid rgba(108,99,255,.3);border-radius:18px;padding:18px">
+      <div id="mt-edit-section" style="display:none;background:var(--bg2);border:1px solid rgba(0,237,181,.3);border-radius:18px;padding:18px">
         <div style="font-size:13px;font-weight:800;margin-bottom:14px">✏️ Редактировать команду</div>
         <div style="display:flex;flex-direction:column;gap:10px">
           <div>
@@ -282,7 +282,7 @@ function _renderMyTeam(el, { team, members, tiebreak, barRankRes, onlineRankRes,
         <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Состав клана · ${members.length} игроков</div>
         <div style="display:flex;flex-direction:column;gap:8px">
           ${members.map((m, i) => `
-            <div style="display:flex;align-items:center;gap:12px;background:${i < 3 ? 'rgba(108,99,255,.08)' : 'var(--bg2)'};border:1px solid ${i < 3 ? 'rgba(108,99,255,.25)' : 'var(--border)'};border-radius:14px;padding:12px">
+            <div style="display:flex;align-items:center;gap:12px;background:${i < 3 ? 'rgba(0,237,181,.08)' : 'var(--bg2)'};border:1px solid ${i < 3 ? 'rgba(0,237,181,.25)' : 'var(--border)'};border-radius:14px;padding:12px">
               <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;overflow:hidden">
                 ${m.avatar_url ? `<img src="${m.avatar_url}" style="width:100%;height:100%;object-fit:cover"/>` : '🧠'}
               </div>

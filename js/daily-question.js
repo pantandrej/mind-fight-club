@@ -50,7 +50,7 @@ export async function loadDailyQuestion() {
   // Show the teaser card
   el.style.display = 'block';
   el.innerHTML = `
-    <div style="background:linear-gradient(135deg,rgba(108,99,255,.15),rgba(168,85,247,.1));border:0.5px solid rgba(108,99,255,.35);border-radius:16px;padding:14px 16px;cursor:pointer" onclick="openDailyQuestion()">
+    <div style="background:linear-gradient(135deg,rgba(0,237,181,.15),rgba(168,85,247,.1));border:0.5px solid rgba(0,237,181,.35);border-radius:16px;padding:14px 16px;cursor:pointer" onclick="openDailyQuestion()">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0">
         <div>
           <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent2);font-weight:800;margin-bottom:3px">❓ Вопрос дня</div>

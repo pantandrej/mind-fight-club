@@ -82,7 +82,7 @@ function _render(el, { team, members, barRank, onlineRank, totalPts, brainPoints
   // ── Баннер + аватар ────────────────────────────────────────────
   const bannerBg = team.banner_url
     ? `background:url('${_esc(team.banner_url)}') center/cover no-repeat`
-    : `background:linear-gradient(135deg,#6c63ff 0%,#a78bfa 50%,#ec4899 100%)`;
+    : `background:linear-gradient(135deg,var(--accent) 0%,#a78bfa 50%,#ec4899 100%)`;
 
   // ── Статы ──────────────────────────────────────────────────────
   const statPill = (icon, val, label, color = 'var(--text)') => `
@@ -102,7 +102,7 @@ function _render(el, { team, members, barRank, onlineRank, totalPts, brainPoints
     const bg = i === 0
       ? 'background:linear-gradient(135deg,rgba(240,192,64,.12),rgba(240,150,0,.06));border-color:rgba(240,192,64,.35)'
       : i < 3
-        ? 'background:rgba(108,99,255,.06);border-color:rgba(108,99,255,.2)'
+        ? 'background:rgba(0,237,181,.06);border-color:rgba(0,237,181,.2)'
         : 'background:var(--bg2)';
 
     return `
@@ -131,7 +131,7 @@ function _render(el, { team, members, barRank, onlineRank, totalPts, brainPoints
       </button>
       <div style="font-size:15px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px">${_esc(team.name)}</div>
       ${isMyTeam
-        ? `<button onclick="window.showScreen?.('my-team-screen');window.loadMyTeam?.()" style="background:rgba(108,99,255,.15);border:1px solid rgba(108,99,255,.3);border-radius:10px;color:var(--accent2);font-size:12px;font-weight:800;cursor:pointer;padding:5px 12px;font-family:inherit">⚙️ Моя</button>`
+        ? `<button onclick="window.showScreen?.('my-team-screen');window.loadMyTeam?.()" style="background:rgba(0,237,181,.15);border:1px solid rgba(0,237,181,.3);border-radius:10px;color:var(--accent2);font-size:12px;font-weight:800;cursor:pointer;padding:5px 12px;font-family:inherit">⚙️ Моя</button>`
         : `<div style="width:60px"></div>`}
     </div>
 
@@ -177,7 +177,7 @@ function _render(el, { team, members, barRank, onlineRank, totalPts, brainPoints
       <!-- Подпись к рейтингу -->
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         ${barRank ? `<div style="font-size:11px;background:rgba(240,192,64,.1);border:1px solid rgba(240,192,64,.25);border-radius:8px;padding:4px 10px;color:var(--muted)">🍺 ${barRank.points} очков из ${barRank.total} команд</div>` : ''}
-        ${onlineRank ? `<div style="font-size:11px;background:rgba(108,99,255,.08);border:1px solid rgba(108,99,255,.2);border-radius:8px;padding:4px 10px;color:var(--muted)">🌐 ${onlineRank.points} очков из ${onlineRank.total} команд</div>` : ''}
+        ${onlineRank ? `<div style="font-size:11px;background:rgba(0,237,181,.08);border:1px solid rgba(0,237,181,.2);border-radius:8px;padding:4px 10px;color:var(--muted)">🌐 ${onlineRank.points} очков из ${onlineRank.total} команд</div>` : ''}
       </div>` : ''}
 
       <!-- Состав -->

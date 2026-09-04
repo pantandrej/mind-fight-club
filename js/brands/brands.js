@@ -111,7 +111,7 @@ function _renderBrand(brand, tournaments, children, quests = [], promotions = []
   ].filter(Boolean).join('');
 
   const parentChip = brand.parent
-    ? `<span onclick="openBrandPage('${brand.parent.slug}')" style="font-size:11px;color:var(--accent2);cursor:pointer;background:rgba(108,99,255,.12);border-radius:20px;padding:3px 10px">← ${brand.parent.name}</span>`
+    ? `<span onclick="openBrandPage('${brand.parent.slug}')" style="font-size:11px;color:var(--accent2);cursor:pointer;background:rgba(0,237,181,.12);border-radius:20px;padding:3px 10px">← ${brand.parent.name}</span>`
     : '';
 
   const childrenHtml = children.length ? `
@@ -201,7 +201,7 @@ function _renderPromotionsSection(promotions, brandId, isOwner) {
 
   const addBtn = isOwner
     ? `<button onclick="window._showAddPromoForm('${brandId}')"
-         style="width:100%;background:rgba(108,99,255,.1);border:1px dashed rgba(108,99,255,.4);border-radius:14px;padding:12px;font-size:13px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit;margin-bottom:2px">
+         style="width:100%;background:rgba(0,237,181,.1);border:1px dashed rgba(0,237,181,.4);border-radius:14px;padding:12px;font-size:13px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit;margin-bottom:2px">
          + Добавить акцию
        </button>`
     : '';
@@ -216,10 +216,10 @@ function _renderPromotionsSection(promotions, brandId, isOwner) {
 
 function _renderOwnerPanel(brandId) {
   return `
-    <div style="margin-top:24px;background:rgba(108,99,255,.06);border:1px solid rgba(108,99,255,.2);border-radius:18px;padding:16px" id="brand-owner-panel">
+    <div style="margin-top:24px;background:rgba(0,237,181,.06);border:1px solid rgba(0,237,181,.2);border-radius:18px;padding:16px" id="brand-owner-panel">
       <div style="font-size:12px;font-weight:800;color:var(--accent2);margin-bottom:8px">⚙️ Управление страницей</div>
       <button onclick="window._showEditBrandForm('${brandId}')"
-        style="width:100%;background:rgba(108,99,255,.15);border:1px solid rgba(108,99,255,.35);border-radius:12px;padding:11px;font-size:13px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit">
+        style="width:100%;background:rgba(0,237,181,.15);border:1px solid rgba(0,237,181,.35);border-radius:12px;padding:11px;font-size:13px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit">
         ✏️ Редактировать описание и ссылки
       </button>
     </div>`;
@@ -401,7 +401,7 @@ function _renderQuestsSection(quests, brandId) {
               </div>
             </div>
             ${!done ? `<button onclick="window._startQuest('${q.id}','${q.quest_type}')"
-              style="width:100%;margin-top:10px;background:${q.quest_type === 'geo_qr' ? 'rgba(108,99,255,.15)' : 'var(--accent)'};border:${q.quest_type === 'geo_qr' ? '1px solid rgba(108,99,255,.4)' : 'none'};border-radius:10px;padding:10px;font-size:13px;font-weight:800;color:${q.quest_type === 'geo_qr' ? 'var(--accent2)' : '#fff'};cursor:pointer;font-family:inherit">
+              style="width:100%;margin-top:10px;background:${q.quest_type === 'geo_qr' ? 'rgba(0,237,181,.15)' : 'var(--accent)'};border:${q.quest_type === 'geo_qr' ? '1px solid rgba(0,237,181,.4)' : 'none'};border-radius:10px;padding:10px;font-size:13px;font-weight:800;color:${q.quest_type === 'geo_qr' ? 'var(--accent2)' : '#fff'};cursor:pointer;font-family:inherit">
               ${q.quest_type === 'geo_qr' ? '📷 Сканировать QR' : q.quest_type === 'social_click' ? '📲 Выполнить' : '🧠 Играть'}
             </button>` : ''}
           </div>`;
@@ -491,7 +491,7 @@ async function _completeQuest(questId, secret) {
 function _renderTournamentCard(t) {
   const date  = t.starts_at ? new Date(t.starts_at).toLocaleDateString('ru', { day:'numeric', month:'short' }) : '';
   const badge = t.status === 'active' ? `<span style="background:#4ade80;color:#000;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:800">LIVE</span>`
-              : t.status === 'upcoming' ? `<span style="background:rgba(108,99,255,.2);color:var(--accent2);border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700">Скоро</span>`
+              : t.status === 'upcoming' ? `<span style="background:rgba(0,237,181,.2);color:var(--accent2);border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700">Скоро</span>`
               : `<span style="font-size:10px;color:var(--muted)">${date}</span>`;
   const prize = t.prize_pool > 0 ? `<span style="font-size:11px;color:#fbbf24;font-weight:700">🏆 ${t.prize_pool} ⚡</span>` : '';
   return `

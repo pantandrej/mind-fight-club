@@ -272,10 +272,10 @@ function _showMatch(room) {
   el.innerHTML = `
     <div style="text-align:center;padding:20px 0" id="dt-match-reveal">
       <div style="font-size:64px;animation:bounce .6s ease infinite alternate;margin-bottom:8px">💎</div>
-      <div style="font-size:24px;font-weight:900;background:linear-gradient(135deg,#a855f7,#6c63ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:6px">Mind Match!</div>
+      <div style="font-size:24px;font-weight:900;background:linear-gradient(135deg,var(--accent2),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:6px">Mind Match!</div>
       <div style="font-size:13px;color:var(--muted);margin-bottom:24px">Вы мыслите одинаково</div>
       <button onclick="window.datingStartDuoClub('${room.id}')"
-        style="width:100%;background:linear-gradient(135deg,var(--accent),#a855f7);border:none;border-radius:16px;padding:16px;font-size:15px;font-weight:900;color:#fff;cursor:pointer;font-family:inherit;margin-bottom:10px">
+        style="width:100%;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:16px;padding:16px;font-size:15px;font-weight:900;color:#fff;cursor:pointer;font-family:inherit;margin-bottom:10px">
         💎 Создать Дуо-клуб вместе
       </button>
       <button onclick="showScreen('home')"
@@ -357,7 +357,7 @@ function _renderQuestion() {
   optsEl.innerHTML = (_question.a || []).map((opt, i) => `
     <button id="dt-opt-${i}" onclick="window.datingPickChoice(${i})"
       style="width:100%;text-align:left;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:13px 14px;font-size:14px;font-weight:600;color:var(--text);cursor:pointer;font-family:inherit;margin-bottom:8px;transition:all .2s;display:flex;align-items:center;gap:10px">
-      <span style="background:rgba(108,99,255,.2);border-radius:8px;padding:2px 8px;font-size:12px;font-weight:800;color:var(--accent2);flex-shrink:0">${String.fromCharCode(65+i)}</span>
+      <span style="background:rgba(0,237,181,.2);border-radius:8px;padding:2px 8px;font-size:12px;font-weight:800;color:var(--accent2);flex-shrink:0">${String.fromCharCode(65+i)}</span>
       <span>${_esc(opt)}</span>
     </button>`).join('');
 
@@ -368,7 +368,7 @@ function _renderQuestion() {
 
 function _highlightMyChoice(idx) {
   document.querySelectorAll('[id^="dt-opt-"]').forEach((b, i) => {
-    b.style.background  = i === idx ? 'rgba(108,99,255,.25)' : 'var(--bg2)';
+    b.style.background  = i === idx ? 'rgba(0,237,181,.25)' : 'var(--bg2)';
     b.style.borderColor = i === idx ? 'var(--accent)' : 'var(--border)';
     b.style.fontWeight  = i === idx ? '800' : '600';
   });

@@ -28,7 +28,7 @@ export async function loadMyQuizzes() {
     <div onclick="window.loadQuizEdit('${q.id}')" style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px;cursor:pointer;display:flex;align-items:center;gap:12px">
       ${q.logo_url
         ? `<img src="${q.logo_url}" style="width:48px;height:48px;border-radius:12px;object-fit:cover;flex-shrink:0">`
-        : `<div style="width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,rgba(108,99,255,.3),rgba(168,85,247,.2));display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">🧠</div>`}
+        : `<div style="width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,rgba(0,237,181,.3),rgba(168,85,247,.2));display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">🧠</div>`}
       <div style="flex:1;min-width:0">
         <div style="font-size:14px;font-weight:800;margin-bottom:3px">${_esc(q.name)}</div>
         <div style="font-size:11px;color:var(--muted)">bfc.ru/quiz/${_esc(q.slug)}</div>
@@ -55,7 +55,7 @@ export function loadQuizCreate() {
     <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--muted);margin:14px 0 8px">🎁 ОФФЕР НОВИЧКАМ</div>
     ${_field('qc-offer', 'Предложение для новичков', '', 'Например: Первый визит бесплатно! Скажи на входе «BFC»', 'textarea')}
     <button onclick="window._submitCreateQuiz()"
-      style="width:100%;margin-top:16px;padding:15px;background:linear-gradient(135deg,#6c63ff,#a78bfa);border:none;border-radius:14px;color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit">
+      style="width:100%;margin-top:16px;padding:15px;background:linear-gradient(135deg,var(--accent),#a78bfa);border:none;border-radius:14px;color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit">
       Отправить заявку
     </button>`;
 
@@ -130,7 +130,7 @@ window.loadQuizEdit = async function(id) {
     <div id="quiz-edit-logo-wrap" style="display:flex;flex-direction:column;align-items:center;margin-bottom:20px">
       ${q.logo_url
         ? `<img id="quiz-edit-logo-img" src="${q.logo_url}" style="width:80px;height:80px;border-radius:20px;object-fit:cover;margin-bottom:10px">`
-        : `<div id="quiz-edit-logo-img" style="width:80px;height:80px;border-radius:20px;background:linear-gradient(135deg,rgba(108,99,255,.3),rgba(168,85,247,.2));display:flex;align-items:center;justify-content:center;font-size:36px;margin-bottom:10px">🧠</div>`}
+        : `<div id="quiz-edit-logo-img" style="width:80px;height:80px;border-radius:20px;background:linear-gradient(135deg,rgba(0,237,181,.3),rgba(168,85,247,.2));display:flex;align-items:center;justify-content:center;font-size:36px;margin-bottom:10px">🧠</div>`}
       <label style="font-size:12px;color:var(--accent2);font-weight:700;cursor:pointer">
         📷 Изменить логотип
         <input type="file" accept="image/*" onchange="window._uploadQuizLogo('${q.id}', this)" style="display:none">
@@ -152,7 +152,7 @@ window.loadQuizEdit = async function(id) {
     <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--muted);margin:14px 0 8px">🎁 ОФФЕР НОВИЧКАМ</div>
     ${_fieldVal('qe-offer', 'Предложение для новичков', q.newcomer_offer || '', 'textarea')}
     <button onclick="window._saveQuizEdit('${q.id}')"
-      style="width:100%;margin-top:16px;padding:15px;background:linear-gradient(135deg,#6c63ff,#a78bfa);border:none;border-radius:14px;color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit">
+      style="width:100%;margin-top:16px;padding:15px;background:linear-gradient(135deg,var(--accent),#a78bfa);border:none;border-radius:14px;color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit">
       💾 Сохранить
     </button>
     ${q.status === 'active' ? `
@@ -184,7 +184,7 @@ window.loadQuizEdit = async function(id) {
         <input id="qdq-hints-${q.id}" type="text" placeholder="Например: Пушкин, Толстой, Чехов"
           style="width:100%;margin-top:6px;margin-bottom:12px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;font-size:13px;color:var(--text);font-family:inherit;box-sizing:border-box;outline:none">
         <button onclick="window._qdqSubmit('${q.id}')"
-          style="width:100%;padding:12px;background:linear-gradient(135deg,#6c63ff,#a78bfa);border:none;border-radius:12px;color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">
+          style="width:100%;padding:12px;background:linear-gradient(135deg,var(--accent),#a78bfa);border:none;border-radius:12px;color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">
           Отправить на проверку
         </button>
       </div>
@@ -252,13 +252,13 @@ export async function loadAdminQuizzes() {
   const tabLabels = { pending:'⏳ Заявки', active:'✅ Активные', rejected:'❌ Отклонённые', superq:'🔥 Супервопросы' };
 
   el.innerHTML = `
-    <button onclick="showScreen('quiz-create');window.loadQuizCreate?.()" style="width:100%;margin-bottom:12px;padding:12px;border-radius:12px;border:1px dashed rgba(108,99,255,.5);background:rgba(108,99,255,.08);color:var(--accent2);font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">
+    <button onclick="showScreen('quiz-create');window.loadQuizCreate?.()" style="width:100%;margin-bottom:12px;padding:12px;border-radius:12px;border:1px dashed rgba(0,237,181,.5);background:rgba(0,237,181,.08);color:var(--accent2);font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">
       ➕ Создать квиз
     </button>
     <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">
       ${tabs.map(t => `
         <button onclick="window._adminQuizTab='${t}';loadAdminQuizzes()"
-          style="flex:1;min-width:70px;padding:8px 6px;border-radius:10px;border:1px solid ${tab===t?'var(--accent)':'var(--border)'};background:${tab===t?'rgba(108,99,255,.15)':'var(--bg2)'};color:${tab===t?'var(--accent2)':'var(--muted)'};font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">
+          style="flex:1;min-width:70px;padding:8px 6px;border-radius:10px;border:1px solid ${tab===t?'var(--accent)':'var(--border)'};background:${tab===t?'rgba(0,237,181,.15)':'var(--bg2)'};color:${tab===t?'var(--accent2)':'var(--muted)'};font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">
           ${tabLabels[t]}
         </button>`).join('')}
     </div>
@@ -279,7 +279,7 @@ export async function loadAdminQuizzes() {
   list.innerHTML = quizzes.map(q => `
     <div style="background:var(--bg);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-        ${q.logo_url ? `<img src="${q.logo_url}" style="width:40px;height:40px;border-radius:10px;object-fit:cover;flex-shrink:0">` : '<div style="width:40px;height:40px;border-radius:10px;background:rgba(108,99,255,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0">🧠</div>'}
+        ${q.logo_url ? `<img src="${q.logo_url}" style="width:40px;height:40px;border-radius:10px;object-fit:cover;flex-shrink:0">` : '<div style="width:40px;height:40px;border-radius:10px;background:rgba(0,237,181,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0">🧠</div>'}
         <div style="flex:1;min-width:0">
           <div style="font-size:14px;font-weight:800">${_esc(q.name)}</div>
           <div style="font-size:11px;color:var(--muted)">bfc.ru/quiz/${_esc(q.slug)} · ${new Date(q.created_at).toLocaleDateString('ru')}</div>
@@ -456,9 +456,9 @@ async function _adminLoadSuperQuestions(list) {
         <div style="margin-bottom:6px;font-size:11px;font-weight:800;color:var(--muted)">📅 ДАТА ПОКАЗА НА ГЛАВНОЙ:</div>
         <div style="display:flex;gap:8px">
           <input id="qdq-date-${q.id}" type="date" value="${q.scheduled_date||''}"
-            style="flex:1;background:var(--bg2);border:1px solid rgba(108,99,255,.4);border-radius:10px;padding:8px 12px;font-size:13px;color:var(--text);font-family:inherit">
+            style="flex:1;background:var(--bg2);border:1px solid rgba(0,237,181,.4);border-radius:10px;padding:8px 12px;font-size:13px;color:var(--text);font-family:inherit">
           <button onclick="window._adminSuperQSetDate('${q.id}')"
-            style="padding:8px 14px;border-radius:10px;border:1px solid rgba(108,99,255,.4);background:rgba(108,99,255,.15);color:var(--accent2);font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">
+            style="padding:8px 14px;border-radius:10px;border:1px solid rgba(0,237,181,.4);background:rgba(0,237,181,.15);color:var(--accent2);font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">
             💾 Сохранить
           </button>
         </div>

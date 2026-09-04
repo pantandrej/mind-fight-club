@@ -154,7 +154,7 @@ async function _showReferralInviteCard(code, link){
 
   const mini = document.createElement('div');
   mini.id = 'dl-ref-mini';
-  mini.style.cssText = 'width:100%;background:rgba(108,99,255,.12);border:1px solid rgba(108,99,255,.3);border-radius:14px;padding:14px 16px;margin:6px 0;text-align:left';
+  mini.style.cssText = 'width:100%;background:rgba(0,237,181,.12);border:1px solid rgba(0,237,181,.3);border-radius:14px;padding:14px 16px;margin:6px 0;text-align:left';
   mini.innerHTML = `
     <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:1px;margin-bottom:8px">🔗 ТВОЯ РЕФЕРАЛЬНАЯ ССЫЛКА</div>
     <div style="font-size:12px;color:var(--accent2);word-break:break-all;margin-bottom:10px;line-height:1.4">${link}</div>
