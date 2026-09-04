@@ -353,8 +353,9 @@ function tLoadQFromRoom(room){
   if(isInfo){
     tAnsweredThisQ = false; // will be set true when player clicks Далее
     tDeadlineMs = Date.now() + 15000;
-    nextBtn.textContent = '▶ Далее';
-    nextBtn.disabled = false;
+    nextBtn.className    = 'next-btn show'; // must have 'show' to be visible
+    nextBtn.textContent  = '▶ Далее';
+    nextBtn.disabled     = false;
     nextBtn.style.opacity = '';
     nextBtn.onclick = async () => {
       if(tAnsweredThisQ) return;
@@ -362,6 +363,7 @@ function tLoadQFromRoom(room){
       nextBtn.disabled = true;
       nextBtn.textContent = '⏳ Ждём остальных…';
       nextBtn.style.opacity = '0.65';
+      nextBtn.onclick = null;
       await tWriteAnswer(-1); // marks q_answered = tIdx so host can detect all ready
     };
     tRenderTimer();
@@ -565,21 +567,29 @@ function tShowWaitingAfterAnswer(){
 }
 
 function tUpdateWaitDisplay(participants, room){
-  if(!tAnsweredThisQ) return; // still thinking — don't update button
-  const nextBtn = document.getElementById('t-next-btn');
   const total    = (room.participant_ids || Object.keys(participants)).length;
   const answered = Object.values(participants).filter(p=>p.q_answered >= tIdx).length;
-  const remaining = Math.max(0, Math.ceil((tDeadlineMs - Date.now()) / 1000));
-  if(nextBtn) nextBtn.textContent = `⏳ Ответили ${answered}/${total} · ${remaining}s`;
 
-  // All answered/ready early — reveal answer and advance
+  // Update button counter only if this player already answered
+  if(tAnsweredThisQ){
+    const nextBtn = document.getElementById('t-next-btn');
+    const remaining = Math.max(0, Math.ceil((tDeadlineMs - Date.now()) / 1000));
+    if(nextBtn && nextBtn.textContent.includes('⏳')) {
+      nextBtn.textContent = `⏳ Ответили ${answered}/${total} · ${remaining}s`;
+    }
+  }
+
+  // All answered — reveal and advance regardless of whether local player answered
   if(answered >= total && total > 0 && !_tAnswerRevealed){
     if(tTimer){ clearInterval(tTimer); tTimer=null; }
-    _tAnswerRevealed = true;
     const isInfo = tQs[tIdx]?.question_type === 'info';
-    if(!isInfo) tRevealAnswer();
+    if(!isInfo){
+      tRevealAnswer(); // sets _tAnswerRevealed = true internally
+    } else {
+      _tAnswerRevealed = true;
+    }
     if(tRole === 'host'){
-      const delay = isInfo ? 1000 : 5000; // info slides: go immediately; questions: 5s to see answer
+      const delay = isInfo ? 1000 : 5000;
       setTimeout(() => {
         (window.fbTournGet ? window.fbTournGet(tCode) : Promise.resolve(null)).then(r => {
           tHostAdvanceQuestion(r || room);
