@@ -13675,11 +13675,19 @@ window.gcAddQuestion = function() {
       <button onclick="gcAddOption(${qi})" style="margin-top:6px;background:none;border:0.5px solid var(--border);border-radius:8px;padding:5px 12px;font-size:12px;color:var(--muted);cursor:pointer;font-family:inherit">+ ещё вариант</button>
     </div>
 
-    <div style="margin-bottom:10px">
-      <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Медиа (необязательно)</div>
-      ${mediaOpts
-        ? `<select id="gc-media-${qi}" style="${_gcIS}"><option value="">Без медиа</option>${mediaOpts}</select>`
-        : `<input type="text" id="gc-media-${qi}" placeholder="URL аудио или видео (mp3, mp4…)" style="${_gcIS}">`}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+      <div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Медиа вопроса</div>
+        ${mediaOpts
+          ? `<select id="gc-media-${qi}" style="${_gcIS}"><option value="">Без медиа</option>${mediaOpts}</select>`
+          : `<input type="text" id="gc-media-${qi}" placeholder="URL mp3/mp4…" style="${_gcIS}">`}
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Медиа ответа</div>
+        ${mediaOpts
+          ? `<select id="gc-media-a-${qi}" style="${_gcIS}"><option value="">Без медиа</option>${mediaOpts}</select>`
+          : `<input type="text" id="gc-media-a-${qi}" placeholder="URL mp3/mp4…" style="${_gcIS}">`}
+      </div>
     </div>
   </div>`;
   const container = document.getElementById('gc-questions');
@@ -13790,7 +13798,8 @@ window.gcLoadFromUrl = async function() {
           if (q.sq) { document.getElementById(`gc-sq-${qi}`).value = q.sq; gcUpdatePreview(qi,'q'); }
           if (q.sa) { document.getElementById(`gc-sa-${qi}`).value = q.sa; gcUpdatePreview(qi,'a'); }
           if (q.text) document.getElementById(`gc-qtxt-${qi}`).value = q.text;
-          if (q.media) { const s = document.getElementById(`gc-media-${qi}`); if(s) s.value = q.media; }
+          if (q.media)   { const s = document.getElementById(`gc-media-${qi}`);   if(s) s.value = q.media; }
+          if (q.media_a) { const s = document.getElementById(`gc-media-a-${qi}`); if(s) s.value = q.media_a; }
           (q.opts||[]).forEach((opt, ai) => {
             let el = document.getElementById(`gc-opt-txt-${qi}-${ai}`);
             if (!el) { gcAddOption(qi); el = document.getElementById(`gc-opt-txt-${qi}-${ai}`); }
@@ -13843,7 +13852,8 @@ window.gcLoadFromFile = function(input) {
             if (q.sq) { document.getElementById(`gc-sq-${qi}`).value = q.sq; gcUpdatePreview(qi,'q'); }
             if (q.sa) { document.getElementById(`gc-sa-${qi}`).value = q.sa; gcUpdatePreview(qi,'a'); }
             if (q.text) document.getElementById(`gc-qtxt-${qi}`).value = q.text;
-            if (q.media) { const s = document.getElementById(`gc-media-${qi}`); if(s) s.value = q.media; }
+            if (q.media)   { const s = document.getElementById(`gc-media-${qi}`);   if(s) s.value = q.media; }
+            if (q.media_a) { const s = document.getElementById(`gc-media-a-${qi}`); if(s) s.value = q.media_a; }
             (q.opts||[]).forEach((opt, ai) => {
               let el = document.getElementById(`gc-opt-txt-${qi}-${ai}`);
               if (!el) { gcAddOption(qi); el = document.getElementById(`gc-opt-txt-${qi}-${ai}`); }
@@ -13895,7 +13905,8 @@ function _gcCollectQuestions() {
     const sqN    = parseInt(document.getElementById(`gc-sq-${qi}`)?.value) || null;
     const saN    = parseInt(document.getElementById(`gc-sa-${qi}`)?.value) || null;
     const text   = document.getElementById(`gc-qtxt-${qi}`)?.value.trim() || '';
-    const media  = document.getElementById(`gc-media-${qi}`)?.value || '';
+    const media   = document.getElementById(`gc-media-${qi}`)?.value || '';
+    const media_a = document.getElementById(`gc-media-a-${qi}`)?.value || '';
     const correctAi = _gcCorrect[qi];
 
     // Collect non-empty options
@@ -13914,9 +13925,12 @@ function _gcCollectQuestions() {
     // Time per question based on number of options (scheme: 2→30s, 3→35s, 4→40s, 5→45s, 6→50s)
     const t = isInfo ? 0 : Math.max(30, 25 + opts.length * 5);
 
-    const mediaName = media ? media.split('/').pop() : '';
-    const isAudio = mediaName.endsWith('.mp3') || mediaName.endsWith('.wav');
-    const isVideo = mediaName.endsWith('.mp4') || mediaName.endsWith('.webm');
+    const mediaName   = media   ? media.split('/').pop()   : '';
+    const mediaAName  = media_a ? media_a.split('/').pop() : '';
+    const isAudio  = mediaName.endsWith('.mp3')  || mediaName.endsWith('.wav');
+    const isVideo  = mediaName.endsWith('.mp4')  || mediaName.endsWith('.webm');
+    const isAudioA = mediaAName.endsWith('.mp3') || mediaAName.endsWith('.wav');
+    const isVideoA = mediaAName.endsWith('.mp4') || mediaAName.endsWith('.webm');
     questions.push({
       n: questions.length + 1,
       question_text: text,
@@ -13924,8 +13938,10 @@ function _gcCollectQuestions() {
       correct: isInfo ? 0 : (correct >= 0 ? correct : null),
       slide_q_url: _gcSlideUrl(sqN),
       slide_a_url: _gcSlideUrl(saN),
-      audio: isAudio ? media : null,
-      video: isVideo ? media : null,
+      audio:   isAudio  ? media   : null,
+      video:   isVideo  ? media   : null,
+      audio_a: isAudioA ? media_a : null,
+      video_a: isVideoA ? media_a : null,
       question_type: isInfo ? 'info' : 'multiple_choice',
       t,
     });
@@ -13982,6 +13998,7 @@ window.gcPublish = async function() {
           slide_img_url: q.slide_q_url || null,
           answer_slide_img_url: q.slide_a_url || null,
           audio_url: q.audio || null, video_url: q.video || null,
+          answer_audio_url: q.audio_a || null, answer_video_url: q.video_a || null,
           media_type: q.audio ? 'audio' : q.video ? 'video' : q.slide_q_url ? 'image' : 'text',
           question_type: q.question_type || 'multiple_choice',
           category: 'GENERAL', language: 'ru', status: 'published', source_type: 'official_pack',
@@ -14017,6 +14034,7 @@ window.gcPublish = async function() {
           slide_img_url: q.slide_q_url || null,
           answer_slide_img_url: q.slide_a_url || null,
           audio_url: q.audio || null, video_url: q.video || null,
+          answer_audio_url: q.audio_a || null, answer_video_url: q.video_a || null,
           media_type: q.audio ? 'audio' : q.video ? 'video' : q.slide_q_url ? 'image' : 'text',
           question_type: q.question_type || 'multiple_choice',
           category: 'GENERAL', language: 'ru', status: 'published', source_type: 'official_pack',

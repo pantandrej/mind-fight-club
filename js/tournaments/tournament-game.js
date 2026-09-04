@@ -261,9 +261,11 @@ function tOnRoomUpdate(room){
         q:     (q.q&&typeof q.q==='object') ? (q.q[lang]||q.q.ru||q.q.en||q.q) : (q.question_text||q.q),
         a:     (q.a&&typeof q.a==='object'&&!Array.isArray(q.a)) ? (q.a[lang]||q.a.ru||q.a.en||q.a) : (q.answers||q.a||[]),
         c:     q.c ?? q.correct ?? 0,
-        img:   q.img || q.slide_q_url || null,
-        img_a: q.img_a || q.slide_a_url || null,
-        audio: q.audio || null,
+        img:     q.img     || q.slide_q_url  || null,
+        img_a:   q.img_a   || q.slide_a_url  || null,
+        audio:   q.audio   || null,
+        audio_a: q.audio_a || q.answer_audio_url || null,
+        video_a: q.video_a || q.answer_video_url || null,
       }));
     }
     if(tRole === 'spectator'){
@@ -470,9 +472,11 @@ function tRevealAnswer(){
     if(_rd >= 0) setDot('t-prog-dots', _rd, 'miss');
   }
   // Switch to answer slide if available — use same renderer as question slide
-  const ansSlide = q.img_a || q.slide_a_url;
-  if(ansSlide){
-    renderQMedia('t-media-container', { ...q, img: ansSlide, audio: null, video: null });
+  const ansSlide  = q.img_a || q.slide_a_url;
+  const ansAudio  = q.audio_a || q.answer_audio_url || null;
+  const ansVideo  = q.video_a || q.answer_video_url || null;
+  if(ansSlide || ansAudio || ansVideo){
+    renderQMedia('t-media-container', { ...q, img: ansSlide || null, audio: ansAudio, video: ansVideo });
     document.getElementById('t-q-text').textContent = '';
   }
   // Countdown while answer is shown so players know game isn't frozen
