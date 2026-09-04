@@ -839,7 +839,7 @@ async function startTournament(){
   try{
     if(packId){
       const {data: pqs, error} = await sb.from('game_pack_questions')
-        .select('position, questions(question_text,question_ru,answers_json,answers_ru,correct_index,audio_url,video_url,question_type,slide_img_url,answer_slide_img_url,image_url)')
+        .select('position, questions(question_text,question_ru,answers_json,answers_ru,correct_index,audio_url,video_url,answer_audio_url,answer_video_url,question_type,slide_img_url,answer_slide_img_url,image_url)')
         .eq('game_pack_id', packId).order('position',{ascending:true});
       if(error) throw error;
       if(pqs && pqs.length > 0){
@@ -857,10 +857,12 @@ async function startTournament(){
               a:   {ru: isInfo ? [] : a},
               c:   isInfo ? 0 : (q.correct_index ?? 0),
               t:   isInfo ? 15 : 30,
-              img:   q.slide_img_url || q.image_url,
-              img_a: q.answer_slide_img_url || null,
-              audio: q.audio_url,
-              video: q.video_url
+              img:     q.slide_img_url || q.image_url,
+              img_a:   q.answer_slide_img_url || null,
+              audio:   q.audio_url,
+              video:   q.video_url,
+              audio_a: q.answer_audio_url || null,
+              video_a: q.answer_video_url || null,
             };
           }).filter(Boolean);
         toast('✅ Загружено ' + questions.length + ' вопросов из пака');
@@ -933,12 +935,15 @@ async function startTournament(){
   // Host keeps full questions (with correct answers) locally only
   // Guests receive questionsPublic (without q.c) and validate visually only
   tQs       = questions.map(q=>({...q,
-    q:     (q.q&&typeof q.q==='object')?(q.q[lang]||q.q.ru||q.q.en):(q.question_text||q.q),
-    a:     (q.a&&typeof q.a==='object'&&!Array.isArray(q.a))?(q.a[lang]||q.a.ru||q.a.en):(q.answers||q.a||[]),
-    c:     q.c ?? q.correct ?? 0,
-    img:   q.img || q.slide_q_url || null,
-    img_a: q.img_a || q.slide_a_url || null,
-    audio: q.audio || null,
+    q:       (q.q&&typeof q.q==='object')?(q.q[lang]||q.q.ru||q.q.en):(q.question_text||q.q),
+    a:       (q.a&&typeof q.a==='object'&&!Array.isArray(q.a))?(q.a[lang]||q.a.ru||q.a.en):(q.answers||q.a||[]),
+    c:       q.c ?? q.correct ?? 0,
+    img:     q.img || q.slide_q_url || null,
+    img_a:   q.img_a || q.slide_a_url || null,
+    audio:   q.audio || null,
+    video:   q.video || null,
+    audio_a: q.audio_a || q.answer_audio_url || null,
+    video_a: q.video_a || q.answer_video_url || null,
   }));
   tIdx      = 0;
   tQVersion = 1;
