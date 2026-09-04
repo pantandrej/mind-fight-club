@@ -24,6 +24,7 @@ let _tSyncPoll = null;
 let _tSyncCountdown = null;
 let _tPreselectedPackId = null;
 let _tAnswerRevealed = false; // guard: reveal answer only once per question
+let _tAllConfirmed   = false; // guard: all clicked "Далее" on answer slide
 
 // ── Helpers: real question index (excluding info slides) ──────────
 function tRealQIdx(absIdx){
@@ -317,6 +318,7 @@ function tLoadQFromRoom(room){
   tMyEarnedPts    = 0;
   _tAdvanceLock   = false;
   _tAnswerRevealed = false;
+  _tAllConfirmed   = false;
 
   const q = tQs[tIdx];
   if(!q){ return; }
@@ -476,8 +478,32 @@ function tRevealAnswer(){
   const ansAudio  = q.audio_a || q.answer_audio_url || null;
   const ansVideo  = q.video_a || q.answer_video_url || null;
   if(ansSlide || ansAudio || ansVideo){
-    renderQMedia('t-media-container', { ...q, img: ansSlide || null, audio: ansAudio, video: ansVideo });
+    // Video takes priority over slide image (image would block video rendering)
+    renderQMedia('t-media-container', { ...q,
+      img:   ansVideo ? null : (ansSlide || null),
+      audio: ansAudio,
+      video: ansVideo,
+    });
     document.getElementById('t-q-text').textContent = '';
+  }
+  // Show "Далее" button — advance early when all click it
+  const nextBtn = document.getElementById('t-next-btn');
+  if(nextBtn){
+    nextBtn.className    = 'next-btn show';
+    nextBtn.textContent  = '▶ Далее';
+    nextBtn.disabled     = false;
+    nextBtn.style.opacity = '';
+    nextBtn.onclick = async () => {
+      nextBtn.disabled = true;
+      nextBtn.textContent = '⏳ Ждём остальных…';
+      nextBtn.style.opacity = '0.65';
+      nextBtn.onclick = null;
+      if(window.fbTournPatch && tMyUserId){
+        window.fbTournPatch(tCode, {
+          [`participants.${tMyUserId}.a_confirmed`]: tIdx
+        }).catch(()=>{});
+      }
+    };
   }
   // Countdown while answer is shown so players know game isn't frozen
   tStartAnswerCountdown(10);
@@ -599,11 +625,29 @@ function tUpdateWaitDisplay(participants, room){
   const answered = Object.values(participants).filter(p=>p.q_answered >= tIdx).length;
 
   // Update button counter only if this player already answered
-  if(tAnsweredThisQ){
+  if(tAnsweredThisQ && !_tAnswerRevealed){
     const nextBtn = document.getElementById('t-next-btn');
     const remaining = Math.max(0, Math.ceil((tDeadlineMs - Date.now()) / 1000));
     if(nextBtn && nextBtn.textContent.includes('⏳')) {
       nextBtn.textContent = `⏳ Ответили ${answered}/${total} · ${remaining}s`;
+    }
+  }
+
+  // All clicked "Далее" on answer slide — advance immediately
+  if(_tAnswerRevealed && !_tAllConfirmed){
+    const confirmed = Object.values(participants).filter(p => (p.a_confirmed ?? -1) >= tIdx).length;
+    const nextBtn = document.getElementById('t-next-btn');
+    if(nextBtn && nextBtn.textContent.includes('⏳')){
+      nextBtn.textContent = `⏳ Прочитали ${confirmed}/${total}`;
+    }
+    if(confirmed >= total && total > 0){
+      _tAllConfirmed = true;
+      if(tTimer){ clearInterval(tTimer); tTimer = null; }
+      if(tRole === 'host'){
+        (window.fbTournGet ? window.fbTournGet(tCode) : Promise.resolve(null)).then(r => {
+          tHostAdvanceQuestion(r || room, 0);
+        });
+      }
     }
   }
 
