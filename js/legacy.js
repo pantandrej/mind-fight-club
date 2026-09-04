@@ -4502,7 +4502,15 @@ async function adminEditGame(packId, importKey){
       });
     });
     const slides = [...slideMap.values()].sort((a, b) => a.n - b.n);
-    _gcData = { folder: importKey, slides, media: [], questions };
+    // Rebuild media list from question audio/video URLs so dropdown appears when editing
+    const mediaMap = new Map();
+    qrows.forEach(q => {
+      [q.audio_url, q.video_url].forEach(url => {
+        if (url && !mediaMap.has(url)) mediaMap.set(url, { url, name: url.split('/').pop() });
+      });
+    });
+    const media = [...mediaMap.values()];
+    _gcData = { folder: importKey, slides, media, questions };
 
     setTimeout(() => {
       const nameEl = document.getElementById('gc-name');
