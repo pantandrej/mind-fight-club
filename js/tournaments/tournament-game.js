@@ -258,8 +258,12 @@ function tOnRoomUpdate(room){
     const qs = room.questions;
     if(qs && qs.length > 0){
       tQs = qs.map(q=>({...q,
-        q: (q.q&&typeof q.q==='object') ? (q.q[lang]||q.q.ru||q.q.en||q.q) : q.q,
-        a: (q.a&&typeof q.a==='object'&&!Array.isArray(q.a)) ? (q.a[lang]||q.a.ru||q.a.en||q.a) : q.a
+        q:     (q.q&&typeof q.q==='object') ? (q.q[lang]||q.q.ru||q.q.en||q.q) : (q.question_text||q.q),
+        a:     (q.a&&typeof q.a==='object'&&!Array.isArray(q.a)) ? (q.a[lang]||q.a.ru||q.a.en||q.a) : (q.answers||q.a||[]),
+        c:     q.c ?? q.correct ?? 0,
+        img:   q.img || q.slide_q_url || null,
+        img_a: q.img_a || q.slide_a_url || null,
+        audio: q.audio || null,
       }));
     }
     if(tRole === 'spectator'){
@@ -878,8 +882,12 @@ async function startTournament(){
   // Host keeps full questions (with correct answers) locally only
   // Guests receive questionsPublic (without q.c) and validate visually only
   tQs       = questions.map(q=>({...q,
-    q: (q.q&&typeof q.q==='object')?(q.q[lang]||q.q.ru||q.q.en):q.q,
-    a: (q.a&&typeof q.a==='object'&&!Array.isArray(q.a))?(q.a[lang]||q.a.ru||q.a.en):q.a
+    q:     (q.q&&typeof q.q==='object')?(q.q[lang]||q.q.ru||q.q.en):(q.question_text||q.q),
+    a:     (q.a&&typeof q.a==='object'&&!Array.isArray(q.a))?(q.a[lang]||q.a.ru||q.a.en):(q.answers||q.a||[]),
+    c:     q.c ?? q.correct ?? 0,
+    img:   q.img || q.slide_q_url || null,
+    img_a: q.img_a || q.slide_a_url || null,
+    audio: q.audio || null,
   }));
   tIdx      = 0;
   tQVersion = 1;
