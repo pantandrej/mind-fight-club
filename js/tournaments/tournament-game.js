@@ -319,6 +319,9 @@ function tLoadQFromRoom(room){
   _tAdvanceLock   = false;
   _tAnswerRevealed = false;
   _tAllConfirmed   = false;
+  // Hide answer-next button for new question
+  const _ansBtn = document.getElementById('t-answer-next');
+  if(_ansBtn){ _ansBtn.className = ''; _ansBtn.textContent = '▶ Далее'; }
 
   const q = tQs[tIdx];
   if(!q){ return; }
@@ -486,26 +489,25 @@ function tRevealAnswer(){
     });
     document.getElementById('t-q-text').textContent = '';
   }
-  // Show "Далее" button — advance early when all click it
-  const nextBtn = document.getElementById('t-next-btn');
-  if(nextBtn){
-    nextBtn.className    = 'next-btn show answer-phase';
-    nextBtn.textContent  = '▶ Далее';
-    nextBtn.disabled     = false;
-    nextBtn.style.opacity = '';
-    nextBtn.onclick = async () => {
-      nextBtn.disabled = true;
-      nextBtn.textContent = '⏳ Ждём остальных…';
-      nextBtn.style.opacity = '0.65';
-      nextBtn.onclick = null;
+  // Show dedicated answer-next button (separate from t-next-btn to avoid CSS conflicts)
+  const ansBtn = document.getElementById('t-answer-next');
+  if(ansBtn){
+    ansBtn.className = 'visible';
+    ansBtn.textContent = '▶ Далее';
+    ansBtn.disabled = false;
+    ansBtn.style.opacity = '';
+    ansBtn.onclick = async () => {
+      ansBtn.disabled = true;
+      ansBtn.textContent = '⏳ Ждём остальных…';
+      ansBtn.style.opacity = '0.65';
+      ansBtn.onclick = null;
       if(window.fbTournPatch && tMyUserId){
         window.fbTournPatch(tCode, {
           [`participants.${tMyUserId}.a_confirmed`]: tIdx
         }).catch(()=>{});
       }
     };
-    // Scroll button into view so it's always visible regardless of video height
-    setTimeout(() => nextBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+    setTimeout(() => ansBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
   }
   // Countdown while answer is shown so players know game isn't frozen
   tStartAnswerCountdown(10);
@@ -638,9 +640,9 @@ function tUpdateWaitDisplay(participants, room){
   // All clicked "Далее" on answer slide — advance immediately
   if(_tAnswerRevealed && !_tAllConfirmed){
     const confirmed = Object.values(participants).filter(p => (p.a_confirmed ?? -1) >= tIdx).length;
-    const nextBtn = document.getElementById('t-next-btn');
-    if(nextBtn && nextBtn.textContent.includes('⏳')){
-      nextBtn.textContent = `⏳ Прочитали ${confirmed}/${total}`;
+    const ansBtn = document.getElementById('t-answer-next');
+    if(ansBtn && ansBtn.textContent.includes('⏳')){
+      ansBtn.textContent = `⏳ Прочитали ${confirmed}/${total}`;
     }
     if(confirmed >= total && total > 0){
       _tAllConfirmed = true;
