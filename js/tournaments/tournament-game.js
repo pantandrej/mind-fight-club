@@ -348,12 +348,22 @@ function tLoadQFromRoom(room){
   nextBtn.disabled     = false;
   nextBtn.style.opacity = '';
 
-  // Info slide: hide answers, auto-advance after 5s
+  // Info slide: show "Далее" button, advance when all clicked (or after 15s)
   const ans = document.getElementById('t-answers'); ans.innerHTML='';
   if(isInfo){
-    tAnsweredThisQ = true;
+    tAnsweredThisQ = false; // will be set true when player clicks Далее
     tDeadlineMs = Date.now() + 15000;
-    // info slides don't get a dot — they're not counted in real question progress
+    nextBtn.textContent = '▶ Далее';
+    nextBtn.disabled = false;
+    nextBtn.style.opacity = '';
+    nextBtn.onclick = async () => {
+      if(tAnsweredThisQ) return;
+      tAnsweredThisQ = true;
+      nextBtn.disabled = true;
+      nextBtn.textContent = '⏳ Ждём остальных…';
+      nextBtn.style.opacity = '0.65';
+      await tWriteAnswer(-1); // marks q_answered = tIdx so host can detect all ready
+    };
     tRenderTimer();
     tTimer = setInterval(tTickFromDeadline, 250);
     return;
@@ -562,17 +572,19 @@ function tUpdateWaitDisplay(participants, room){
   const remaining = Math.max(0, Math.ceil((tDeadlineMs - Date.now()) / 1000));
   if(nextBtn) nextBtn.textContent = `⏳ Ответили ${answered}/${total} · ${remaining}s`;
 
-  // All answered early — reveal answer now without waiting for deadline
+  // All answered/ready early — reveal answer and advance
   if(answered >= total && total > 0 && !_tAnswerRevealed){
     if(tTimer){ clearInterval(tTimer); tTimer=null; }
-    tRevealAnswer();
+    _tAnswerRevealed = true;
+    const isInfo = tQs[tIdx]?.question_type === 'info';
+    if(!isInfo) tRevealAnswer();
     if(tRole === 'host'){
-      // Advance after 5s (instead of the full 7s — everyone already saw)
+      const delay = isInfo ? 1000 : 5000; // info slides: go immediately; questions: 5s to see answer
       setTimeout(() => {
         (window.fbTournGet ? window.fbTournGet(tCode) : Promise.resolve(null)).then(r => {
           tHostAdvanceQuestion(r || room);
         });
-      }, 5000);
+      }, delay);
     }
   }
 }
@@ -623,12 +635,14 @@ async function tHostAdvanceQuestion(roomArg){
   const isLast      = nextIdx >= tQs.length;
   const nextQ       = tQs[nextIdx];
   const deadlineSec = nextQ ? tSecondsForQ(nextQ) : 0;
-  const serverNow   = localToServer(Date.now());
-  const newDeadline = serverNow + deadlineSec * 1000 + 3000;
   const newVersion  = expectedVersion + 1;
 
   // Show answer slide for 7 seconds before advancing
   await new Promise(r=>setTimeout(r, 7000));
+
+  // Compute server time AFTER the pause so question_started_at is accurate for guests
+  const serverNow   = localToServer(Date.now());
+  const newDeadline = serverNow + deadlineSec * 1000;
 
   // Re-read room for fresh participant data (answers may have arrived during the pause)
   if(window.fbTournGet){
