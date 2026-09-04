@@ -315,13 +315,16 @@ function tLoadQFromRoom(room){
   const q = tQs[tIdx];
   if(!q){ return; }
 
-  // Compute deadline from server timestamp, adjusted for local clock skew
-  const deadlineAt = room.question_deadline_at;   // Unix ms from server
-  if(deadlineAt){
+  // Compute deadline from question_started_at so all clients agree regardless of Firebase lag
+  const startedAt  = room.question_started_at;
+  const deadlineAt = room.question_deadline_at;
+  if(startedAt){
+    const serverStartMs = typeof startedAt === 'number' ? startedAt : Date.parse(startedAt);
+    tDeadlineMs = serverToLocal(serverStartMs) + tSecondsForQ(q) * 1000;
+  } else if(deadlineAt){
     const serverMs = typeof deadlineAt === 'number' ? deadlineAt : Date.parse(deadlineAt);
-    tDeadlineMs = serverToLocal(serverMs); // convert server time to local clock
+    tDeadlineMs = serverToLocal(serverMs);
   } else {
-    // Fallback: local time + expected duration
     tDeadlineMs = Date.now() + tSecondsForQ(q) * 1000;
   }
 
