@@ -468,6 +468,23 @@ function tRevealAnswer(){
   if(q.img_a){
     renderQMedia('t-media-container', { ...q, img: q.img_a, audio: null, video: null });
   }
+  // Countdown while answer is shown so players know game isn't frozen
+  tStartAnswerCountdown(5);
+}
+
+function tStartAnswerCountdown(secs){
+  if(tTimer){ clearInterval(tTimer); tTimer = null; }
+  const end = Date.now() + secs * 1000;
+  const fill = document.getElementById('t-timer-fill');
+  const cd   = document.getElementById('t-countdown');
+  if(fill){ fill.style.background = '#6c63ff'; }
+  tTimer = setInterval(() => {
+    const rem = Math.max(0, Math.ceil((end - Date.now()) / 1000));
+    const pct = rem / secs * 100;
+    if(fill){ fill.style.width = pct + '%'; }
+    if(cd){ cd.textContent = rem; cd.style.color = '#8b83ff'; }
+    if(rem <= 0){ clearInterval(tTimer); tTimer = null; }
+  }, 250);
 }
 
 function tLocalExpire(){
