@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200" width="400" height="200">
+  <rect width="400" height="200" fill="#000"/>
+  <text
+    x="200" y="148"
+    text-anchor="middle"
+    font-family="'Arial Black', 'Impact', 'Helvetica Neue', sans-serif"
+    font-weight="900"
+    font-size="160"
+    letter-spacing="-4"
+    fill="#00EDB5"
+  >BFC</text>
+</svg>
