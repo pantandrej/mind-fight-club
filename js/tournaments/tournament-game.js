@@ -340,7 +340,8 @@ function tLoadQFromRoom(room){
   document.getElementById('t-q-counter').textContent    = isInfo ? '' : (realIdx+1) + '/' + realCount;
   // Show question text only if there's no question slide image
   const qTextEl = document.getElementById('t-q-text');
-  qTextEl.textContent = (isInfo || q.img) ? '' : q.q;
+  const hasSlide = !!(q.img || q.slide_q_url);
+  qTextEl.textContent = (isInfo || hasSlide) ? '' : q.q;
   document.getElementById('t-my-score-display').textContent = tMyScore;
   renderQMedia('t-media-container', q);
   document.getElementById('t-fb').className = 'fb';
@@ -469,8 +470,10 @@ function tRevealAnswer(){
     if(_rd >= 0) setDot('t-prog-dots', _rd, 'miss');
   }
   // Switch to answer slide if available — use same renderer as question slide
-  if(q.img_a){
-    renderQMedia('t-media-container', { ...q, img: q.img_a, audio: null, video: null });
+  const ansSlide = q.img_a || q.slide_a_url;
+  if(ansSlide){
+    renderQMedia('t-media-container', { ...q, img: ansSlide, audio: null, video: null });
+    document.getElementById('t-q-text').textContent = '';
   }
   // Countdown while answer is shown so players know game isn't frozen
   tStartAnswerCountdown(10);

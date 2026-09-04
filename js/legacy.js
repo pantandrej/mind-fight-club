@@ -13667,12 +13667,10 @@ window.gcAddQuestion = function() {
       <button onclick="gcAddOption(${qi})" style="margin-top:6px;background:none;border:0.5px solid var(--border);border-radius:8px;padding:5px 12px;font-size:12px;color:var(--muted);cursor:pointer;font-family:inherit">+ ещё вариант</button>
     </div>
 
-    ${mediaOpts ? `<div>
-      <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Медиа (опционально)</div>
-      <select id="gc-media-${qi}" style="${_gcIS}">
-        <option value="">Без медиа</option>${mediaOpts}
-      </select>
-    </div>` : ''}
+    <div style="margin-bottom:10px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Аудио URL (необязательно)</div>
+      <input type="text" id="gc-media-${qi}" placeholder="https://…/audio.mp3" style="${_gcIS}">
+    </div>
   </div>`;
   const container = document.getElementById('gc-questions');
   container.insertBefore(card, container.firstChild);
