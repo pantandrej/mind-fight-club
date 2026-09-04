@@ -23,6 +23,7 @@ let _tHeartbeatTimer = null;
 let _tSyncPoll = null;
 let _tSyncCountdown = null;
 let _tPreselectedPackId = null;
+let tLastRoom = {}; // last received room state, used for prev_correct_index on guests
 let _tAnswerRevealed = false; // guard: reveal answer only once per question
 let _tAllConfirmed   = false; // guard: all clicked "Далее" on answer slide
 
@@ -238,6 +239,7 @@ function tListenRoom(){
 
 function tOnRoomUpdate(room){
   if(!room) return;
+  tLastRoom = room;
 
   const status = room.status;
   const participants = room.participants || room.players || {};
@@ -293,6 +295,20 @@ function tOnRoomUpdate(room){
     } else {
       // Same question — update answered count display
       tUpdateWaitDisplay(participants, room);
+      // Apply correct index from host if we're already in answer-reveal phase
+      if(_tAnswerRevealed && room.current_correct_index !== undefined
+          && room.current_correct_q_idx === tIdx){
+        const q = tQs[tIdx];
+        if(q){
+          const ci = room.current_correct_index;
+          q.c = ci;
+          document.querySelectorAll('#t-answers .ans').forEach((b,i)=>{
+            b.disabled = true;
+            if(i === ci) b.className = 'ans correct';
+            else if(i === tMySelectedIdx && tMySelectedIdx !== -1) b.className = 'ans wrong';
+          });
+        }
+      }
     }
   }
 
@@ -446,11 +462,24 @@ function tPlaySound(correct){
   } catch(_){}
 }
 
-function tRevealAnswer(){
+function tRevealAnswer(overrideCorrect){
   if(_tAnswerRevealed) return;
   _tAnswerRevealed = true;
   const q = tQs[tIdx];
   if(!q || q.question_type === 'info') return;
+  // Host broadcasts correct index to Firebase so guests can highlight the right answer
+  if(tRole === 'host' && q.c !== undefined && window.fbTournPatch){
+    window.fbTournPatch(tCode, { current_correct_index: q.c, current_correct_q_idx: tIdx }).catch(()=>{});
+  }
+  // If host sent us correct index via Firebase, use it; local q.c may be 0 (stripped)
+  if(overrideCorrect !== undefined){
+    q.c = overrideCorrect;
+  } else if(tRole !== 'host' && (q.c === undefined || q.c === null)){
+    // Try to get from last room state received before reveal
+    if(tLastRoom.current_correct_q_idx === tIdx && tLastRoom.current_correct_index !== undefined){
+      q.c = tLastRoom.current_correct_index;
+    }
+  }
   const correctKnown = q.c !== undefined && q.c !== null;
   document.querySelectorAll('#t-answers .ans').forEach((b,i)=>{
     b.disabled = true;
