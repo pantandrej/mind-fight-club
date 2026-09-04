@@ -45,6 +45,7 @@
 .fb.no{background:rgba(224,85,85,.08);color:rgba(230,110,110,.9);border:0.5px solid rgba(224,85,85,.2)}
 .next-btn{margin-top:12px;width:100%;background:var(--accent);border:none;border-radius:12px;padding:13px;font-size:15px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit;opacity:0;pointer-events:none;transition:opacity .2s}
 .next-btn.show{opacity:1;pointer-events:all;position:sticky;bottom:86px;z-index:15}
+.next-btn.show.answer-phase{position:fixed;bottom:86px;left:50%;transform:translateX(-50%);width:calc(min(560px,100vw) - 32px);z-index:100}
 .next-btn:hover{opacity:.88}
 
 /* DUEL */

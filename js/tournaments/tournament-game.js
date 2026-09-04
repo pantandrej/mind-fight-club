@@ -489,7 +489,7 @@ function tRevealAnswer(){
   // Show "Далее" button — advance early when all click it
   const nextBtn = document.getElementById('t-next-btn');
   if(nextBtn){
-    nextBtn.className    = 'next-btn show';
+    nextBtn.className    = 'next-btn show answer-phase';
     nextBtn.textContent  = '▶ Далее';
     nextBtn.disabled     = false;
     nextBtn.style.opacity = '';
@@ -504,6 +504,8 @@ function tRevealAnswer(){
         }).catch(()=>{});
       }
     };
+    // Scroll button into view so it's always visible regardless of video height
+    setTimeout(() => nextBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
   }
   // Countdown while answer is shown so players know game isn't frozen
   tStartAnswerCountdown(10);
