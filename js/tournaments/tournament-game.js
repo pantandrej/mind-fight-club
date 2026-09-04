@@ -452,12 +452,9 @@ function tRevealAnswer(){
     showFb('t-fb', correctKnown ? '⏱ '+(q.a[q.c]||'') : '⏱', false);
     if(_rd >= 0) setDot('t-prog-dots', _rd, 'miss');
   }
-  // Switch to answer slide if available
+  // Switch to answer slide if available — use same renderer as question slide
   if(q.img_a){
-    const mc = document.getElementById('t-media-container');
-    if(mc) mc.innerHTML = `<div class="q-media" style="border-radius:12px;overflow:hidden;line-height:0">
-      <img src="${q.img_a}" style="width:100%;height:auto;display:block">
-    </div>`;
+    renderQMedia('t-media-container', { ...q, img: q.img_a, audio: null, video: null });
   }
 }
 
