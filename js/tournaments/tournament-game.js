@@ -365,19 +365,23 @@ function tLoadQFromRoom(room){
   if(isInfo){
     tAnsweredThisQ = false; // will be set true when player clicks Далее
     tDeadlineMs = Date.now() + 15000;
-    nextBtn.className    = 'next-btn show'; // must have 'show' to be visible
-    nextBtn.textContent  = '▶ Далее';
-    nextBtn.disabled     = false;
-    nextBtn.style.opacity = '';
-    nextBtn.onclick = async () => {
-      if(tAnsweredThisQ) return;
-      tAnsweredThisQ = true;
-      nextBtn.disabled = true;
-      nextBtn.textContent = '⏳ Ждём остальных…';
-      nextBtn.style.opacity = '0.65';
-      nextBtn.onclick = null;
-      await tWriteAnswer(-1); // marks q_answered = tIdx so host can detect all ready
-    };
+    // Use dedicated ansBtn for reliable visibility
+    const ansBtnInfo = document.getElementById('t-answer-next');
+    if(ansBtnInfo){
+      ansBtnInfo.className = 'visible';
+      ansBtnInfo.textContent = '▶ Далее';
+      ansBtnInfo.disabled = false;
+      ansBtnInfo.style.opacity = '';
+      ansBtnInfo.onclick = async () => {
+        if(tAnsweredThisQ) return;
+        tAnsweredThisQ = true;
+        ansBtnInfo.disabled = true;
+        ansBtnInfo.textContent = '⏳ Ждём остальных…';
+        ansBtnInfo.style.opacity = '0.65';
+        ansBtnInfo.onclick = null;
+        await tWriteAnswer(-1);
+      };
+    }
     tRenderTimer();
     tTimer = setInterval(tTickFromDeadline, 250);
     return;
