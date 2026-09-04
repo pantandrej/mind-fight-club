@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="theme-color" content="#6c63ff">
+<meta name="theme-color" content="var(--accent)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Brain Fight Club">
@@ -46,13 +46,13 @@
 
   <!-- MOBILE layout (< 900px): single column, max 400px -->
   <div class="landing-mobile" style="max-width:400px;width:100%;margin:0 auto;text-align:center;padding-bottom:32px">
-    <div style="font-size:52px;font-weight:900;letter-spacing:-2px;background:linear-gradient(135deg,#6c63ff,#a855f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px">BFC</div>
+    <img src="/logo.png" alt="BFC" style="height:80px;width:auto;margin-bottom:4px">
     <div style="font-size:13px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:28px">Brain Fight Club</div>
     <div style="font-size:26px;font-weight:900;line-height:1.2;margin-bottom:10px">Квиз-битвы<br>в реальном времени</div>
     <div style="font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:28px">Дуэли с друзьями, турниры в барах и офисах,<br>клубные чемпионаты — всё бесплатно</div>
-    <div style="background:rgba(108,99,255,.08);border:1px solid rgba(108,99,255,.2);border-radius:16px;padding:14px;margin-bottom:24px;display:flex;align-items:center;justify-content:center;gap:8px">
+    <div style="background:rgba(0,237,181,.08);border:1px solid rgba(0,237,181,.2);border-radius:16px;padding:14px;margin-bottom:24px;display:flex;align-items:center;justify-content:center;gap:8px">
       <div style="display:flex">
-        <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#6c63ff,#a855f7);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;border:2px solid var(--bg)">А</div>
+        <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;border:2px solid var(--bg)">А</div>
         <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#ef4444);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;border:2px solid var(--bg);margin-left:-8px">М</div>
         <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#10b981,#06b6d4);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;border:2px solid var(--bg);margin-left:-8px">К</div>
       </div>
@@ -64,7 +64,7 @@
       <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px"><div style="font-size:22px;margin-bottom:6px">🧠</div><div style="font-size:13px;font-weight:800;margin-bottom:2px">Тренировки</div><div style="font-size:11px;color:var(--muted)">10 вопросов в день бесплатно</div></div>
       <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px"><div style="font-size:22px;margin-bottom:6px">🎯</div><div style="font-size:13px;font-weight:800;margin-bottom:2px">Паки</div><div style="font-size:11px;color:var(--muted)">Тематические квизы</div></div>
     </div>
-    <button onclick="window._landingPlayNow()" style="width:100%;background:linear-gradient(135deg,#6c63ff,#a855f7);border:none;border-radius:16px;padding:18px;font-size:17px;font-weight:900;color:#fff;cursor:pointer;font-family:inherit;margin-bottom:12px;letter-spacing:0.3px;box-shadow:0 8px 32px rgba(108,99,255,.4)">⚡ Играть бесплатно →</button>
+    <button onclick="window._landingPlayNow()" style="width:100%;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:16px;padding:18px;font-size:17px;font-weight:900;color:#fff;cursor:pointer;font-family:inherit;margin-bottom:12px;letter-spacing:0.3px;box-shadow:0 8px 32px rgba(0,237,181,.4)">⚡ Играть бесплатно →</button>
     <div style="font-size:11px;color:var(--muted);margin-bottom:20px">Без регистрации · без скачивания · работает с телефона</div>
     <button onclick="window._landingSignIn()" style="width:100%;background:transparent;border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:13px;font-size:14px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit">Войти в аккаунт</button>
   </div>
@@ -73,15 +73,15 @@
   <div class="landing-desktop" style="display:none;max-width:1100px;width:100%;margin:0 auto;padding:60px 40px;gap:60px;align-items:center">
     <!-- Left: text + CTA -->
     <div style="flex:1;min-width:0">
-      <div style="font-size:72px;font-weight:900;letter-spacing:-3px;background:linear-gradient(135deg,#6c63ff,#a855f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1;margin-bottom:6px">BFC</div>
+      <img src="/logo.png" alt="BFC" style="height:110px;width:auto;margin-bottom:6px;display:block">
       <div style="font-size:13px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:32px">Brain Fight Club</div>
       <div style="font-size:42px;font-weight:900;line-height:1.15;margin-bottom:16px">Квиз-битвы<br>в реальном времени</div>
       <div style="font-size:16px;color:var(--muted);line-height:1.7;margin-bottom:36px">Дуэли с друзьями, турниры в барах и офисах,<br>клубные чемпионаты — всё бесплатно</div>
 
       <!-- Social proof -->
-      <div style="display:inline-flex;align-items:center;gap:10px;background:rgba(108,99,255,.08);border:1px solid rgba(108,99,255,.2);border-radius:16px;padding:12px 18px;margin-bottom:32px">
+      <div style="display:inline-flex;align-items:center;gap:10px;background:rgba(0,237,181,.08);border:1px solid rgba(0,237,181,.2);border-radius:16px;padding:12px 18px;margin-bottom:32px">
         <div style="display:flex">
-          <div style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#6c63ff,#a855f7);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;border:2px solid var(--bg)">А</div>
+          <div style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;border:2px solid var(--bg)">А</div>
           <div style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#ef4444);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;border:2px solid var(--bg);margin-left:-10px">М</div>
           <div style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#10b981,#06b6d4);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;border:2px solid var(--bg);margin-left:-10px">К</div>
         </div>
@@ -89,7 +89,7 @@
       </div>
 
       <div style="display:flex;gap:12px;flex-wrap:wrap">
-        <button onclick="window._landingPlayNow()" style="background:linear-gradient(135deg,#6c63ff,#a855f7);border:none;border-radius:16px;padding:18px 36px;font-size:17px;font-weight:900;color:#fff;cursor:pointer;font-family:inherit;letter-spacing:0.3px;box-shadow:0 8px 32px rgba(108,99,255,.4)">⚡ Играть бесплатно →</button>
+        <button onclick="window._landingPlayNow()" style="background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:16px;padding:18px 36px;font-size:17px;font-weight:900;color:#fff;cursor:pointer;font-family:inherit;letter-spacing:0.3px;box-shadow:0 8px 32px rgba(0,237,181,.4)">⚡ Играть бесплатно →</button>
         <button onclick="window._landingSignIn()" style="background:transparent;border:1px solid rgba(255,255,255,.2);border-radius:16px;padding:18px 28px;font-size:15px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit">Войти в аккаунт</button>
       </div>
       <div style="font-size:12px;color:var(--muted);margin-top:12px">Без регистрации · без скачивания · работает с телефона</div>
@@ -97,7 +97,7 @@
 
     <!-- Right: feature cards grid -->
     <div style="flex:0 0 400px;display:grid;grid-template-columns:1fr 1fr;gap:12px">
-      <div style="background:rgba(108,99,255,.08);border:1px solid rgba(108,99,255,.2);border-radius:20px;padding:22px">
+      <div style="background:rgba(0,237,181,.08);border:1px solid rgba(0,237,181,.2);border-radius:20px;padding:22px">
         <div style="font-size:32px;margin-bottom:10px">⚔️</div>
         <div style="font-size:15px;font-weight:800;margin-bottom:4px">Дуэли</div>
         <div style="font-size:12px;color:var(--muted);line-height:1.5">1 на 1 в реальном времени</div>
@@ -137,12 +137,12 @@
 <!-- AUTH -->
 <div class="screen active" id="auth">
   <div class="auth-inner">
-    <span class="auth-logo">BFC</span>
+    <img src="/logo.png" alt="BFC" style="height:72px;width:auto;margin-bottom:8px">
     <div class="auth-title">Brain Fight Club</div>
     <div class="auth-sub" id="auth-sub">Тренируй эрудицию. Побеждай в баттлах.</div>
 
     <!-- Primary: Guest play -->
-    <button class="google-btn" id="auth-guest-btn" onclick="continueAsGuest()" style="background:linear-gradient(135deg,#6c63ff,#a855f7);border:none;color:#fff;font-weight:900;font-size:16px;margin-bottom:8px">
+    <button class="google-btn" id="auth-guest-btn" onclick="continueAsGuest()" style="background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;color:#fff;font-weight:900;font-size:16px;margin-bottom:8px">
       ⚡ Играть без регистрации
     </button>
     <div class="auth-note" id="auth-note" style="margin-bottom:16px">Прогресс гостя не сохраняется</div>
@@ -196,7 +196,7 @@
 <!-- HOME -->
 <div class="screen" id="home">
   <div class="hdr">
-    <div class="logo">BFC</div>
+    <div class="logo"><img src="/logo.png" alt="BFC"></div>
     <div class="hdr-right">
       <button id="theme-toggle-hdr" onclick="toggleTheme()" title="Сменить тему" style="background:transparent;border:0.5px solid var(--border);border-radius:20px;padding:4px 10px;font-size:14px;cursor:pointer;color:var(--muted);line-height:1;transition:border-color .15s">🌙</button>
       <div class="lang-toggle">
@@ -224,7 +224,7 @@
     <div id="quiz-daily-wrap" style="display:none;flex-direction:column"></div>
 
     <!-- PWA install banner -->
-    <div id="pwa-install-banner" style="display:none;background:rgba(108,99,255,.12);border:1px solid rgba(108,99,255,.3);border-radius:14px;padding:12px 14px;margin-bottom:12px;display:none;align-items:center;gap:12px">
+    <div id="pwa-install-banner" style="display:none;background:rgba(0,237,181,.12);border:1px solid rgba(0,237,181,.3);border-radius:14px;padding:12px 14px;margin-bottom:12px;display:none;align-items:center;gap:12px">
       <div style="font-size:28px">📲</div>
       <div style="flex:1">
         <div style="font-size:13px;font-weight:800">Установить приложение</div>
@@ -235,7 +235,7 @@
     </div>
 
     <!-- Tournament banner -->
-    <div id="home-trn-banner" style="display:none;background:linear-gradient(135deg,rgba(108,99,255,.2),rgba(168,85,247,.15));border:1px solid rgba(108,99,255,.4);border-radius:16px;padding:14px 16px;margin-bottom:16px;cursor:pointer" onclick="showCupScreen()">
+    <div id="home-trn-banner" style="display:none;background:linear-gradient(135deg,rgba(0,237,181,.2),rgba(168,85,247,.15));border:1px solid rgba(0,237,181,.4);border-radius:16px;padding:14px 16px;margin-bottom:16px;cursor:pointer" onclick="showCupScreen()">
       <div style="display:flex;align-items:center;justify-content:space-between">
         <div>
           <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent2);font-weight:800;margin-bottom:4px" id="home-trn-label">🏆 ТУРНИР</div>
@@ -305,7 +305,7 @@
         <div style="font-size:22px;flex-shrink:0">🔎</div>
         <div><div style="font-size:13px;font-weight:800;margin-bottom:1px">Ищешь команду?</div><div style="font-size:11px;color:var(--muted)">Объявления о наборе →</div></div>
       </div>
-      <div onclick="showScreen('organizer-apply')" style="background:rgba(108,99,255,.06);border:0.5px solid rgba(108,99,255,.2);border-radius:14px;padding:12px 14px;cursor:pointer;display:flex;align-items:center;gap:10px">
+      <div onclick="showScreen('organizer-apply')" style="background:rgba(0,237,181,.06);border:0.5px solid rgba(0,237,181,.2);border-radius:14px;padding:12px 14px;cursor:pointer;display:flex;align-items:center;gap:10px">
         <div style="font-size:22px;flex-shrink:0">🏟️</div>
         <div><div style="font-size:13px;font-weight:800;margin-bottom:1px">Проводишь квизы?</div><div style="font-size:11px;color:var(--muted)">Стать организатором →</div></div>
       </div>
@@ -336,7 +336,7 @@
 <!-- QUIZ -->
 <div class="screen" id="quiz">
   <div class="hdr">
-    <div class="logo">BFC</div>
+    <div class="logo"><img src="/logo.png" alt="BFC"></div>
     <div class="hdr-right">
       <div class="streak-pill" id="streak-pill"><span>🔥</span><span id="streak-num">0</span></div>
       <div class="neurons-pill"><div class="n-orb"></div><span id="n-quiz">0</span></div>
@@ -344,7 +344,7 @@
   </div>
   <div class="quiz-inner">
     <div class="prog-dots" id="prog-dots"></div>
-    <div class="meta"><span class="cat-pill" id="cat-pill">—</span><span class="q-counter" id="q-counter">1/10</span><span id="game-score-pill" style="display:none;background:rgba(108,99,255,.18);border-radius:20px;padding:3px 10px;font-size:12px;font-weight:800;color:var(--accent2)">⭐ <span id="game-score-val">0</span></span></div>
+    <div class="meta"><span class="cat-pill" id="cat-pill">—</span><span class="q-counter" id="q-counter">1/10</span><span id="game-score-pill" style="display:none;background:rgba(0,237,181,.18);border-radius:20px;padding:3px 10px;font-size:12px;font-weight:800;color:var(--accent2)">⭐ <span id="game-score-val">0</span></span></div>
     <div class="timer-wrap">
       <div class="timer-bg"><div class="timer-fill" id="timer-fill"></div></div>
       <div class="timer-row"><span class="t-val" id="t-val">20s</span><span class="p-val" id="p-val">+20</span></div>
@@ -359,7 +359,7 @@
     <div class="answers" id="answers"></div>
     <div class="fb" id="fb"></div>
     <!-- Explanation after answer -->
-    <div id="explanation-block" style="display:none;margin:4px 0 8px;border-radius:12px;overflow:hidden;border:0.5px solid rgba(108,99,255,.3)">
+    <div id="explanation-block" style="display:none;margin:4px 0 8px;border-radius:12px;overflow:hidden;border:0.5px solid rgba(0,237,181,.3)">
       <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--accent2);padding:8px 12px 4px">💡 ОТВЕТ</div>
       <img id="explanation-img" src="" alt="" style="width:100%;max-height:260px;object-fit:contain;display:none;background:#0a0a0f">
     </div>
@@ -370,7 +370,7 @@
 <!-- DUEL -->
 <div class="screen" id="duel">
   <div class="hdr">
-    <div class="logo">BFC</div>
+    <div class="logo"><img src="/logo.png" alt="BFC"></div>
     <div class="hdr-right">
       <div class="neurons-pill"><div class="n-orb"></div><span id="n-duel">0</span></div>
     </div>
@@ -420,7 +420,7 @@
       </div>
       <div class="players-vs">
         <div class="p-slot ready" id="slot-me">
-          <div class="p-av" style="background:rgba(108,99,255,.2);color:var(--accent2)">Y</div>
+          <div class="p-av" style="background:rgba(0,237,181,.2);color:var(--accent2)">Y</div>
           <div class="p-nm" id="d-me-name">Вы</div>
           <div class="p-st ok" id="d-slot-ready-txt">✓ Готов</div>
         </div>
@@ -498,7 +498,7 @@
         <div class="result-box" id="d-res-opp-box"><div class="rb-score" id="d-res-opp-score">0</div><div class="rb-name" id="d-res-opp-name">Соперник</div></div>
       </div>
       <!-- SHARE CARD ДУЭЛЬ -->
-      <div id="d-share-card" style="display:none;background:linear-gradient(135deg,var(--bg3),var(--bg2));border:0.5px solid rgba(108,99,255,.4);border-radius:16px;padding:16px;margin-top:12px;text-align:center">
+      <div id="d-share-card" style="display:none;background:linear-gradient(135deg,var(--bg3),var(--bg2));border:0.5px solid rgba(0,237,181,.4);border-radius:16px;padding:16px;margin-top:12px;text-align:center">
         <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--accent2);margin-bottom:8px;font-weight:800">BRAIN FIGHT CLUB</div>
         <div id="d-sc-result" style="font-size:20px;font-weight:800;margin-bottom:4px">🏆 Победа!</div>
         <div id="d-sc-score" style="font-size:28px;font-weight:800;color:var(--accent2);margin-bottom:4px">0 : 0</div>
@@ -530,7 +530,7 @@
 <!-- TOURNAMENT -->
 <div class="screen" id="tournament">
   <div class="hdr">
-    <div class="logo">BFC</div>
+    <div class="logo"><img src="/logo.png" alt="BFC"></div>
     <div class="hdr-right"><div class="neurons-pill"><div class="n-orb"></div><span id="n-tourn">0</span></div></div>
   </div>
   <div class="tourn-inner">
@@ -580,7 +580,7 @@
       <div class="prog-dots" id="t-prog-dots"></div>
       <div class="meta"><span class="cat-pill" id="t-cat-pill">—</span><span class="q-counter" id="t-q-counter">1/10</span></div>
       <div style="display:flex;align-items:center;gap:10px;margin:4px 0 8px">
-        <div id="t-countdown" style="font-size:36px;font-weight:900;font-variant-numeric:tabular-nums;min-width:48px;text-align:center;color:#8b83ff;line-height:1">—</div>
+        <div id="t-countdown" style="font-size:36px;font-weight:900;font-variant-numeric:tabular-nums;min-width:48px;text-align:center;color:var(--accent2);line-height:1">—</div>
         <div style="flex:1">
           <div class="timer-bg" style="height:6px"><div class="timer-fill" id="t-timer-fill"></div></div>
         </div>
@@ -661,7 +661,7 @@
       <div class="stat-box"><div class="stat-v" id="sc-acc">0%</div><div class="stat-l" id="sc-acc-label">Точность</div></div>
     </div>
     <!-- City rank teaser -->
-    <div id="sc-city-rank-card" style="display:none;width:100%;background:rgba(108,99,255,.1);border:1px solid rgba(108,99,255,.25);border-radius:14px;padding:12px 16px;margin:8px 0;cursor:pointer" onclick="showScreen('profile')">
+    <div id="sc-city-rank-card" style="display:none;width:100%;background:rgba(0,237,181,.1);border:1px solid rgba(0,237,181,.25);border-radius:14px;padding:12px 16px;margin:8px 0;cursor:pointer" onclick="showScreen('profile')">
       <div style="font-size:10px;font-weight:800;letter-spacing:1px;color:var(--muted);margin-bottom:6px">🏙️ ТВОЁ МЕСТО В ГОРОДЕ</div>
       <div style="display:flex;align-items:center;justify-content:space-between">
         <div>
@@ -680,12 +680,12 @@
     </div>
     <div class="score-btns">
       <!-- AI разбор после игры -->
-      <div id="sc-ai-review" style="display:none;background:rgba(108,99,255,.08);border:1px solid rgba(108,99,255,.25);border-radius:16px;padding:16px;margin:12px 0;text-align:left">
+      <div id="sc-ai-review" style="display:none;background:rgba(0,237,181,.08);border:1px solid rgba(0,237,181,.25);border-radius:16px;padding:16px;margin:12px 0;text-align:left">
         <div style="font-size:12px;font-weight:800;letter-spacing:1px;color:var(--accent2);margin-bottom:8px">🤖 AI-РАЗБОР</div>
         <div id="sc-ai-review-text" style="font-size:13px;color:var(--text);line-height:1.6"></div>
         <div id="sc-ai-cats" style="margin-top:10px;display:flex;flex-wrap:wrap;gap:6px"></div>
       </div>
-      <button id="sc-ai-btn" onclick="window.requestAIReview?.()" style="display:none;width:100%;background:rgba(108,99,255,.15);border:1px solid rgba(108,99,255,.3);border-radius:14px;padding:12px;font-size:14px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit;margin-bottom:4px">🤖 AI-разбор игры</button>
+      <button id="sc-ai-btn" onclick="window.requestAIReview?.()" style="display:none;width:100%;background:rgba(0,237,181,.15);border:1px solid rgba(0,237,181,.3);border-radius:14px;padding:12px;font-size:14px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit;margin-bottom:4px">🤖 AI-разбор игры</button>
       <button class="score-main-btn" id="sc-again-btn" onclick="restartQuiz()">⚡ Ещё раз</button>
       <button class="score-sec-btn" id="sc-share-btn" onclick="showShareScreen()">📤 Поделиться</button>
       <button class="score-sec-btn" id="sc-duel-btn" onclick="showScreen('duel')">⚔️ Дуэль</button>
@@ -697,7 +697,7 @@
 <!-- SHARE -->
 <div class="screen" id="share">
   <div class="hdr">
-    <div class="logo">BFC</div>
+    <div class="logo"><img src="/logo.png" alt="BFC"></div>
     <div class="hdr-right"><div class="neurons-pill"><div class="n-orb"></div><span id="n-share">0</span></div></div>
   </div>
   <div class="share-inner">
@@ -713,7 +713,7 @@
     <!-- Canvas for image export (hidden) -->
     <canvas id="share-canvas" width="1080" height="1080" style="display:none"></canvas>
     <div class="share-btns">
-      <button class="share-btn" onclick="downloadShareCard()" style="background:linear-gradient(135deg,rgba(108,99,255,.3),rgba(139,131,255,.15));border-color:rgba(108,99,255,.6);font-weight:800">🖼️ <span id="sh-save">Сохранить картинку</span></button>
+      <button class="share-btn" onclick="downloadShareCard()" style="background:linear-gradient(135deg,rgba(0,237,181,.3),rgba(139,131,255,.15));border-color:rgba(0,237,181,.6);font-weight:800">🖼️ <span id="sh-save">Сохранить картинку</span></button>
       <button class="share-btn tg" onclick="shareToTelegram()">✈️ <span id="sh-tg">Отправить в Telegram</span></button>
       <button class="share-btn wa" onclick="shareToWhatsApp()">💬 <span id="sh-wa">Отправить в WhatsApp</span></button>
       <button class="share-btn copy" onclick="copyShareLink()">🔗 <span id="sh-copy">Копировать ссылку</span></button>
@@ -729,7 +729,7 @@
 <!-- TEAMS -->
 <div class="screen" id="teams">
   <div class="hdr">
-    <div class="logo">BFC</div>
+    <div class="logo"><img src="/logo.png" alt="BFC"></div>
     <div class="hdr-right">
       <div class="neurons-pill"><div class="n-orb"></div><span id="n-teams">0</span></div>
     </div>
@@ -775,10 +775,10 @@
     <!-- My team -->
     <div id="team-mine" class="team-section" style="display:none">
       <!-- Team header card -->
-      <div style="background:linear-gradient(135deg,rgba(108,99,255,.12),rgba(168,85,247,.08));border:0.5px solid rgba(108,99,255,.25);border-radius:20px;padding:18px;margin-bottom:12px">
+      <div style="background:linear-gradient(135deg,rgba(0,237,181,.12),rgba(168,85,247,.08));border:0.5px solid rgba(0,237,181,.25);border-radius:20px;padding:18px;margin-bottom:12px">
         <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
           <!-- Logo/emoji — tap to change -->
-          <div id="my-team-emoji" onclick="window._showTeamEmojiPicker?.()" style="width:56px;height:56px;border-radius:16px;background:rgba(108,99,255,.15);border:0.5px solid rgba(108,99,255,.3);display:flex;align-items:center;justify-content:center;font-size:28px;cursor:pointer;flex-shrink:0;position:relative" title="Изменить лого">⚡<div style="position:absolute;bottom:-4px;right:-4px;background:var(--accent);border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:10px">✏️</div></div>
+          <div id="my-team-emoji" onclick="window._showTeamEmojiPicker?.()" style="width:56px;height:56px;border-radius:16px;background:rgba(0,237,181,.15);border:0.5px solid rgba(0,237,181,.3);display:flex;align-items:center;justify-content:center;font-size:28px;cursor:pointer;flex-shrink:0;position:relative" title="Изменить лого">⚡<div style="position:absolute;bottom:-4px;right:-4px;background:var(--accent);border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:10px">✏️</div></div>
           <div style="flex:1;min-width:0">
             <div style="font-size:18px;font-weight:900;line-height:1.2" id="my-team-name">Команда</div>
             <div style="font-size:12px;color:var(--muted);margin-top:3px" id="my-team-code">Код: ——</div>
@@ -792,7 +792,7 @@
         <!-- Action buttons row -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
           <button onclick="copyTeamCode()" id="tm-invite-btn" style="background:var(--accent);border:none;border-radius:12px;padding:11px;font-size:13px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit">🔗 Пригласить</button>
-          <button onclick="openTeamChatPanel()" id="tm-chat-btn" style="background:linear-gradient(135deg,#6c63ff,#a855f7);border:none;border-radius:12px;padding:11px;font-size:13px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit">💬 Чат</button>
+          <button onclick="openTeamChatPanel()" id="tm-chat-btn" style="background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:12px;padding:11px;font-size:13px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit">💬 Чат</button>
         </div>
       </div>
 
@@ -909,7 +909,7 @@
   </div>
   <!-- Timer bar -->
   <div style="height:3px;background:rgba(255,255,255,.06)">
-    <div id="trn-bar" style="height:100%;background:linear-gradient(90deg,#6c63ff,#a855f7);width:100%;transition:width .4s linear"></div>
+    <div id="trn-bar" style="height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));width:100%;transition:width .4s linear"></div>
   </div>
   <!-- Body -->
   <div id="trn-body" style="flex:1;overflow-y:auto;display:flex;flex-direction:column"></div>
@@ -923,7 +923,7 @@
   </div>
   <div style="flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:14px">
     <!-- Countdown hero -->
-    <div style="background:linear-gradient(135deg,rgba(108,99,255,.2),rgba(168,85,247,.15));border:1px solid rgba(108,99,255,.35);border-radius:20px;padding:28px 20px;text-align:center">
+    <div style="background:linear-gradient(135deg,rgba(0,237,181,.2),rgba(168,85,247,.15));border:1px solid rgba(0,237,181,.35);border-radius:20px;padding:28px 20px;text-align:center">
       <div style="font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;font-weight:800;margin-bottom:8px" id="lobby-status-label">До старта</div>
       <div style="font-size:52px;font-weight:900;font-variant-numeric:tabular-nums;color:var(--accent2)" id="lobby-countdown">—</div>
       <div style="font-size:13px;color:var(--muted);margin-top:8px" id="lobby-starts-at"></div>
@@ -1014,7 +1014,7 @@
 
   <!-- Timer bar -->
   <div style="height:3px;background:rgba(255,255,255,.06)">
-    <div id="sp-timer-bar" style="height:100%;background:linear-gradient(90deg,#6c63ff,#a855f7);width:100%;transition:width .9s linear"></div>
+    <div id="sp-timer-bar" style="height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));width:100%;transition:width .9s linear"></div>
   </div>
 
   <!-- Game area -->
@@ -1065,7 +1065,7 @@
 <!-- SHOP -->
 <div class="screen" id="shop">
   <div class="hdr">
-    <div class="logo">BFC</div>
+    <div class="logo"><img src="/logo.png" alt="BFC"></div>
     <div class="hdr-right">
       <div class="lang-toggle">
         <button class="lang-btn" onclick="setLang('en')">EN</button>
@@ -1112,11 +1112,11 @@
       <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent2);font-weight:800;margin-bottom:10px">⚡ Игровые бонусы</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
 
-        <div onclick="buyConsumable('streak_freeze')" style="background:var(--bg2);border:0.5px solid rgba(108,99,255,.3);border-radius:14px;padding:14px;cursor:pointer;display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px">
+        <div onclick="buyConsumable('streak_freeze')" style="background:var(--bg2);border:0.5px solid rgba(0,237,181,.3);border-radius:14px;padding:14px;cursor:pointer;display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px">
           <div style="font-size:30px">🧊</div>
           <div style="font-size:13px;font-weight:800">Заморозка стрика</div>
           <div style="font-size:10px;color:var(--muted);line-height:1.3">Пропусти день без потери серии</div>
-          <div style="margin-top:4px;background:rgba(108,99,255,.15);border:0.5px solid rgba(108,99,255,.3);border-radius:8px;padding:4px 10px;font-size:12px;font-weight:800;color:var(--accent2)">150 ⚡</div>
+          <div style="margin-top:4px;background:rgba(0,237,181,.15);border:0.5px solid rgba(0,237,181,.3);border-radius:8px;padding:4px 10px;font-size:12px;font-weight:800;color:var(--accent2)">150 ⚡</div>
         </div>
 
         <div onclick="buyConsumable('hint')" style="background:var(--bg2);border:0.5px solid rgba(74,222,128,.25);border-radius:14px;padding:14px;cursor:pointer;display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px">
@@ -1172,7 +1172,7 @@
     <div></div>
   </div>
   <div style="width:100%;max-width:560px;padding:16px 16px 100px;display:flex;flex-direction:column;gap:14px">
-    <div style="background:linear-gradient(135deg,var(--bg3),var(--bg2));border:0.5px solid rgba(108,99,255,.4);border-radius:18px;padding:20px;text-align:center">
+    <div style="background:linear-gradient(135deg,var(--bg3),var(--bg2));border:0.5px solid rgba(0,237,181,.4);border-radius:18px;padding:20px;text-align:center">
       <div style="font-size:40px;margin-bottom:10px">🏟️</div>
       <div style="font-size:18px;font-weight:800;margin-bottom:6px">Кабинет организатора</div>
       <div style="font-size:12px;color:var(--muted);line-height:1.5">Подай заявку — мы проверим и одобрим<br>доступ в течение 1–2 рабочих дней.</div>
@@ -1210,7 +1210,7 @@
   <div style="width:100%;max-width:560px;padding:16px 16px 100px;display:flex;flex-direction:column;gap:14px">
 
     <!-- Status -->
-    <div style="background:linear-gradient(135deg,var(--bg3),var(--bg2));border:0.5px solid rgba(108,99,255,.4);border-radius:18px;padding:20px;text-align:center">
+    <div style="background:linear-gradient(135deg,var(--bg3),var(--bg2));border:0.5px solid rgba(0,237,181,.4);border-radius:18px;padding:20px;text-align:center">
       <div style="font-size:40px;margin-bottom:10px">🏟️</div>
       <div style="font-size:18px;font-weight:800;margin-bottom:6px">Кабинет организатора</div>
       <div style="font-size:12px;color:var(--muted);line-height:1.5">Добавляй проходки на свои квизы.<br>Игроки тратят нейроны — ты получаешь клиентов.</div>
@@ -1320,7 +1320,7 @@
       <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Отправь игрокам — они регистрируются и ты становишься их «квиз-амбассадором»</div>
       <div style="display:flex;gap:8px">
         <div id="org-ref-link" style="flex:1;font-size:11px;color:var(--accent2);background:var(--bg3);border-radius:8px;padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">—</div>
-        <button onclick="copyOrgRefLink()" style="background:rgba(108,99,255,.2);border:0.5px solid rgba(108,99,255,.4);border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit;white-space:nowrap">Копировать</button>
+        <button onclick="copyOrgRefLink()" style="background:rgba(0,237,181,.2);border:0.5px solid rgba(0,237,181,.4);border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit;white-space:nowrap">Копировать</button>
       </div>
     </div>
 
@@ -1369,7 +1369,7 @@
         style="background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:12px 14px;font-size:13px;color:var(--text);font-family:inherit;resize:none;outline:none"></textarea>
       <input id="cf-post-city" type="text" placeholder="Город (необязательно)" maxlength="30"
         style="background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:12px 14px;font-size:14px;color:var(--text);font-family:inherit;outline:none"/>
-      <button onclick="window._cfSubmitPost()" style="background:linear-gradient(135deg,#6c63ff,#a855f7);border:none;border-radius:14px;padding:14px;font-size:15px;font-weight:900;color:#fff;cursor:pointer;font-family:inherit">
+      <button onclick="window._cfSubmitPost()" style="background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:14px;padding:14px;font-size:15px;font-weight:900;color:#fff;cursor:pointer;font-family:inherit">
         📢 Опубликовать
       </button>
     </div>
@@ -1382,7 +1382,7 @@
 <div class="screen" id="brand" style="justify-content:flex-start;padding:0">
   <div class="hdr" style="position:sticky;top:0;z-index:10;backdrop-filter:blur(12px);background:rgba(10,10,20,.85)">
     <button onclick="history.back()" style="background:none;border:none;color:var(--text);font-size:22px;cursor:pointer;padding:0 4px;line-height:1">‹</button>
-    <div class="logo">BFC</div>
+    <div class="logo"><img src="/logo.png" alt="BFC"></div>
     <div style="width:30px"></div>
   </div>
   <div id="brand-inner" style="padding:16px 16px 40px"></div>
@@ -1478,7 +1478,7 @@
 
         <!-- Organizer panel (status-aware) -->
         <div class="prf-section">
-          <button id="org-panel-btn" onclick="showOrganizerCabinet()" style="width:100%;background:rgba(108,99,255,.1);border:1px solid rgba(108,99,255,.35);border-radius:14px;padding:14px;font-size:14px;font-weight:800;color:var(--accent2);cursor:pointer;font-family:inherit;text-align:left">
+          <button id="org-panel-btn" onclick="showOrganizerCabinet()" style="width:100%;background:rgba(0,237,181,.1);border:1px solid rgba(0,237,181,.35);border-radius:14px;padding:14px;font-size:14px;font-weight:800;color:var(--accent2);cursor:pointer;font-family:inherit;text-align:left">
             🏟️ Проводишь квизы?<br>
             <span style="font-size:12px;font-weight:400;opacity:.7">Зарегистрировать свой квиз в Brain Fight Club</span>
           </button>
@@ -1491,7 +1491,7 @@
           </button>
         </div>
         <div id="create-trn-btn-wrap" class="prf-section" style="display:none">
-          <button onclick="openCreateTournament()" style="width:100%;background:rgba(108,99,255,.12);border:1px solid rgba(108,99,255,.35);border-radius:14px;padding:14px;font-size:14px;font-weight:800;color:var(--accent2);cursor:pointer;font-family:inherit">
+          <button onclick="openCreateTournament()" style="width:100%;background:rgba(0,237,181,.12);border:1px solid rgba(0,237,181,.35);border-radius:14px;padding:14px;font-size:14px;font-weight:800;color:var(--accent2);cursor:pointer;font-family:inherit">
             ➕ Создать турнир
           </button>
         </div>
@@ -1655,7 +1655,7 @@
 
     <!-- Quiz Management -->
     <button onclick="showScreen('admin-quizzes');window._adminQuizTab='pending';window.loadAdminQuizzes?.()"
-      style="width:100%;background:linear-gradient(135deg,rgba(108,99,255,.12),rgba(168,85,247,.06));border:1.5px solid rgba(108,99,255,.4);border-radius:16px;padding:18px;font-size:15px;font-weight:800;color:var(--accent2);cursor:pointer;font-family:inherit;text-align:left">
+      style="width:100%;background:linear-gradient(135deg,rgba(0,237,181,.12),rgba(168,85,247,.06));border:1.5px solid rgba(0,237,181,.4);border-radius:16px;padding:18px;font-size:15px;font-weight:800;color:var(--accent2);cursor:pointer;font-family:inherit;text-align:left">
       🧠 Квизы<br>
       <span style="font-size:12px;font-weight:400;opacity:.7">Заявки и управление страницами квизов</span>
     </button>
@@ -1669,7 +1669,7 @@
 
     <!-- Game Creator -->
     <button onclick="showScreen('game-creator')"
-      style="width:100%;background:linear-gradient(135deg,rgba(108,99,255,.15),rgba(108,99,255,.05));border:1.5px solid var(--accent);border-radius:16px;padding:18px;font-size:15px;font-weight:800;color:var(--accent2);cursor:pointer;font-family:inherit;text-align:left">
+      style="width:100%;background:linear-gradient(135deg,rgba(0,237,181,.15),rgba(0,237,181,.05));border:1.5px solid var(--accent);border-radius:16px;padding:18px;font-size:15px;font-weight:800;color:var(--accent2);cursor:pointer;font-family:inherit;text-align:left">
       🎮 Конструктор игр<br>
       <span style="font-size:12px;font-weight:400;opacity:.7">Загрузи game.json → расставь ответы → опубликуй турнир</span>
     </button>
@@ -1686,7 +1686,7 @@
     <div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;padding:14px">
       <div id="admin-games-list"><div style="color:var(--muted);font-size:12px">⏳ Загрузка...</div></div>
       <button onclick="showScreen('game-creator')"
-        style="margin-top:12px;width:100%;background:rgba(108,99,255,.1);border:1px dashed var(--accent);border-radius:10px;padding:10px;font-size:13px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit">
+        style="margin-top:12px;width:100%;background:rgba(0,237,181,.1);border:1px dashed var(--accent);border-radius:10px;padding:10px;font-size:13px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit">
         + Создать новую игру
       </button>
     </div>
@@ -1799,7 +1799,7 @@
     <div id="qmod-counter" style="font-size:11px;color:var(--muted)"></div>
   </div>
   <div style="padding:10px 16px 0;max-width:600px;width:100%;box-sizing:border-box">
-    <label style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:rgba(108,99,255,.1);border:1px dashed rgba(108,99,255,.4);border-radius:12px;cursor:pointer">
+    <label style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:rgba(0,237,181,.1);border:1px dashed rgba(0,237,181,.4);border-radius:12px;cursor:pointer">
       <span style="font-size:18px">📥</span>
       <div>
         <div style="font-size:12px;font-weight:800;color:var(--accent2)">Загрузить вопросы из файла</div>
@@ -1816,7 +1816,7 @@
   <div class="hdr" style="position:sticky;top:0;z-index:10;backdrop-filter:blur(12px);background:rgba(10,10,20,.9)">
     <button onclick="showScreen('profile')" style="background:none;border:none;color:var(--text);font-size:22px;cursor:pointer;padding:0 4px">‹</button>
     <div style="font-size:13px;font-weight:800;color:var(--accent2)">🏟️ Панель организатора</div>
-    <button onclick="showScreen('quiz-create');window.loadQuizCreate?.()" style="background:rgba(108,99,255,.15);border:1px solid rgba(108,99,255,.4);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:800;color:var(--accent2);cursor:pointer;font-family:inherit">+ Новый</button>
+    <button onclick="showScreen('quiz-create');window.loadQuizCreate?.()" style="background:rgba(0,237,181,.15);border:1px solid rgba(0,237,181,.4);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:800;color:var(--accent2);cursor:pointer;font-family:inherit">+ Новый</button>
   </div>
   <div id="my-quizzes-list" style="padding:12px 16px 100px;width:100%;max-width:600px;box-sizing:border-box"></div>
 </div>
@@ -1954,7 +1954,7 @@
           ⬇ CSV-шаблон для PPTX
         </button>
       </div>
-      <div id="import-parse-result" style="display:none;font-size:12px;font-weight:700;padding:8px 12px;background:rgba(108,99,255,.08);border-radius:10px;margin-top:4px"></div>
+      <div id="import-parse-result" style="display:none;font-size:12px;font-weight:700;padding:8px 12px;background:rgba(0,237,181,.08);border-radius:10px;margin-top:4px"></div>
     </div>
 
     <!-- STEP 3: Preview table -->
@@ -2075,7 +2075,7 @@
           </div>
           <input type="file" accept="image/*,audio/*,video/*" onchange="abHandleMedia(this)" style="display:none">
         </label>
-        <div id="ab-media-preview" style="display:none;font-size:12px;color:var(--accent2);margin-top:6px;padding:6px 10px;background:rgba(108,99,255,.08);border-radius:8px"></div>
+        <div id="ab-media-preview" style="display:none;font-size:12px;color:var(--accent2);margin-top:6px;padding:6px 10px;background:rgba(0,237,181,.08);border-radius:8px"></div>
       </div>
 
       <button onclick="addAuthorDraftQuestion()"
@@ -2103,7 +2103,7 @@
 <!-- PLAY MENU -->
 <div class="screen" id="play-menu">
   <div class="hdr">
-    <div class="logo">BFC</div>
+    <div class="logo"><img src="/logo.png" alt="BFC"></div>
     <div class="hdr-right"><div class="neurons-pill"><div class="n-orb"></div><span id="n-play-menu">0</span></div></div>
   </div>
   <div class="play-menu-grid" style="padding-top:16px">
@@ -2151,7 +2151,7 @@
         <div class="play-menu-title">Супервопрос дня</div>
         <div class="play-menu-sub">Вопрос от квиза · +5 BF за правильный ответ</div>
       </div>
-      <div class="play-menu-badge" style="background:linear-gradient(135deg,#6c63ff,#a78bfa)" id="pm-superq-badge">🔥 BF</div>
+      <div class="play-menu-badge" style="background:linear-gradient(135deg,var(--accent),#a78bfa)" id="pm-superq-badge">🔥 BF</div>
     </div>
 
     <!-- АКТИВНОСТИ / ПАКИ -->
@@ -2181,7 +2181,7 @@
 <div class="screen" id="rules">
   <div class="hdr">
     <button onclick="showScreen(window._rulesFrom||'home')" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 4px">←</button>
-    <div class="logo">BFC</div>
+    <div class="logo"><img src="/logo.png" alt="BFC"></div>
     <div class="hdr-right"></div>
   </div>
   <div class="rules-inner">
@@ -2274,7 +2274,7 @@
     <div class="limit-icon" id="dl-icon">🧠</div>
     <div class="limit-title" id="dl-title">На сегодня всё!</div>
     <div class="limit-sub" id="dl-sub">Ты использовал все бесплатные попытки на сегодня. Возвращайся завтра — вопросы обновятся в полночь.</div>
-    <div style="background:rgba(108,99,255,.1);border:0.5px solid rgba(108,99,255,.3);border-radius:16px;padding:16px;text-align:center;margin-bottom:8px">
+    <div style="background:rgba(0,237,181,.1);border:0.5px solid rgba(0,237,181,.3);border-radius:16px;padding:16px;text-align:center;margin-bottom:8px">
       <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent2);margin-bottom:6px">Скоро — Brain Fight PRO</div>
       <div id="dl-pro-desc" style="font-size:13px;color:var(--muted);line-height:1.5">10 баттлов и неограниченные тренировки в день, эксклюзивные паки и ранний доступ к турнирам</div>
     </div>
@@ -2298,7 +2298,7 @@
     <!-- Switch to author builder (multi-question) -->
     <div style="display:flex;gap:8px">
       <button onclick="showScreen('author-builder');initAuthorBuilder()"
-        style="flex:1;background:rgba(108,99,255,.1);border:1px solid var(--accent);border-radius:12px;padding:10px;font-size:13px;font-weight:800;color:var(--accent2);cursor:pointer;font-family:inherit">
+        style="flex:1;background:rgba(0,237,181,.1);border:1px solid var(--accent);border-radius:12px;padding:10px;font-size:13px;font-weight:800;color:var(--accent2);cursor:pointer;font-family:inherit">
         📋 Несколько вопросов
       </button>
       <button onclick="void(0)" style="flex:1;background:var(--accent);border:none;border-radius:12px;padding:10px;font-size:13px;font-weight:800;color:#fff;cursor:default;font-family:inherit">
@@ -2360,7 +2360,7 @@
         </div>
         <input type="file" accept="image/*,audio/*,video/*" onchange="cqHandleMedia(this)" style="display:none">
       </label>
-      <div id="cq-media-preview" style="display:none;font-size:12px;color:var(--accent2);margin-top:6px;padding:6px 10px;background:rgba(108,99,255,.08);border-radius:8px"></div>
+      <div id="cq-media-preview" style="display:none;font-size:12px;color:var(--accent2);margin-top:6px;padding:6px 10px;background:rgba(0,237,181,.08);border-radius:8px"></div>
     </div>
 
     <!-- Preview -->
@@ -2404,7 +2404,7 @@
 <div class="screen" id="matchmaking">
   <div class="hdr">
     <button onclick="cancelMatchmaking()" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 4px">←</button>
-    <div class="logo">BFC</div>
+    <div class="logo"><img src="/logo.png" alt="BFC"></div>
     <div class="hdr-right"><div class="neurons-pill"><div class="n-orb"></div><span id="n-mm">0</span></div></div>
   </div>
   <div class="mm-inner">
@@ -2433,7 +2433,7 @@
       <div style="font-size:36px;margin-bottom:8px">⚔️</div>
       <div style="font-size:18px;font-weight:900;color:var(--text);margin-bottom:4px">Соперник найден!</div>
       <div style="font-size:13px;color:var(--muted);margin-bottom:16px" id="mm-confirm-opp">Готов к бою?</div>
-      <button id="mm-ready-btn" onclick="window._mmConfirmReady?.()" style="width:100%;max-width:280px;background:linear-gradient(135deg,#6c63ff,#a855f7);border:none;border-radius:16px;padding:16px;font-size:16px;font-weight:900;color:#fff;cursor:pointer;font-family:inherit">
+      <button id="mm-ready-btn" onclick="window._mmConfirmReady?.()" style="width:100%;max-width:280px;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:16px;padding:16px;font-size:16px;font-weight:900;color:#fff;cursor:pointer;font-family:inherit">
         ⚡ Начать бой! <span id="mm-ready-countdown">(10)</span>
       </button>
       <button onclick="window._mmConfirmDecline?.()" style="margin-top:10px;width:100%;max-width:280px;background:transparent;border:1px solid var(--border);border-radius:16px;padding:12px;font-size:14px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit">
@@ -2445,7 +2445,7 @@
     <div id="mm-bot-offer" style="display:none;width:100%;text-align:center;margin-top:8px">
       <div style="font-size:13px;color:var(--muted);margin-bottom:4px">Живых игроков нет — бот готов к бою</div>
       <div style="font-size:14px;font-weight:800;color:var(--text);margin-bottom:16px" id="mm-bot-offer-label"></div>
-      <button onclick="window._confirmBotMatch?.()" style="width:100%;max-width:280px;background:linear-gradient(135deg,#6c63ff,#a855f7);border:none;border-radius:16px;padding:16px;font-size:16px;font-weight:900;color:#fff;cursor:pointer;font-family:inherit;margin-bottom:10px">
+      <button onclick="window._confirmBotMatch?.()" style="width:100%;max-width:280px;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:16px;padding:16px;font-size:16px;font-weight:900;color:#fff;cursor:pointer;font-family:inherit;margin-bottom:10px">
         ⚔️ Играть с ботом
       </button>
       <br>
@@ -2466,14 +2466,14 @@
 <div class="screen" id="official-tournament">
   <div class="hdr">
     <button onclick="showScreen('home')" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 4px">←</button>
-    <div class="logo">BFC</div>
+    <div class="logo"><img src="/logo.png" alt="BFC"></div>
     <div class="hdr-right"><div class="neurons-pill"><div class="n-orb"></div><span id="n-ot">0</span></div></div>
   </div>
   <div style="width:100%;max-width:560px;padding:16px;display:flex;flex-direction:column;gap:14px;padding-bottom:80px">
     <!-- Lobby / waiting -->
     <div id="ot-lobby-section">
       <div style="text-align:center;padding:20px 0">
-        <div id="ot-status-badge" style="display:inline-block;background:rgba(108,99,255,.2);border:0.5px solid var(--accent);border-radius:20px;padding:4px 14px;font-size:11px;font-weight:800;letter-spacing:1px;color:var(--accent2);margin-bottom:12px">ЛОББИ</div>
+        <div id="ot-status-badge" style="display:inline-block;background:rgba(0,237,181,.2);border:0.5px solid var(--accent);border-radius:20px;padding:4px 14px;font-size:11px;font-weight:800;letter-spacing:1px;color:var(--accent2);margin-bottom:12px">ЛОББИ</div>
         <div id="ot-title" style="font-size:22px;font-weight:800;margin-bottom:6px">Официальный турнир</div>
         <div id="ot-desc" style="font-size:13px;color:var(--muted);margin-bottom:16px"></div>
         <div id="ot-players-count" style="font-size:13px;color:var(--muted);margin-bottom:20px">0 игроков присоединилось</div>
@@ -2537,7 +2537,7 @@
   <div id="tester-pack-selector" style="width:100%;max-width:600px;padding:16px;display:flex;flex-direction:column;gap:10px">
     <div style="font-size:14px;font-weight:800;margin-bottom:4px">Что тестировать?</div>
     <button onclick="startTesterMode('general')"
-      style="background:rgba(108,99,255,.12);border:1px solid var(--accent2);border-radius:14px;padding:14px;font-size:14px;font-weight:700;color:var(--text);cursor:pointer;font-family:inherit;text-align:left">
+      style="background:rgba(0,237,181,.12);border:1px solid var(--accent2);border-radius:14px;padding:14px;font-size:14px;font-weight:700;color:var(--text);cursor:pointer;font-family:inherit;text-align:left">
       🎯 <b>Официальные вопросы</b><br><span style="font-size:12px;color:var(--muted)">official_general + official_pack</span>
     </button>
     <button onclick="startTesterMode('community')"
@@ -2662,7 +2662,7 @@
       <div class="ob-icon">🧠</div>
       <div class="ob-title" style="font-size:24px;font-weight:800;margin-bottom:10px">Brain Fight Club</div>
       <div class="ob-sub" style="margin-bottom:24px">Интеллектуальные дуэли, быстрые раунды и соревнования — всё в одном месте.<br><br>Попробуй прямо сейчас — ответь на 3 вопроса.</div>
-      <button class="ob-next-btn" style="background:linear-gradient(135deg,#6c63ff,#8b83ff)" onclick="startObDemo()">⚡ Ответить на 3 вопроса</button>
+      <button class="ob-next-btn" style="background:linear-gradient(135deg,var(--accent),var(--accent2))" onclick="startObDemo()">⚡ Ответить на 3 вопроса</button>
       <button class="ob-skip-btn" onclick="skipOnboarding()">Пропустить →</button>
     </div>
 
@@ -2685,7 +2685,7 @@
       <div style="font-size:13px;color:var(--muted);margin-bottom:6px" id="ob-res-sub"></div>
       <div style="font-size:36px;font-weight:800;color:var(--accent2);margin:16px 0" id="ob-res-neurons"></div>
       <div style="font-size:12px;color:var(--muted);margin-bottom:24px">нейронов заработано</div>
-      <button class="ob-next-btn" style="background:linear-gradient(135deg,#6c63ff,#8b83ff)" onclick="finishOnboarding()">🚀 Начать играть</button>
+      <button class="ob-next-btn" style="background:linear-gradient(135deg,var(--accent),var(--accent2))" onclick="finishOnboarding()">🚀 Начать играть</button>
     </div>
   </div>
 </div>
@@ -2694,7 +2694,7 @@
 <div class="screen" id="character">
   <div class="hdr">
     <button onclick="showScreen('profile')" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 4px">←</button>
-    <div class="logo">BFC</div>
+    <div class="logo"><img src="/logo.png" alt="BFC"></div>
     <div class="hdr-right">
       <div class="neurons-pill"><div class="n-orb"></div><span id="n-character">0</span></div>
     </div>
@@ -2792,7 +2792,7 @@ function renderEmoji() {
   const g = $('cv-emoji-grid') || document.getElementById('team-emoji-select');
   if (!g) return;
   g.innerHTML = EMOJIS.map(e =>
-    `<div onclick="window._cvEmoji('${e}')" style="width:40px;height:40px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:20px;background:${e===selEmoji?'rgba(108,99,255,.15)':'var(--bg3)'};border:0.5px solid ${e===selEmoji?'var(--accent)':'var(--border)'}">${e}</div>`
+    `<div onclick="window._cvEmoji('${e}')" style="width:40px;height:40px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:20px;background:${e===selEmoji?'rgba(0,237,181,.15)':'var(--bg3)'};border:0.5px solid ${e===selEmoji?'var(--accent)':'var(--border)'}">${e}</div>`
   ).join('');
 }
 window._cvEmoji = e => { selEmoji = e; renderEmoji(); };
@@ -2858,8 +2858,8 @@ async function loadMembers() {
     const uid = getUid();
     $('cv-members-list').innerHTML = list.map(m => {
       const me = m.id === uid;
-      return `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:0.5px solid rgba(108,99,255,.06);${me?'background:rgba(108,99,255,.08)':''}">
-        <div style="width:32px;height:32px;border-radius:50%;background:rgba(108,99,255,.2);color:var(--accent2);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0">${(m.display_name||'?')[0].toUpperCase()}</div>
+      return `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:0.5px solid rgba(0,237,181,.06);${me?'background:rgba(0,237,181,.08)':''}">
+        <div style="width:32px;height:32px;border-radius:50%;background:rgba(0,237,181,.2);color:var(--accent2);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0">${(m.display_name||'?')[0].toUpperCase()}</div>
         <div style="flex:1">
           <div style="font-size:13px;font-weight:600">${me?'👤 ':''}${m.display_name||'Игрок'}</div>
           <div style="font-size:10px;color:var(--muted)">${m.role==='captain'?'👑 Капитан':'Участник'}</div>
@@ -2882,7 +2882,7 @@ async function loadRanking() {
     $('cv-crank').textContent = myRank > 0 ? '#' + myRank : '#—';
     $('cv-global-list').innerHTML = clubs.length
       ? clubs.map((c, i) => `
-        <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:0.5px solid rgba(108,99,255,.06);${myClub&&c.id===myClub.id?'background:rgba(108,99,255,.08)':''}">
+        <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:0.5px solid rgba(0,237,181,.06);${myClub&&c.id===myClub.id?'background:rgba(0,237,181,.08)':''}">
           <div style="font-size:13px;font-weight:800;color:var(--muted);width:24px;text-align:center;flex-shrink:0">${medals[i]||i+1}</div>
           <div style="font-size:20px;flex-shrink:0">${c.emoji||'⚡'}</div>
           <div style="flex:1">
@@ -3010,7 +3010,7 @@ async function loadQuizRanking(){
     const medals = ['🥇','🥈','🥉'];
     el.innerHTML = venues.length ? venues.map((v,i) => {
       const isMe = myQuizData && v.id === myQuizData.id;
-      return `<div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:0.5px solid rgba(108,99,255,.06);${isMe?'background:rgba(240,192,64,.06)':''}">
+      return `<div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:0.5px solid rgba(0,237,181,.06);${isMe?'background:rgba(240,192,64,.06)':''}">
         <div style="font-size:13px;font-weight:800;color:var(--muted);width:24px;text-align:center">${medals[i]||i+1}</div>
         <div style="font-size:20px">${v.emoji||'🎯'}</div>
         <div style="flex:1">
@@ -3593,7 +3593,7 @@ console.log('✅ Firebase Tournaments module loaded');
 <div id="duel-incoming" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(10,10,20,.95);flex-direction:column;align-items:center;justify-content:center;gap:20px">
   <div style="font-size:64px;animation:pulseA 1s infinite">⚔️</div>
   <div style="font-size:22px;font-weight:900;color:#fff">Тебя вызвали на дуэль!</div>
-  <div id="di-caller" style="font-size:48px;font-weight:900;width:80px;height:80px;border-radius:50%;background:rgba(108,99,255,.3);border:2px solid var(--accent);display:flex;align-items:center;justify-content:center">?</div>
+  <div id="di-caller" style="font-size:48px;font-weight:900;width:80px;height:80px;border-radius:50%;background:rgba(0,237,181,.3);border:2px solid var(--accent);display:flex;align-items:center;justify-content:center">?</div>
   <div id="di-name" style="font-size:18px;font-weight:700;color:var(--accent2)">Соперник</div>
   <div style="display:flex;gap:16px;margin-top:12px">
     <button onclick="acceptDuelIncoming()" style="background:#4ade80;border:none;border-radius:16px;padding:16px 32px;font-size:16px;font-weight:900;color:#000;cursor:pointer;font-family:inherit">✅ Принять</button>

@@ -61,8 +61,8 @@
     transition: background .15s;
     width: 100%;
   }
-  .nav-item:hover { background: rgba(108,99,255,.1); }
-  .nav-item.active { background: rgba(108,99,255,.18); }
+  .nav-item:hover { background: rgba(0,237,181,.1); }
+  .nav-item.active { background: rgba(0,237,181,.18); }
 
   .nav-icon { font-size: 18px; width: 22px; text-align: center; flex-shrink: 0; }
   .nav-label { font-size: 13px; font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--muted); }
@@ -280,11 +280,11 @@
 [data-theme="light"] .hdr { background: var(--bg); }
 [data-theme="light"] .home-hero { background: linear-gradient(135deg,#e8e8f0,#f0f0f8); }
 [data-theme="light"] .auth-inner { background: #ffffff; border-color: rgba(0,0,0,.1); }
-[data-theme="light"] .play-menu-item:hover { background: rgba(108,99,255,.06); }
-[data-theme="light"] .nav-item.active { background: rgba(108,99,255,.12); }
-[data-theme="light"] .neurons-pill { background: rgba(108,99,255,.1); border-color: rgba(108,99,255,.25); }
-[data-theme="light"] .mode-card:hover { background: rgba(108,99,255,.08); }
+[data-theme="light"] .play-menu-item:hover { background: rgba(0,237,181,.06); }
+[data-theme="light"] .nav-item.active { background: rgba(0,237,181,.12); }
+[data-theme="light"] .neurons-pill { background: rgba(0,237,181,.1); border-color: rgba(0,237,181,.25); }
+[data-theme="light"] .mode-card:hover { background: rgba(0,237,181,.08); }
 [data-theme="light"] .ans { background: rgba(0,0,0,.03); border-color: rgba(0,0,0,.1); color: var(--text); }
-[data-theme="light"] .ans:hover:not(:disabled) { background: rgba(108,99,255,.06); }
+[data-theme="light"] .ans:hover:not(:disabled) { background: rgba(0,237,181,.06); }
 [data-theme="light"] .streak-modal { background: var(--bg2); }
 [data-theme="light"] .toast { background: var(--bg2); border-color: var(--border); color: var(--text); }

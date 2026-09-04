@@ -13,8 +13,8 @@
   --border: rgba(0, 0, 0, 0.12);
   --text:   #1c1c1e;
   --muted:  #6e6e73;
-  --accent: #6c63ff;
-  --accent2:#5b53ee;
+  --accent: var(--accent);
+  --accent2:var(--accent2);
   --gold:   #c9820a;
   --red:    #d63031;
   --green:  #00a65a;

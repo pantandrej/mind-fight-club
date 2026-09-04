@@ -14,9 +14,9 @@
 .admin-q-pct{font-weight:800;color:var(--red)}
 .admin-q-pct.ok{color:var(--green)}
 .city-input{width:100%;background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:11px 14px;font-size:14px;color:var(--text);font-family:inherit;outline:none;transition:border-color .15s;margin-bottom:10px}
-.city-input:focus{border-color:rgba(108,99,255,.6)}
+.city-input:focus{border-color:rgba(0,237,181,.6)}
 .city-input::placeholder{color:var(--muted)}
-.city-tag{display:inline-flex;align-items:center;gap:5px;background:rgba(108,99,255,.15);border:0.5px solid rgba(108,99,255,.3);border-radius:20px;padding:4px 10px;font-size:11px;font-weight:700;color:var(--accent2)}
+.city-tag{display:inline-flex;align-items:center;gap:5px;background:rgba(0,237,181,.15);border:0.5px solid rgba(0,237,181,.3);border-radius:20px;padding:4px 10px;font-size:11px;font-weight:700;color:var(--accent2)}
 
 /* SHARE SCREEN */
 #share{justify-content:center;align-items:center;padding:20px 16px 100px}
@@ -38,8 +38,8 @@
 .city-lb-wrap{width:100%;max-width:560px;padding:16px 16px 100px;display:flex;flex-direction:column;gap:14px}
 .city-tabs{display:flex;gap:6px;margin-bottom:4px}
 .city-tab{flex:1;padding:9px;border-radius:10px;font-size:12px;font-weight:800;cursor:pointer;border:0.5px solid var(--border);background:var(--bg2);color:var(--muted);font-family:inherit;transition:all .15s;text-align:center}
-.city-tab.active{background:rgba(108,99,255,.2);border-color:var(--accent);color:var(--accent2)}
-.my-city-row{background:rgba(108,99,255,.08);border:0.5px solid rgba(108,99,255,.2);border-radius:12px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;font-size:13px}
+.city-tab.active{background:rgba(0,237,181,.2);border-color:var(--accent);color:var(--accent2)}
+.my-city-row{background:rgba(0,237,181,.08);border:0.5px solid rgba(0,237,181,.2);border-radius:12px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;font-size:13px}
 .my-city-name{font-weight:700;color:var(--accent2)}
 .my-city-rank{font-size:11px;color:var(--muted)}
 .lb-city-tag{font-size:10px;color:var(--muted);background:var(--bg3);border-radius:4px;padding:2px 6px;margin-left:6px}
