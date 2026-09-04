@@ -23,6 +23,7 @@ let _tHeartbeatTimer = null;
 let _tSyncPoll = null;
 let _tSyncCountdown = null;
 let _tPreselectedPackId = null;
+let _tAnswerRevealed = false; // guard: reveal answer only once per question
 
 // ── Helpers: real question index (excluding info slides) ──────────
 function tRealQIdx(absIdx){
@@ -305,10 +306,11 @@ function tBeginGame(room){
 
 function tLoadQFromRoom(room){
   if(tTimer){ clearInterval(tTimer); tTimer=null; }
-  tAnsweredThisQ = false;
-  tMySelectedIdx = -1;
-  tMyEarnedPts   = 0;
-  _tAdvanceLock  = false;
+  tAnsweredThisQ  = false;
+  tMySelectedIdx  = -1;
+  tMyEarnedPts    = 0;
+  _tAdvanceLock   = false;
+  _tAnswerRevealed = false;
 
   const q = tQs[tIdx];
   if(!q){ return; }
@@ -414,7 +416,8 @@ function tPlaySound(correct){
 }
 
 function tRevealAnswer(){
-  // Show correct/wrong result after deadline — called from tLocalExpire
+  if(_tAnswerRevealed) return;
+  _tAnswerRevealed = true;
   const q = tQs[tIdx];
   if(!q || q.question_type === 'info') return;
   const correctKnown = q.c !== undefined && q.c !== null;
@@ -449,7 +452,7 @@ function tRevealAnswer(){
   // Switch to answer slide if available
   if(q.img_a){
     const mc = document.getElementById('t-media-container');
-    if(mc) mc.innerHTML = `<div class="q-media" style="border-radius:12px;overflow:hidden;background:#000">
+    if(mc) mc.innerHTML = `<div class="q-media" style="border-radius:12px;overflow:hidden;line-height:0">
       <img src="${q.img_a}" style="width:100%;height:auto;display:block">
     </div>`;
   }
@@ -554,11 +557,24 @@ function tShowWaitingAfterAnswer(){
 function tUpdateWaitDisplay(participants, room){
   if(!tAnsweredThisQ) return; // still thinking — don't update button
   const nextBtn = document.getElementById('t-next-btn');
-  if(!nextBtn) return;
   const total    = (room.participant_ids || Object.keys(participants)).length;
   const answered = Object.values(participants).filter(p=>p.q_answered >= tIdx).length;
   const remaining = Math.max(0, Math.ceil((tDeadlineMs - Date.now()) / 1000));
-  nextBtn.textContent = `⏳ Ответили ${answered}/${total} · ${remaining}s`;
+  if(nextBtn) nextBtn.textContent = `⏳ Ответили ${answered}/${total} · ${remaining}s`;
+
+  // All answered early — reveal answer now without waiting for deadline
+  if(answered >= total && total > 0 && !_tAnswerRevealed){
+    if(tTimer){ clearInterval(tTimer); tTimer=null; }
+    tRevealAnswer();
+    if(tRole === 'host'){
+      // Advance after 5s (instead of the full 7s — everyone already saw)
+      setTimeout(() => {
+        (window.fbTournGet ? window.fbTournGet(tCode) : Promise.resolve(null)).then(r => {
+          tHostAdvanceQuestion(r || room);
+        });
+      }, 5000);
+    }
+  }
 }
 
 async function tMaybeAdvanceAsHost(){
