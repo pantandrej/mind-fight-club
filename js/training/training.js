@@ -808,7 +808,7 @@ async function loadPublishedQuickQuestionsFromDB(){
   try{
     // Direct fetch bypasses Vercel proxy — avoids 400 errors on large selects
     const r = await fetch(
-      `${SUPA_URL}/rest/v1/questions?status=eq.active&order=approved_at.desc&limit=2000` +
+      `${SUPA_URL}/rest/v1/questions?status=eq.approved&order=approved_at.desc&limit=2000` +
       `&select=id,question_text,answers_ru,correct_index,category,image_url,audio_url`,
       { headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` } }
     );
@@ -1840,7 +1840,7 @@ export async function loadBattleQuestions(lang = 'ru') {
   let dbRows = [];
   try {
     const r = await fetch(
-      `${SUPA_URL}/rest/v1/questions?status=eq.active&select=id,question_text,answers_ru,correct_index,category`,
+      `${SUPA_URL}/rest/v1/questions?status=eq.approved&select=id,question_text,answers_ru,correct_index,category`,
       { headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` } }
     );
     if (r.ok) dbRows = await r.json();
