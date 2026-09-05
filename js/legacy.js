@@ -10992,7 +10992,7 @@ async function aqLoad(){
   try{
     const {data, error} = await sb.from('questions')
       .select('id,question_ru,question_text,answers_json,answers_ru,correct_index,category,status,source_type,import_key,media_type,image_url,audio_url,video_url,explanation_ru,created_at')
-      .in('source_type', ['manual_import','community'])
+      .not('source_type', 'like', 'official_pack')
       .order('created_at', {ascending:false})
       .limit(2000);
 
