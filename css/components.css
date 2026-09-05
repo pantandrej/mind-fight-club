@@ -47,8 +47,10 @@
 .next-btn.show{opacity:1;pointer-events:all;position:sticky;bottom:86px;z-index:15}
 .next-btn:hover{opacity:.88}
 /* Answer-phase: float above content, always in view */
-#t-answer-next{display:none;margin-top:12px;width:100%;background:var(--accent);border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit;transition:opacity .2s}
+#t-answer-next{display:none;margin-top:12px;width:100%;background:var(--accent);border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:800;color:#000;cursor:pointer;font-family:inherit;transition:opacity .2s}
 #t-answer-next.visible{display:block}
+[data-theme="light"] #t-answer-next,
+:root:not([data-theme="dark"]) #t-answer-next{background:#00BF96;color:#000}
 
 /* DUEL */
 #duel{justify-content:flex-start}

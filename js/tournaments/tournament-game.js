@@ -263,7 +263,7 @@ function tOnRoomUpdate(room){
       tQs = qs.map(q=>({...q,
         q:     (q.q&&typeof q.q==='object') ? (q.q[lang]||q.q.ru||q.q.en||q.q) : (q.question_text||q.q),
         a:     (q.a&&typeof q.a==='object'&&!Array.isArray(q.a)) ? (q.a[lang]||q.a.ru||q.a.en||q.a) : (q.answers||q.a||[]),
-        c:     q.c ?? q.correct ?? 0,
+        c:     (q.c !== undefined && q.c !== null) ? q.c : (q.correct !== undefined && q.correct !== null ? q.correct : null),
         img:     q.img     || q.slide_q_url  || null,
         img_a:   q.img_a   || q.slide_a_url  || null,
         audio:   q.audio   || null,
@@ -299,7 +299,7 @@ function tOnRoomUpdate(room){
       if(_tAnswerRevealed && room.current_correct_index !== undefined
           && room.current_correct_q_idx === tIdx){
         const q = tQs[tIdx];
-        if(q){
+        if(q && (q.c === undefined || q.c === null)){
           const ci = room.current_correct_index;
           q.c = ci;
           document.querySelectorAll('#t-answers .ans').forEach((b,i)=>{
@@ -307,6 +307,25 @@ function tOnRoomUpdate(room){
             if(i === ci) b.className = 'ans correct';
             else if(i === tMySelectedIdx && tMySelectedIdx !== -1) b.className = 'ans wrong';
           });
+          // Now that we know correct answer, retroactively apply score & feedback
+          const isCorrect = tMySelectedIdx !== -1 && tMySelectedIdx === ci;
+          if(isCorrect){
+            tMyScore += tMyEarnedPts;
+            document.getElementById('t-my-score-display').textContent = tMyScore;
+            showFb('t-fb', '✓ +'+tMyEarnedPts, true);
+            tPlaySound(true);
+            if(window.fbTournPatch && tMyUserId){
+              window.fbTournPatch(tCode, {
+                [`participants.${tMyUserId}.score`]: tMyScore,
+                [`participants.${tMyUserId}.is_correct`]: true,
+              }).catch(()=>{});
+            }
+          } else if(tMySelectedIdx !== -1){
+            showFb('t-fb', '✗ '+(q.a[ci]||''), false);
+            tPlaySound(false);
+          } else {
+            showFb('t-fb', '⏱ '+(q.a[ci]||''), false);
+          }
         }
       }
     }
@@ -580,7 +599,10 @@ function tLocalExpire(){
   if(tRole === 'host'){
     _tAdvanceLock = false;
     if(isInfo){
-      tHostAdvanceQuestion({ participants: {}, participant_ids: [tMyUserId] }, 0);
+      // Give host 3s to see the info slide before advancing
+      (window.fbTournGet ? window.fbTournGet(tCode) : Promise.resolve(null)).then(room => {
+        tHostAdvanceQuestion(room || { participants: {}, participant_ids: [tMyUserId] }, 3000);
+      });
     } else {
       // Read fresh room state then advance after 5s (answer already shown via tRevealAnswer)
       (window.fbTournGet ? window.fbTournGet(tCode) : Promise.resolve(null)).then(room => {
