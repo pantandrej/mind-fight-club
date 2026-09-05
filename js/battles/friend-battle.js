@@ -564,14 +564,15 @@ async function duelNextQ(){
   }
 }
 async function _saveDuelStats(myS, oppS, win) {
-  if (!window.sb || !window._currentDuelSessionId) return;
+  const sessionId = window._currentDuelSessionId || window._currentSessionId;
+  if (!window.sb || !sessionId) return;
   try {
     await window.sb.from('game_sessions').update({
       score:           myS,
       correct_answers: duelMyCorrect || 0,
       questions_count: duelQs?.length || 10,
       won:             win,
-    }).eq('id', window._currentDuelSessionId);
+    }).eq('id', sessionId);
   } catch(e) { /* silent */ }
   // Track win streak in localStorage
   const _streakKey = 'bfc_duel_win_streak';
