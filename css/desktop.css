@@ -38,18 +38,16 @@
   }
 
   /* Sidebar logo */
-  .nav-inner::before {
-    content: '🧠 BFC';
-    display: block;
-    font-size: 15px;
-    font-weight: 900;
-    letter-spacing: 2px;
-    color: var(--accent2);
-    padding: 18px 10px 16px;
-    text-transform: uppercase;
+  .nav-inner::before { display: none; }
+  .nav-brand-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px 10px 14px;
     border-bottom: 0.5px solid var(--border);
     margin-bottom: 8px;
   }
+  .nav-brand-logo img { height: 36px; width: auto; display: block; }
 
   .nav-item {
     flex: none;
