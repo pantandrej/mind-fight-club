@@ -3218,7 +3218,7 @@ console.log('✅ Firebase Tournaments module loaded');
     const currentUser = window.currentUser || window._bfcState?.()?.currentUser;
     if (!currentUser || !window.sb) return;
     const bio = document.getElementById('profile-bio-input').value.trim();
-    await window.sb.from('profiles').update({ bio }).eq('id', currentUser.id);
+    await window.sb.from('profiles').update({ about: bio }).eq('id', currentUser.id);
     document.getElementById('profile-bio-text').textContent = bio;
     document.getElementById('profile-bio-text').style.display = bio ? 'inline' : 'none';
     document.getElementById('profile-bio-placeholder').style.display = bio ? 'none' : 'inline';

@@ -1567,6 +1567,14 @@ async function loadProfileStats(){
   loadDuelHistory();
   loadFriends();
   loadPendingChallenges();
+  // Update team subtitle in profile
+  (async () => {
+    const sub = document.getElementById('profile-club-sub');
+    if (!sub || !currentUser) return;
+    const { data: member } = await sb.from('club_members')
+      .select('clubs(name)').eq('user_id', currentUser.id).maybeSingle();
+    if (member?.clubs?.name) sub.textContent = member.clubs.name;
+  })();
 }
 
 async function loadPackHistory() {
@@ -13183,7 +13191,32 @@ window.showAddFriendModal = async function() {
           </div>`;
         }).join('');
       } else {
-        resEl.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:4px 0">Друзей пока нет — найди через поиск</div>';
+        // No friends yet — show recently active players as suggestions
+        try {
+          const { data: recent } = await sb.from('profiles')
+            .select('id, display_name, city, xp')
+            .neq('id', currentUser.id)
+            .not('display_name', 'is', null)
+            .order('last_seen', { ascending: false })
+            .limit(10);
+          if (recent?.length) {
+            const label = '<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Недавно в игре</div>';
+            resEl.innerHTML = label + recent.map(u => `
+              <div style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:10px;background:var(--bg3);margin-bottom:4px">
+                <div style="width:32px;height:32px;border-radius:50%;background:rgba(0,237,181,.2);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:var(--accent2);flex-shrink:0">${(u.display_name||'?')[0].toUpperCase()}</div>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:13px;font-weight:700;color:var(--text)">${u.display_name}</div>
+                  ${u.city ? `<div style="font-size:11px;color:var(--muted)">${u.city}</div>` : ''}
+                </div>
+                <button onclick="submitAddFriend('${u.id}','${(u.display_name||'').replace(/'/g,"\\'")}');document.getElementById('add-friend-modal').remove()"
+                  style="background:var(--accent);border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit;flex-shrink:0">
+                  + Добавить
+                </button>
+              </div>`).join('');
+          } else {
+            resEl.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:4px 0">Введи имя для поиска</div>';
+          }
+        } catch(_) { resEl.innerHTML = ''; }
       }
     } catch(e) { resEl.innerHTML = ''; }
   }
@@ -13197,7 +13230,7 @@ window.searchFriendUsers = function(query) {
   const resEl = document.getElementById('add-friend-results');
   const errEl = document.getElementById('add-friend-err');
   if (errEl) errEl.textContent = '';
-  if (!query || query.length < 2) { if (resEl) resEl.innerHTML = ''; return; }
+  if (!query || query.length < 1) { if (resEl) resEl.innerHTML = ''; return; }
   if (resEl) resEl.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:6px 0">Ищем...</div>';
   _friendSearchTimer = setTimeout(async () => {
     const { data } = await sb.from('profiles').select('id,display_name,city')
