@@ -11161,14 +11161,12 @@ async function aqAction(newStatus, qId){
   if(newStatus==='deleted' && !confirm('Мягко удалить вопрос? (статус → deleted)')) return;
 
   try{
-    const update = {status: newStatus};
-    if(newStatus === 'approved') update.source_type = 'official_general';
-    const {error} = await sb.from('questions').update(update).eq('id', qId);
+    const {error} = await sb.from('questions').update({status: newStatus}).eq('id', qId);
     if(error) throw error;
     toast(`✅ Вопрос ${label}`);
     // Update local cache
     const idx = _aqData.findIndex(q=>String(q.id)===String(qId));
-    if(idx>=0){ _aqData[idx].status = newStatus; if(newStatus==='approved') _aqData[idx].source_type='official_general'; }
+    if(idx>=0) _aqData[idx].status = newStatus;
     aqRender();
   }catch(e){
     toast('❌ Ошибка: '+e.message.slice(0,60));
