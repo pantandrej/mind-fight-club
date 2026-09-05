@@ -2370,7 +2370,7 @@ function renderQMedia(containerId, q){
           currentAudio = new Audio(q.audio);
           currentAudio.ontimeupdate = ()=>{ const p=document.getElementById(pid2); if(p&&currentAudio.duration) p.style.width=(currentAudio.currentTime/currentAudio.duration*100)+'%'; };
           currentAudio.onended = ()=>{ const b=document.getElementById(bid2); if(b) b.textContent='▶️'; };
-          currentAudio.play().then(()=>{ const b=document.getElementById(bid2); if(b) b.textContent='⏸️'; }).catch(()=>{});
+          const _tp=()=>currentAudio.play().then(()=>{ const b=document.getElementById(bid2); if(b) b.textContent='⏸️'; }).catch(()=>{}); _tp(); setTimeout(_tp,400);
         }, 0);
         return `<div style="display:flex;align-items:center;gap:10px;margin-top:8px;padding:8px 12px;background:var(--bg3);border-radius:10px">
           <button id="${bid2}" onclick="toggleAudio('${containerId}')" style="width:40px;height:40px;border-radius:50%;border:none;background:var(--accent);color:#fff;font-size:18px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center">▶️</button>
@@ -2423,11 +2423,13 @@ function renderQMedia(containerId, q){
       const prog = document.getElementById(pid);
       if(prog) prog.style.width='100%';
     };
-    // Autoplay audio (browser may block — button stays as fallback)
-    currentAudio.play().then(()=>{
+    // Autoplay audio — retry after short delay to survive Firebase-driven renders
+    const _tryPlay = () => currentAudio.play().then(()=>{
       const btn = document.getElementById(bid);
       if(btn) btn.textContent='⏸️';
     }).catch(()=>{});
+    _tryPlay();
+    setTimeout(_tryPlay, 400);
 
   } else if(q.video){
     const hint = '';

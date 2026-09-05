@@ -361,15 +361,15 @@ function tLoadQFromRoom(room){
   const q = tQs[tIdx];
   if(!q){ return; }
 
-  // Compute deadline from question_started_at so all clients agree regardless of Firebase lag
+  // Use exact deadline from host (question_deadline_at); fall back to started_at + duration
   const startedAt  = room.question_started_at;
   const deadlineAt = room.question_deadline_at;
-  if(startedAt){
-    const serverStartMs = typeof startedAt === 'number' ? startedAt : Date.parse(startedAt);
-    tDeadlineMs = serverToLocal(serverStartMs) + tSecondsForQ(q) * 1000;
-  } else if(deadlineAt){
+  if(deadlineAt){
     const serverMs = typeof deadlineAt === 'number' ? deadlineAt : Date.parse(deadlineAt);
     tDeadlineMs = serverToLocal(serverMs);
+  } else if(startedAt){
+    const serverStartMs = typeof startedAt === 'number' ? startedAt : Date.parse(startedAt);
+    tDeadlineMs = serverToLocal(serverStartMs) + tSecondsForQ(q) * 1000;
   } else {
     tDeadlineMs = Date.now() + tSecondsForQ(q) * 1000;
   }
