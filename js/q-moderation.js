@@ -12,8 +12,8 @@ const SEL = 'id,question_text,question_ru,answers_json,correct_index,status,cate
 // Два параллельных запроса через sb-клиент (OR ломается через Vercel прокси)
 async function _fetchPendingAll() {
   const [r1, r2] = await Promise.all([
-    sb.from('questions').select(SEL).is('status', null).order('id', { ascending: false }).limit(5000),
-    sb.from('questions').select(SEL).eq('status', 'published').order('id', { ascending: false }).limit(5000),
+    sb.from('questions').select(SEL).is('status', null).neq('source_type', 'official_pack').order('id', { ascending: false }).limit(5000),
+    sb.from('questions').select(SEL).eq('status', 'pending').neq('source_type', 'official_pack').order('id', { ascending: false }).limit(5000),
   ]);
   const all = [...(r1.data || []), ...(r2.data || [])];
   all.sort((a, b) => (b.id > a.id ? 1 : -1));
