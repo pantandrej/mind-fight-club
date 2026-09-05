@@ -13167,7 +13167,7 @@ window.showAddFriendModal = async function() {
       style="width:100%;background:var(--bg3);border:0.5px solid var(--border);border-radius:12px;padding:12px;font-size:15px;color:var(--text);font-family:inherit;outline:none;box-sizing:border-box;margin-bottom:8px" />
     <div id="add-friend-results" style="max-height:280px;overflow-y:auto;margin-bottom:6px"></div>
     <div id="add-friend-err" style="font-size:12px;color:var(--red);min-height:16px;margin-bottom:8px"></div>
-    <button onclick="document.getElementById('add-friend-modal').remove()" style="width:100%;background:rgba(255,255,255,.07);border:0.5px solid var(--border);border-radius:12px;padding:12px;font-size:14px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit">Отмена</button>
+    <button onclick="document.getElementById('add-friend-modal').remove()" style="width:100%;background:var(--bg3);border:0.5px solid var(--border);border-radius:12px;padding:12px;font-size:14px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit">Отмена</button>
   </div>`;
   modal.style.display = 'flex';
 

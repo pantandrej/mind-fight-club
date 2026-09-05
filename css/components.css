@@ -44,7 +44,7 @@
 .report-comment{width:100%;background:var(--bg3);border:0.5px solid var(--border);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--text);font-family:inherit;outline:none;resize:vertical;min-height:60px;margin-top:8px}
 .fb.no{background:rgba(224,85,85,.08);color:rgba(230,110,110,.9);border:0.5px solid rgba(224,85,85,.2)}
 .next-btn{margin-top:12px;width:100%;background:var(--accent);border:none;border-radius:12px;padding:13px;font-size:15px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit;opacity:0;pointer-events:none;transition:opacity .2s}
-.next-btn.show{opacity:1;pointer-events:all;position:sticky;bottom:86px;z-index:15}
+.next-btn.show{opacity:1;pointer-events:all;position:sticky;bottom:20px;z-index:15}
 .next-btn:hover{opacity:.88}
 /* Answer-phase: float above content, always in view */
 #t-answer-next{display:none;margin-top:12px;width:100%;background:var(--accent);border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:800;color:#000;cursor:pointer;font-family:inherit;transition:opacity .2s}

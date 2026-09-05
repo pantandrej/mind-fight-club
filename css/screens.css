@@ -381,7 +381,7 @@
 .prf-textarea{min-height:92px;padding:11px 12px;font-size:14px;line-height:1.45;resize:vertical}
 .prf-input:focus,.prf-textarea:focus{border-color:rgba(0,237,181,.55);box-shadow:0 0 0 3px rgba(0,237,181,.10)}
 .prf-edit-btns{display:flex;gap:8px;margin-top:10px}
-.prf-mini-btn{min-height:38px;padding:8px 13px;color:#fff;font-size:12px;font-weight:850;border:0;border-radius:11px;background:linear-gradient(135deg,var(--accent),var(--accent2));cursor:pointer;font-family:inherit}
+.prf-mini-btn{min-height:38px;padding:8px 13px;color:#fff;font-size:12px;font-weight:850;border:0;border-radius:11px;background:linear-gradient(135deg,#00c9a3,#009E7D);cursor:pointer;font-family:inherit}
 .prf-mini-btn--sec{color:var(--text);border:1px solid var(--border);background:var(--bg2)}
 .prf-file-drop{background:var(--bg2);border:1.5px dashed rgba(0,237,181,.35);border-radius:12px;padding:16px;text-align:center;cursor:pointer}
 .prf-ref-card{position:relative;overflow:hidden;border-color:rgba(240,192,64,.30);background:radial-gradient(circle at 100% 0%,rgba(240,192,64,.19),transparent 10rem),var(--bg2)}
