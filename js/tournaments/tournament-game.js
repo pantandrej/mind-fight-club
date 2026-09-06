@@ -27,6 +27,7 @@ let _tPreselectedPackId = null;
 let tLastRoom = {}; // last received room state, used for prev_correct_index on guests
 let _tAnswerRevealed = false; // guard: reveal answer only once per question
 let _tAllConfirmed   = false; // guard: all clicked "Далее" on answer slide
+let _tScoreApplied   = false; // guard: score added only once per question
 
 // ── Helpers: real question index (excluding info slides) ──────────
 function tRealQIdx(absIdx){
@@ -310,7 +311,8 @@ function tOnRoomUpdate(room){
           });
           // Now that we know correct answer, retroactively apply score & feedback
           const isCorrect = tMySelectedIdx !== -1 && tMySelectedIdx === ci;
-          if(isCorrect){
+          if(isCorrect && !_tScoreApplied){
+            _tScoreApplied = true;
             tMyScore += tMyEarnedPts;
             document.getElementById('t-my-score-display').textContent = tMyScore;
             showFb('t-fb', '✓ +'+tMyEarnedPts, true);
@@ -355,6 +357,7 @@ function tLoadQFromRoom(room){
   _tAdvanceLock   = false;
   _tAnswerRevealed = false;
   _tAllConfirmed   = false;
+  _tScoreApplied   = false;
   _tQuestionShownAt = Date.now();
   // Hide answer-next button for new question
   const _ansBtn = document.getElementById('t-answer-next');
@@ -509,7 +512,8 @@ function tRevealAnswer(overrideCorrect){
   });
   const isCorrect = tMySelectedIdx !== -1 && correctKnown && tMySelectedIdx === q.c;
   const _rd = tRealQIdx(tIdx);
-  if(isCorrect){
+  if(isCorrect && !_tScoreApplied){
+    _tScoreApplied = true;
     tMyScore += tMyEarnedPts;
     document.getElementById('t-my-score-display').textContent = tMyScore;
     showFb('t-fb', '✓ +'+tMyEarnedPts, true);
@@ -714,7 +718,13 @@ function tUpdateWaitDisplay(participants, room){
 
   // All answered — reveal and advance, but only after minimum display time
   const _minShownMs = tQs[tIdx]?.question_type === 'info' ? 6000 : 8000;
-  if(answered >= total && total > 0 && !_tAnswerRevealed && Date.now() - _tQuestionShownAt >= _minShownMs){
+  const _elapsedMs  = Date.now() - _tQuestionShownAt;
+  if(answered >= total && total > 0 && !_tAnswerRevealed && _elapsedMs < _minShownMs){
+    // Min time not yet passed — schedule re-check so we don't rely on another Firebase event
+    const _waitMs = _minShownMs - _elapsedMs + 100;
+    setTimeout(() => { if(!_tAnswerRevealed) tUpdateWaitDisplay(participants, room); }, _waitMs);
+  }
+  if(answered >= total && total > 0 && !_tAnswerRevealed && _elapsedMs >= _minShownMs){
     if(tTimer){ clearInterval(tTimer); tTimer=null; }
     const isInfo = tQs[tIdx]?.question_type === 'info';
     if(!isInfo){
