@@ -681,7 +681,7 @@ function tShowWaitingAfterAnswer(){
 
 function tUpdateWaitDisplay(participants, room){
   const total    = (room.participant_ids || Object.keys(participants)).length;
-  const answered = Object.values(participants).filter(p=>p.q_answered >= tIdx).length;
+  const answered = Object.values(participants).filter(p=>p.q_answered === tIdx && p.q_version === tQVersion).length;
 
   // Update button counter only if this player already answered
   if(tAnsweredThisQ && !_tAnswerRevealed){
