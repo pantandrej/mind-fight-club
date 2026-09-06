@@ -1,4 +1,7 @@
 // ── My Team Screen ────────────────────────────────────────────────
+// All team writes go through SECURITY DEFINER RPCs (never direct table writes).
+// profiles.team_id is guarded by trigger (migration 70+73) — client cannot
+// set it directly. RPCs bypass the trigger as function owner.
 import { sb } from './services/supabase.js';
 import { getState } from './state.js';
 
@@ -26,7 +29,7 @@ export async function loadMyTeam() {
 
   const weekStart = _getWeekStart();
   const [teamRes, membersRes, tiebreakRes, barRankRes, onlineRankRes, brainRes, treasuryRes] = await Promise.all([
-    sb.from('teams').select('id,name,city,motto,banner_url,avatar_url,emoji,treasury_neurons').eq('id', me.team_id).single(),
+    sb.from('teams').select('id,name,city,motto,banner_url,avatar_url,emoji,treasury_neurons,captain_id,join_code').eq('id', me.team_id).single(),
     sb.from('profiles').select('id,display_name,neurons,avatar_url,is_scout').eq('team_id', me.team_id).order('neurons', { ascending: false }),
     sb.rpc('get_team_tiebreaker', { p_team_id: me.team_id }),
     _getTeamRank(me.team_id, 'bar_quiz'),
@@ -54,11 +57,12 @@ export async function loadMyTeam() {
     ...(trainedToday || []).map(r => r.user_id),
   ]);
 
-  const isAdmin = typeof window.isAdmin === 'function' ? window.isAdmin() : false;
-  const brainPoints = brainRes.data?.points ?? 0;
+  const isAdmin   = typeof window.isAdmin === 'function' ? window.isAdmin() : false;
+  const isCaptain = team?.captain_id === currentUser.id;
+  const brainPoints     = brainRes.data?.points ?? 0;
   const treasuryContribs = treasuryRes.data || [];
 
-  _renderMyTeam(el, { team, members, tiebreak, barRankRes, onlineRankRes, activeSet, currentUser, isAdmin, brainPoints, myTeamId: me.team_id, treasuryContribs });
+  _renderMyTeam(el, { team, members, tiebreak, barRankRes, onlineRankRes, activeSet, currentUser, isAdmin, isCaptain, brainPoints, myTeamId: me.team_id, treasuryContribs });
 }
 
 function _renderNoTeam(el) {
@@ -72,14 +76,14 @@ function _renderNoTeam(el) {
       <div style="text-align:center;padding:24px 0">
         <div style="font-size:48px;margin-bottom:12px">🏟️</div>
         <div style="font-size:18px;font-weight:900;margin-bottom:6px">Ты ещё не в команде</div>
-        <div style="font-size:13px;color:var(--muted)">Вступи в существующую или создай свою</div>
+        <div style="font-size:13px;color:var(--muted)">Вступи по коду или создай свою</div>
       </div>
 
-      <!-- Вступить -->
+      <!-- Вступить по коду -->
       <div style="background:var(--bg2);border:1px solid var(--border);border-radius:18px;padding:20px">
-        <div style="font-size:14px;font-weight:800;margin-bottom:12px">🔑 Вступить по ID</div>
-        <input id="mt-join-id" placeholder="ID команды (uuid)" maxlength="36"
-          style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:12px 14px;font-size:14px;color:var(--text);font-family:inherit;outline:none;box-sizing:border-box"/>
+        <div style="font-size:14px;font-weight:800;margin-bottom:12px">🔑 Вступить по коду</div>
+        <input id="mt-join-code" placeholder="Код команды (6 букв)" maxlength="8"
+          style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:12px 14px;font-size:16px;letter-spacing:3px;text-transform:uppercase;color:var(--text);font-family:inherit;outline:none;box-sizing:border-box;text-align:center"/>
         <button onclick="window._mtJoinTeam()"
           style="margin-top:10px;width:100%;background:var(--accent);border:none;border-radius:14px;padding:14px;font-size:15px;font-weight:900;color:#fff;cursor:pointer;font-family:inherit">
           Вступить
@@ -89,7 +93,7 @@ function _renderNoTeam(el) {
       <!-- Создать -->
       <div style="background:var(--bg2);border:1px solid var(--border);border-radius:18px;padding:20px">
         <div style="font-size:14px;font-weight:800;margin-bottom:12px">✨ Создать команду</div>
-        <input id="mt-create-name" placeholder="Название команды" maxlength="50"
+        <input id="mt-create-name" placeholder="Название команды" maxlength="60"
           style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:12px 14px;font-size:14px;color:var(--text);font-family:inherit;outline:none;box-sizing:border-box;margin-bottom:8px"/>
         <input id="mt-create-city" placeholder="Город (необязательно)" maxlength="60"
           style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:12px 14px;font-size:14px;color:var(--text);font-family:inherit;outline:none;box-sizing:border-box"/>
@@ -118,13 +122,13 @@ async function _getTeamRank(teamId, type) {
 
 function _getWeekStart() {
   const d = new Date();
-  const day = d.getUTCDay(); // 0=Sun
+  const day = d.getUTCDay();
   const diff = (day === 0 ? -6 : 1 - day);
   const mon = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + diff));
   return mon.toISOString().slice(0, 10);
 }
 
-function _renderMyTeam(el, { team, members, tiebreak, barRankRes, onlineRankRes, activeSet, currentUser, isAdmin, brainPoints, myTeamId, treasuryContribs }) {
+function _renderMyTeam(el, { team, members, tiebreak, barRankRes, onlineRankRes, activeSet, currentUser, isAdmin, isCaptain, brainPoints, myTeamId, treasuryContribs }) {
   const bar    = barRankRes;
   const online = onlineRankRes;
   const massBonus = activeSet.size * 5;
@@ -137,6 +141,50 @@ function _renderMyTeam(el, { team, members, tiebreak, barRankRes, onlineRankRes,
     return '';
   };
 
+  // Captain-only: edit section
+  const captainEditSection = isCaptain ? `
+    <div id="mt-edit-section" style="display:none;background:var(--bg2);border:1px solid rgba(0,237,181,.3);border-radius:18px;padding:18px">
+      <div style="font-size:13px;font-weight:800;margin-bottom:14px">✏️ Редактировать команду</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Название</div>
+          <input id="mt-edit-name" value="${_escAttr(team.name)}" maxlength="60"
+            style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--text);font-family:inherit;outline:none;box-sizing:border-box">
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Город</div>
+          <input id="mt-edit-city" value="${_escAttr(team.city || '')}" maxlength="60"
+            style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--text);font-family:inherit;outline:none;box-sizing:border-box">
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Девиз</div>
+          <input id="mt-edit-motto" value="${_escAttr(team.motto || '')}" maxlength="100" placeholder="Ваш девиз..."
+            style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--text);font-family:inherit;outline:none;box-sizing:border-box">
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Эмодзи аватар</div>
+          <input id="mt-edit-emoji" value="${_escAttr(team.emoji || '🏟️')}" maxlength="4"
+            style="width:80px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:18px;text-align:center;color:var(--text);font-family:inherit;outline:none">
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Баннер (URL)</div>
+          <input id="mt-edit-banner" value="${_escAttr(team.banner_url || '')}" placeholder="https://..." type="url"
+            style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--text);font-family:inherit;outline:none;box-sizing:border-box">
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Аватар (URL)</div>
+          <input id="mt-edit-avatar" value="${_escAttr(team.avatar_url || '')}" placeholder="https://..." type="url"
+            style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--text);font-family:inherit;outline:none;box-sizing:border-box">
+        </div>
+        <button onclick="window._mtSaveProfile()"
+          style="background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit">
+          Сохранить
+        </button>
+      </div>
+    </div>
+  ` : `<div id="mt-edit-section" style="display:none"></div>`;
+
+  // Admin scout management (unchanged)
   const scoutSection = isAdmin ? `
     <div style="background:rgba(255,200,0,.06);border:1px solid rgba(255,200,0,.25);border-radius:18px;padding:20px">
       <div style="font-size:14px;font-weight:800;margin-bottom:4px">🎯 Управление скаутами</div>
@@ -153,11 +201,34 @@ function _renderMyTeam(el, { team, members, tiebreak, barRankRes, onlineRankRes,
     </div>
   ` : '';
 
+  // Captain controls: transfer, kick, regenerate code
+  const captainControls = isCaptain ? `
+    <div style="background:rgba(0,237,181,.04);border:1px solid rgba(0,237,181,.2);border-radius:18px;padding:18px">
+      <div style="font-size:13px;font-weight:800;margin-bottom:12px;color:var(--accent2)">👑 Управление командой</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button onclick="window._mtOpenTransfer()"
+          style="background:rgba(0,237,181,.08);border:1px solid rgba(0,237,181,.25);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit;text-align:left">
+          🔄 Передать капитанство
+        </button>
+        <button onclick="window._mtOpenKick()"
+          style="background:rgba(224,85,85,.06);border:1px solid rgba(224,85,85,.2);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:700;color:rgba(224,85,85,.8);cursor:pointer;font-family:inherit;text-align:left">
+          ⛔ Исключить участника
+        </button>
+        <button onclick="window._mtRegenerateCode()"
+          style="background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit;text-align:left">
+          🔁 Обновить код приглашения
+        </button>
+      </div>
+    </div>
+  ` : '';
+
   el.innerHTML = `
     <div class="hdr" style="position:sticky;top:0;z-index:10;backdrop-filter:blur(12px);background:rgba(10,10,20,.85)">
       <button onclick="showScreen('home')" style="background:none;border:none;color:var(--text);font-size:22px;cursor:pointer;padding:0 4px">‹</button>
       <div style="font-size:15px;font-weight:900">🏟️ Моя Команда</div>
-      <button onclick="window._mtToggleEdit()" style="background:none;border:none;color:var(--accent2);font-size:12px;font-weight:700;cursor:pointer;padding:0">✏️ Ред.</button>
+      ${isCaptain
+        ? `<button onclick="window._mtToggleEdit()" style="background:none;border:none;color:var(--accent2);font-size:12px;font-weight:700;cursor:pointer;padding:0">✏️ Ред.</button>`
+        : `<div style="width:46px"></div>`}
     </div>
 
     <div style="padding:16px;display:flex;flex-direction:column;gap:16px">
@@ -165,31 +236,29 @@ function _renderMyTeam(el, { team, members, tiebreak, barRankRes, onlineRankRes,
       <!-- Баннер + аватар -->
       <div style="border-radius:20px;overflow:hidden;border:1px solid rgba(0,237,181,.3);position:relative">
         <div style="height:140px;overflow:hidden;background:linear-gradient(135deg,rgba(0,237,181,.3),rgba(168,85,247,.2))">
-          ${team.banner_url
-            ? `<img src="${team.banner_url}" style="width:100%;height:100%;object-fit:cover">`
-            : ''}
+          ${team.banner_url ? `<img src="${team.banner_url}" style="width:100%;height:100%;object-fit:cover">` : ''}
         </div>
-        <!-- Аватар -->
         <div style="position:absolute;top:100px;left:50%;transform:translateX(-50%)">
           <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));border:3px solid var(--bg);display:flex;align-items:center;justify-content:center;font-size:28px;overflow:hidden">
-            ${team.avatar_url
-              ? `<img src="${team.avatar_url}" style="width:100%;height:100%;object-fit:cover">`
-              : emoji}
+            ${team.avatar_url ? `<img src="${team.avatar_url}" style="width:100%;height:100%;object-fit:cover">` : emoji}
           </div>
         </div>
-        <!-- Текст под аватаром -->
         <div style="background:var(--bg2);padding:44px 16px 16px;text-align:center">
           <div style="font-size:20px;font-weight:900;margin-bottom:4px">${team.name}</div>
+          ${isCaptain ? `<div style="font-size:10px;color:var(--accent2);font-weight:700;margin-bottom:2px">👑 Капитан</div>` : ''}
           ${team.city ? `<div style="font-size:12px;color:var(--muted)">📍 ${team.city}</div>` : ''}
           ${team.motto ? `<div style="font-size:12px;color:var(--accent2);font-style:italic;margin-top:4px">"${team.motto}"</div>` : ''}
           <div style="margin-top:10px;display:inline-flex;align-items:center;gap:6px;background:rgba(0,237,181,.15);border-radius:20px;padding:6px 14px">
             <span style="font-size:14px">⚡</span>
             <span style="font-size:16px;font-weight:900">${tiebreak}</span>
-            <span style="font-size:11px;color:var(--muted)">командных нейронов</span>
+            <span style="font-size:11px;color:var(--muted)">очков тай-брейка</span>
           </div>
-          <!-- Инвайт -->
-          <div style="margin-top:10px">
-            <button onclick="window._mtCopyInvite('${team.id}')"
+          <!-- Инвайт: show join_code prominently -->
+          <div style="margin-top:10px;display:flex;flex-direction:column;align-items:center;gap:6px">
+            ${team.join_code
+              ? `<div style="font-size:11px;color:var(--muted)">Код команды: <strong style="color:var(--text);letter-spacing:2px;font-size:14px">${team.join_code}</strong></div>`
+              : ''}
+            <button onclick="window._mtCopyInvite('${team.id}', '${team.join_code || ''}')"
               style="background:rgba(0,237,181,.15);border:1px solid rgba(0,237,181,.3);border-radius:20px;padding:7px 16px;font-size:12px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit">
               🔗 Пригласить в команду
             </button>
@@ -197,47 +266,9 @@ function _renderMyTeam(el, { team, members, tiebreak, barRankRes, onlineRankRes,
         </div>
       </div>
 
-      <!-- Редактор профиля команды (скрыт по умолчанию) -->
-      <div id="mt-edit-section" style="display:none;background:var(--bg2);border:1px solid rgba(0,237,181,.3);border-radius:18px;padding:18px">
-        <div style="font-size:13px;font-weight:800;margin-bottom:14px">✏️ Редактировать команду</div>
-        <div style="display:flex;flex-direction:column;gap:10px">
-          <div>
-            <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Название</div>
-            <input id="mt-edit-name" value="${_escAttr(team.name)}" maxlength="50"
-              style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--text);font-family:inherit;outline:none;box-sizing:border-box">
-          </div>
-          <div>
-            <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Город</div>
-            <input id="mt-edit-city" value="${_escAttr(team.city || '')}" maxlength="60"
-              style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--text);font-family:inherit;outline:none;box-sizing:border-box">
-          </div>
-          <div>
-            <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Девиз (мотто)</div>
-            <input id="mt-edit-motto" value="${_escAttr(team.motto || '')}" maxlength="100" placeholder="Ваш девиз..."
-              style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--text);font-family:inherit;outline:none;box-sizing:border-box">
-          </div>
-          <div>
-            <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Эмодзи аватар</div>
-            <input id="mt-edit-emoji" value="${_escAttr(team.emoji || '🏟️')}" maxlength="4"
-              style="width:80px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:18px;text-align:center;color:var(--text);font-family:inherit;outline:none">
-          </div>
-          <div>
-            <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Баннер (URL картинки)</div>
-            <input id="mt-edit-banner" value="${_escAttr(team.banner_url || '')}" placeholder="https://..." type="url"
-              style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--text);font-family:inherit;outline:none;box-sizing:border-box">
-          </div>
-          <div>
-            <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Аватар команды (URL)</div>
-            <input id="mt-edit-avatar" value="${_escAttr(team.avatar_url || '')}" placeholder="https://..." type="url"
-              style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--text);font-family:inherit;outline:none;box-sizing:border-box">
-          </div>
-          <button onclick="window._mtSaveProfile('${myTeamId}')"
-            style="background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit">
-            Сохранить
-          </button>
-        </div>
-      </div>
+      ${captainEditSection}
 
+      <!-- Рейтинговые позиции -->
       <div>
         <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Рейтинговые позиции</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
@@ -262,12 +293,13 @@ function _renderMyTeam(el, { team, members, tiebreak, barRankRes, onlineRankRes,
         </div>
       </div>
 
+      <!-- Активность сегодня -->
       <div style="background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:14px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-          <div style="font-size:13px;font-weight:800">Бонус за массовку сегодня</div>
+          <div style="font-size:13px;font-weight:800">Активность сегодня</div>
           <div style="font-size:14px;font-weight:900;color:var(--accent2)">+${massBonus} ⚡</div>
         </div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:10px">${activeSet.size} из ${members.length} игроков активны</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px">${activeSet.size} из ${members.length} игроков</div>
         <div style="display:flex;flex-wrap:wrap;gap:6px">
           ${members.map(m => `
             <div style="display:flex;align-items:center;gap:5px;background:${activeSet.has(m.id) ? 'rgba(60,200,100,.1)' : 'rgba(255,255,255,.04)'};border:1px solid ${activeSet.has(m.id) ? 'rgba(60,200,100,.3)' : 'var(--border)'};border-radius:20px;padding:4px 10px">
@@ -278,10 +310,14 @@ function _renderMyTeam(el, { team, members, tiebreak, barRankRes, onlineRankRes,
         </div>
       </div>
 
+      <!-- Состав -->
       <div>
-        <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Состав клана · ${members.length} игроков</div>
+        <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Состав · ${members.length} игроков</div>
         <div style="display:flex;flex-direction:column;gap:8px">
-          ${members.map((m, i) => `
+          ${members.map((m, i) => {
+            const isThisCaptain = m.id === team.captain_id;
+            const isMe = m.id === currentUser.id;
+            return `
             <div style="display:flex;align-items:center;gap:12px;background:${i < 3 ? 'rgba(0,237,181,.08)' : 'var(--bg2)'};border:1px solid ${i < 3 ? 'rgba(0,237,181,.25)' : 'var(--border)'};border-radius:14px;padding:12px">
               <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;overflow:hidden">
                 ${m.avatar_url ? `<img src="${m.avatar_url}" style="width:100%;height:100%;object-fit:cover"/>` : '🧠'}
@@ -290,22 +326,22 @@ function _renderMyTeam(el, { team, members, tiebreak, barRankRes, onlineRankRes,
                 <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
                   ${crownFor(i)}
                   <span style="font-size:14px;font-weight:${i < 3 ? '900' : '700'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-                    ${m.display_name || 'Игрок'}${m.id === currentUser.id ? ' <span style="font-size:10px;color:var(--accent2)">(ты)</span>' : ''}
+                    ${m.display_name || 'Игрок'}${isMe ? ' <span style="font-size:10px;color:var(--accent2)">(ты)</span>' : ''}
                   </span>
+                  ${isThisCaptain ? '<span style="font-size:10px;background:rgba(0,237,181,.15);color:var(--accent2);border-radius:6px;padding:2px 6px;font-weight:700">👑 капитан</span>' : ''}
                   ${m.is_scout ? '<span style="font-size:10px;background:rgba(255,200,0,.15);color:#f5c400;border-radius:6px;padding:2px 6px;font-weight:700">🎯 скаут</span>' : ''}
                 </div>
-                ${i < 3 ? `<div style="font-size:10px;color:var(--accent2);font-weight:700;margin-top:1px">Лидер тай-брейка</div>` : ''}
               </div>
               <div style="text-align:right;flex-shrink:0">
                 <div style="font-size:16px;font-weight:900;color:${i < 3 ? 'var(--gold)' : 'var(--text)'}">${m.neurons || 0}</div>
-                <div style="font-size:10px;color:var(--muted)">⚡ нейронов</div>
+                <div style="font-size:10px;color:var(--muted)">⚡</div>
               </div>
-            </div>
-          `).join('')}
+            </div>`;
+          }).join('')}
         </div>
       </div>
 
-      <!-- Brain Fights недельный счёт -->
+      <!-- Brain Fights -->
       <div style="background:linear-gradient(135deg,rgba(60,200,100,.08),rgba(0,180,80,.05));border:1px solid rgba(60,200,100,.25);border-radius:18px;padding:20px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
           <div>
@@ -318,7 +354,7 @@ function _renderMyTeam(el, { team, members, tiebreak, barRankRes, onlineRankRes,
           </div>
         </div>
         <div style="background:rgba(60,200,100,.08);border-radius:8px;padding:8px 12px;font-size:11px;color:var(--muted);line-height:1.5">
-          Каждый день: ТОП-3 нейронов + ${activeSet.size} активных × 5 = <strong style="color:var(--text)">${massBonus + tiebreak}</strong> очков сегодня<br>
+          Играй за команду и поднимай её в рейтингах BFC.<br>
           Итоги в воскресенье 23:59 UTC → рейтинг
         </div>
       </div>
@@ -351,6 +387,7 @@ function _renderMyTeam(el, { team, members, tiebreak, barRankRes, onlineRankRes,
         </div>` : ''}
       </div>
 
+      ${captainControls}
       ${scoutSection}
 
       <!-- Покинуть команду -->
@@ -363,57 +400,258 @@ function _renderMyTeam(el, { team, members, tiebreak, barRankRes, onlineRankRes,
     </div>`;
 }
 
-// ── Вступить в команду ────────────────────────────────────────────
+// ── Join by code ─────────────────────────────────────────────────────────
 window._mtJoinTeam = async function() {
   const { currentUser } = getState();
-  if (!currentUser) return;
-  const teamId = document.getElementById('mt-join-id')?.value?.trim();
-  if (!teamId) { window.toast?.('Введи ID команды'); return; }
+  if (!currentUser) { window.toast?.('Войдите в аккаунт'); return; }
 
-  const { error } = await sb.from('profiles').update({ team_id: teamId }).eq('id', currentUser.id);
+  const code = document.getElementById('mt-join-code')?.value?.trim()?.toUpperCase();
+  if (!code || code.length < 4) { window.toast?.('Введи код команды'); return; }
+
+  const btn = document.querySelector('#mt-join-code + button') || document.querySelector('[onclick="_mtJoinTeam()"]');
+  if (btn) btn.disabled = true;
+
+  const { data, error } = await sb.rpc('join_team_by_code', { p_join_code: code });
+  if (btn) btn.disabled = false;
+
   if (error) {
-    window.toast?.('Ошибка: неверный ID команды');
-  } else {
-    window.toast?.('✅ Ты в команде!');
-    loadMyTeam();
+    window.toast?.('Ошибка: ' + error.message);
+    return;
   }
+  if (!data?.ok) {
+    const msgs = {
+      team_not_found: 'Команда с таким кодом не найдена',
+      already_in_team: 'Ты уже состоишь в команде',
+      invalid_code: 'Неверный формат кода',
+    };
+    window.toast?.('❌ ' + (msgs[data?.reason] || 'Ошибка вступления'));
+    return;
+  }
+  window.toast?.('✅ Ты в команде!');
+  loadMyTeam();
 };
 
-// ── Создать команду ───────────────────────────────────────────────
+// ── Create team ──────────────────────────────────────────────────────────
 window._mtCreateTeam = async function() {
   const { currentUser } = getState();
-  if (!currentUser) return;
+  if (!currentUser) { window.toast?.('Войдите в аккаунт'); return; }
 
   const name = document.getElementById('mt-create-name')?.value?.trim();
   const city = document.getElementById('mt-create-city')?.value?.trim() || null;
   if (!name) { window.toast?.('Введи название команды'); return; }
 
-  // Создаём команду
-  const { data: team, error: teamErr } = await sb.from('teams')
-    .insert({ name, city })
-    .select('id')
-    .single();
+  const { data, error } = await sb.rpc('create_team', {
+    p_name: name,
+    p_city: city,
+    p_emoji: '🏟️',
+  });
 
-  if (teamErr) {
+  if (error) {
     window.toast?.('Ошибка создания команды');
-    console.error(teamErr);
+    console.error('[mt] create_team error:', error);
+    return;
+  }
+  if (!data?.ok) {
+    const msgs = {
+      already_in_team: 'Ты уже в команде',
+      name_too_short: 'Название слишком короткое (мин. 2 символа)',
+      name_too_long: 'Название слишком длинное (макс. 60 символов)',
+    };
+    window.toast?.('❌ ' + (msgs[data?.reason] || 'Ошибка создания'));
+    return;
+  }
+  window.toast?.('✅ Команда создана!');
+  loadMyTeam();
+};
+
+// ── Leave team ───────────────────────────────────────────────────────────
+window._mtLeaveTeam = async function() {
+  if (!confirm('Покинуть команду? Твои результаты сохранятся.')) return;
+  const { currentUser } = getState();
+  if (!currentUser) return;
+
+  const { data, error } = await sb.rpc('leave_team', {});
+
+  if (error) {
+    window.toast?.('Ошибка при выходе из команды');
+    console.error('[mt] leave_team error:', error);
+    return;
+  }
+  if (!data?.ok) {
+    if (data?.reason === 'captain_must_transfer') {
+      window.toast?.(
+        `👑 Передай капитанство другому игроку (в команде ${data.member_count} участников), затем выйди.`,
+        4000
+      );
+    } else {
+      window.toast?.('Ошибка при выходе из команды');
+    }
+    return;
+  }
+  if (data.disbanded) {
+    window.toast?.('Команда расформирована');
+  } else {
+    window.toast?.('Ты покинул команду');
+  }
+  loadMyTeam();
+};
+
+// ── Copy invite (shows join code) ────────────────────────────────────────
+window._mtCopyInvite = function(teamId, joinCode) {
+  const text = joinCode
+    ? `Вступай в мою команду BFC! Код: ${joinCode}\n${window.location.origin}/?join=${teamId}`
+    : `${window.location.origin}/?join=${teamId}`;
+  navigator.clipboard.writeText(text).then(() => {
+    window.toast?.('✅ Ссылка скопирована!');
+  }).catch(() => {
+    window.toast?.('Код: ' + (joinCode || teamId));
+  });
+};
+
+// ── Toggle edit (captain only) ───────────────────────────────────────────
+window._mtToggleEdit = function() {
+  const s = document.getElementById('mt-edit-section');
+  if (s) s.style.display = s.style.display === 'none' ? 'block' : 'none';
+};
+
+// ── Save team profile (captain only via update_my_team RPC) ─────────────
+window._mtSaveProfile = async function() {
+  const { currentUser } = getState();
+  if (!currentUser) return;
+
+  const name      = document.getElementById('mt-edit-name')?.value?.trim();
+  const city      = document.getElementById('mt-edit-city')?.value?.trim() || null;
+  const motto     = document.getElementById('mt-edit-motto')?.value?.trim() || null;
+  const emoji     = document.getElementById('mt-edit-emoji')?.value?.trim() || null;
+  const bannerUrl = document.getElementById('mt-edit-banner')?.value?.trim() || null;
+  const avatarUrl = document.getElementById('mt-edit-avatar')?.value?.trim() || null;
+
+  if (!name) { window.toast?.('Введи название команды'); return; }
+
+  const { data, error } = await sb.rpc('update_my_team', {
+    p_name:       name       || null,
+    p_city:       city       || null,
+    p_motto:      motto      || null,
+    p_emoji:      emoji      || null,
+    p_banner_url: bannerUrl  || null,
+    p_avatar_url: avatarUrl  || null,
+  });
+
+  if (error || !data?.ok) {
+    if (data?.reason === 'not_captain') {
+      window.toast?.('Только капитан может редактировать команду');
+    } else {
+      window.toast?.('Ошибка сохранения');
+    }
+    console.error('[mt] update_my_team:', error, data);
+    return;
+  }
+  window.toast?.('✅ Профиль команды обновлён');
+  loadMyTeam();
+};
+
+// ── Join via invite link (?join=uuid) ─────────────────────────────────────
+window._mtJoinViaLink = async function(teamId) {
+  const { currentUser } = getState();
+  if (!currentUser) return;
+
+  const { data: me } = await sb.from('profiles')
+    .select('team_id').eq('id', currentUser.id).single();
+  if (me?.team_id === teamId) return;
+
+  const { data: team } = await sb.from('teams').select('name,join_code').eq('id', teamId).single();
+  if (!team) return;
+
+  if (!confirm(`Вступить в команду «${team.name}»?`)) return;
+
+  // Use join_code if available, otherwise fall back to direct UUID join via RPC
+  if (team.join_code) {
+    const { data, error } = await sb.rpc('join_team_by_code', { p_join_code: team.join_code });
+    if (error || !data?.ok) {
+      window.toast?.('Ошибка при вступлении');
+      return;
+    }
+  } else {
+    // Legacy path: no join_code yet (pre-migration 75 teams). Show error.
+    window.toast?.('Эта команда пока не поддерживает вступление по ссылке. Попроси код у капитана.');
     return;
   }
 
-  // Привязываем пользователя к команде
-  const { error: profileErr } = await sb.from('profiles')
-    .update({ team_id: team.id })
-    .eq('id', currentUser.id);
-
-  if (profileErr) {
-    window.toast?.('Команда создана, но не удалось привязать профиль');
-  } else {
-    window.toast?.('✅ Команда создана!');
-    loadMyTeam();
-  }
+  window.toast?.(`✅ Ты в команде «${team.name}»!`);
+  history.replaceState({}, '', window.location.pathname);
+  window.showScreen?.('my-team-screen');
+  loadMyTeam();
 };
 
-// ── Поиск и назначение скаутов (только для admin) ────────────────
+// ── Transfer captain (opens modal with member list) ──────────────────────
+window._mtOpenTransfer = function() {
+  const memberEls = document.querySelectorAll('[data-member-id]');
+  // Build member list from DOM (already rendered in roster)
+  const members = [];
+  document.querySelectorAll('[data-member-id]').forEach(el => {
+    members.push({ id: el.dataset.memberId, name: el.dataset.memberName });
+  });
+
+  // Simple: prompt for user ID (improved UX can come later)
+  const targetId = prompt('Введи ID игрока, которому передать капитанство:');
+  if (!targetId?.trim()) return;
+  window._mtTransferCaptain(targetId.trim());
+};
+
+window._mtTransferCaptain = async function(targetId) {
+  if (!confirm('Передать капитанство? Ты станешь обычным участником.')) return;
+
+  const { data, error } = await sb.rpc('transfer_captain', { p_target_user_id: targetId });
+  if (error || !data?.ok) {
+    const msgs = {
+      not_captain: 'Ты не являешься капитаном',
+      target_not_in_team: 'Игрок не состоит в вашей команде',
+      cannot_transfer_to_self: 'Нельзя передать капитанство себе',
+    };
+    window.toast?.('❌ ' + (msgs[data?.reason] || 'Ошибка передачи'));
+    return;
+  }
+  window.toast?.('✅ Капитанство передано');
+  loadMyTeam();
+};
+
+// ── Kick member (captain only) ────────────────────────────────────────────
+window._mtOpenKick = function() {
+  const targetId = prompt('Введи ID игрока для исключения:');
+  if (!targetId?.trim()) return;
+  if (!confirm('Исключить игрока из команды?')) return;
+  window._mtKickMember(targetId.trim());
+};
+
+window._mtKickMember = async function(targetId) {
+  const { data, error } = await sb.rpc('kick_member', { p_target_user_id: targetId });
+  if (error || !data?.ok) {
+    const msgs = {
+      not_captain: 'Только капитан может исключать игроков',
+      target_not_in_team: 'Игрок не состоит в вашей команде',
+      cannot_kick_self: 'Нельзя исключить себя',
+    };
+    window.toast?.('❌ ' + (msgs[data?.reason] || 'Ошибка исключения'));
+    return;
+  }
+  window.toast?.('✅ Игрок исключён');
+  loadMyTeam();
+};
+
+// ── Regenerate join code (captain only) ─────────────────────────────────
+window._mtRegenerateCode = async function() {
+  if (!confirm('Обновить код приглашения? Старые ссылки перестанут работать.')) return;
+
+  const { data, error } = await sb.rpc('regenerate_team_code', {});
+  if (error || !data?.ok) {
+    window.toast?.('Ошибка обновления кода');
+    return;
+  }
+  window.toast?.(`✅ Новый код: ${data.join_code}`);
+  loadMyTeam();
+};
+
+// ── Scout management (admin only, unchanged) ─────────────────────────────
 window._mtSearchScout = async function() {
   const query = document.getElementById('mt-scout-search')?.value?.trim();
   if (!query) return;
@@ -435,6 +673,7 @@ window._mtSearchScout = async function() {
     <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:6px">
       <div>
         <div style="font-size:13px;font-weight:700">${p.display_name || 'Игрок'}</div>
+        <div style="font-size:10px;color:var(--muted)">${p.id}</div>
         <div style="font-size:11px;color:${p.is_scout ? '#f5c400' : 'var(--muted)'}">${p.is_scout ? '🎯 скаут' : 'обычный игрок'}</div>
       </div>
       <button onclick="window._mtToggleScout('${p.id}', ${!p.is_scout})"
@@ -449,7 +688,6 @@ window._mtToggleScout = async function(userId, makeScout) {
   const { error } = await sb.from('profiles')
     .update({ is_scout: makeScout })
     .eq('id', userId);
-
   if (error) {
     window.toast?.('Ошибка при изменении роли');
   } else {
@@ -458,101 +696,7 @@ window._mtToggleScout = async function(userId, makeScout) {
   }
 };
 
-// ── Покинуть команду ─────────────────────────────────────────────
-window._mtLeaveTeam = async function() {
-  if (!confirm('Покинуть команду? Твои результаты сохранятся.')) return;
-  const { currentUser } = getState();
-  if (!currentUser) return;
-
-  const { error } = await sb.from('profiles')
-    .update({ team_id: null })
-    .eq('id', currentUser.id);
-
-  if (error) {
-    window.toast?.('Ошибка при выходе из команды');
-  } else {
-    window.toast?.('Ты покинул команду');
-    loadMyTeam();
-  }
-};
-
-// ── Инвайт-ссылка ────────────────────────────────────────────────
-window._mtCopyInvite = function(teamId) {
-  const url = `${window.location.origin}/?join=${teamId}`;
-  navigator.clipboard.writeText(url).then(() => {
-    window.toast?.('✅ Ссылка скопирована!');
-  }).catch(() => {
-    window.toast?.('Ссылка: ' + url);
-  });
-};
-
-// ── Редактирование профиля команды ────────────────────────────────
-window._mtToggleEdit = function() {
-  const s = document.getElementById('mt-edit-section');
-  if (s) s.style.display = s.style.display === 'none' ? 'block' : 'none';
-};
-
-window._mtSaveProfile = async function(teamId) {
-  const { currentUser } = getState();
-  if (!currentUser) return;
-
-  const name      = document.getElementById('mt-edit-name')?.value?.trim();
-  const city      = document.getElementById('mt-edit-city')?.value?.trim() || null;
-  const motto     = document.getElementById('mt-edit-motto')?.value?.trim() || null;
-  const emoji     = document.getElementById('mt-edit-emoji')?.value?.trim() || null;
-  const bannerUrl = document.getElementById('mt-edit-banner')?.value?.trim() || null;
-  const avatarUrl = document.getElementById('mt-edit-avatar')?.value?.trim() || null;
-
-  if (!name) { window.toast?.('Введи название команды'); return; }
-
-  const { data, error } = await sb.rpc('update_team_profile', {
-    p_team_id:    teamId,
-    p_name:       name,
-    p_city:       city,
-    p_motto:      motto,
-    p_emoji:      emoji,
-    p_banner_url: bannerUrl,
-    p_avatar_url: avatarUrl,
-  });
-
-  if (error || !data?.ok) {
-    window.toast?.('Ошибка сохранения');
-    console.error(error, data);
-  } else {
-    window.toast?.('✅ Профиль команды обновлён');
-    loadMyTeam();
-  }
-};
-
-// ── Вступить через инвайт-ссылку ─────────────────────────────────
-window._mtJoinViaLink = async function(teamId) {
-  const { currentUser } = getState();
-  if (!currentUser) return; // auth не завершена, подождём
-
-  // Проверяем что пользователь ещё не в этой команде
-  const { data: me } = await sb.from('profiles')
-    .select('team_id').eq('id', currentUser.id).single();
-  if (me?.team_id === teamId) return; // уже в этой команде
-
-  // Загружаем название команды
-  const { data: team } = await sb.from('teams').select('name').eq('id', teamId).single();
-  if (!team) return;
-
-  if (!confirm(`Вступить в команду «${team.name}»?`)) return;
-
-  const { error } = await sb.from('profiles').update({ team_id: teamId }).eq('id', currentUser.id);
-  if (error) {
-    window.toast?.('Ошибка при вступлении');
-  } else {
-    window.toast?.(`✅ Ты в команде «${team.name}»!`);
-    // Убираем ?join из URL
-    history.replaceState({}, '', window.location.pathname);
-    window.showScreen('my-team-screen');
-    loadMyTeam();
-  }
-};
-
-// ── Казна: открыть модалку ────────────────────────────────────────
+// ── Treasury: open donate modal ──────────────────────────────────────────
 window._mtOpenDonate = function() {
   const existing = document.getElementById('mt-donate-overlay');
   if (existing) existing.remove();
@@ -604,7 +748,7 @@ window._mtDonate = async function() {
       window.toast?.(`Недостаточно нейронов (у тебя ${data.balance} ⚡)`);
     } else {
       window.toast?.('Ошибка при взносе');
-      console.error(error, data);
+      console.error('[mt] donate_to_team:', error, data);
     }
     return;
   }
