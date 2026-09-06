@@ -859,8 +859,6 @@ function buildStandardPackQuestions(questions){
 // ─── EXTRACTED QUESTION pack (standard quiz UI) ──────────────────
 function startExtractedPack(data, packTitle, importKey){
   // Map to playable format
-  console.error('[MFC-KEYS]', Object.keys(data[0]||{}).join(','));
-  console.error('[MFC-ANS]', 'answers_json='+JSON.stringify(data[0]?.answers_json), 'answers_ru='+JSON.stringify(data[0]?.answers_ru));
   let mapped = data.map(q=>{
     const ans = Array.isArray(q.answers_ru) ? q.answers_ru :
                 Array.isArray(q.answers_json) ? q.answers_json :
@@ -941,7 +939,6 @@ function showExplanation(q, isCorrect){
   let hasContent = false;
 
   // Show explanation image (answer slide)
-  console.error('[MFC-DEBUG] showExplanation answer_slide_img_url=', q.answer_slide_img_url, 'explanation_img=', q.explanation_img);
   if(q.answer_slide_img_url||q.explanation_img){
     img.src = q.answer_slide_img_url||q.explanation_img;
     img.style.display = 'block';

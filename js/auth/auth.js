@@ -74,13 +74,16 @@ export async function initAuth() {
   _bootAuth();
 }
 
+let _listenerBooted = false;
+
 async function _bootAuth(showAuth = true) {
   if (showAuth) {
     showScreen('auth');
     track('auth_screen_viewed', {});
   }
 
-  console.count('[auth] listener registered');
+  if (_listenerBooted) return;
+  _listenerBooted = true;
 
   sb.auth.onAuthStateChange(async (event, session) => {
     // Handle each event explicitly — TOKEN_REFRESHED must NOT re-run onboarding

@@ -277,8 +277,8 @@ function applyLang(){
   setText('nav-play-label',L.navPlay);
   setText('nav-duel-label',L.navDuel);
   setText('nav-cup-label',L.navCup||'Турнир');
-  setText('nav-profile-label','Профиль');
-  setText('nav-teams-label','Команда');
+  setText('nav-profile-label',lang==='ru'?'Профиль':'Profile');
+  setText('nav-teams-label',lang==='ru'?'Команда':'Team');
   const shopNav=safeEl('nav-shop-label');
   if(shopNav)shopNav.textContent=lang==='ru'?'Бонусы':'Bonuses';
   // Play menu
@@ -295,16 +295,16 @@ function applyLang(){
   setText('pm-random-sub',lang==='ru'?'Найди случайного соперника онлайн':'Find a random opponent online');
   setText('pm-duel',L.duelFriend||'Дуэль с другом');
   setText('pm-duel-sub',lang==='ru'?'Отправь ссылку и сыграй вместе':'Send a link and play together');
-  setText('pm-official',lang==='ru'?'Официальный турнир':'Официальный турнир');
+  setText('pm-official',lang==='ru'?'Официальный турнир':'Official Tournament');
   setText('pm-official-sub',lang==='ru'?'Идёт сейчас — успей присоединиться':'Live now — join before it starts');
   // Teams
   setText('th-title',lang==='ru'?'Команды':'Teams');
   setText('th-sub',lang==='ru'?'Вступи в команду и соревнуйся вместе. Ваш XP влияет на городской рейтинг.':'Join a team and compete together.');
   setText('t-create-team-btn',lang==='ru'?'⚡ Создать команду':'⚡ Create a team');
-  setText('t-team-или',lang==='ru'?'или вступить в существующую':'или вступить в существующую');
+  setText('t-team-или',lang==='ru'?'или вступить в существующую':'or join an existing one');
   setPlaceholder('team-join-input',lang==='ru'?'Код команды':'Team code');
   setText('tc-title',lang==='ru'?'Создать команду':'Create Team');
-  setText('tc-sub',lang==='ru'?'Ваша команда появится в городском рейтинге':'Команда появится в городском рейтинге');
+  setText('tc-sub',lang==='ru'?'Ваша команда появится в городском рейтинге':'Your team will appear in the city ranking');
   setPlaceholder('team-name-input',lang==='ru'?'Название команды':'Team name');
   setPlaceholder('team-city-input',lang==='ru'?'Город':'City');
   setText('tc-confirm-btn',lang==='ru'?'Создать →':'Create →');
@@ -5830,7 +5830,7 @@ function renderTeamsScreen(){
   document.getElementById('th-title').textContent = lang==='ru'?'Команды':'Teams';
   document.getElementById('th-sub').textContent = lang==='ru'?'Создай команду с городом и соревнуйтесь в городской лиге.':'Create a city team and compete in the city league.';
   document.getElementById('t-create-team-btn').textContent = lang==='ru'?'⚡ Создать команду':'⚡ Create a team';
-  document.getElementById('t-team-или').textContent = lang==='ru'?'или вступить в существующий':'или вступить в существующий';
+  document.getElementById('t-team-или').textContent = lang==='ru'?'или вступить в существующий':'or join an existing one';
   document.getElementById('t-join-team-btn').textContent = lang==='ru'?'Войти →':'Join →';
   document.getElementById('team-join-input').placeholder = lang==='ru'?'Код команды':'Team code';
   document.getElementById('tc-title').textContent = lang==='ru'?'Создать команду':'Create Team';
@@ -5844,7 +5844,7 @@ function renderTeamsScreen(){
   document.getElementById('tm-leave-btn').textContent = lang==='ru'?'Покинуть команду':'Leave team';
   document.getElementById('tm-members-label').textContent = lang==='ru'?'Участники':'Members';
   const tgt = document.getElementById('t-global-title'); if (tgt) tgt.textContent = lang==='ru'?'🌆 Городской рейтинг':'🌆 City Leaderboard';
-  document.getElementById('nav-teams-label').textContent = 'Команда';
+  document.getElementById('nav-teams-label').textContent = lang==='ru'?'Команда':'Team';
   document.getElementById('n-teams').textContent = neurons;
   document.getElementById('city-tab-teams').textContent = lang==='ru'?'Команды':'Teams';
   document.getElementById('city-tab-players').textContent = lang==='ru'?'Игроки':'Players';
