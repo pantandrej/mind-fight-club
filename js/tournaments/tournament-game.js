@@ -447,7 +447,7 @@ function tTickFromDeadline(){
   }
   const q = tQs[tIdx];
   const totalSec = tSecondsForQ(q);
-  const pct = Math.min(remaining / totalSec * 100, 100);
+  const pct = Math.min(remaining, totalSec) / totalSec * 100;
   const fill = document.getElementById('t-timer-fill');
   if(fill){ fill.style.width=pct+'%'; fill.style.background=pct<35?'#e05555':pct<60?'#f0a050':'var(--accent)'; }
   const cd = document.getElementById('t-countdown');
@@ -968,7 +968,7 @@ async function startTournament(){
 
   const firstQ      = questions[0];
   const deadlineSec = tSecondsForQ(firstQ);
-  const nowMs       = Date.now();
+  const serverNow   = localToServer(Date.now());
   // Strip correct answers before putting questions in Firebase (public room)
   // correct index (q.c) stays only in host's local tQs
   const questionsPublic = questions.map(({c, ...rest}) => rest); // omit c
@@ -979,8 +979,8 @@ async function startTournament(){
     participant_ids:         participantIds,
     current_question_index:  0,
     question_version:        1,
-    question_started_at:     nowMs,
-    question_deadline_at:    nowMs + deadlineSec * 1000 + 3000
+    question_started_at:     serverNow,
+    question_deadline_at:    serverNow + deadlineSec * 1000
   };
 
   if(window.fbTournUpdate){
