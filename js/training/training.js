@@ -531,10 +531,10 @@ async function loadUserPackPurchases(){
 function isPackOwned(packId){ return !!(_userPackPurchases && _userPackPurchases.has(packId)); }
 
 async function buyDBPack(packId, priceNeurons, isFree){
-  // Guest: require sign-in for paid packs
+  // Guests can play free/hype packs without owning them, but cannot purchase.
   if(!currentUser){
     if(isFree || priceNeurons === 0){
-      playDBPack(null, packId); // free packs work for guests
+      playDBPack(null, packId);
       return;
     }
     toast(lang==='ru'
@@ -542,61 +542,60 @@ async function buyDBPack(packId, priceNeurons, isFree){
       : '🔐 Sign in to buy packs and keep access', 3500);
     return;
   }
-  if(isAdmin()){ playDBPack(null, packId); return; } // admins bypass purchase
 
-  // Already purchased?
+  // Admins bypass the purchase flow entirely.
+  if(isAdmin()){ playDBPack(null, packId); return; }
+
+  // UX guard: skip RPC if already owned in local cache.
   if(!_userPackPurchases) await loadUserPackPurchases();
   if(isPackOwned(packId)){ playDBPack(null, packId); return; }
 
-  const price = isFree ? 0 : (priceNeurons || 0);
+  // Single atomic server-side purchase (free or paid).
+  // Server reads real price, validates balance, writes ledger + ownership atomically.
+  // Client never sends price_neurons.
+  const {data, error} = await sb.rpc('purchase_pack', { p_pack_id: packId });
 
-  // Free packs: create purchase record silently, then play
-  if(price === 0){
-    await sb.from('user_pack_purchases').insert({
-      user_id:      currentUser.id,
-      game_pack_id: packId,
-      price_neurons: 0,
-      purchased_at: new Date().toISOString()
-    }).then(()=>{}).catch(()=>{});
-    _userPackPurchases.add(packId);
-    playDBPack(null, packId);
-    return;
-  }
-
-  // Paid pack: check balance
-  if(neurons < price){
-    toast(lang==='ru'
-      ? `❌ Не хватает нейронов (нужно ${price} ⚡, у вас ${neurons} ⚡)`
-      : `❌ Not enough neurons (need ${price} ⚡, you have ${neurons} ⚡)`, 3500);
-    return;
-  }
-
-  // Deduct neurons and record purchase
-  const packSpend = await spendNeurons(price, 'pack_purchase', 'pack:' + packId + ':' + (currentUser?.id||''));
-  if(!packSpend || !packSpend.ok){
-    toast(lang==='ru'?'❌ Ошибка покупки пака':'❌ Pack purchase failed');
-    return;
-  }
-
-  const {error} = await sb.from('user_pack_purchases').insert({
-    user_id:       currentUser.id,
-    game_pack_id:  packId,
-    price_neurons: price,
-    purchased_at:  new Date().toISOString()
-  });
   if(error){
     toast('❌ ' + (lang==='ru' ? 'Ошибка покупки: ' : 'Purchase error: ') + error.message);
     track('pack_purchase_error', { pack_id: packId, error: error.message });
-    // Note: spendNeurons RPC already rolled back — no local rollback needed
-    await refreshBalance(); // re-sync from server
     return;
   }
 
-  _userPackPurchases.add(packId);
-  track('pack_purchased', {pack_id: packId, price});
-  toast(lang==='ru' ? `✅ Пак открыт! (-${price} ⚡)` : `✅ Pack unlocked! (-${price} ⚡)`);
+  if(!data?.ok){
+    if(data?.reason === 'insufficient'){
+      const bal  = data?.balance  ?? neurons;
+      const need = data?.required ?? priceNeurons ?? '?';
+      toast(lang==='ru'
+        ? `❌ Не хватает нейронов (нужно ${need} ⚡, у вас ${bal} ⚡)`
+        : `❌ Not enough neurons (need ${need} ⚡, you have ${bal} ⚡)`, 3500);
+    } else if(data?.reason === 'pack_not_available'){
+      toast(lang==='ru' ? '❌ Пак недоступен' : '❌ Pack not available');
+    } else {
+      toast(lang==='ru' ? '❌ Ошибка покупки пака' : '❌ Pack purchase failed');
+    }
+    track('pack_purchase_error', { pack_id: packId, reason: data?.reason });
+    return;
+  }
 
-  // Refresh shop UI so button switches to "Играть", then auto-launch the pack
+  // Update local ownership cache.
+  _userPackPurchases.add(packId);
+
+  // Sync balance from server response (avoids a separate fetch).
+  if(data.neurons !== undefined && window.setState) {
+    window.setState({ neurons: data.neurons });
+  } else {
+    await refreshBalance();
+  }
+
+  if(!data.already_owned){
+    const spent = data.neurons_spent || 0;
+    if(spent > 0){
+      toast(lang==='ru' ? `✅ Пак открыт! (-${spent} ⚡)` : `✅ Pack unlocked! (-${spent} ⚡)`);
+      track('pack_purchased', { pack_id: packId, price: spent });
+    }
+  }
+
+  // Refresh shop UI so button switches to "Играть", then launch the pack.
   const shopEl = document.getElementById('shop');
   if(shopEl && shopEl.classList.contains('active')) await renderDBGamePacks();
   playDBPack(null, packId);
