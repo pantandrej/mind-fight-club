@@ -1729,7 +1729,7 @@ async function saveProfileName(){
   document.getElementById('profile-name-edit').style.display = 'none';
   document.getElementById('profile-name-btn').textContent = '✏️ Изменить имя';
   if (currentUser) {
-    sb.from('profiles').upsert({ id: currentUser.id, display_name: name, updated_at: new Date().toISOString() }, { onConflict: 'id' }).then(()=>{}).catch(()=>{});
+    sb.rpc('update_my_profile', { p_display_name: name }).then(()=>{}).catch(()=>{});
   }
   toast(lang === 'ru' ? '✓ Имя сохранено' : '✓ Name saved');
 }
@@ -1759,9 +1759,7 @@ async function saveProfileCity(){
     if(cityBtn)cityBtn.style.display='none';
     document.getElementById('profile-city-edit').style.display='none';
     if(currentUser){
-      sb.from('profiles').upsert({id:currentUser.id,city,updated_at:new Date().toISOString()},{onConflict:'id'}).then(()=>{}).catch(()=>{});
-      // user_profiles city/name update only — balance NOT written here (RPC only)
-      sb.from('user_profiles').update({city,display_name:currentUser.user_metadata?.full_name||currentUser.email?.split('@')[0]||'Игрок',updated_at:new Date().toISOString()}).eq('id',currentUser.id).then(()=>{}).catch(()=>{});
+      sb.rpc('update_my_profile', { p_city: city }).then(()=>{}).catch(()=>{});
     }
     track('city_added', {city});
     toast(lang==='ru'?'📍 Город сохранён — теперь ты в городском рейтинге!':'📍 City saved — you\'re in the city leaderboard!');

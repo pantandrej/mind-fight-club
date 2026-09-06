@@ -89,39 +89,39 @@ Object.defineProperty(window, '_sbReady', {
 // ═══════════════════════════════════════════
 const T={
   en:{
-    authSub:'Войдите, чтобы сохранить нейроны и соревноваться глобально',
-    authGoogle:'Войти через Google',authOr:'или',
+    authSub:'Sign in to save your neurons and compete globally',
+    authGoogle:'Sign in with Google',authOr:'or',
     authGuest:'Continue as guest',authNote:"Guest progress won't be saved",
     hLabel:'Beta',hTitle:'Fight with your mind. Win with your heart.',
     hSub:'Real-time quiz duels — with a friend, a random rival, or in a tournament.',
-    hPlay:'⚡ Играть',hMode:'Режим',hTopic:'Тема',hBadges:'Achievements',
+    hPlay:'⚡ Play',hMode:'Mode',hTopic:'Topic',hBadges:'Achievements',
     mFeedName:'Quick Play',mFeedDesc:'10 questions per day — free',
     mDuelName:'Live Duel',mDuelDesc:'Real-time battle with a friend',
     chipAll:'All topics',
     categories:{SCIENCE:'Science',HISTORY:'History',GEOGRAPHY:'Geography',CINEMA:'Cinema',SPORTS:'Sports',MUSIC:'Music',ART:'Art',GAMING:'Gaming'},
     bFirst:'First game',bStreak3:'Streak x3',bStreak5:'Streak x5',bPerfect:'Perfect',bDuel:'First duel',bTourn:'Tournament',bNeurons:'100 neurons',
-    dTitle:'Live Duel',dSub:'Challenge a friend to a Одни вопросы, один таймер — кто быстрее отвечает, тот побеждает.',
-    dCreate:'⚡ Create a duel room',dOr:'или войти по коду',dCodePlaceholder:'Enter 6-letter code',dJoin:'Join →',
+    dTitle:'Live Duel',dSub:'Challenge a friend in real time. One question, one timer — fastest answer wins.',
+    dCreate:'⚡ Create a duel room',dOr:'or join by code',dCodePlaceholder:'Enter 6-letter code',dJoin:'Join →',
     dCodeLabel:'Share this code with your friend',dCopy:'Copy',dCopied:'Copied!',dReady:'✓ Ready',dWaiting:'Waiting...',dShareCode:'Share the code',
     dStart:'⚔️ Start the battle!',dWaitOpp:'Waiting for opponent...',
-    dWin:'Победа!',dLose:'You lost!',dTie:"It's a tie!",dWinSub:'You outscored your opponent.',dLoseSub:'Better luck next time!',dTieSub:'Perfectly matched brains.',
+    dWin:'You won!',dLose:'You lost!',dTie:"It's a tie!",dWinSub:'You outscored your opponent.',dLoseSub:'Better luck next time!',dTieSub:'Perfectly matched brains.',
     dPlayAgain:'Play again',
     tTitle:'Mind Championship',tMeta:'20 questions · All topics · Up to 50 players',
     tCreate:'⚡ Create tournament room',tJoin:'Join →',tCodeLabel:'Room code — share with players',
     tCopy:'Copy',tCopied:'Copied!',tPlayersLabel:'Players joined',tStart:'🏆 Start!',tWait:'Waiting for host to start...',
     tScoreLabel:'Score:',tOverTitle:'Tournament Over!',tFinalLabel:'Final standings',tFinalHdr:'Leaderboard',tAgain:'Play again',
     wlBadge:'Early access',wlTitle:'The app is coming.<br>Be the first.',
-    wlSub:"Мы строим Brain Fight Club — глобальную платформу для интеллектуальных боёв.",
+    wlSub:"We're building Brain Fight Club — a global platform for intellectual battles.",
     wlSubmit:'Get early access →',wlThanksTitle:"You're on the list!",wlThanksSub:"We'll email you when Brain Fight Club launches.",
     wlCount:'Joined:',wlCountSuffix:'people from 38 countries',
     scLabel:'Round complete',scSub:'neurons earned',scCorrectLabel:'Correct',scStreakLabel:'Best streak',scAccLabel:'Accuracy',
     scAgain:'⚡ Play again',scDuel:'⚔️ Live Duel',scTourn:'🏆 Tournament',scJoin:'📧 Join waitlist',
-    next:'Далее →',navHome:'Главная',navPlay:'Режимы игры',navDuel:'Дуэль',navCup:'Турнир',navJoin:'Войти',
+    next:'Next →',navHome:'Home',navPlay:'Play',navDuel:'Duel',navCup:'Tournament',navJoin:'Sign In',
     badgeEarned:'🏆 Badge earned:',oppAnswered:'✓ Opponent answered',
     statsTitle:'Statistics',statsGames:'Games',statsCorrect:'Correct',statsAcc:'Accuracy',statsStreak:'Best streak',
     achievTitle:'Achievements',rulesTitle:'How it works',freeVsPrem:'Free vs Premium',
     neuronsExplTitle:'What are Neurons?',tracksTitle:'Tracks',packsTitle:'Question Packs',
-    playMenu:'Play',quickPlay:'Быстрая игра',chooseTopic:'Choose Topic',myPacks:'Bonuses',
+    playMenu:'Play',quickPlay:'Quick Play',chooseTopic:'Choose Topic',myPacks:'Bonuses',
     dailyChallenge:'Daily Challenge',randomBattle:'Random Battle',duelFriend:'Duel a Friend',
   },
   ru:{
@@ -159,10 +159,6 @@ const T={
     neuronsExplTitle:'Что такое нейроны?',tracksTitle:'Треки',packsTitle:'Активности',
     playMenu:'Играть',quickPlay:'Быстрая игра',chooseTopic:'Выбрать тему',myPacks:'Бонусы',
     dailyChallenge:'Задание дня',randomBattle:'Случайный бой',duelFriend:'Дуэль с другом',
-    scAgain:'⚡ Играть снова',scDuel:'⚔️ Дуэль',scTourn:'🏆 Турнир',scJoin:'📧 Присоединиться',
-    next:'Далее →',navHome:'Главная',navPlay:'Режимы игры',navDuel:'Дуэль',navCup:'Турнир',navJoin:'Войти',
-    badgeEarned:'🏆 Достижение:',
-    oppAnswered:'✓ Соперник ответил',
   }
 };
 
@@ -12647,7 +12643,7 @@ async function startPremiumCheckout(plan){
 
     if(!res.ok || !data.confirmation_url){
       toast('Ошибка: ' + (data.error || 'Попробуй ещё раз'));
-      if(btn){ btn.textContent = `Оформить за ${prices[plan]} / месяц`; btn.disabled = false; }
+      if(btn){ btn.textContent = btnLabels[plan]; btn.disabled = false; }
       return;
     }
 

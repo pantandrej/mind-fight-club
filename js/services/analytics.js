@@ -8,11 +8,14 @@ import { getState } from '../state.js';
 const _sessionId = Math.random().toString(36).slice(2);
 
 // ── Mixpanel setup ────────────────────────────────────────────────
-const MIXPANEL_TOKEN = '4b7f2c8a1d3e9f0b6a5c2d8e4f1b7a3c'; // replace with real token
+// Set MIXPANEL_TOKEN to a real project token to enable investor-funnel tracking.
+// Leave null (or a placeholder) to disable Mixpanel loading entirely — this
+// prevents the "object not initialized" console error from the CDN script.
+const MIXPANEL_TOKEN = null; // TODO: replace with real token when available
 let _mpReady = false;
 
 function _initMixpanel() {
-  if (_mpReady || window._mpLoading) return;
+  if (!MIXPANEL_TOKEN || _mpReady || window._mpLoading) return;
   window._mpLoading = true;
   // Load Mixpanel via script tag — avoids strict-mode IIFE issues in ES modules
   const s = document.createElement('script');

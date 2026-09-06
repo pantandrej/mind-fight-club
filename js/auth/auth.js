@@ -398,7 +398,7 @@ export async function ensureProfile() {
   // Tentative code — RPC only uses it when the profile has no ref_code yet.
   const tentativeCode = Math.random().toString(36).slice(2, 10).toUpperCase();
 
-  const { data, error } = await sb.rpc('ensure_my_profile', {
+  let { data, error } = await sb.rpc('ensure_my_profile', {
     p_display_name: derived_name,
     p_ref_code:     tentativeCode,
     p_city:         city,
@@ -406,9 +406,22 @@ export async function ensureProfile() {
   });
 
   if (error) {
-    console.error('[ensureProfile] RPC error', error);
-    // Fall through — loadUserNeurons will still try to read the profile.
-    return;
+    console.warn('[ensureProfile] RPC error, retrying once:', error.message);
+    // Single retry after brief delay — handles transient network errors
+    await new Promise(r => setTimeout(r, 1200));
+    ({ data, error } = await sb.rpc('ensure_my_profile', {
+      p_display_name: derived_name,
+      p_ref_code:     tentativeCode,
+      p_city:         city,
+      p_lang:         lang,
+    }));
+    if (error) {
+      console.error('[ensureProfile] RPC failed after retry:', error.message);
+      // Fall through — loadUserNeurons will read 0 neurons; user sees empty state,
+      // not a crash. No toast here: the user just logged in and an empty state
+      // is less alarming than an error message.
+      return;
+    }
   }
 
   const ref_code = data?.ref_code || tentativeCode;
