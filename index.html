@@ -3217,9 +3217,10 @@ console.log('✅ Firebase Tournaments module loaded');
 
   window.saveBio = async function() {
     const currentUser = window.currentUser || window._bfcState?.()?.currentUser;
-    if (!currentUser || !window.sb) return;
+    if (!currentUser || !window.sb) { console.error('[saveBio] no currentUser or sb', {currentUser, sb: !!window.sb}); return; }
     const bio = document.getElementById('profile-bio-input').value.trim();
-    await window.sb.from('profiles').update({ bio }).eq('id', currentUser.id);
+    const { error } = await window.sb.from('profiles').update({ bio }).eq('id', currentUser.id);
+    if (error) { console.error('[saveBio] error', error); window.toast?.('Ошибка: ' + error.message); return; }
     document.getElementById('profile-bio-text').textContent = bio;
     document.getElementById('profile-bio-text').style.display = bio ? 'inline' : 'none';
     document.getElementById('profile-bio-placeholder').style.display = bio ? 'none' : 'inline';
