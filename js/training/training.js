@@ -929,7 +929,7 @@ function startExtractedPack(data, packTitle, importKey){
 
   setState({ qIdx: 0, correctCount: 0, streak: 0, bestStreak: 0, roundScore: 0 });
   _speedNeurons = 0;
-  _gameStartTime=Date.now(); _gameId=null;
+  _gameStartTime=Date.now(); _gameId = window._currentSessionId || null;
   buildDots('prog-dots', curQ.length);
   track('pack_started', {pack:importKey, mode:'extracted', count:curQ.length});
   createGameRow('pack');
@@ -1402,11 +1402,14 @@ function showScore(){
   if(_speedNeurons > 0){
     const { currentUser } = getState();
     if(currentUser && _gameId){
-      awardCurrency({
-        operationType: 'speed_answer',
-        operationKey:  'speed:' + _gameId,
-        guestPreviewAmount: _speedNeurons,
-      }).then(res => { if(res?.neurons) setState({ neurons: res.neurons }); updNeurons(); });
+      // claim_speed_reward verifies session ownership + today UTC + reward_claimed flag
+      sb.rpc('claim_speed_reward', {
+        p_session_id: _gameId,
+        p_neurons:    Math.round(_speedNeurons),
+      }).then(({ data: res }) => {
+        if(res?.neurons) setState({ neurons: res.neurons });
+        updNeurons();
+      }).catch(() => {});
     } else if(!currentUser) {
       setState({ neurons: getState().neurons + _speedNeurons });
       updNeurons();
