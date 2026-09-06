@@ -27,15 +27,26 @@ export async function loadActivityFeed() {
     const since = new Date(Date.now() - 24 * 3600000).toISOString();
     const { data, error } = await sb
       .from('pack_results')
-      .select('pack_id, pack_title, score, correct, total, played_at, user_id, profiles(display_name)')
+      .select('pack_id, pack_title, score, correct, total, played_at, user_id')
       .gte('played_at', since)
       .order('played_at', { ascending: false })
       .limit(8);
 
     if (error || !data?.length) return;
 
+    // Fetch display names separately (pack_results has no FK to profiles)
+    const userIds = [...new Set(data.map(r => r.user_id).filter(Boolean))];
+    const nameMap = {};
+    if (userIds.length) {
+      const { data: profiles } = await sb
+        .from('profiles')
+        .select('id, display_name')
+        .in('id', userIds);
+      profiles?.forEach(p => { nameMap[p.id] = p.display_name; });
+    }
+
     const rows = data.map(r => {
-      const name  = r.profiles?.display_name || 'Игрок';
+      const name  = nameMap[r.user_id] || 'Игрок';
       const icon  = PACK_ICONS[r.pack_id] || '📦';
       const title = r.pack_title || r.pack_id;
       const pct   = r.total > 0 ? Math.round((r.correct / r.total) * 100) : 0;
