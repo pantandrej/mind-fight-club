@@ -60,9 +60,14 @@ export async function awardCurrency({ operationType, operationKey, guestPreviewA
       track('award_rpc_error', { op: operationType, err: error.message });
       return null;
     }
-    setState({ neurons: data.neurons, xp: data.xp });
-    updNeurons();
-    return data; // { neurons, xp, awarded, already_claimed }
+    // Only sync balance when server returned actual balance fields.
+    // {ok: false} responses (e.g. server_verification_unavailable) don't
+    // include neurons/xp — writing undefined would corrupt local state.
+    if (data?.neurons !== undefined) {
+      setState({ neurons: data.neurons, xp: data.xp ?? getState().xp });
+      updNeurons();
+    }
+    return data; // { ok, neurons, xp, awarded_neurons, awarded_xp, ... }
   } catch (e) {
     console.error('[wallet] awardCurrency exception:', e.message);
     return null;

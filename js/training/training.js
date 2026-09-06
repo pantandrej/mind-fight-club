@@ -34,28 +34,12 @@ function isDailyGoalClaimed(){
 }
 
 async function claimDailyGoalBonus(){
-  // Server-side idempotency: RPC uses operation_key daily_goal:{user_id}:{date}
-  // Client-side optimistic guard to avoid redundant calls
-  if(isDailyGoalClaimed()) return 0;
-
-  const todayKey = getTrainingTodayKey(); // YYYY-MM-DD from local clock (display only)
-  // The server uses NOW() AT TIME ZONE 'UTC' for the real date — not browser time
-
-  const result = await awardNeurons(
-    DAILY_GOAL_BONUS,
-    'daily_goal',
-    'daily_goal:' + todayKey  // server validates uniqueness per user per UTC day
-  );
-
-  if(result === null){
-    // RPC failed or already claimed on server — no double award
-    return 0;
-  }
-
-  // Mark locally only as UX cache so we don't spam the RPC
-  localStorage.setItem('mfc_daily_goal_claimed_' + todayKey, 'true');
-  track('daily_goal_claimed', {bonus: DAILY_GOAL_BONUS});
-  return DAILY_GOAL_BONUS;
+  // daily_goal is disabled server-side (migration 71: server_verification_unavailable).
+  // The award will be re-enabled once session_questions + submit_training_answer are
+  // implemented. For now: do not call the RPC, do not mark localStorage as claimed,
+  // do not show a reward toast.
+  // UI: show daily goal as "coming soon" (no reward displayed).
+  return 0;
 }
 
 function showOfficialFromMenu(){
@@ -1358,9 +1342,18 @@ function showScore(){
   // Load city rank teaser asynchronously
   loadScoreCityRank();
 
-  // Update "neurons earned" label
+  // Speed score label: authenticated users do NOT get wallet credit yet
+  // (server-authoritative answer tracking is not implemented).
+  // Show "speed points · coming soon" to avoid misleading the user.
   const scNeuronsLbl = document.getElementById('sc-neurons-lbl');
-  if(scNeuronsLbl) scNeuronsLbl.textContent = lang==='ru' ? 'нейронов заработано' : 'neurons earned';
+  if(scNeuronsLbl){
+    const { currentUser: _cu } = getState();
+    if(_cu){
+      scNeuronsLbl.textContent = lang==='ru' ? 'очков скорости · скоро' : 'speed pts · coming soon';
+    } else {
+      scNeuronsLbl.textContent = lang==='ru' ? 'нейронов (демо)' : 'neurons (demo)';
+    }
+  }
   const earned=[];
   if(checkBadges('first'))earned.push('first');
   if(bestStreak>=3&&checkBadges('streak3'))earned.push('streak3');

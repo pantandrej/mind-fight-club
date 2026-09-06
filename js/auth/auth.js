@@ -417,12 +417,13 @@ export async function ensureProfile() {
     const newCode = Math.random().toString(36).slice(2, 10).toUpperCase();
     setState({ refCode: newCode });
     localStorage.setItem('mfc_refcode', newCode);
-    // Insert new profile — initial neurons from guest demo balance
-    // NOTE: neurons/xp should normally come from RPC; this is new-user bootstrap only
+    // Insert new profile — always start at 0 neurons/xp.
+    // Guest demo balance is local-only and must NOT be transferred to the server wallet.
+    // All economy mutations go through server RPCs (award_currency, spend_neurons).
     sb.from('profiles').insert({
       id: currentUser.id, display_name, city,
-      total_score: neurons || 0,
-      neurons:     neurons || 0,
+      total_score: 0,
+      neurons:     0,
       xp:          0,
       ref_code: newCode,
       language: lang,

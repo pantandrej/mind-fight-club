@@ -6475,15 +6475,16 @@ async function findUserByRefCode(code){
 async function activateReferral(){
   if(!currentUser) return;
   try{
-    // Use server-side RPC - atomic, cannot be abused from client
+    // Marks referral as 'activated' server-side (idempotent status update only).
+    // reward_invited = 0: invited user was already paid at registration via checkRefParam.
+    // Referrer is paid by the _check_referral_on_streak trigger at streak=5.
     const {data, error} = await sb.rpc('activate_referral', {p_invited_user_id: currentUser.id});
     if(error){ console.log('Referral RPC error:', error.message); return; }
-    if(data?.ok){
-      const reward = data.reward_invited||50;
-      // Referral reward already awarded server-side — refresh local balance
+    if(data?.ok && data?.reward_invited > 0){
+      // Only show toast and refresh if the server actually awarded neurons
       await refreshBalance();
-      track('referral_activated', {reward});
-      toast('🎁 +'+(reward)+(lang==='ru'?' нейронов! Реферальный бонус':' neurons! Referral bonus'), 3500);
+      track('referral_activated', {reward: data.reward_invited});
+      toast('🎁 +'+(data.reward_invited)+(lang==='ru'?' нейронов! Реферальный бонус':' neurons! Referral bonus'), 3500);
     }
   }catch(e){ console.log('Referral activation failed:', e); }
 }
