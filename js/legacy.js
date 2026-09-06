@@ -6441,26 +6441,10 @@ async function checkRefParam(){
   const myRef = getOrCreateRefCode();
   if(ref === myRef){ localStorage.removeItem('mfc_pending_ref'); return; } // own link
 
-  // Check if already has a referral record
-  const {data: existing} = await sb.from('referrals')
-    .select('id').eq('invited_user_id', currentUser.id).limit(1);
-  if(existing && existing.length){ localStorage.removeItem('mfc_pending_ref'); return; }
-
-  // Find referrer by ref_code
-  const referrerId = await findUserByRefCode(ref);
-  if(!referrerId){ localStorage.removeItem('mfc_pending_ref'); return; }
-
-  // Create referral record
-  await sb.from('referrals').insert({
-    referrer_id: referrerId,
-    invited_user_id: currentUser.id,
-    ref_code: ref,
-    status: 'signed_up',
-    reward_referrer: 100,
-    reward_invited: 100,
-    signed_up_at: new Date().toISOString(),
-    created_at: new Date().toISOString()
-  });
+  // Server-side referral registration: validates ref_code, prevents fake self-referral,
+  // creates referrals row under postgres role (bypasses RLS that blocks client INSERT).
+  const {data: regResult} = await sb.rpc('register_referral', { p_ref_code: ref });
+  if(!regResult?.ok){ localStorage.removeItem('mfc_pending_ref'); return; }
   localStorage.removeItem('mfc_pending_ref');
   track('referral_signed_up', {ref_code: ref});
 

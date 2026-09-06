@@ -272,8 +272,11 @@ async function startQuickPlay(){
       else if (typeof window.showScreen === 'function') window.showScreen('daily-limit');
       return;
     }
-    // Store session_id for later reference (analytics, leaderboard)
-    if (sessionData?.session_id) window._currentSessionId = sessionData.session_id;
+    // Store session_id for this specific quick play game
+    if (sessionData?.session_id) {
+      window._currentSessionId   = sessionData.session_id;
+      window._quickPlaySessionId = sessionData.session_id; // explicit: owned by this quick play
+    }
   }
 
   // Iron-clad lock — applies to everyone, including admins
@@ -929,7 +932,10 @@ function startExtractedPack(data, packTitle, importKey){
 
   setState({ qIdx: 0, correctCount: 0, streak: 0, bestStreak: 0, roundScore: 0 });
   _speedNeurons = 0;
-  _gameStartTime=Date.now(); _gameId = window._currentSessionId || null;
+  _gameStartTime = Date.now();
+  // Packs do NOT inherit the quick play session — they have no training session of their own.
+  // Explicitly null out so speed reward and complete_training_session are not called for packs.
+  window._quickPlaySessionId = null;
   buildDots('prog-dots', curQ.length);
   track('pack_started', {pack:importKey, mode:'extracted', count:curQ.length});
   createGameRow('pack');
@@ -1398,23 +1404,28 @@ function showScore(){
   // Sync team score async (club aggregation)
   if(window.syncTeamScoreAfterGame) window.syncTeamScoreAfterGame();
 
-  // Нейроны за скорость: sum(timeLeft) за каждый верный ответ (1–30 за вопрос)
-  if(_speedNeurons > 0){
+  // Speed neurons: UI shows local counter; wallet credit requires server-side answer tracking.
+  // Guest users get local-only neurons (no server state).
+  {
     const { currentUser } = getState();
-    if(currentUser && _gameId){
-      // claim_speed_reward verifies session ownership + today UTC + reward_claimed flag
-      sb.rpc('claim_speed_reward', {
-        p_session_id: _gameId,
-        p_neurons:    Math.round(_speedNeurons),
-      }).then(({ data: res }) => {
-        if(res?.neurons) setState({ neurons: res.neurons });
-        updNeurons();
+    if(currentUser && currentGameType === 'quick' && window._quickPlaySessionId){
+      // Mark the session as completed (server-side, for daily_goal eligibility).
+      // complete_training_session checks: ownership, mode=training, elapsed >= 60s.
+      sb.rpc('complete_training_session', {
+        p_session_id: window._quickPlaySessionId,
       }).catch(() => {});
-    } else if(!currentUser) {
+      // Speed reward: returns server_verification_unavailable (disabled until
+      // submit_training_answer() + session_questions table are implemented).
+      // Called for logging/monitoring purposes only — no neurons credited.
+      sb.rpc('claim_speed_reward', {
+        p_session_id: window._quickPlaySessionId,
+      }).catch(() => {});
+    } else if(!currentUser && _speedNeurons > 0) {
       setState({ neurons: getState().neurons + _speedNeurons });
       updNeurons();
     }
-    // Баллы Brain Fights: +1 за каждый верный ответ, макс 10/день
+    // Brain Fights: record_training_bf temporarily returns 0 (see migration 70).
+    // Called to maintain compatibility; re-enabled when server verification is ready.
     if(currentUser && correctCount > 0){
       sb.rpc('record_training_bf', { p_user_id: currentUser.id, p_correct: correctCount }).catch(() => {});
     }
