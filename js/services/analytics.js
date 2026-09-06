@@ -58,9 +58,11 @@ export async function track(eventName, props = {}) {
     }).then(() => {}).catch(() => {});
 
     // External: Mixpanel (investor funnel events)
+    // Guard with _mpReady: window.mixpanel exists once the script loads, but
+    // calling track() before init() completes logs "object not initialized".
     if (INVESTOR_EVENTS.has(eventName)) {
       _initMixpanel();
-      if (window.mixpanel) {
+      if (_mpReady && window.mixpanel) {
         if (currentUser?.id && !window._mpIdentified) {
           window.mixpanel.identify(currentUser.id);
           window.mixpanel.people.set({
@@ -82,7 +84,7 @@ export async function track(eventName, props = {}) {
 export function trackPageView() {
   _initMixpanel();
   try {
-    if (window.mixpanel) window.mixpanel.track_pageview();
+    if (_mpReady && window.mixpanel) window.mixpanel.track_pageview();
   } catch (_) {}
   track('session_start', { referrer: document.referrer, url: location.href });
 }

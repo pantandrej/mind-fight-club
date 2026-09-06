@@ -329,7 +329,7 @@ function applyLang(){
   // Shop/daily
   setText('daily-label',lang==='ru'?'Задание дня':'Daily Challenge');
   setText('ref-title',lang==='ru'?'Пригласить друзей':'Invite friends');
-  setText('ref-sub',lang==='ru'?'Оба получите +50 нейронов при регистрации':'Both of you get +50 neurons when they sign up');
+  setText('ref-sub',lang==='ru'?'Ты получишь +100 нейронов сразу, пригласивший — +100 при серии 5 дней':'You get +100 neurons instantly; your inviter gets +100 at your 5-day streak');
   setText('shop-section-title',lang==='ru'?'Активности':'Activities');
   // Profile
   setText('profile-stats-title',lang==='ru'?'Статистика':'Statistics');
@@ -6392,7 +6392,7 @@ async function loadRefCode(){
 async function renderRefCard(){
   const code = getOrCreateRefCode();
   document.getElementById('ref-title').textContent = lang==='ru'?'Пригласи друзей':'Invite friends';
-  document.getElementById('ref-sub').textContent = lang==='ru'?'Оба получат +50 нейронов когда друг пройдёт первый квиз':'Both get +50 neurons when your friend completes their first quiz';
+  document.getElementById('ref-sub').textContent = lang==='ru'?'Ты получишь +100 нейронов сразу, пригласивший — +100 при серии 5 дней':'You get +100 neurons instantly; your inviter gets +100 at your 5-day streak';
   document.getElementById('ref-count-lbl').textContent = lang==='ru'?' друзей активировали':'friends activated';
   document.getElementById('ref-earned-lbl').textContent = lang==='ru'?' нейронов заработано':' нейронов заработано';
   if(code){
@@ -6407,7 +6407,7 @@ async function renderRefCard(){
         .eq('status','rewarded');
       if(data){
         document.getElementById('ref-count').textContent = data.length;
-        document.getElementById('ref-earned').textContent = data.reduce((s,r)=>s+(r.reward_referrer||50),0);
+        document.getElementById('ref-earned').textContent = data.reduce((s,r)=>s+(r.reward_referrer||100),0);
       }
     }
   } else {

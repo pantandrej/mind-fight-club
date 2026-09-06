@@ -320,9 +320,13 @@ async function _onUserLoaded(user) {
   console.count('[auth] onUserLoaded');
   if (!user) return;
 
-  if (typeof window.loadCurrentUserRole === 'function') await window.loadCurrentUserRole();
-  await loadUserNeurons();
+  // Order matters for new users:
+  // 1. ensureProfile creates the profile row if it doesn't exist yet.
+  // 2. loadUserNeurons reads neurons/xp from the (now guaranteed) profile row.
+  // 3. loadCurrentUserRole reads admin_users (independent of profile, but consistent).
   await ensureProfile();
+  await loadUserNeurons();
+  if (typeof window.loadCurrentUserRole === 'function') await window.loadCurrentUserRole();
   if (typeof window.loadRefCode === 'function') await window.loadRefCode();
 
   // Sync legacy globals after load
