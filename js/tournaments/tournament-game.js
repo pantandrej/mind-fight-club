@@ -19,6 +19,7 @@ let _fbTournUnsub = null;
 let tPoll       = null;
 let _tAdvanceLock = false;
 let _tServerTimeOffset = 0;
+let _tQuestionShownAt  = 0; // timestamp when current question was rendered (ms)
 let _tHeartbeatTimer = null;
 let _tSyncPoll = null;
 let _tSyncCountdown = null;
@@ -354,6 +355,7 @@ function tLoadQFromRoom(room){
   _tAdvanceLock   = false;
   _tAnswerRevealed = false;
   _tAllConfirmed   = false;
+  _tQuestionShownAt = Date.now();
   // Hide answer-next button for new question
   const _ansBtn = document.getElementById('t-answer-next');
   if(_ansBtn){ _ansBtn.className = ''; _ansBtn.textContent = '▶ Далее'; }
@@ -710,8 +712,9 @@ function tUpdateWaitDisplay(participants, room){
     }
   }
 
-  // All answered — reveal and advance regardless of whether local player answered
-  if(answered >= total && total > 0 && !_tAnswerRevealed){
+  // All answered — reveal and advance, but only after minimum display time
+  const _minShownMs = tQs[tIdx]?.question_type === 'info' ? 6000 : 8000;
+  if(answered >= total && total > 0 && !_tAnswerRevealed && Date.now() - _tQuestionShownAt >= _minShownMs){
     if(tTimer){ clearInterval(tTimer); tTimer=null; }
     const isInfo = tQs[tIdx]?.question_type === 'info';
     if(!isInfo){
