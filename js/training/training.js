@@ -1376,28 +1376,12 @@ function showScore(){
   if(scAgainBtn)scAgainBtn.textContent=lang==='ru'?'⚡ Играть снова':'⚡ Play again';
   const scDuelBtn=document.getElementById('sc-duel-btn');
   if(scDuelBtn)scDuelBtn.textContent=lang==='ru'?'⚔️ Дуэль':'⚔️ Live Duel';
-  // Award earned neurons + xp via server RPC (idempotent by game_id)
-  // Save session stats for leaderboard/profile
-  if(window._currentSessionId && window.sb){
-    window.sb.from('game_sessions').update({
-      correct_answers: correctCount,
-      questions_count: Array.isArray(curQ) ? curQ.length : 10,
-      score:           _roundScore,
-    }).eq('id', window._currentSessionId).then(()=>{}).catch(()=>{});
-  }
   // Hide game score pill
   const _gsp2 = document.getElementById('game-score-pill');
   if(_gsp2) _gsp2.style.display = 'none';
-  // Pack leaderboard: save + show top
-  if(currentGameType === 'pack' && currentPackKey && window.sb && window.currentUser){
-    const packMode = 'pack:' + currentPackKey;
-    window.sb.from('game_sessions').insert({
-      user_id: window.currentUser.id, mode: packMode,
-      score: _roundScore, correct_answers: correctCount,
-      questions_count: Array.isArray(curQ) ? curQ.length : 10,
-    }).then(()=>{}).catch(()=>{});
-    _loadPackLeaderboard(packMode, _roundScore);
-  } else {
+  // Pack leaderboard: server persistence disabled (game_sessions RLS blocks client writes).
+  // Hide the leaderboard section until server-side session tracking is implemented.
+  {
     const lbEl = document.getElementById('sc-pack-leaderboard');
     if(lbEl) lbEl.style.display = 'none';
   }
@@ -1423,11 +1407,6 @@ function showScore(){
     } else if(!currentUser && _speedNeurons > 0) {
       setState({ neurons: getState().neurons + _speedNeurons });
       updNeurons();
-    }
-    // Brain Fights: record_training_bf temporarily returns 0 (see migration 70).
-    // Called to maintain compatibility; re-enabled when server verification is ready.
-    if(currentUser && correctCount > 0){
-      sb.rpc('record_training_bf', { p_user_id: currentUser.id, p_correct: correctCount }).catch(() => {});
     }
   }
   window.saveGameStats?.(correctCount,curQ.length,bestStreak);

@@ -6460,13 +6460,9 @@ async function checkRefParam(){
     }
   } catch(e) { console.log('Referral signup award failed:', e); }
 
-  // Award referrer via server-side RPC (runs as SECURITY DEFINER to bypass RLS)
-  try {
-    await sb.rpc('award_referrer', {
-      p_referrer_id: referrerId,
-      p_invited_id: currentUser.id
-    });
-  } catch(e) { console.log('Referrer award RPC failed:', e); }
+  // Referrer bonus is awarded automatically by the _check_referral_on_streak trigger
+  // when the invited user reaches daily_streak = 5 (reads profiles.referred_by set
+  // by register_referral above). No client-side call needed here.
 }
 
 async function findUserByRefCode(code){
