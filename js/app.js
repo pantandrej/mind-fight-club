@@ -50,19 +50,17 @@ document.addEventListener('DOMContentLoaded', () => {
   initAuth();
   initVKIDCallback();
   registerServiceWorker();
-  // Brand page route ?brand=slug
   checkBrandRoute();
-  // Show tournament banner if any starts within 24h
-  setTimeout(refreshHomeBanner, 2000);
-  // Load daily question card on home
-  setTimeout(loadDailyQuestion, 3000);
-  // Daily logic widget on home
-  setTimeout(initDailyLogic, 3500);
-  // Activity feed — who's playing right now
-  setTimeout(loadActivityFeed, 4000);
-  // Super question of the day
-  setTimeout(loadSuperQuestion, 4500);
+  _bootHomeWidgets();
 });
+
+async function _bootHomeWidgets() {
+  refreshHomeBanner();
+  await loadDailyQuestion();
+  await initDailyLogic();
+  await loadActivityFeed();
+  await loadSuperQuestion();
+}
 
 async function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
