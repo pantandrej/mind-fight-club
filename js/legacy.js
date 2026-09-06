@@ -6381,11 +6381,13 @@ async function loadRefCode(){
     refCode = data.ref_code;
     localStorage.setItem('mfc_refcode', refCode);
   } else {
-    // Generate and save ref_code
+    // ref_code should be set by ensure_my_profile RPC at boot (ensureProfile in auth.js).
+    // If somehow still missing (very old account), use the RPC to set it safely.
+    // Direct profiles.update({ref_code}) is blocked by guard_critical_profile_fields trigger.
     const newCode = Math.random().toString(36).slice(2,10).toUpperCase();
     refCode = newCode;
     localStorage.setItem('mfc_refcode', newCode);
-    sb.from('profiles').update({ref_code: newCode}).eq('id', currentUser.id).then(()=>{}).catch(()=>{});
+    sb.rpc('ensure_my_profile', { p_ref_code: newCode }).then(()=>{}).catch(()=>{});
   }
 }
 

@@ -3219,11 +3219,13 @@ console.log('✅ Firebase Tournaments module loaded');
     if (!window.sb) { console.error('[saveBio] no sb'); return; }
     const { data: { user } } = await window.sb.auth.getUser();
     if (!user) { console.error('[saveBio] not authenticated'); return; }
-    const bio = document.getElementById('profile-bio-input').value.trim();
-    const { error } = await window.sb.from('profiles').update({ bio, updated_at: new Date().toISOString() }).eq('id', user.id);
-    if (error) {
-      console.error('[saveBio] error code=' + error.code + ' msg=' + error.message, error);
-      window.toast?.('Ошибка сохранения: ' + (error.message || error.code));
+    const raw = document.getElementById('profile-bio-input').value.trim();
+    const bio = raw.slice(0, 500); // client-side pre-trim; server validates too
+    const { data, error } = await window.sb.rpc('update_my_profile', { p_bio: bio });
+    if (error || !data?.ok) {
+      const reason = error?.message || data?.reason || 'unknown';
+      console.error('[saveBio] RPC error:', reason, error);
+      window.toast?.('Ошибка сохранения: ' + (data?.reason === 'bio_too_long' ? 'текст слишком длинный' : reason));
       return;
     }
     document.getElementById('profile-bio-text').textContent = bio;
@@ -3260,10 +3262,10 @@ console.log('✅ Firebase Tournaments module loaded');
     }
     const { data: urlData } = window.sb.storage.from('mfc-media').getPublicUrl(path);
     const url = urlData.publicUrl + '?t=' + Date.now();
-    const { error: profErr } = await window.sb.from('profiles').update({ avatar_url: url, updated_at: new Date().toISOString() }).eq('id', currentUser.id);
-    if (profErr) {
-      console.error('[saveAvatarFile] profile update error code=' + profErr.code + ' msg=' + profErr.message, profErr);
-      // Avatar uploaded OK — still show it even if DB write failed
+    const { data: profData, error: profErr } = await window.sb.rpc('update_my_profile', { p_avatar_url: url });
+    if (profErr || !profData?.ok) {
+      console.error('[saveAvatarFile] profile RPC error:', profErr?.message || profData?.reason, profErr);
+      // Avatar uploaded to storage OK — still show it even if profile write failed
     }
     const av = document.getElementById('profile-av');
     av.dataset.url = url;

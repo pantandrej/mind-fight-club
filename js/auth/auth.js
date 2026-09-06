@@ -383,58 +383,39 @@ export async function loadUserNeurons() {
 }
 
 // ── Ensure profile row exists (idempotent) ────────────────────────
+// Uses ensure_my_profile SECURITY DEFINER RPC so that:
+//  - The INSERT/UPDATE is fully awaited before loadUserNeurons() runs.
+//  - ref_code is set server-side (guard_critical_profile_fields trigger
+//    blocks direct client UPDATE of ref_code, but the RPC bypasses it).
+//  - New users always start at neurons=0 (economy set server-side only).
 export async function ensureProfile() {
-  const { currentUser, neurons, lang } = getState();
+  const { currentUser, lang } = getState();
   if (!currentUser) return;
 
   const city         = localStorage.getItem('mfc_city') || null;
-  // Derived from auth provider (VK name or email prefix)
   const derived_name = currentUser.user_metadata?.full_name
     || currentUser.email?.split('@')[0] || 'Игрок';
+  // Tentative code — RPC only uses it when the profile has no ref_code yet.
+  const tentativeCode = Math.random().toString(36).slice(2, 10).toUpperCase();
 
-  const { data: existing } = await sb.from('profiles')
-    .select('id,total_score,ref_code,display_name')
-    .eq('id', currentUser.id)
-    .maybeSingle();
+  const { data, error } = await sb.rpc('ensure_my_profile', {
+    p_display_name: derived_name,
+    p_ref_code:     tentativeCode,
+    p_city:         city,
+    p_lang:         lang,
+  });
 
-  // Profile display_name is source of truth; localStorage is fallback if Supabase save was slow
-  const display_name = existing?.display_name || localStorage.getItem('mfc_display_name') || derived_name;
-  window._currentUserName = display_name;
-
-  if (existing) {
-    const updates = { updated_at: new Date().toISOString() };
-    // Only set display_name if profile has none yet
-    if (!existing.display_name) updates.display_name = derived_name;
-    if (city && !existing.city) updates.city = city;
-    if (!existing.ref_code) {
-      const code = Math.random().toString(36).slice(2, 10).toUpperCase();
-      updates.ref_code = code;
-      setState({ refCode: code });
-      localStorage.setItem('mfc_refcode', code);
-    } else {
-      setState({ refCode: existing.ref_code });
-      localStorage.setItem('mfc_refcode', existing.ref_code);
-    }
-    // Only update display fields — never touch neurons/xp here (RPC only)
-    sb.from('profiles').update(updates).eq('id', currentUser.id).then(() => {}).catch(() => {});
-  } else {
-    const newCode = Math.random().toString(36).slice(2, 10).toUpperCase();
-    setState({ refCode: newCode });
-    localStorage.setItem('mfc_refcode', newCode);
-    // Insert new profile — always start at 0 neurons/xp.
-    // Guest demo balance is local-only and must NOT be transferred to the server wallet.
-    // All economy mutations go through server RPCs (award_currency, spend_neurons).
-    sb.from('profiles').insert({
-      id: currentUser.id, display_name, city,
-      total_score: 0,
-      neurons:     0,
-      xp:          0,
-      ref_code: newCode,
-      language: lang,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    }).then(() => {}).catch(() => {});
+  if (error) {
+    console.error('[ensureProfile] RPC error', error);
+    // Fall through — loadUserNeurons will still try to read the profile.
+    return;
   }
+
+  const ref_code = data?.ref_code || tentativeCode;
+  setState({ refCode: ref_code });
+  localStorage.setItem('mfc_refcode', ref_code);
+  window._currentUserName = currentUser.user_metadata?.full_name
+    || localStorage.getItem('mfc_display_name') || derived_name;
 }
 
 // ── Google OAuth ──────────────────────────────────────────────────
