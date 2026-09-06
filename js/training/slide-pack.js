@@ -256,7 +256,9 @@ async function endPack() {
   document.getElementById('sp-res-pct').textContent     = pct + '%';
 
   if (_score > 0 && window.awardNeurons) {
-    window.awardNeurons(_score, 'quiz_reward', `pack:${_pack.id}:${Date.now()}`);
+    // Key includes UTC date (not ms timestamp) so ledger deduplication works per-day
+    const _todayKey = new Date().toISOString().slice(0, 10);
+    window.awardNeurons(_score, 'quiz_reward', `pack:${_pack.id}:${_todayKey}`);
   }
 
   // Save result to DB and localStorage
