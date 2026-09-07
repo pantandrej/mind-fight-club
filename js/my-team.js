@@ -7,6 +7,14 @@
 //   profiles.team_id          = fast cache of current team
 //   team_member_history       = historical source of truth (competition attribution)
 //   Both updated atomically by every RPC.
+//
+// RLS notes (confirmed by reading all migrations 01–74):
+//   profiles SELECT: effectively public (leaderboard reads arbitrary user profiles
+//     directly without SECURITY DEFINER — confirmed working in prod).
+//   currency_ledger SELECT: own rows only ("user reads own ledger").
+//   user_super_question_attempts SELECT: own rows only ("attempts_own_read").
+//   → Roster uses get_my_team_roster() RPC (narrow, stable interface).
+//   → Activity uses get_my_team_activity_today() RPC (bypasses own-only RLS).
 import { sb } from './services/supabase.js';
 import { getState } from './state.js';
 
@@ -43,15 +51,13 @@ export async function loadMyTeam() {
   }
 
   const weekStart = _getWeekStart();
-  const [teamRes, membersRes, tiebreakRes, barRankRes, onlineRankRes, brainRes, treasuryRes] = await Promise.all([
+  const [teamRes, rosterRes, tiebreakRes, barRankRes, onlineRankRes, brainRes, treasuryRes, activityRes] = await Promise.all([
     sb.from('teams')
       .select('id,name,city,motto,banner_url,avatar_url,emoji,treasury_neurons,captain_id,join_code,disbanded_at')
       .eq('id', me.team_id)
       .single(),
-    sb.from('profiles')
-      .select('id,display_name,avatar_url,is_scout')
-      .eq('team_id', me.team_id)
-      .order('display_name', { ascending: true }),
+    // Roster via SECURITY DEFINER RPC — scopes columns, stable for future hardening.
+    sb.rpc('get_my_team_roster'),
     sb.rpc('get_team_tiebreaker', { p_team_id: me.team_id }),
     _getTeamRank(me.team_id, 'bar_quiz'),
     _getTeamRank(me.team_id, 'online_quiz'),
@@ -65,6 +71,10 @@ export async function loadMyTeam() {
       .eq('team_id', me.team_id)
       .order('created_at', { ascending: false })
       .limit(5),
+    // Activity via SECURITY DEFINER RPC — currency_ledger and
+    // user_super_question_attempts are own-only; direct client queries
+    // would return empty for teammates.
+    sb.rpc('get_my_team_activity_today'),
   ]);
 
   const team = teamRes.data;
@@ -76,33 +86,18 @@ export async function loadMyTeam() {
   }
 
   const tiebreak = tiebreakRes.data ?? 0;
-  const today    = new Date().toISOString().slice(0, 10);
 
-  // Sort: captain first, then alphabetical.
-  let members = membersRes.data || [];
-  const captainId = team?.captain_id;
+  // Roster from RPC: [{id, display_name, avatar_url, is_scout}], sorted alphabetical.
+  let members = rosterRes.data?.members || [];
+  const captainId = team.captain_id;
   members = [
     ...members.filter(m => m.id === captainId),
     ...members.filter(m => m.id !== captainId),
   ];
 
-  const memberIds = members.map(m => m.id);
-  const [{ data: activeToday }, { data: trainedToday }] = await Promise.all([
-    memberIds.length
-      ? sb.from('user_super_question_attempts').select('user_id').in('user_id', memberIds)
-      : Promise.resolve({ data: [] }),
-    memberIds.length
-      ? sb.from('currency_ledger').select('user_id')
-          .in('user_id', memberIds)
-          .in('operation_type', ['quiz_reward', 'daily_goal_bonus'])
-          .gte('created_at', today + 'T00:00:00Z')
-      : Promise.resolve({ data: [] }),
-  ]);
-
-  const activeSet = new Set([
-    ...(activeToday  || []).map(r => r.user_id),
-    ...(trainedToday || []).map(r => r.user_id),
-  ]);
+  // Activity: set of user_ids active today, from SECURITY DEFINER RPC.
+  const activeUserIds = activityRes.data?.active_user_ids || [];
+  const activeSet = new Set(activeUserIds);
 
   const isAdmin   = typeof window.isAdmin === 'function' ? window.isAdmin() : false;
   const isCaptain = captainId === currentUser.id;
@@ -140,8 +135,7 @@ function _renderDisbanded(el) {
 }
 
 window._mtClearAndReload = async function() {
-  // Trigger a leave_team RPC to clean up the stale profile cache,
-  // then reload so the no-team screen is shown.
+  // leave_team cleans up stale profile.team_id cache for disbanded team.
   await sb.rpc('leave_team', {}).catch(() => {});
   loadMyTeam();
 };
@@ -210,7 +204,6 @@ function _getWeekStart() {
 }
 
 // ── XSS helpers ───────────────────────────────────────────────────────────
-// _escHtml: escapes user-controlled strings for insertion into innerHTML.
 function _escHtml(s) {
   return String(s || '')
     .replace(/&/g, '&amp;')
@@ -220,7 +213,6 @@ function _escHtml(s) {
     .replace(/'/g, '&#39;');
 }
 
-// _escAttr: escapes for HTML attribute values (double-quoted).
 function _escAttr(s) {
   return String(s || '').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
@@ -281,8 +273,7 @@ function _renderMyTeam(el, {
   ` : `<div id="mt-edit-section" style="display:none"></div>`;
 
   // Admin scout management.
-  // NOTE: is_scout is guarded by guard_critical_profile_fields trigger (mig 70+73).
-  // Direct profiles.update({ is_scout }) is a silent no-op for authenticated role.
+  // is_scout is guarded by guard_critical_profile_fields trigger (mig 70+73).
   // Requires a SECURITY DEFINER admin RPC (future iteration).
   const scoutSection = isAdmin ? `
     <div style="background:rgba(255,200,0,.06);border:1px solid rgba(255,200,0,.25);border-radius:18px;padding:20px">
@@ -294,7 +285,7 @@ function _renderMyTeam(el, {
     </div>
   ` : '';
 
-  // Captain controls
+  // Captain controls — no "regenerate code" button (join_code is permanent).
   const captainControls = isCaptain ? `
     <div style="background:rgba(0,237,181,.04);border:1px solid rgba(0,237,181,.2);border-radius:18px;padding:18px">
       <div style="font-size:13px;font-weight:800;margin-bottom:12px;color:var(--accent2)">👑 Управление командой</div>
@@ -307,17 +298,11 @@ function _renderMyTeam(el, {
           style="background:rgba(224,85,85,.06);border:1px solid rgba(224,85,85,.2);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:700;color:rgba(224,85,85,.8);cursor:pointer;font-family:inherit;text-align:left">
           ⛔ Исключить участника
         </button>
-        <button onclick="window._mtRegenerateCode()"
-          style="background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit;text-align:left">
-          🔁 Обновить код приглашения
-        </button>
       </div>
     </div>
   ` : '';
 
-  // join_code is alphanumeric only (generated by RPC) — safe for JS attribute and URL.
-  // Still escape defensively.
-  const safeJoinCode = _escHtml(team.join_code || '');
+  const safeJoinCode     = _escHtml(team.join_code || '');
   const safeJoinCodeAttr = _escAttr(team.join_code || '');
 
   el.innerHTML = `
@@ -347,11 +332,11 @@ function _renderMyTeam(el, {
           ${team.city ? `<div style="font-size:12px;color:var(--muted)">📍 ${_escHtml(team.city)}</div>` : ''}
           ${team.motto ? `<div style="font-size:12px;color:var(--accent2);font-style:italic;margin-top:4px">&ldquo;${_escHtml(team.motto)}&rdquo;</div>` : ''}
           <div style="margin-top:10px;display:inline-flex;align-items:center;gap:6px;background:rgba(0,237,181,.15);border-radius:20px;padding:6px 14px">
-            <span style="font-size:14px">⚡</span>
+            <span style="font-size:14px">🎯</span>
             <span style="font-size:16px;font-weight:900">${tiebreak}</span>
             <span style="font-size:11px;color:var(--muted)">очков тай-брейка</span>
           </div>
-          <!-- Invite: canonical ?team_code= link -->
+          <!-- Invite: canonical ?team_code= link. join_code is permanent. -->
           <div style="margin-top:10px;display:flex;flex-direction:column;align-items:center;gap:6px">
             ${safeJoinCode
               ? `<div style="font-size:11px;color:var(--muted)">Код команды: <strong style="color:var(--text);letter-spacing:2px;font-size:14px">${safeJoinCode}</strong></div>`
@@ -390,7 +375,7 @@ function _renderMyTeam(el, {
           </div>
         </div>
 
-        <!-- Brain Fights (competitive score, not economy) -->
+        <!-- Brain Fights — competition score, separate from Neurons (⚡) economy -->
         <div style="margin-top:10px;background:linear-gradient(135deg,rgba(60,200,100,.08),rgba(0,180,80,.05));border:1px solid rgba(60,200,100,.25);border-radius:16px;padding:16px">
           <div style="display:flex;align-items:center;justify-content:space-between">
             <div>
@@ -435,7 +420,9 @@ function _renderMyTeam(el, {
         </div>
       </div>
 
-      <!-- 4. Team activity today (factual, no predicted BF score) ─ -->
+      <!-- 4. Team activity today ────────────────────────────────── -->
+      <!-- Loaded via get_my_team_activity_today() RPC (SECURITY DEFINER) -->
+      <!-- because currency_ledger and user_super_question_attempts are own-only. -->
       <div style="background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:14px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
           <div style="font-size:13px;font-weight:800">Активность сегодня</div>
@@ -452,6 +439,7 @@ function _renderMyTeam(el, {
       </div>
 
       <!-- 5. Treasury ──────────────────────────────────────────── -->
+      <!-- treasury_neurons = team fund in Neurons (⚡ economy) — not competition score -->
       <div id="mt-treasury-card" style="background:linear-gradient(135deg,rgba(245,196,0,.08),rgba(255,160,0,.05));border:1px solid rgba(245,196,0,.25);border-radius:18px;padding:20px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
           <div>
@@ -577,7 +565,7 @@ window._mtLeaveTeam = async function() {
 };
 
 // ── Copy invite — canonical: ?team_code=ABCDEF ────────────────────────────
-// join_code is the canonical share surface. UUID is not in the invite URL.
+// join_code is permanent (no regenerate). Old links always point to the same team.
 window._mtCopyInvite = function(joinCode) {
   if (!joinCode) { window.toast?.('Код команды недоступен'); return; }
   const url  = `${window.location.origin}/?team_code=${encodeURIComponent(joinCode)}`;
@@ -667,7 +655,7 @@ window._mtSaveProfile = async function() {
 
   if (!name) { window.toast?.('Введи название команды'); return; }
 
-  // URL protocol validation: only https:// allowed for image URLs.
+  // Client-side https:// check (UX guard; server also validates).
   if (bannerUrl && !bannerUrl.startsWith('https://')) {
     window.toast?.('❌ URL баннера должен начинаться с https://');
     return;
@@ -688,9 +676,16 @@ window._mtSaveProfile = async function() {
 
   if (error || !data?.ok) {
     const msgs = {
-      not_captain:    'Только капитан может редактировать команду',
-      team_disbanded: 'Команда расформирована',
-      name_too_short: 'Название слишком короткое',
+      not_captain:         'Только капитан может редактировать команду',
+      team_disbanded:      'Команда расформирована',
+      name_too_short:      'Название слишком короткое',
+      name_too_long:       'Название слишком длинное (макс. 60 символов)',
+      city_too_long:       'Город — максимум 60 символов',
+      motto_too_long:      'Девиз — максимум 100 символов',
+      banner_url_not_https:'URL баннера должен начинаться с https://',
+      avatar_url_not_https:'URL аватара должен начинаться с https://',
+      banner_url_too_long: 'URL баннера слишком длинный',
+      avatar_url_too_long: 'URL аватара слишком длинный',
     };
     window.toast?.('❌ ' + (msgs[data?.reason] || 'Ошибка сохранения'));
     console.error('[mt] update_my_team:', error, data);
@@ -744,20 +739,6 @@ window._mtKickMember = async function(targetId) {
     return;
   }
   window.toast?.('✅ Игрок исключён');
-  loadMyTeam();
-};
-
-// ── Regenerate join code (captain only) ──────────────────────────────────
-window._mtRegenerateCode = async function() {
-  if (!confirm('Обновить код приглашения? Старые ссылки перестанут работать.')) return;
-
-  const { data, error } = await sb.rpc('regenerate_team_code', {});
-  if (error || !data?.ok) {
-    const msgs = { not_captain: 'Только капитан может обновить код' };
-    window.toast?.('❌ ' + (msgs[data?.reason] || 'Ошибка обновления кода'));
-    return;
-  }
-  window.toast?.(`✅ Новый код: ${_escHtml(data.join_code)}`);
   loadMyTeam();
 };
 

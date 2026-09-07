@@ -1,36 +1,31 @@
 -- ══════════════════════════════════════════════════════════════════════════
--- Migration 75 v3: Teams Core — captain, join_code, soft-delete, RPCs
+-- Migration 75 v4: Teams Core — captain, join_code, soft-delete, RPCs
 --
--- Problems fixed from v1 (FINAL REVIEW, issues 1-14):
---  1. CRITICAL: DELETE FROM teams destroyed team_member_history (ON DELETE CASCADE).
---     Fixed: teams are never hard-deleted. disbanded_at timestamptz marks disband.
---  2. team_member_history.team_id FK changed from ON DELETE CASCADE → RESTRICT.
---  3. All CREATE POLICY now guarded with DROP POLICY IF EXISTS (idempotency).
---  4. join_team_by_code rejects disbanded teams (disbanded_at IS NOT NULL).
---  5. Captain-deletion trigger: auto-disband team + clear ALL member profiles.team_id
---     + close ALL member history rows when captain profile is deleted.
---  6. donate_to_team: added p_amount upper bound (10 000) + disbanded_at check.
---  7. team_member_history SELECT policy: own rows OR same-team only (not all authenticated).
---  8. join_code uniqueness: GLOBAL unique index — disbanded codes are never reused.
---  9. Source-of-truth clarified: profiles.team_id is fast cache, team_member_history
---     is historical authority.
--- 10. update_my_team / regenerate_team_code reject disbanded teams.
--- 11. Added teams.updated_at column (referenced by RPCs but not in mig 40).
---
--- Problems fixed from v2 (FINAL REVIEW v2, issues 1-15):
---  1. _handle_captain_profile_deleted: now also clears all member profiles.team_id
---     and closes all active history rows when a team is disbanded.
---  2. join_code global uniqueness: dropped partial index, created global unique index.
---     Disbanded teams retain their code forever; codes are never reused.
---  3. _gen_team_join_code: checks uniqueness across ALL teams (not just active).
---  4. tmh_select policy: restricted to own rows OR same-team rows only.
---  5. join_team_by_code: explicit history conflict check instead of ON CONFLICT DO NOTHING.
---  6. create_team: checks active team_member_history in addition to profiles.team_id.
---  7. leave_team / kick_member: handle missing history row explicitly (repair + proceed).
---  8. Profile delete cascade documented honestly: history is removed with profile (GDPR).
---  9. Treasury ledger: donate_to_team already has FOR UPDATE + upper bound + disbanded guard.
--- 10. Scout section: SQL instructions removed from production UI.
--- 11. Comments: removed "preserved forever" claim about history rows.
+-- v1 fixes: soft-delete, ON DELETE RESTRICT, idempotent policies,
+--           disbanded guard, captain trigger, donate hardening.
+-- v2 fixes: disbaned team UI, invite URL, scout silent no-op, activity panel.
+-- v3 fixes: captain delete clears all members, global join_code uniqueness,
+--           _gen_team_join_code checks all teams, TMH SELECT narrowed,
+--           join_team_by_code explicit conflict, create_team checks history,
+--           leave/kick handle missing history, XSS _escHtml, scout section.
+-- v4 fixes:
+--  1. regenerate_team_code REMOVED — join_code is permanent. Old code
+--     disappeared from teams row after regenerate, breaking the "never reuse"
+--     invariant. MVP: one code per team, forever.
+--  2. teams write policy cleanup now includes DELETE (not just INSERT/UPDATE/ALL).
+--  3. update_team_profile: explicit REVOKE/GRANT added (was missing).
+--  4. get_my_team_roster() RPC added — narrow SECURITY DEFINER roster read.
+--     Direct .from('profiles').eq('team_id') works (profiles SELECT is public)
+--     but explicit RPC limits exposed columns for future hardening.
+--  5. get_my_team_activity_today() RPC added — aggregates activity from
+--     currency_ledger and user_super_question_attempts (both own-only RLS)
+--     via SECURITY DEFINER, returns only user_id list. No amounts exposed.
+--  6. update_my_team: server-side field length limits + https:// enforcement
+--     for banner_url and avatar_url (client validation is bypassable).
+--  7. Captain backfill: no legacy owner_id/creator_id/captain field exists
+--     in teams (confirmed: migration 40 schema, migration 57 additions).
+--     Oldest member by profiles.created_at is the documented only fallback.
+--  8. Tiebreak score: ⚡ removed from SQL (icon is JS concern; fixed in JS).
 --
 -- Does NOT touch migrations 68–74.
 -- Does NOT implement Brain Fights formula (future iteration).
@@ -39,7 +34,7 @@
 
 -- ── §1  Schema: add columns to teams ─────────────────────────────────────
 -- captain_id: nullable (NULL = captain deleted or team not yet migrated).
--- join_code:  6-char uppercase alpha, generated server-side. Never reused.
+-- join_code:  6-char uppercase alpha, generated once at team creation. Permanent.
 -- disbanded_at: NULL = active, NOT NULL = disbanded (soft-delete).
 -- updated_at: audit timestamp referenced by RPCs.
 
@@ -52,6 +47,7 @@ ALTER TABLE public.teams
 -- ── §2  Helper: generate a short readable join code ───────────────────────
 -- 6 uppercase alpha chars (no I/O for legibility). 26^6 ≈ 308 M combinations.
 -- Checks uniqueness against ALL teams — disbanded codes are never reused.
+-- join_code is assigned once at create_team and never changed (no regenerate).
 -- Called server-side only; REVOKE from PUBLIC at end of migration.
 CREATE OR REPLACE FUNCTION public._gen_team_join_code()
 RETURNS text
@@ -75,7 +71,6 @@ BEGIN
     );
     attempt := attempt + 1;
     IF attempt > 100 THEN
-      -- Fallback: uuid prefix (longer but guaranteed unique)
       result := upper(substring(replace(gen_random_uuid()::text, '-', ''), 1, 8));
       EXIT;
     END IF;
@@ -86,8 +81,8 @@ $$;
 
 -- ── §3  Backfill: join codes and captain_id for existing teams ────────────
 
--- Generate unique join codes for existing teams that don't have one yet.
--- Check uniqueness globally (not just active) to guarantee codes are never reused.
+-- Generate unique join codes for existing active teams that don't have one.
+-- Uniqueness checked globally — disbanded codes must not be reissued.
 DO $$
 DECLARE
   rec  record;
@@ -101,7 +96,6 @@ BEGIN
       FOR i IN 1..6 LOOP
         code := code || substr(chars, floor(random() * length(chars))::int + 1, 1);
       END LOOP;
-      -- Global uniqueness check.
       EXIT WHEN NOT EXISTS (
         SELECT 1 FROM public.teams WHERE join_code = code AND id <> rec.id
       );
@@ -110,15 +104,19 @@ BEGIN
   END LOOP;
 END $$;
 
--- Drop old partial unique index (only covered active teams — allowed code reuse after disband).
--- Replace with global unique index: codes are retired permanently when a team disbands.
+-- Drop old partial unique index (only covered active teams — allowed code reuse
+-- after disband). Replace with global unique index: codes are retired permanently.
 DROP INDEX IF EXISTS idx_teams_join_code_active;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_teams_join_code_global
   ON public.teams(join_code)
   WHERE join_code IS NOT NULL;
 
--- Backfill captain_id for existing active teams: oldest member by profile created_at.
+-- Backfill captain_id for existing active teams.
+-- Legacy teams table (migration 40) has NO owner_id, creator_id, or captain field.
+-- Migration 57 added motto/banner_url/avatar_url — also no captain.
+-- There is no authoritative legacy captain source in the schema.
+-- Fallback: oldest member by profiles.created_at (best proxy for "founding member").
 UPDATE public.teams t
 SET captain_id = (
   SELECT p.id FROM public.profiles p
@@ -139,8 +137,8 @@ WHERE t.captain_id IS NULL
 -- history exists. Teams must be soft-deleted (disbanded_at) instead.
 -- ON DELETE CASCADE on user_id: if a user's profile is permanently deleted,
 -- their history rows are also deleted (GDPR / account deletion).
--- This is intentional: a deleted account loses its history.
--- Competition results attributed to a team are preserved at the team level.
+-- This is intentional: a deleted account loses its personal history.
+-- Team-level competition results (challenge_results) are unaffected.
 
 CREATE TABLE IF NOT EXISTS public.team_member_history (
   id        uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -175,7 +173,6 @@ END $$;
 ALTER TABLE public.team_member_history ENABLE ROW LEVEL SECURITY;
 
 -- Own rows OR same-team rows (roster display). Not globally public.
--- Membership timestamps (joined_at/left_at) should not be visible to arbitrary users.
 DROP POLICY IF EXISTS "tmh_select_own_or_public" ON public.team_member_history;
 DROP POLICY IF EXISTS "tmh_select_authenticated"  ON public.team_member_history;
 DROP POLICY IF EXISTS "tmh_select_own_or_team"    ON public.team_member_history;
@@ -191,9 +188,9 @@ CREATE POLICY "tmh_select_own_or_team"
         AND p.team_id = team_member_history.team_id
     )
   );
--- All writes (INSERT/UPDATE/DELETE) through SECURITY DEFINER RPCs → no write policies.
+-- All writes through SECURITY DEFINER RPCs → no write policies.
 
--- Backfill history for currently active members (joined_at = now() since exact date unknown).
+-- Backfill history for currently active members.
 INSERT INTO public.team_member_history (user_id, team_id, joined_at, left_at)
 SELECT p.id, p.team_id, now(), NULL
 FROM public.profiles p
@@ -201,13 +198,10 @@ WHERE p.team_id IS NOT NULL
 ON CONFLICT DO NOTHING;
 
 -- ── §5  Captain-deletion trigger ──────────────────────────────────────────
--- Problem: captain_id ON DELETE SET NULL (FK action) would leave an active team
--- with captain_id = NULL and all members still showing team_id in their profile.
--- This trigger fires BEFORE the profile DELETE and:
---   1. Soft-disbands any active team the deleted user captained.
---   2. Closes all active history rows for remaining members.
---   3. Clears profiles.team_id for remaining members.
--- The captain's own history row is closed by ON DELETE CASCADE when the profile is deleted.
+-- Fires BEFORE DELETE on profiles. Soft-disbands any active team the deleted
+-- user captained, closes all remaining active history rows, and clears
+-- profiles.team_id for all remaining members.
+-- The captain's own history row is closed by ON DELETE CASCADE (profiles.id FK).
 
 CREATE OR REPLACE FUNCTION public._handle_captain_profile_deleted()
 RETURNS TRIGGER
@@ -218,7 +212,6 @@ AS $$
 DECLARE
   v_team_id uuid;
 BEGIN
-  -- Disband any active team captained by the profile being deleted.
   UPDATE public.teams
   SET disbanded_at = now(),
       captain_id   = NULL,
@@ -228,8 +221,7 @@ BEGIN
   RETURNING id INTO v_team_id;
 
   IF v_team_id IS NOT NULL THEN
-    -- Close all active history rows for remaining members.
-    -- The captain's own row is handled by ON DELETE CASCADE on profiles.id.
+    -- Close active history rows for remaining members (captain's handled by CASCADE).
     UPDATE public.team_member_history
     SET left_at = now()
     WHERE team_id = v_team_id
@@ -256,11 +248,9 @@ CREATE TRIGGER trg_captain_profile_deleted
 REVOKE ALL ON FUNCTION public._handle_captain_profile_deleted() FROM PUBLIC;
 
 -- ── §6  RLS: harden teams table ──────────────────────────────────────────
--- Remove old permissive INSERT/UPDATE/ALL policies — RPCs handle all writes.
--- SELECT USING(true): teams are publicly discoverable (name, city, emoji).
--- join_code is also visible — this is intentional for MVP. join_code is NOT
--- a security credential (anyone with the code can join, which is by design).
--- The real access control is: you must know the code (social layer).
+-- Remove ALL old direct-write policies (INSERT, UPDATE, DELETE, ALL).
+-- After this migration, authenticated clients have no direct write path to teams.
+-- All writes go through SECURITY DEFINER RPCs.
 
 DO $$
 DECLARE pol record;
@@ -268,7 +258,7 @@ BEGIN
   FOR pol IN
     SELECT policyname FROM pg_policies
     WHERE schemaname = 'public' AND tablename = 'teams'
-      AND cmd IN ('INSERT', 'UPDATE', 'ALL')
+      AND cmd IN ('INSERT', 'UPDATE', 'DELETE', 'ALL')
   LOOP
     EXECUTE format('DROP POLICY IF EXISTS %I ON public.teams', pol.policyname);
   END LOOP;
@@ -280,7 +270,7 @@ CREATE POLICY "teams_read"
   FOR SELECT
   USING (true);
 
--- RLS on team_treasury_ledger: block direct client writes; members read their team's ledger.
+-- RLS on team_treasury_ledger: block all direct client writes.
 ALTER TABLE public.team_treasury_ledger ENABLE ROW LEVEL SECURITY;
 
 DO $$
@@ -343,8 +333,7 @@ BEGIN
     RETURN jsonb_build_object('ok', false, 'reason', 'already_in_team');
   END IF;
 
-  -- Also check team_member_history — profiles.team_id can be stale if the trigger
-  -- blocked a direct write. The history is the authoritative source of truth.
+  -- Also check history — profiles.team_id can be stale if the trigger blocked a direct write.
   IF EXISTS (
     SELECT 1 FROM team_member_history WHERE user_id = v_uid AND left_at IS NULL
   ) THEN
@@ -357,10 +346,8 @@ BEGIN
   VALUES (p_name, p_city, COALESCE(p_emoji, '🏟️'), v_uid, v_code, now(), now())
   RETURNING id INTO v_team_id;
 
-  -- profiles.team_id fast cache
   UPDATE profiles SET team_id = v_team_id, updated_at = now() WHERE id = v_uid;
 
-  -- Historical record
   INSERT INTO team_member_history (user_id, team_id, joined_at)
   VALUES (v_uid, v_team_id, now());
 
@@ -392,7 +379,6 @@ BEGIN
     RETURN jsonb_build_object('ok', false, 'reason', 'invalid_code');
   END IF;
 
-  -- Find active team by code only. Disbanded teams are invisible to join.
   SELECT id INTO v_team_id
   FROM teams WHERE join_code = p_join_code AND disbanded_at IS NULL;
 
@@ -400,10 +386,8 @@ BEGIN
     RETURN jsonb_build_object('ok', false, 'reason', 'team_not_found');
   END IF;
 
-  -- Lock caller profile row to prevent concurrent dual-team joins.
   SELECT team_id INTO v_existing FROM profiles WHERE id = v_uid FOR UPDATE;
 
-  -- Already in this exact team → idempotent success.
   IF v_existing = v_team_id THEN
     RETURN jsonb_build_object('ok', true, 'already_member', true, 'team_id', v_team_id);
   END IF;
@@ -412,22 +396,19 @@ BEGIN
     RETURN jsonb_build_object('ok', false, 'reason', 'already_in_team');
   END IF;
 
-  -- Check history explicitly — no ON CONFLICT DO NOTHING (silent inconsistency).
+  -- Explicit history conflict check — no ON CONFLICT DO NOTHING (silent inconsistency).
   IF EXISTS (
     SELECT 1 FROM team_member_history
     WHERE user_id = v_uid AND team_id = v_team_id AND left_at IS NULL
   ) THEN
-    -- Active history row exists but profile cache says no team — inconsistent state.
-    -- Repair the cache and return success.
+    -- Active history row exists but profile cache says no team — repair.
     UPDATE profiles SET team_id = v_team_id, updated_at = now() WHERE id = v_uid;
     RETURN jsonb_build_object('ok', true, 'already_member', true, 'team_id', v_team_id);
   END IF;
 
-  -- Join: update cache + record history.
   UPDATE profiles SET team_id = v_team_id, updated_at = now() WHERE id = v_uid;
 
-  -- The partial UNIQUE index on (user_id) WHERE left_at IS NULL guarantees
-  -- this INSERT will fail with a unique violation if a concurrent join sneaked in.
+  -- Unique violation here = concurrent join sneaked past the FOR UPDATE; correct behavior.
   INSERT INTO team_member_history (user_id, team_id, joined_at)
   VALUES (v_uid, v_team_id, now());
 
@@ -440,9 +421,8 @@ GRANT EXECUTE ON FUNCTION public.join_team_by_code(text) TO authenticated;
 
 -- ── §9  RPC: leave_team ───────────────────────────────────────────────────
 -- Captain with other members must transfer captaincy first.
--- Captain as sole member: SOFT-DISBAND — sets disbanded_at, clears captain_id,
---   closes membership history. Team row is preserved; history is preserved
---   unless the user later deletes their profile (then ON DELETE CASCADE removes it).
+-- Sole captain: SOFT-DISBAND. Team row is preserved; history rows are preserved
+-- unless the user later deletes their profile (ON DELETE CASCADE removes them then).
 CREATE OR REPLACE FUNCTION public.leave_team()
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -460,22 +440,17 @@ BEGIN
     RETURN jsonb_build_object('ok', false, 'reason', 'unauthenticated');
   END IF;
 
-  -- Lock profile row.
   SELECT team_id INTO v_team_id FROM profiles WHERE id = v_uid FOR UPDATE;
 
   IF v_team_id IS NULL THEN
     RETURN jsonb_build_object('ok', false, 'reason', 'not_in_team');
   END IF;
 
-  -- Lock team row.
   SELECT captain_id INTO v_captain_id FROM teams WHERE id = v_team_id FOR UPDATE;
-
-  -- Count active members (via profiles cache — consistent under FOR UPDATE).
   SELECT COUNT(*) INTO v_member_count FROM profiles WHERE team_id = v_team_id;
 
   IF v_captain_id = v_uid THEN
     IF v_member_count > 1 THEN
-      -- Captain cannot abandon a team with other members.
       RETURN jsonb_build_object(
         'ok', false,
         'reason', 'captain_must_transfer',
@@ -483,21 +458,16 @@ BEGIN
       );
     ELSE
       -- Sole captain: SOFT DISBAND.
-      -- 1. Clear captain's profile cache.
       UPDATE profiles SET team_id = NULL, updated_at = now() WHERE id = v_uid;
-      -- 2. Close membership history record.
       UPDATE team_member_history
         SET left_at = now()
         WHERE user_id = v_uid AND team_id = v_team_id AND left_at IS NULL;
       GET DIAGNOSTICS v_rows_closed = ROW_COUNT;
-      -- If 0 rows closed: history missing (data inconsistency). Insert corrective row.
       IF v_rows_closed = 0 THEN
         INSERT INTO team_member_history (user_id, team_id, joined_at, left_at)
         VALUES (v_uid, v_team_id, now(), now())
         ON CONFLICT DO NOTHING;
       END IF;
-      -- 3. Mark team as disbanded. DO NOT DELETE — team identity and competition
-      --    history are preserved at the team level.
       UPDATE teams
         SET captain_id   = NULL,
             disbanded_at = now(),
@@ -513,7 +483,6 @@ BEGIN
     SET left_at = now()
     WHERE user_id = v_uid AND team_id = v_team_id AND left_at IS NULL;
   GET DIAGNOSTICS v_rows_closed = ROW_COUNT;
-  -- If 0 rows closed: history missing. Insert corrective row.
   IF v_rows_closed = 0 THEN
     INSERT INTO team_member_history (user_id, team_id, joined_at, left_at)
     VALUES (v_uid, v_team_id, now(), now())
@@ -611,13 +580,11 @@ BEGIN
     RETURN jsonb_build_object('ok', false, 'reason', 'target_not_in_team');
   END IF;
 
-  -- Remove from team: update cache + close history.
   UPDATE profiles SET team_id = NULL, updated_at = now() WHERE id = p_target_user_id;
   UPDATE team_member_history
     SET left_at = now()
     WHERE user_id = p_target_user_id AND team_id = v_team_id AND left_at IS NULL;
   GET DIAGNOSTICS v_rows_closed = ROW_COUNT;
-  -- If 0 rows closed: history missing. Insert corrective row.
   IF v_rows_closed = 0 THEN
     INSERT INTO team_member_history (user_id, team_id, joined_at, left_at)
     VALUES (p_target_user_id, v_team_id, now(), now())
@@ -631,8 +598,9 @@ $$;
 REVOKE ALL ON FUNCTION public.kick_member(uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.kick_member(uuid) TO authenticated;
 
--- ── §12 RPC: update_my_team (captain-only) ────────────────────────────────
--- Replaces update_team_profile which checked membership, not captaincy.
+-- ── §12 RPC: update_my_team (captain-only, with server-side validation) ───
+-- Server enforces field length limits and https:// on image URLs.
+-- Client maxlength attributes are UX aids only — bypassable via direct API call.
 CREATE OR REPLACE FUNCTION public.update_my_team(
   p_name       text DEFAULT NULL,
   p_city       text DEFAULT NULL,
@@ -647,9 +615,9 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_uid      uuid := auth.uid();
-  v_team_id  uuid;
-  v_cap_id   uuid;
+  v_uid       uuid := auth.uid();
+  v_team_id   uuid;
+  v_cap_id    uuid;
   v_disbanded timestamptz;
 BEGIN
   IF v_uid IS NULL THEN
@@ -672,12 +640,37 @@ BEGIN
     RETURN jsonb_build_object('ok', false, 'reason', 'not_captain');
   END IF;
 
-  IF p_name IS NOT NULL AND length(trim(p_name)) < 2 THEN
-    RETURN jsonb_build_object('ok', false, 'reason', 'name_too_short');
+  -- Server-side field limits.
+  IF p_name IS NOT NULL THEN
+    p_name := trim(p_name);
+    IF length(p_name) < 2  THEN RETURN jsonb_build_object('ok', false, 'reason', 'name_too_short'); END IF;
+    IF length(p_name) > 60 THEN RETURN jsonb_build_object('ok', false, 'reason', 'name_too_long');  END IF;
+  END IF;
+  IF p_city  IS NOT NULL AND length(p_city)  > 60  THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'city_too_long');
+  END IF;
+  IF p_motto IS NOT NULL AND length(p_motto) > 100 THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'motto_too_long');
+  END IF;
+  IF p_emoji IS NOT NULL AND length(p_emoji) > 8 THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'emoji_too_long');
+  END IF;
+  -- HTTPS-only for image URLs.
+  IF p_banner_url IS NOT NULL AND p_banner_url <> '' AND p_banner_url NOT LIKE 'https://%' THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'banner_url_not_https');
+  END IF;
+  IF p_avatar_url IS NOT NULL AND p_avatar_url <> '' AND p_avatar_url NOT LIKE 'https://%' THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'avatar_url_not_https');
+  END IF;
+  IF p_banner_url IS NOT NULL AND length(p_banner_url) > 500 THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'banner_url_too_long');
+  END IF;
+  IF p_avatar_url IS NOT NULL AND length(p_avatar_url) > 500 THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'avatar_url_too_long');
   END IF;
 
   UPDATE teams SET
-    name       = CASE WHEN p_name       IS NOT NULL THEN trim(p_name) ELSE name       END,
+    name       = CASE WHEN p_name       IS NOT NULL THEN p_name        ELSE name       END,
     city       = CASE WHEN p_city       IS NOT NULL THEN p_city        ELSE city       END,
     motto      = CASE WHEN p_motto      IS NOT NULL THEN p_motto       ELSE motto      END,
     emoji      = CASE WHEN p_emoji      IS NOT NULL THEN p_emoji       ELSE emoji      END,
@@ -693,7 +686,9 @@ $$;
 REVOKE ALL ON FUNCTION public.update_my_team(text, text, text, text, text, text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.update_my_team(text, text, text, text, text, text) TO authenticated;
 
--- Also restrict the old update_team_profile to captain-only for backward compat.
+-- ── §13 RPC: update_team_profile (legacy compat, captain-only) ───────────
+-- Kept for any legacy callers. Hardened to captain-only in v2.
+-- REVOKE/GRANT was missing in v3 — added here.
 CREATE OR REPLACE FUNCTION public.update_team_profile(
   p_team_id    uuid,
   p_name       text DEFAULT NULL,
@@ -742,54 +737,12 @@ BEGIN
 END;
 $$;
 
--- ── §13 RPC: regenerate_team_code (captain-only) ─────────────────────────
-CREATE OR REPLACE FUNCTION public.regenerate_team_code()
-RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  v_uid       uuid := auth.uid();
-  v_team_id   uuid;
-  v_cap_id    uuid;
-  v_disbanded timestamptz;
-  v_code      text;
-BEGIN
-  IF v_uid IS NULL THEN
-    RETURN jsonb_build_object('ok', false, 'reason', 'unauthenticated');
-  END IF;
+REVOKE ALL ON FUNCTION public.update_team_profile(uuid, text, text, text, text, text, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.update_team_profile(uuid, text, text, text, text, text, text) TO authenticated;
 
-  SELECT team_id INTO v_team_id FROM profiles WHERE id = v_uid;
-  IF v_team_id IS NULL THEN
-    RETURN jsonb_build_object('ok', false, 'reason', 'not_in_team');
-  END IF;
-
-  SELECT captain_id, disbanded_at INTO v_cap_id, v_disbanded
-  FROM teams WHERE id = v_team_id;
-
-  IF v_disbanded IS NOT NULL THEN
-    RETURN jsonb_build_object('ok', false, 'reason', 'team_disbanded');
-  END IF;
-
-  IF v_cap_id IS DISTINCT FROM v_uid THEN
-    RETURN jsonb_build_object('ok', false, 'reason', 'not_captain');
-  END IF;
-
-  v_code := _gen_team_join_code();
-  UPDATE teams SET join_code = v_code, updated_at = now() WHERE id = v_team_id;
-
-  RETURN jsonb_build_object('ok', true, 'join_code', v_code);
-END;
-$$;
-
-REVOKE ALL ON FUNCTION public.regenerate_team_code() FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.regenerate_team_code() TO authenticated;
-
--- ── §14 RPC: donate_to_team (rewrite with FOR UPDATE + disbanded guard) ────
--- Donor must be a member of their current team (no arbitrary team_id param).
--- p_amount bounded to [1, 10000] to prevent accidental economy drain.
+-- ── §14 RPC: donate_to_team ───────────────────────────────────────────────
 -- FOR UPDATE on both profile and team rows prevents concurrent overdraft.
+-- p_amount bounded to [1, 10000].
 CREATE OR REPLACE FUNCTION public.donate_to_team(p_amount int)
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -815,7 +768,6 @@ BEGIN
     RETURN jsonb_build_object('ok', false, 'reason', 'amount_too_large', 'max', 10000);
   END IF;
 
-  -- Lock profile row: establishes current team + prevents concurrent overdraft.
   SELECT team_id, neurons INTO v_team_id, v_neurons
   FROM profiles WHERE id = v_uid FOR UPDATE;
 
@@ -823,7 +775,6 @@ BEGIN
     RETURN jsonb_build_object('ok', false, 'reason', 'no_team');
   END IF;
 
-  -- Lock team row: prevents concurrent treasury race.
   SELECT disbanded_at, treasury_neurons INTO v_disbanded, v_treasury
   FROM teams WHERE id = v_team_id FOR UPDATE;
 
@@ -839,19 +790,16 @@ BEGIN
     );
   END IF;
 
-  -- Deduct from player.
   UPDATE profiles
   SET neurons = neurons - p_amount, updated_at = now()
   WHERE id = v_uid;
 
-  -- Add to team treasury.
   UPDATE teams
   SET treasury_neurons = treasury_neurons + p_amount,
       updated_at = now()
   WHERE id = v_team_id
   RETURNING treasury_neurons INTO v_treasury;
 
-  -- Log contribution (repeated donations are valid, no idempotency key needed).
   INSERT INTO team_treasury_ledger (team_id, user_id, amount)
   VALUES (v_team_id, v_uid, p_amount);
 
@@ -866,14 +814,121 @@ $$;
 REVOKE ALL ON FUNCTION public.donate_to_team(int) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.donate_to_team(int) TO authenticated;
 
--- ── §15 Lock down _gen_team_join_code from public access ─────────────────
+-- ── §15 RPC: get_my_team_roster ───────────────────────────────────────────
+-- Returns id, display_name, avatar_url, is_scout for current user's team members.
+-- profiles SELECT is effectively public (leaderboard reads arbitrary profiles
+-- directly), but this RPC scopes the read to teammates only and limits columns,
+-- providing a stable interface for future RLS hardening.
+CREATE OR REPLACE FUNCTION public.get_my_team_roster()
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_uid     uuid := auth.uid();
+  v_team_id uuid;
+  v_result  jsonb;
+BEGIN
+  IF v_uid IS NULL THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'unauthenticated');
+  END IF;
+
+  SELECT team_id INTO v_team_id FROM profiles WHERE id = v_uid;
+  IF v_team_id IS NULL THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'not_in_team');
+  END IF;
+
+  SELECT jsonb_build_object(
+    'ok', true,
+    'members', COALESCE(
+      jsonb_agg(
+        jsonb_build_object(
+          'id',           p.id,
+          'display_name', p.display_name,
+          'avatar_url',   p.avatar_url,
+          'is_scout',     COALESCE(p.is_scout, false)
+        )
+        ORDER BY p.display_name
+      ),
+      '[]'::jsonb
+    )
+  ) INTO v_result
+  FROM profiles p
+  WHERE p.team_id = v_team_id;
+
+  RETURN v_result;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.get_my_team_roster() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_my_team_roster() TO authenticated;
+
+-- ── §16 RPC: get_my_team_activity_today ──────────────────────────────────
+-- Returns list of user_ids active today within the current user's team.
+-- currency_ledger RLS: "user reads own ledger" (user_id = auth.uid()) — own only.
+-- user_super_question_attempts RLS: "attempts_own_read" (user_id = auth.uid()) — own only.
+-- Direct client queries for teammates return empty results from both tables.
+-- This SECURITY DEFINER RPC bypasses RLS to aggregate activity across all team members.
+-- Returns ONLY boolean active flags — no amounts, no ledger details.
+CREATE OR REPLACE FUNCTION public.get_my_team_activity_today()
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_uid     uuid := auth.uid();
+  v_team_id uuid;
+  v_today   date := (now() AT TIME ZONE 'UTC')::date;
+  v_result  jsonb;
+BEGIN
+  IF v_uid IS NULL THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'unauthenticated');
+  END IF;
+
+  SELECT team_id INTO v_team_id FROM profiles WHERE id = v_uid;
+  IF v_team_id IS NULL THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'not_in_team');
+  END IF;
+
+  -- Collect distinct user_ids with any activity today.
+  -- Sources: super question attempts OR qualifying currency ledger entries.
+  -- No amounts or details exposed — only the user_id list.
+  SELECT jsonb_build_object(
+    'ok', true,
+    'active_user_ids', COALESCE(jsonb_agg(DISTINCT u.user_id), '[]'::jsonb)
+  ) INTO v_result
+  FROM (
+    SELECT user_id
+    FROM public.user_super_question_attempts
+    WHERE user_id IN (SELECT id FROM profiles WHERE team_id = v_team_id)
+      AND created_at::date = v_today
+    UNION
+    SELECT user_id
+    FROM public.currency_ledger
+    WHERE user_id IN (SELECT id FROM profiles WHERE team_id = v_team_id)
+      AND operation_type IN ('quiz_reward', 'daily_goal_bonus')
+      AND created_at::date = v_today
+  ) u;
+
+  RETURN v_result;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.get_my_team_activity_today() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_my_team_activity_today() TO authenticated;
+
+-- ── §17 Lock down _gen_team_join_code from public access ──────────────────
 REVOKE ALL ON FUNCTION public._gen_team_join_code() FROM PUBLIC;
 
--- ── Notes: what is NOT in this migration (future iterations) ─────────────
--- Brain Fights scoring formula: server-authoritative events, weekly cycle,
---   top performers + capped participation. Formula is NOT committed here.
--- Weekly Arena: official synchronous BFC tournament.
--- Premium: monetizes depth (extended stats, cosmetics, more Quick Play).
---   Premium does NOT gate team membership, leaderboards, or Weekly Arena.
+-- ── Notes: what is NOT in this migration ─────────────────────────────────
+-- regenerate_team_code: INTENTIONALLY OMITTED. join_code is assigned once
+--   at create_team and is permanent. Regenerating would orphan the old code
+--   (removed from teams row) making it available for future reuse — breaking
+--   the "old invite must never point to another team" invariant.
+-- Brain Fights formula: future iteration (server-authoritative events, weekly cycle).
+-- Weekly Arena: future iteration (synchronous first-party BFC tournament).
+-- Premium: monetizes depth, not participation. Future iteration.
 -- Rate limiting on join_team_by_code: requires infra, future hardening.
 -- is_scout admin management: requires SECURITY DEFINER admin RPC, future work.
