@@ -1,5 +1,5 @@
 -- ══════════════════════════════════════════════════════════════════════════
--- Migration 75 v4: Teams Core — captain, join_code, soft-delete, RPCs
+-- Migration 75 v5: Teams Core — captain, join_code, soft-delete, RPCs
 --
 -- v1 fixes: soft-delete, ON DELETE RESTRICT, idempotent policies,
 --           disbanded guard, captain trigger, donate hardening.
@@ -9,23 +9,18 @@
 --           join_team_by_code explicit conflict, create_team checks history,
 --           leave/kick handle missing history, XSS _escHtml, scout section.
 -- v4 fixes:
---  1. regenerate_team_code REMOVED — join_code is permanent. Old code
---     disappeared from teams row after regenerate, breaking the "never reuse"
---     invariant. MVP: one code per team, forever.
---  2. teams write policy cleanup now includes DELETE (not just INSERT/UPDATE/ALL).
---  3. update_team_profile: explicit REVOKE/GRANT added (was missing).
---  4. get_my_team_roster() RPC added — narrow SECURITY DEFINER roster read.
---     Direct .from('profiles').eq('team_id') works (profiles SELECT is public)
---     but explicit RPC limits exposed columns for future hardening.
---  5. get_my_team_activity_today() RPC added — aggregates activity from
---     currency_ledger and user_super_question_attempts (both own-only RLS)
---     via SECURITY DEFINER, returns only user_id list. No amounts exposed.
---  6. update_my_team: server-side field length limits + https:// enforcement
---     for banner_url and avatar_url (client validation is bypassable).
---  7. Captain backfill: no legacy owner_id/creator_id/captain field exists
---     in teams (confirmed: migration 40 schema, migration 57 additions).
---     Oldest member by profiles.created_at is the documented only fallback.
---  8. Tiebreak score: ⚡ removed from SQL (icon is JS concern; fixed in JS).
+--  1. regenerate_team_code REMOVED — join_code is permanent.
+--  2. teams write policy cleanup now includes DELETE.
+--  3. update_team_profile: explicit REVOKE/GRANT added.
+--  4. get_my_team_roster() RPC added.
+--  5. get_my_team_activity_today() RPC added.
+--  6. update_my_team: server-side field length limits + https://.
+--  7. Captain backfill: no legacy captain field; oldest member fallback.
+--  8. Tiebreak icon: JS concern (fixed in JS).
+-- v5 fixes:
+--  9. update_team_profile (legacy) bypassed validation — now a thin wrapper
+--     around _apply_team_profile_update(), same validation as update_my_team.
+-- 10. create_team: added city <= 60, emoji <= 8 server-side limits.
 --
 -- Does NOT touch migrations 68–74.
 -- Does NOT implement Brain Fights formula (future iteration).
@@ -325,6 +320,15 @@ BEGIN
   IF length(p_name) > 60 THEN
     RETURN jsonb_build_object('ok', false, 'reason', 'name_too_long');
   END IF;
+  IF p_city IS NOT NULL THEN
+    p_city := trim(p_city);
+    IF length(p_city) > 60 THEN
+      RETURN jsonb_build_object('ok', false, 'reason', 'city_too_long');
+    END IF;
+  END IF;
+  IF p_emoji IS NOT NULL AND length(p_emoji) > 8 THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'emoji_too_long');
+  END IF;
 
   -- Lock profile row to prevent concurrent dual-team creation.
   SELECT team_id INTO v_existing FROM profiles WHERE id = v_uid FOR UPDATE;
@@ -598,8 +602,77 @@ $$;
 REVOKE ALL ON FUNCTION public.kick_member(uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.kick_member(uuid) TO authenticated;
 
--- ── §12 RPC: update_my_team (captain-only, with server-side validation) ───
--- Server enforces field length limits and https:// on image URLs.
+-- ── §12 Internal helper: _apply_team_profile_update ─────────────────────
+-- Validates field limits and applies the UPDATE.
+-- Called by both update_my_team and update_team_profile so both paths
+-- enforce identical server-side constraints. REVOKED from PUBLIC — not
+-- directly callable by authenticated users.
+CREATE OR REPLACE FUNCTION public._apply_team_profile_update(
+  p_team_id    uuid,
+  p_name       text,
+  p_city       text,
+  p_motto      text,
+  p_emoji      text,
+  p_banner_url text,
+  p_avatar_url text
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  -- Name
+  IF p_name IS NOT NULL THEN
+    p_name := trim(p_name);
+    IF length(p_name) < 2  THEN RETURN jsonb_build_object('ok', false, 'reason', 'name_too_short'); END IF;
+    IF length(p_name) > 60 THEN RETURN jsonb_build_object('ok', false, 'reason', 'name_too_long');  END IF;
+  END IF;
+  -- City
+  IF p_city IS NOT NULL AND length(p_city) > 60 THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'city_too_long');
+  END IF;
+  -- Motto
+  IF p_motto IS NOT NULL AND length(p_motto) > 100 THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'motto_too_long');
+  END IF;
+  -- Emoji
+  IF p_emoji IS NOT NULL AND length(p_emoji) > 8 THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'emoji_too_long');
+  END IF;
+  -- HTTPS-only for image URLs. Allow NULL (no change) or empty string (clear).
+  IF p_banner_url IS NOT NULL AND p_banner_url <> '' AND p_banner_url NOT LIKE 'https://%' THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'banner_url_not_https');
+  END IF;
+  IF p_avatar_url IS NOT NULL AND p_avatar_url <> '' AND p_avatar_url NOT LIKE 'https://%' THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'avatar_url_not_https');
+  END IF;
+  IF p_banner_url IS NOT NULL AND length(p_banner_url) > 500 THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'banner_url_too_long');
+  END IF;
+  IF p_avatar_url IS NOT NULL AND length(p_avatar_url) > 500 THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'avatar_url_too_long');
+  END IF;
+
+  UPDATE teams SET
+    name       = CASE WHEN p_name       IS NOT NULL THEN p_name       ELSE name       END,
+    city       = CASE WHEN p_city       IS NOT NULL THEN p_city       ELSE city       END,
+    motto      = CASE WHEN p_motto      IS NOT NULL THEN p_motto      ELSE motto      END,
+    emoji      = CASE WHEN p_emoji      IS NOT NULL THEN p_emoji      ELSE emoji      END,
+    banner_url = CASE WHEN p_banner_url IS NOT NULL THEN p_banner_url ELSE banner_url END,
+    avatar_url = CASE WHEN p_avatar_url IS NOT NULL THEN p_avatar_url ELSE avatar_url END,
+    updated_at = now()
+  WHERE id = p_team_id;
+
+  RETURN jsonb_build_object('ok', true);
+END;
+$$;
+
+-- Internal only: REVOKE from PUBLIC, no GRANT to any role.
+REVOKE ALL ON FUNCTION public._apply_team_profile_update(uuid, text, text, text, text, text, text) FROM PUBLIC;
+
+-- ── §13 RPC: update_my_team (captain-only) ───────────────────────────────
+-- Auth/captain check here; validation + UPDATE delegated to helper above.
 -- Client maxlength attributes are UX aids only — bypassable via direct API call.
 CREATE OR REPLACE FUNCTION public.update_my_team(
   p_name       text DEFAULT NULL,
@@ -629,8 +702,7 @@ BEGIN
     RETURN jsonb_build_object('ok', false, 'reason', 'not_in_team');
   END IF;
 
-  SELECT captain_id, disbanded_at INTO v_cap_id, v_disbanded
-  FROM teams WHERE id = v_team_id;
+  SELECT captain_id, disbanded_at INTO v_cap_id, v_disbanded FROM teams WHERE id = v_team_id;
 
   IF v_disbanded IS NOT NULL THEN
     RETURN jsonb_build_object('ok', false, 'reason', 'team_disbanded');
@@ -640,55 +712,20 @@ BEGIN
     RETURN jsonb_build_object('ok', false, 'reason', 'not_captain');
   END IF;
 
-  -- Server-side field limits.
-  IF p_name IS NOT NULL THEN
-    p_name := trim(p_name);
-    IF length(p_name) < 2  THEN RETURN jsonb_build_object('ok', false, 'reason', 'name_too_short'); END IF;
-    IF length(p_name) > 60 THEN RETURN jsonb_build_object('ok', false, 'reason', 'name_too_long');  END IF;
-  END IF;
-  IF p_city  IS NOT NULL AND length(p_city)  > 60  THEN
-    RETURN jsonb_build_object('ok', false, 'reason', 'city_too_long');
-  END IF;
-  IF p_motto IS NOT NULL AND length(p_motto) > 100 THEN
-    RETURN jsonb_build_object('ok', false, 'reason', 'motto_too_long');
-  END IF;
-  IF p_emoji IS NOT NULL AND length(p_emoji) > 8 THEN
-    RETURN jsonb_build_object('ok', false, 'reason', 'emoji_too_long');
-  END IF;
-  -- HTTPS-only for image URLs.
-  IF p_banner_url IS NOT NULL AND p_banner_url <> '' AND p_banner_url NOT LIKE 'https://%' THEN
-    RETURN jsonb_build_object('ok', false, 'reason', 'banner_url_not_https');
-  END IF;
-  IF p_avatar_url IS NOT NULL AND p_avatar_url <> '' AND p_avatar_url NOT LIKE 'https://%' THEN
-    RETURN jsonb_build_object('ok', false, 'reason', 'avatar_url_not_https');
-  END IF;
-  IF p_banner_url IS NOT NULL AND length(p_banner_url) > 500 THEN
-    RETURN jsonb_build_object('ok', false, 'reason', 'banner_url_too_long');
-  END IF;
-  IF p_avatar_url IS NOT NULL AND length(p_avatar_url) > 500 THEN
-    RETURN jsonb_build_object('ok', false, 'reason', 'avatar_url_too_long');
-  END IF;
-
-  UPDATE teams SET
-    name       = CASE WHEN p_name       IS NOT NULL THEN p_name        ELSE name       END,
-    city       = CASE WHEN p_city       IS NOT NULL THEN p_city        ELSE city       END,
-    motto      = CASE WHEN p_motto      IS NOT NULL THEN p_motto       ELSE motto      END,
-    emoji      = CASE WHEN p_emoji      IS NOT NULL THEN p_emoji       ELSE emoji      END,
-    banner_url = CASE WHEN p_banner_url IS NOT NULL THEN p_banner_url  ELSE banner_url END,
-    avatar_url = CASE WHEN p_avatar_url IS NOT NULL THEN p_avatar_url  ELSE avatar_url END,
-    updated_at = now()
-  WHERE id = v_team_id;
-
-  RETURN jsonb_build_object('ok', true);
+  RETURN public._apply_team_profile_update(
+    v_team_id, p_name, p_city, p_motto, p_emoji, p_banner_url, p_avatar_url
+  );
 END;
 $$;
 
 REVOKE ALL ON FUNCTION public.update_my_team(text, text, text, text, text, text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.update_my_team(text, text, text, text, text, text) TO authenticated;
 
--- ── §13 RPC: update_team_profile (legacy compat, captain-only) ───────────
--- Kept for any legacy callers. Hardened to captain-only in v2.
--- REVOKE/GRANT was missing in v3 — added here.
+-- ── §14 RPC: update_team_profile (legacy compat — thin captain wrapper) ──
+-- Legacy callers pass p_team_id explicitly. Auth/captain check here;
+-- validation + UPDATE delegated to _apply_team_profile_update.
+-- v5: previously bypassed all server-side validation — now enforces identical
+--     limits as update_my_team. Bypass was the HIGH issue from v4 review.
 CREATE OR REPLACE FUNCTION public.update_team_profile(
   p_team_id    uuid,
   p_name       text DEFAULT NULL,
@@ -712,8 +749,7 @@ BEGIN
     RETURN jsonb_build_object('ok', false, 'reason', 'unauthenticated');
   END IF;
 
-  SELECT captain_id, disbanded_at INTO v_cap_id, v_disbanded
-  FROM teams WHERE id = p_team_id;
+  SELECT captain_id, disbanded_at INTO v_cap_id, v_disbanded FROM teams WHERE id = p_team_id;
 
   IF v_disbanded IS NOT NULL THEN
     RETURN jsonb_build_object('ok', false, 'reason', 'team_disbanded');
@@ -723,24 +759,16 @@ BEGIN
     RETURN jsonb_build_object('ok', false, 'reason', 'not_captain');
   END IF;
 
-  UPDATE teams SET
-    name       = COALESCE(p_name,       name),
-    city       = COALESCE(p_city,       city),
-    motto      = COALESCE(p_motto,      motto),
-    emoji      = COALESCE(p_emoji,      emoji),
-    banner_url = COALESCE(p_banner_url, banner_url),
-    avatar_url = COALESCE(p_avatar_url, avatar_url),
-    updated_at = now()
-  WHERE id = p_team_id;
-
-  RETURN jsonb_build_object('ok', true);
+  RETURN public._apply_team_profile_update(
+    p_team_id, p_name, p_city, p_motto, p_emoji, p_banner_url, p_avatar_url
+  );
 END;
 $$;
 
 REVOKE ALL ON FUNCTION public.update_team_profile(uuid, text, text, text, text, text, text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.update_team_profile(uuid, text, text, text, text, text, text) TO authenticated;
 
--- ── §14 RPC: donate_to_team ───────────────────────────────────────────────
+-- ── §15 RPC: donate_to_team ───────────────────────────────────────────────
 -- FOR UPDATE on both profile and team rows prevents concurrent overdraft.
 -- p_amount bounded to [1, 10000].
 CREATE OR REPLACE FUNCTION public.donate_to_team(p_amount int)
@@ -814,7 +842,7 @@ $$;
 REVOKE ALL ON FUNCTION public.donate_to_team(int) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.donate_to_team(int) TO authenticated;
 
--- ── §15 RPC: get_my_team_roster ───────────────────────────────────────────
+-- ── §16 RPC: get_my_team_roster ───────────────────────────────────────────
 -- Returns id, display_name, avatar_url, is_scout for current user's team members.
 -- profiles SELECT is effectively public (leaderboard reads arbitrary profiles
 -- directly), but this RPC scopes the read to teammates only and limits columns,
@@ -864,7 +892,7 @@ $$;
 REVOKE ALL ON FUNCTION public.get_my_team_roster() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_my_team_roster() TO authenticated;
 
--- ── §16 RPC: get_my_team_activity_today ──────────────────────────────────
+-- ── §17 RPC: get_my_team_activity_today ──────────────────────────────────
 -- Returns list of user_ids active today within the current user's team.
 -- currency_ledger RLS: "user reads own ledger" (user_id = auth.uid()) — own only.
 -- user_super_question_attempts RLS: "attempts_own_read" (user_id = auth.uid()) — own only.
@@ -919,7 +947,7 @@ $$;
 REVOKE ALL ON FUNCTION public.get_my_team_activity_today() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_my_team_activity_today() TO authenticated;
 
--- ── §17 Lock down _gen_team_join_code from public access ──────────────────
+-- ── §18 Lock down _gen_team_join_code from public access ──────────────────
 REVOKE ALL ON FUNCTION public._gen_team_join_code() FROM PUBLIC;
 
 -- ── Notes: what is NOT in this migration ─────────────────────────────────
