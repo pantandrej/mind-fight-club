@@ -1,3 +1,33 @@
+/* ── HOME DASHBOARD ──────────────────────────────────────── */
+.hdb-hdr{width:100%;max-width:560px;display:flex;align-items:center;justify-content:space-between;padding:12px 16px 8px;position:sticky;top:0;background:var(--bg);z-index:10;border-bottom:0.5px solid var(--border)}
+.hdb-greeting-wrap{display:flex;align-items:center;gap:10px;min-width:0}
+.hdb-hdr-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.hdb-icon-btn{background:transparent;border:0.5px solid var(--border);border-radius:20px;padding:4px 10px;font-size:14px;cursor:pointer;color:var(--muted);line-height:1}
+.hdb-neurons-pill{display:flex;align-items:center;gap:6px;background:rgba(0,237,181,.08);border:0.5px solid var(--border);border-radius:20px;padding:4px 10px 4px 6px;font-size:13px;font-weight:800}
+.hdb-inner{width:100%;max-width:560px;padding:16px 16px 80px;display:flex;flex-direction:column}
+
+/* Today card */
+.hdb-today-card{background:linear-gradient(135deg,rgba(0,237,181,.12),rgba(0,180,140,.06));border:1px solid rgba(0,237,181,.28);border-radius:20px;padding:18px 16px;margin-bottom:12px}
+.hdb-today-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px}
+.hdb-section-label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-weight:800;margin-bottom:4px}
+.hdb-streak-mini{display:flex;flex-direction:column;align-items:center;gap:2px;background:rgba(240,192,64,.1);border:0.5px solid rgba(240,192,64,.3);border-radius:14px;padding:10px 12px;min-width:72px}
+.hdb-qp-row{display:flex;align-items:center;gap:10px;background:rgba(0,237,181,.06);border:0.5px solid rgba(0,237,181,.2);border-radius:12px;padding:10px 12px}
+
+/* Team card */
+.hdb-team-card{background:var(--bg2);border:0.5px solid var(--border);border-radius:16px;padding:14px 16px;margin-bottom:4px;min-height:54px}
+.hdb-team-empty,.hdb-team-info{display:flex;align-items:center;gap:12px;cursor:pointer}
+
+/* Quick actions grid */
+.hdb-actions-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:4px}
+.hdb-action-card{background:var(--bg2);border:0.5px solid var(--border);border-radius:16px;padding:16px 14px;cursor:pointer;display:flex;flex-direction:column;gap:4px;transition:border-color .15s}
+.hdb-action-card:active{border-color:var(--accent)}
+.hdb-action-primary{border-color:rgba(0,237,181,.3);background:rgba(0,237,181,.05)}
+.hdb-action-soon{opacity:.55;cursor:default}
+.hdb-action-icon{font-size:24px;line-height:1;margin-bottom:2px}
+.hdb-action-name{font-size:13px;font-weight:800}
+.hdb-action-desc{font-size:11px;color:var(--muted);line-height:1.3}
+.hdb-soon-badge{display:inline-block;background:rgba(168,85,247,.2);color:rgba(168,85,247,1);border-radius:6px;padding:1px 6px;font-size:10px;font-weight:800;letter-spacing:.5px;text-transform:uppercase}
+
 /* NAV */
 .nav-theme-btn{display:none} /* shown only on desktop via desktop.css */
 .nav{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:center;background:var(--bg);border-top:0.5px solid var(--border);padding:6px 0 10px;z-index:20}

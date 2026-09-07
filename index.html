@@ -195,123 +195,159 @@
 
 <!-- HOME -->
 <div class="screen" id="home">
-  <div class="hdr">
-    <div class="logo"><img src="/public/logo.png" alt="BFC"></div>
-    <div class="hdr-right">
-      <button id="theme-toggle-hdr" onclick="toggleTheme()" title="Сменить тему" style="background:transparent;border:0.5px solid var(--border);border-radius:20px;padding:4px 10px;font-size:14px;cursor:pointer;color:var(--muted);line-height:1;transition:border-color .15s">🌙</button>
+  <!-- compact header -->
+  <div class="hdb-hdr">
+    <div class="hdb-greeting-wrap">
+      <img src="/public/logo.png" alt="BFC" style="height:28px;width:auto;flex-shrink:0">
+      <span id="hdb-greeting" style="font-size:15px;font-weight:800;color:var(--text)">Главная</span>
+    </div>
+    <div class="hdb-hdr-right">
+      <button id="theme-toggle-hdr" onclick="toggleTheme()" title="Сменить тему" class="hdb-icon-btn">🌙</button>
       <div class="lang-toggle">
         <button class="lang-btn" onclick="setLang('en')">EN</button>
         <button class="lang-btn active" onclick="setLang('ru')">RU</button>
       </div>
-      <div class="neurons-pill"><div class="n-orb"></div><span id="n-home">0</span></div>
+      <div class="neurons-pill hdb-neurons-pill" onclick="showScreen('profile')" style="cursor:pointer">
+        <div class="n-orb"></div>
+        <span id="n-home">0</span>
+      </div>
     </div>
   </div>
-  <div class="home-inner">
-    <div class="home-hero">
-      <div class="hero-label" id="h-label">Бета-версия</div>
-      <div class="hero-title" id="h-title">Сражайся умом.<br>Побеждай сердцем.</div>
-      <div class="hero-sub" id="h-sub">Квиз-дуэли в реальном времени — с другом, со случайным соперником или на турнире.</div>
-      <button class="play-btn" id="h-play" onclick="showPlayMenu()" style="font-size:17px;padding:16px">⚡ Играть</button>
-      <div id="home-player-count" style="display:none;margin-top:10px;font-size:12px;color:var(--muted)">
-        <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#4ade80;margin-right:5px;vertical-align:middle"></span>
-        <span id="home-player-count-val">0</span> игроков зарегистрировано
+
+  <div class="hdb-inner">
+
+    <!-- ── СЕГОДНЯ В BFC (dominant card) ── -->
+    <div class="hdb-today-card">
+      <div class="hdb-today-top">
+        <div>
+          <div class="hdb-section-label">Сегодня в BFC</div>
+          <div class="hdb-today-neurons">
+            <span id="hdb-neurons" style="font-size:26px;font-weight:900;color:var(--accent)">0</span>
+            <span style="font-size:13px;color:var(--muted);margin-left:6px">нейронов</span>
+          </div>
+        </div>
+        <div class="hdb-streak-mini" onclick="showPlayMenu()" style="cursor:pointer">
+          <span id="hdb-streak-flame" style="font-size:22px">🔥</span>
+          <span id="hdb-streak-val" style="font-size:20px;font-weight:900;color:var(--gold)">0</span>
+          <div id="hdb-streak-sub" style="font-size:11px;color:var(--muted);text-align:center;margin-top:2px;max-width:90px;line-height:1.3">Начни серию!</div>
+        </div>
+      </div>
+
+      <!-- Quick Play remaining -->
+      <div class="hdb-qp-row" onclick="startQuickPlay()" style="cursor:pointer">
+        <span style="font-size:18px">⚡</span>
+        <span style="font-size:13px;font-weight:700;flex:1">Быстрая игра</span>
+        <span id="hdb-qp-badge" style="font-size:12px;font-weight:800;color:var(--accent)"></span>
+        <span style="color:var(--accent);font-weight:900">›</span>
+      </div>
+
+      <!-- PWA install banner (reused, hidden by default) -->
+      <div id="pwa-install-banner" style="display:none;background:rgba(0,237,181,.08);border:1px solid rgba(0,237,181,.2);border-radius:12px;padding:10px 12px;margin-top:10px;align-items:center;gap:10px">
+        <div style="font-size:22px">📲</div>
+        <div style="flex:1">
+          <div style="font-size:12px;font-weight:800">Установить приложение</div>
+          <div style="font-size:11px;color:var(--muted)">Офлайн · без браузера · быстрее</div>
+        </div>
+        <button onclick="pwaInstall()" style="background:var(--accent);border:none;border-radius:8px;padding:6px 12px;font-size:11px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit;flex-shrink:0">Установить</button>
+        <button onclick="document.getElementById('pwa-install-banner').style.display='none'" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 2px;flex-shrink:0">×</button>
       </div>
     </div>
-    <!-- Daily Logic Widget -->
-    <div id="daily-logic-wrap" style="margin-bottom:16px;display:none"></div>
 
-    <!-- Супервопрос дня от квизов -->
-    <div id="quiz-daily-wrap" style="display:none;flex-direction:column"></div>
-
-    <!-- PWA install banner -->
-    <div id="pwa-install-banner" style="display:none;background:rgba(0,237,181,.12);border:1px solid rgba(0,237,181,.3);border-radius:14px;padding:12px 14px;margin-bottom:12px;display:none;align-items:center;gap:12px">
-      <div style="font-size:28px">📲</div>
-      <div style="flex:1">
-        <div style="font-size:13px;font-weight:800">Установить приложение</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:2px">Работает офлайн · без браузера · быстрее</div>
-      </div>
-      <button onclick="pwaInstall()" style="background:var(--accent);border:none;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit;flex-shrink:0">Установить</button>
-      <button onclick="document.getElementById('pwa-install-banner').style.display='none'" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 4px;flex-shrink:0">×</button>
-    </div>
-
-    <!-- Tournament banner -->
-    <div id="home-trn-banner" style="display:none;background:linear-gradient(135deg,rgba(0,237,181,.2),rgba(168,85,247,.15));border:1px solid rgba(0,237,181,.4);border-radius:16px;padding:14px 16px;margin-bottom:16px;cursor:pointer" onclick="showCupScreen()">
+    <!-- ── СОБЫТИЯ (tournament banner) ── -->
+    <div id="home-trn-banner" style="display:none;background:linear-gradient(135deg,rgba(0,237,181,.18),rgba(168,85,247,.12));border:1px solid rgba(0,237,181,.35);border-radius:16px;padding:14px 16px;margin-bottom:12px;cursor:pointer" onclick="showCupScreen()">
       <div style="display:flex;align-items:center;justify-content:space-between">
         <div>
           <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent2);font-weight:800;margin-bottom:4px" id="home-trn-label">🏆 ТУРНИР</div>
-          <div style="font-size:15px;font-weight:900" id="home-trn-title">Видеоигры — сезон 1</div>
-          <div style="font-size:12px;color:var(--muted);margin-top:3px" id="home-trn-time">через 5м</div>
+          <div style="font-size:15px;font-weight:900" id="home-trn-title">—</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:3px" id="home-trn-time"></div>
         </div>
         <div style="font-size:32px">🏆</div>
       </div>
     </div>
 
-    <!-- Задание дня teaser — скрыто: режим убран из основного UX -->
-    <div id="home-daily-teaser" style="display:none" onclick="showScreen('shop')">
-      <div>
-        <div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--accent2);margin-bottom:2px" id="home-daily-label">Задание дня</div>
-        <div style="font-size:13px;font-weight:700" id="home-daily-title">Задание дня</div>
-      </div>
-      <div style="font-size:13px;color:var(--accent2)" id="home-daily-reward">Скоро</div>
+    <!-- ── КОМАНДА (Team Pulse) ── -->
+    <div class="hdb-section-label" style="margin-bottom:8px">Команда</div>
+    <div id="hdb-team-card" class="hdb-team-card">
+      <div style="font-size:13px;color:var(--muted)">Загрузка...</div>
     </div>
-    <!-- Streak widget (Duolingo-style) -->
-    <div id="home-streak-widget" style="margin-bottom:20px;background:linear-gradient(135deg,rgba(240,192,64,.12),rgba(240,150,0,.08));border:1px solid rgba(240,192,64,.3);border-radius:20px;padding:18px 20px;display:flex;align-items:center;gap:16px;cursor:pointer" onclick="showPlayMenu()">
-      <!-- Flame icon with count -->
-      <div style="position:relative;flex-shrink:0">
-        <div style="font-size:48px;line-height:1;filter:drop-shadow(0 2px 8px rgba(240,150,0,.5))" id="home-streak-flame">🔥</div>
-        <div id="home-streak-badge" style="position:absolute;bottom:-4px;right:-8px;background:var(--gold);color:#fff;font-size:11px;font-weight:900;border-radius:20px;padding:2px 7px;min-width:22px;text-align:center;box-shadow:0 2px 6px rgba(0,0,0,.3)">0</div>
-      </div>
-      <!-- Text -->
-      <div style="flex:1;min-width:0">
-        <div style="font-size:16px;font-weight:900;color:var(--text)" id="home-streak-title">Серия: 0 дней 🔥</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:3px" id="home-streak-sub">Играй каждый день — не прерывай серию!</div>
-        <!-- Week dots -->
-        <div id="home-streak-dots" style="display:flex;gap:6px;margin-top:10px"></div>
-      </div>
-    </div>
-    <!-- Супервопрос дня -->
-    <div id="home-super-q" style="display:none;margin-bottom:12px"></div>
 
-    <div class="section-title" id="h-mode-title">Режим</div>
-    <!-- Unified 2×2 mode grid -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
-      <div onclick="startQuickPlay()" style="background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;padding:14px;cursor:pointer;display:flex;align-items:flex-start;gap:10px">
-        <div style="font-size:22px;flex-shrink:0">⚡</div>
-        <div><div style="font-size:13px;font-weight:800;margin-bottom:2px" id="m-feed-name">Быстрая игра</div><div style="font-size:11px;color:var(--muted);line-height:1.3" id="m-feed-desc">10 вопросов в день — бесплатно</div></div>
+    <!-- ── БЫСТРЫЕ ДЕЙСТВИЯ (2×2 grid) ── -->
+    <div class="hdb-section-label" style="margin-top:20px;margin-bottom:8px">Играть</div>
+    <div class="hdb-actions-grid">
+      <div class="hdb-action-card hdb-action-primary" onclick="startQuickPlay()">
+        <div class="hdb-action-icon">⚡</div>
+        <div class="hdb-action-name">Быстрая игра</div>
+        <div class="hdb-action-desc" id="m-feed-desc">10 вопросов в день</div>
       </div>
-      <div onclick="showCupScreen()" style="background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;padding:14px;cursor:pointer;display:flex;align-items:flex-start;gap:10px">
-        <div style="font-size:22px;flex-shrink:0">🏆</div>
-        <div><div style="font-size:13px;font-weight:800;margin-bottom:2px">Турнир</div><div style="font-size:11px;color:var(--muted);line-height:1.3">Официальный турнир</div></div>
+      <div class="hdb-action-card" onclick="showScreen('duel')">
+        <div class="hdb-action-icon">⚔️</div>
+        <div class="hdb-action-name">Дуэль</div>
+        <div class="hdb-action-desc">С другом по коду</div>
       </div>
-      <div onclick="showScreen('duel')" style="background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;padding:14px;cursor:pointer;display:flex;align-items:flex-start;gap:10px">
-        <div style="font-size:22px;flex-shrink:0">⚔️</div>
-        <div><div style="font-size:13px;font-weight:800;margin-bottom:2px">Дуэль с другом</div><div style="font-size:11px;color:var(--muted);line-height:1.3">Пригласи по коду или ссылке</div></div>
+      <div class="hdb-action-card" onclick="startMatchmaking()">
+        <div class="hdb-action-icon">🔍</div>
+        <div class="hdb-action-name">Случайный бой</div>
+        <div class="hdb-action-desc">Найди соперника</div>
       </div>
-      <div onclick="startMatchmaking()" style="background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;padding:14px;cursor:pointer;display:flex;align-items:flex-start;gap:10px">
-        <div style="font-size:22px;flex-shrink:0">🔍</div>
-        <div><div style="font-size:13px;font-weight:800;margin-bottom:2px">Случайный бой</div><div style="font-size:11px;color:var(--muted);line-height:1.3">Найди соперника онлайн</div></div>
+      <div class="hdb-action-card hdb-action-soon">
+        <div class="hdb-action-icon">🧠</div>
+        <div class="hdb-action-name">Brain Fights</div>
+        <div class="hdb-action-desc hdb-soon-badge">Скоро</div>
       </div>
     </div>
 
-    <!-- Activity feed -->
-    <div id="home-activity-feed" style="display:none;margin-bottom:16px">
-      <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-weight:800;margin-bottom:8px">🔥 Сейчас играют</div>
+    <!-- ── HIDDEN widgets still used by legacy boot ── -->
+    <div id="daily-logic-wrap" style="display:none"></div>
+    <div id="quiz-daily-wrap" style="display:none;flex-direction:column"></div>
+    <div id="home-super-q" style="display:none"></div>
+    <div id="home-daily-teaser" style="display:none"></div>
+    <!-- Legacy streak widget IDs kept for js/training/streak.js compat -->
+    <div id="home-streak-widget" style="display:none">
+      <div id="home-streak-flame" style="display:none">🔥</div>
+      <div id="home-streak-badge" style="display:none">0</div>
+      <div id="home-streak-title" style="display:none"></div>
+      <div id="home-streak-sub" style="display:none"></div>
+      <div id="home-streak-dots" style="display:none"></div>
+    </div>
+
+    <!-- ── АКТИВНОСТЬ (activity feed) ── -->
+    <div id="home-activity-feed" style="display:none;margin-top:20px;margin-bottom:16px">
+      <div class="hdb-section-label" style="margin-bottom:8px">🔥 Сейчас играют</div>
       <div id="home-activity-list" style="display:flex;flex-direction:column;gap:4px"></div>
     </div>
 
-    <!-- CTA row -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+    <!-- ── CTA row ── -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px;margin-bottom:16px">
       <div onclick="showScreen('club-finder');window.loadClubFinder?.()" style="background:rgba(74,222,128,.06);border:0.5px solid rgba(74,222,128,.2);border-radius:14px;padding:12px 14px;cursor:pointer;display:flex;align-items:center;gap:10px">
         <div style="font-size:22px;flex-shrink:0">🔎</div>
-        <div><div style="font-size:13px;font-weight:800;margin-bottom:1px">Ищешь команду?</div><div style="font-size:11px;color:var(--muted)">Объявления о наборе →</div></div>
+        <div><div style="font-size:13px;font-weight:800;margin-bottom:1px">Ищешь команду?</div><div style="font-size:11px;color:var(--muted)">Объявления →</div></div>
       </div>
       <div onclick="showScreen('organizer-apply')" style="background:rgba(0,237,181,.06);border:0.5px solid rgba(0,237,181,.2);border-radius:14px;padding:12px 14px;cursor:pointer;display:flex;align-items:center;gap:10px">
         <div style="font-size:22px;flex-shrink:0">🏟️</div>
-        <div><div style="font-size:13px;font-weight:800;margin-bottom:1px">Проводишь квизы?</div><div style="font-size:11px;color:var(--muted)">Стать организатором →</div></div>
+        <div><div style="font-size:13px;font-weight:800;margin-bottom:1px">Проводишь квизы?</div><div style="font-size:11px;color:var(--muted)">Организатор →</div></div>
       </div>
     </div>
-    <div class="section-title" id="h-topic-title">Тема</div>
-    <div class="cat-chips" id="cat-chips">
+
+    <!-- legacy next-goal widget -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <div class="hdb-section-label" style="margin-bottom:0">🏅 Следующая цель</div>
+      <button onclick="showScreen('profile')" style="background:none;border:none;font-size:11px;color:var(--muted);cursor:pointer;font-family:inherit;padding:0">Все →</button>
+    </div>
+    <div id="home-next-goal-widget" style="background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:24px">
+      <div style="font-size:13px;color:var(--muted)">Загрузка...</div>
+    </div>
+
+    <!-- legacy IDs expected by other scripts -->
+    <div id="home-player-count" style="display:none"><span id="home-player-count-val">0</span></div>
+    <div id="h-label" style="display:none">Бета-версия</div>
+    <div id="h-title" style="display:none"></div>
+    <div id="h-sub" style="display:none"></div>
+    <div id="h-mode-title" style="display:none"></div>
+    <div id="h-topic-title" style="display:none"></div>
+    <div id="h-badges-title" style="display:none"></div>
+    <div id="h-play" style="display:none"></div>
+    <div id="m-feed-name" style="display:none"></div>
+    <div class="cat-chips" id="cat-chips" style="display:none">
       <div class="chip all-chip sel" data-cat="ALL" onclick="toggleCat(this)" id="chip-all">Все темы</div>
       <div class="chip" data-cat="SCIENCE" onclick="toggleCat(this)">🔬 <span class="chip-label">Наука</span></div>
       <div class="chip" data-cat="HISTORY" onclick="toggleCat(this)">📜 <span class="chip-label">История</span></div>
@@ -322,13 +358,6 @@
       <div class="chip" data-cat="DISNEY" onclick="toggleCat(this)">🏰 Disney</div>
       <div class="chip" data-cat="ART" onclick="toggleCat(this)">🎨 <span class="chip-label">Искусство</span></div>
       <div class="chip" data-cat="GAMING" onclick="toggleCat(this)">🎮 <span class="chip-label">Игры</span></div>
-    </div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-      <div class="section-title" id="h-badges-title" style="margin-bottom:0">🏅 Следующая цель</div>
-      <button onclick="showScreen('profile')" style="background:none;border:none;font-size:11px;color:var(--muted);cursor:pointer;font-family:inherit;padding:0">Все достижения →</button>
-    </div>
-    <div id="home-next-goal-widget" style="background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;padding:12px 14px">
-      <div style="font-size:13px;color:var(--muted)">Загрузка...</div>
     </div>
   </div>
 </div>
@@ -2744,13 +2773,14 @@
   <div class="nav-inner">
     <div class="nav-brand-logo" onclick="showScreen('home')" style="cursor:pointer"><img src="/public/logo.png" alt="BFC"></div>
     <button class="nav-item active" id="nav-home" onclick="showScreen('home')"><div class="nav-icon">🏠</div><div class="nav-label" id="nav-home-label">Главная</div></button>
-    <button class="nav-item" id="nav-quiz" onclick="showPlayMenu()"><div class="nav-icon">⚡</div><div class="nav-label" id="nav-play-label">Режимы игры</div></button>
-    <button class="nav-item" id="nav-duel" onclick="showScreen('duel')"><div class="nav-icon">⚔️</div><div class="nav-label" id="nav-duel-label">Дуэль</div></button>
-    <button class="nav-item" id="nav-teams-list-screen" onclick="window.loadTeamsList?.()"><div class="nav-icon">🏟️</div><div class="nav-label">Команды</div></button>
-    <button class="nav-item" id="nav-tournament" onclick="showCupScreen()"><div class="nav-icon">🏆</div><div class="nav-label" id="nav-cup-label">Турнир</div></button>
+    <button class="nav-item" id="nav-quiz" onclick="showPlayMenu()"><div class="nav-icon">⚡</div><div class="nav-label" id="nav-play-label">Играть</div></button>
+    <button class="nav-item" id="nav-teams-list-screen" onclick="window.loadTeamsList?.()"><div class="nav-icon">👥</div><div class="nav-label">Команды</div></button>
+    <button class="nav-item" id="nav-tournament" onclick="showCupScreen()"><div class="nav-icon">🏆</div><div class="nav-label" id="nav-cup-label">События</div></button>
     <button class="nav-item" id="nav-profile" onclick="showScreen('profile')"><div class="nav-icon">👤</div><div class="nav-label" id="nav-profile-label">Профиль</div></button>
+    <!-- hidden nav items kept for legacy screen-active highlighting -->
+    <button class="nav-item" id="nav-duel" style="display:none" onclick="showScreen('duel')"><div class="nav-icon">⚔️</div><div class="nav-label" id="nav-duel-label">Дуэль</div></button>
     <button class="nav-item" id="nav-scout" style="display:none" onclick="showScreen('scout-form-screen');window.loadScoutForm?.()"><div class="nav-icon">🎯</div><div class="nav-label">Ввод</div></button>
-    <button class="nav-item nav-theme-btn" id="nav-theme-btn" onclick="toggleTheme()"><div class="nav-icon" id="nav-theme-icon">🌙</div><div class="nav-label">Тема</div></button>
+    <button class="nav-item nav-theme-btn" id="nav-theme-btn" onclick="toggleTheme()" style="display:none"><div class="nav-icon" id="nav-theme-icon">🌙</div><div class="nav-label">Тема</div></button>
   </div>
 </nav>
 <div class="toast" id="toast"></div>

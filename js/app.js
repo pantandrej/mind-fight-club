@@ -34,6 +34,7 @@ import { loadOrgAnalytics, exportOrgCSV } from './organizer-analytics.js';
 import { loadWeeklyChest, awardWeeklyNeurons } from './weekly-chest.js';
 import { loadSuperQuestion } from './super-question.js';
 import { loadQModeration } from './q-moderation.js';
+import { renderHomeDashboard } from './home-dashboard.js';
 
 // ── Boot ──────────────────────────────────────────────────────────
 window.loadMyTeam    = loadMyTeam;
@@ -60,6 +61,7 @@ async function _bootHomeWidgets() {
   await initDailyLogic();
   await loadActivityFeed();
   await loadSuperQuestion();
+  await renderHomeDashboard();
 }
 
 async function registerServiceWorker() {

@@ -41,6 +41,7 @@ export function showScreen(name) {
       if (name === 'profile' && typeof window.showProfile         === 'function') window.showProfile();
       if (name === 'admin'   && typeof window.loadAdminGames      === 'function') window.loadAdminGames();
       if (name === 'home'        && typeof window.loadQuizDailyQuestion === 'function') window.loadQuizDailyQuestion();
+      if (name === 'home'        && typeof window.renderHomeDashboard   === 'function') window.renderHomeDashboard();
       if (name === 'team-profile' && typeof window._teamProfileRefresh  === 'function') window._teamProfileRefresh();
       if (name === 'quiz-profile-screen' && window._quizProfileSlug && typeof window.loadQuizProfile === 'function') window.loadQuizProfile(window._quizProfileSlug);
     } catch (e) { console.error('Screen render error:', e); }
