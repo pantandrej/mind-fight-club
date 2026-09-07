@@ -242,7 +242,7 @@ BEGIN
     v_user_id, v_team_id, v_week_start, 'superq', p_question_id,
     v_today, v_bf_pts, now()
   )
-  ON CONFLICT ON CONSTRAINT bfc_daily_unique DO NOTHING;
+  ON CONFLICT DO NOTHING;  -- handles both bfc_source_unique and bfc_daily_unique
 
   -- Detect whether BF was actually awarded (0 rows = conflict = already earned today)
   GET DIAGNOSTICS v_rows = ROW_COUNT;

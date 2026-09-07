@@ -227,7 +227,7 @@ function _renderBF(el, data, myUserId) {
   // LEADERBOARD — from RPC
   const hasCityTab = !!teamCity;
   const cityEntries = hasCityTab
-    ? (leaderboard || []).filter(r => r.city?.toLowerCase() === teamCity.toLowerCase())
+    ? (leaderboard || []).filter(r => r.city?.trim().toLowerCase() === teamCity.trim().toLowerCase())
     : [];
 
   // Global tab uses global_rank; city tab uses server-computed city_rank
