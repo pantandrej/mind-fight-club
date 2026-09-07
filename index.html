@@ -3217,23 +3217,27 @@ console.log('✅ Firebase Tournaments module loaded');
 
   window.saveBio = async function() {
     if (!window.sb) { console.error('[saveBio] no sb'); return; }
-    const { data: { user } } = await window.sb.auth.getUser();
-    if (!user) { console.error('[saveBio] not authenticated'); return; }
     const raw = document.getElementById('profile-bio-input').value.trim();
-    const bio = raw.slice(0, 500); // client-side pre-trim; server validates too
-    const { data, error } = await window.sb.rpc('update_my_profile', { p_bio: bio });
-    if (error || !data?.ok) {
-      const reason = error?.message || data?.reason || 'unknown';
-      console.error('[saveBio] RPC error:', reason, error);
-      window.toast?.('Ошибка сохранения: ' + (data?.reason === 'bio_too_long' ? 'текст слишком длинный' : reason));
-      return;
+    const bio = raw.slice(0, 500);
+    try {
+      const { data, error } = await window.sb.rpc('update_my_profile', { p_bio: bio });
+      if (error) throw new Error(error.message);
+      if (!data?.ok) {
+        const reason = data?.reason || 'unknown';
+        console.error('[saveBio] RPC returned error:', reason, data);
+        window.toast?.('Ошибка сохранения: ' + (reason === 'bio_too_long' ? 'текст слишком длинный' : reason === 'unauthenticated' ? 'войди в аккаунт' : reason));
+        return;
+      }
+      document.getElementById('profile-bio-text').textContent = bio;
+      document.getElementById('profile-bio-text').style.display = bio ? 'inline' : 'none';
+      document.getElementById('profile-bio-placeholder').style.display = bio ? 'none' : 'inline';
+      document.getElementById('profile-bio-edit').style.display = 'none';
+      document.getElementById('profile-bio-display').style.display = 'block';
+      window.toast?.('✓ Сохранено');
+    } catch(e) {
+      console.error('[saveBio] exception:', e.message, e);
+      window.toast?.('Ошибка сохранения: ' + e.message);
     }
-    document.getElementById('profile-bio-text').textContent = bio;
-    document.getElementById('profile-bio-text').style.display = bio ? 'inline' : 'none';
-    document.getElementById('profile-bio-placeholder').style.display = bio ? 'none' : 'inline';
-    document.getElementById('profile-bio-edit').style.display = 'none';
-    document.getElementById('profile-bio-display').style.display = 'block';
-    window.toast?.('✓ Сохранено');
   };
 
   window.toggleAvatarEdit = function() {
@@ -3251,13 +3255,15 @@ console.log('✅ Firebase Tournaments module loaded');
     if (!currentUser) { window.toast?.('Войдите чтобы сохранить фото'); return; }
 
     window.toast?.('⏳ Загружаем...');
+    // Path: avatars/<user_id>.<ext> — matches migration-73 storage policy pattern.
+    // Each extension is a separate object; upsert replaces same-ext uploads.
     const ext = (file.name.split('.').pop().toLowerCase()) || 'jpg';
-    // Path: avatars/<user_id>.<ext> — user can only write to their own path (storage policy)
     const path = `avatars/${currentUser.id}.${ext}`;
     const { error: upErr } = await window.sb.storage.from('mfc-media').upload(path, file, { upsert: true, contentType: file.type });
     if (upErr) {
-      console.error('[saveAvatarFile] storage error code=' + upErr.error + ' msg=' + upErr.message, upErr);
-      window.toast?.('Ошибка загрузки фото: ' + (upErr.message || upErr.error));
+      console.error('[saveAvatarFile] storage error bucket=mfc-media path=' + path + ' code=' + upErr.error + ' msg=' + upErr.message, upErr);
+      const hint = upErr.statusCode === 404 || upErr.message?.includes('Bucket') ? ' (хранилище не настроено)' : '';
+      window.toast?.('Ошибка загрузки фото: ' + (upErr.message || upErr.error) + hint);
       return;
     }
     const { data: urlData } = window.sb.storage.from('mfc-media').getPublicUrl(path);
