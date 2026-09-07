@@ -29,14 +29,17 @@
 -- v7 security fix — join_code enumeration:
 -- 14. Enable RLS on teams (was missing — policies existed but had no effect).
 -- 15. REVOKE SELECT on teams from authenticated/anon; GRANT SELECT only on
---     safe public columns (join_code excluded). Direct sb.from('teams').select(*)
---     or any explicit join_code select → permission denied.
+--     safe public columns (join_code + treasury_neurons excluded).
 -- 16. get_my_team() RPC: returns full team row incl. join_code for own team only.
 -- 17. get_public_team(uuid) RPC: returns public fields, never join_code.
--- 18. join_team_by_legacy_id(uuid) RPC: handles ?join=UUID invite links
---     server-side — looks up join_code internally, never returns it to client.
--- 19. my-team.js: replaced direct teams SELECT with get_my_team() RPC;
---     legacy UUID invite path uses join_team_by_legacy_id().
+-- 18. join_team_by_legacy_id(uuid) RPC: created in v7, REMOVED in v8 (see §20).
+-- 19. my-team.js: replaced direct teams SELECT with get_my_team() RPC.
+-- v8 security fix — invite bypass + treasury exposure:
+-- 20. join_team_by_legacy_id DROPPED: team UUID is public → any user could
+--     join any team without knowing join_code. Architecturally unsafe.
+--     Legacy ?join=UUID links now show "outdated link" UI message.
+-- 21. treasury_neurons removed from public column GRANT: internal economy,
+--     not a public competitive stat per Product Constitution.
 --
 -- Dependency audit (all tables/columns used but not created here):
 --   teams                             ← migration 40
@@ -338,7 +341,7 @@ CREATE POLICY "teams_read"
 REVOKE SELECT ON public.teams FROM authenticated, anon;
 GRANT SELECT (
   id, name, city, motto, banner_url, avatar_url, emoji,
-  captain_id, disbanded_at, treasury_neurons, updated_at, created_at
+  captain_id, disbanded_at, updated_at, created_at
 ) ON public.teams TO authenticated, anon;
 
 -- RLS on team_treasury_ledger: block all direct client writes.
@@ -1107,54 +1110,17 @@ $$;
 REVOKE ALL ON FUNCTION public.get_public_team(uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_public_team(uuid) TO authenticated, anon;
 
--- ── §20 RPC: join_team_by_legacy_id — legacy ?join=UUID invite ────────────
--- Handles invite links that used team UUID directly (pre-canonical join_code links).
--- Retrieves join_code server-side; never exposes it to the client.
--- join_team_by_code() is called internally for consistent membership logic.
-CREATE OR REPLACE FUNCTION public.join_team_by_legacy_id(p_team_id uuid)
-RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  v_uid       uuid := auth.uid();
-  v_code      text;
-  v_disbanded timestamptz;
-  v_name      text;
-  v_join_result jsonb;
-BEGIN
-  IF v_uid IS NULL THEN
-    RETURN jsonb_build_object('ok', false, 'reason', 'unauthenticated');
-  END IF;
-
-  SELECT join_code, disbanded_at, name INTO v_code, v_disbanded, v_name
-  FROM teams WHERE id = p_team_id;
-
-  IF v_name IS NULL THEN
-    RETURN jsonb_build_object('ok', false, 'reason', 'team_not_found');
-  END IF;
-
-  IF v_disbanded IS NOT NULL THEN
-    RETURN jsonb_build_object('ok', false, 'reason', 'team_disbanded');
-  END IF;
-
-  IF v_code IS NULL THEN
-    -- Team exists but has no join_code (edge case: pre-75 team not yet backfilled).
-    RETURN jsonb_build_object('ok', false, 'reason', 'no_join_code');
-  END IF;
-
-  -- Delegate to join_team_by_code for consistent membership logic.
-  -- join_code is never returned to the caller.
-  v_join_result := public.join_team_by_code(v_code);
-
-  -- Strip join_code from result if present; add team_name for UX.
-  RETURN (v_join_result - 'join_code') || jsonb_build_object('team_name', v_name);
-END;
-$$;
-
-REVOKE ALL ON FUNCTION public.join_team_by_legacy_id(uuid) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.join_team_by_legacy_id(uuid) TO authenticated;
+-- ── §20 Drop join_team_by_legacy_id (SECURITY FLAW — removed) ────────────
+-- join_team_by_legacy_id(uuid) was created in v7 to handle legacy ?join=UUID
+-- invite links by looking up join_code server-side. However team UUID is a
+-- public identifier (returned by get_public_team and visible in rankings), so
+-- any authenticated user could pass an arbitrary team UUID and bypass the
+-- invite model entirely — no join_code required.
+-- The function is architecturally unsafe. Legacy ?join=UUID links now show
+-- an "outdated link" message in the UI directing the user to ask the captain
+-- for the current ?team_code=ABCDEF link. There is no safe server-side path
+-- to join a team by UUID alone.
+DROP FUNCTION IF EXISTS public.join_team_by_legacy_id(uuid);
 
 -- ── §21 Lock down _gen_team_join_code from public access ──────────────────
 REVOKE ALL ON FUNCTION public._gen_team_join_code() FROM PUBLIC;

@@ -604,36 +604,17 @@ async function _handleInviteLink(code, uuid) {
   }
 
   if (uuid) {
-    const { data: profile } = await sb.from('profiles')
-      .select('team_id').eq('id', currentUser.id).single();
-    if (profile?.team_id === uuid) return;
-
-    // get_public_team() returns safe public fields — no join_code exposed to client.
-    // join_team_by_legacy_id() looks up join_code server-side and delegates to
-    // join_team_by_code() internally — client never sees the code.
+    // Legacy ?join=UUID links are no longer supported.
+    // team UUID is a public identifier — joining by UUID alone would bypass
+    // the invite model (any user could join any team without a join_code).
+    // Show the team name if possible, then direct the user to ask for the code.
     const { data: pubTeam } = await sb.rpc('get_public_team', { p_team_id: uuid });
-    if (!pubTeam?.ok) {
-      window.toast?.('Эта команда не найдена');
-      return;
-    }
-    if (pubTeam.disbanded_at) {
-      window.toast?.('Эта команда больше не существует');
-      return;
-    }
-    if (!confirm(`Вступить в команду «${_escHtml(pubTeam.name)}»?`)) return;
-
-    const { data, error } = await sb.rpc('join_team_by_legacy_id', { p_team_id: uuid });
-    if (error || !data?.ok) {
-      const msgs = {
-        team_not_found: 'Команда не найдена',
-        team_disbanded: 'Команда расформирована',
-        no_join_code:   'Команда не поддерживает вступление по ссылке. Попроси код у капитана.',
-        already_in_team: 'Ты уже в команде',
-      };
-      window.toast?.('❌ ' + (msgs[data?.reason] || 'Ошибка при вступлении'));
-      return;
-    }
-    window.toast?.(`✅ Ты в команде «${_escHtml(pubTeam.name)}»!`);
+    const teamName = pubTeam?.ok ? `«${_escHtml(pubTeam.name)}»` : 'команды';
+    window.toast?.(
+      `Ссылка приглашения в ${teamName} устарела. Попроси у капитана актуальный код команды.`,
+      5000
+    );
+    // Redirect to join screen so user can type the code manually.
     loadMyTeam();
   }
 }
