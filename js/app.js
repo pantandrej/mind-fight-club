@@ -25,6 +25,7 @@ import { refreshHomeBanner } from './tournaments/tournament-pack.js';
 import { loadDailyQuestion } from './daily-question.js';
 import { loadActivityFeed }  from './activity-feed.js';
 import './pwa.js';
+import './profile-passport.js';
 import { initDailyLogic, checkBrandRoute } from './brands/brands.js';
 import { loadClubFinder } from './club-finder.js';
 import { loadMyTeam } from './my-team.js';

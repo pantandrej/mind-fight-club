@@ -1926,21 +1926,15 @@ window.isDailyGoalClaimed               = isDailyGoalClaimed;
 window.todayKey                          = todayKey;
 
 function toggleAvatarEdit() {
+  // Avatar upload is free for all authenticated users
   const panel = document.getElementById('profile-avatar-edit');
-  if (!panel) return;
-  const isOpen = panel.style.display !== 'none';
-  if (!isOpen) {
-    const isPro = window._userSubscription?.isPremium ?? false;
-    if (!isPro) {
-      toast('📸 Загрузка фото — только для Pro');
-      setTimeout(() => {
-        if (typeof window.openPremiumScreen === 'function') window.openPremiumScreen();
-        else showScreen('premium');
-      }, 800);
-      return;
-    }
+  if (panel) {
+    const isOpen = panel.style.display !== 'none';
+    panel.style.display = isOpen ? 'none' : 'block';
+    return;
   }
-  panel.style.display = isOpen ? 'none' : 'block';
+  // New passport: open modal directly at avatar section
+  if (typeof window._ppOpenEditModal === 'function') window._ppOpenEditModal('avatar');
 }
 
 async function saveAvatarFile(input) {
@@ -1950,8 +1944,8 @@ async function saveAvatarFile(input) {
   if (!currentUser) { toast('❌ Войди в аккаунт'); return; }
 
   toast('⏳ Загружаем фото...');
-  const ext = file.name.split('.').pop().toLowerCase() || 'jpg';
-  const path = `avatars/${currentUser.id}.${ext}`;
+  // Normalize path to always use same slot per user — prevents orphaned files
+  const path = `avatars/${currentUser.id}.jpg`;
   const { error: upErr } = await sb.storage.from('mfc-media').upload(path, file, { upsert: true, contentType: file.type });
   if (upErr) { toast('❌ Ошибка загрузки: ' + upErr.message.slice(0, 60)); return; }
 
@@ -1959,20 +1953,21 @@ async function saveAvatarFile(input) {
   const url = urlData?.publicUrl;
   if (!url) { toast('❌ Не удалось получить URL'); return; }
 
-  // Save to profile
-  await sb.from('profiles').upsert({ id: currentUser.id, avatar_url: url, updated_at: new Date().toISOString() }, { onConflict: 'id' });
+  // Use SECURITY DEFINER RPC — avoids guard_critical_profile_fields trigger on direct upsert
+  const { error: rpcErr } = await sb.rpc('update_my_profile', { p_avatar_url: url });
+  if (rpcErr) { toast('❌ Не удалось сохранить фото'); return; }
   await sb.auth.updateUser({ data: { avatar_url: url } });
 
-  // Update avatar in UI
-  const avEl = document.getElementById('profile-av');
-  if (avEl) {
-    avEl.style.backgroundImage = `url(${url})`;
-    avEl.style.backgroundSize = 'cover';
-    avEl.style.backgroundPosition = 'center';
-    avEl.textContent = '';
-  }
+  // Update avatar everywhere in UI
+  document.querySelectorAll('#profile-av, #pp-modal-av').forEach(el => {
+    el.style.backgroundImage = `url(${url})`;
+    el.style.backgroundSize = 'cover';
+    el.style.backgroundPosition = 'center';
+    el.textContent = '';
+  });
 
-  toggleAvatarEdit();
+  if (typeof window._ppCloseEditModal === 'function') window._ppCloseEditModal();
+  else toggleAvatarEdit();
   toast('✅ Фото сохранено!');
 }
 

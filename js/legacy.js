@@ -1390,16 +1390,47 @@ function showProfile(){
   document.getElementById('profile-av').textContent=initial;
   document.getElementById('profile-name').textContent=name;
   document.getElementById('profile-email').textContent=currentUser.email||'';
-  // Async: fetch display_name from DB and update if different
+  // Async: fetch full profile from DB — DB is authoritative for display_name, city, bio, avatar_url
   if(currentUser){
-    sb.from('profiles').select('display_name').eq('id',currentUser.id).single().then(({data})=>{
-      // localStorage wins over DB — user may have just saved (upsert still in-flight)
-      const currentSaved = localStorage.getItem('mfc_display_name');
-      const displayName = currentSaved || data?.display_name;
-      if(displayName && displayName !== name){
-        if(!currentSaved) localStorage.setItem('mfc_display_name', displayName);
-        document.getElementById('profile-name').textContent = displayName;
-        document.getElementById('profile-av').textContent = displayName[0].toUpperCase();
+    sb.from('profiles').select('display_name,city,bio,avatar_url').eq('id',currentUser.id).single().then(({data})=>{
+      if(!data) return;
+      // display_name: DB wins; write-through to localStorage so subsequent renders are fast
+      const dbName = data.display_name;
+      if(dbName){
+        localStorage.setItem('mfc_display_name', dbName);
+        const nameEl = document.getElementById('profile-name');
+        if(nameEl) nameEl.textContent = dbName;
+        const avEl = document.getElementById('profile-av');
+        if(avEl && !avEl.style.backgroundImage) avEl.textContent = dbName[0].toUpperCase();
+      }
+      // city: populate from DB
+      if(data.city){
+        localStorage.setItem('mfc_city', data.city);
+        const cityEl = document.getElementById('profile-city-display');
+        if(cityEl) cityEl.textContent = data.city;
+        const cityTag = document.getElementById('profile-city-tag');
+        if(cityTag) cityTag.style.display = '';
+      }
+      // bio: show from DB
+      const bio = data.bio;
+      const bioText = document.getElementById('profile-bio-text');
+      const bioPh   = document.getElementById('profile-bio-placeholder');
+      if(bio && bio.trim()){
+        if(bioText){ bioText.textContent = bio; bioText.style.display = ''; }
+        if(bioPh)  bioPh.style.display = 'none';
+      } else {
+        if(bioText) bioText.style.display = 'none';
+        if(bioPh)  bioPh.style.display = '';
+      }
+      // avatar_url: show real photo
+      if(data.avatar_url){
+        const avEl = document.getElementById('profile-av');
+        if(avEl){
+          avEl.style.backgroundImage = `url(${data.avatar_url})`;
+          avEl.style.backgroundSize = 'cover';
+          avEl.style.backgroundPosition = 'center';
+          avEl.textContent = '';
+        }
       }
     }).catch(()=>{});
   }
@@ -1439,6 +1470,11 @@ function showProfile(){
     levelWrap.insertAdjacentElement('afterend', rankWrap);
   }
   document.getElementById('n-profile').textContent=neurons;
+  // Populate new Passport XP pill
+  const ppXp = document.getElementById('pp-xp-val');
+  if(ppXp) ppXp.textContent = (xp || 0).toLocaleString('ru');
+  const ppRankTxt = document.getElementById('pp-rank-txt');
+  if(ppRankTxt){ const r=getRank(xp); ppRankTxt.textContent = 'XP · ' + r.name; }
   // Load stats from DB
   loadProfileStats();
   renderProfileCity();
