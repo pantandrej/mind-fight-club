@@ -225,10 +225,16 @@ BEGIN
     -- If disbanded: v_team_id → NULL; contribution recorded but unattributed
   END IF;
 
-  -- Record answer (INSERT only: qda_own_select policy + no insert policy;
-  -- SECURITY DEFINER bypasses RLS so this INSERT always succeeds here)
+  -- Concurrency-safe answer recording: ON CONFLICT handles simultaneous same-question calls
   INSERT INTO quiz_daily_answers (question_id, user_id, answer_text, is_correct)
-  VALUES (p_question_id, v_user_id, p_answer_text, v_is_correct);
+  VALUES (p_question_id, v_user_id, p_answer_text, v_is_correct)
+  ON CONFLICT (question_id, user_id) DO NOTHING;
+
+  GET DIAGNOSTICS v_rows = ROW_COUNT;
+  IF v_rows = 0 THEN
+    -- Concurrent call already recorded this answer; safe early return
+    RETURN jsonb_build_object('ok', false, 'reason', 'already_answered');
+  END IF;
 
   -- Write immutable contribution ledger entry.
   -- ON CONFLICT bfc_daily_unique: different question answered same UTC day
