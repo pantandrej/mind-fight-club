@@ -21,23 +21,71 @@
 --  9. update_team_profile (legacy) bypassed validation — now a thin wrapper
 --     around _apply_team_profile_update(), same validation as update_my_team.
 -- 10. create_team: added city <= 60, emoji <= 8 server-side limits.
+-- v6 pre-flight fixes (defensive idempotency):
+-- 11. §1 now ensures treasury_neurons (from mig 63) and team identity columns
+--     (motto/banner_url/avatar_url/emoji from mig 57) exist via IF NOT EXISTS.
+-- 12. team_treasury_ledger (from mig 63) created IF NOT EXISTS before RLS block.
+-- 13. Entire migration wrapped in BEGIN/COMMIT for atomic execution.
+--
+-- Dependency audit (all tables/columns used but not created here):
+--   teams                             ← migration 40
+--   profiles (auth.users extension)   ← pre-migration (Supabase auth)
+--   profiles.team_id                  ← migration 40
+--   profiles.neurons                  ← migration 04 (currency_ledger RPC)
+--   profiles.is_scout                 ← migration 40
+--   teams.motto/banner_url/avatar_url/emoji ← migration 57 (+ IF NOT EXISTS here)
+--   teams.treasury_neurons (bigint)   ← migration 63 (+ IF NOT EXISTS here)
+--   team_treasury_ledger              ← migration 63 (+ CREATE IF NOT EXISTS here)
+--   team_weekly_brain_fights          ← migration 42
+--   challenge_results                 ← migration 40
+--   user_super_question_attempts      ← migration 40
+--   currency_ledger                   ← migration 04
 --
 -- Does NOT touch migrations 68–74.
 -- Does NOT implement Brain Fights formula (future iteration).
 -- Does NOT monetize anything.
 -- ══════════════════════════════════════════════════════════════════════════
 
+BEGIN;
+
 -- ── §1  Schema: add columns to teams ─────────────────────────────────────
 -- captain_id: nullable (NULL = captain deleted or team not yet migrated).
 -- join_code:  6-char uppercase alpha, generated once at team creation. Permanent.
 -- disbanded_at: NULL = active, NOT NULL = disbanded (soft-delete).
 -- updated_at: audit timestamp referenced by RPCs.
+--
+-- Defensive: also ensure columns from earlier migrations exist.
+-- treasury_neurons: migration 63. motto/banner_url/avatar_url/emoji: migration 57.
+-- IF NOT EXISTS means re-runs are safe; applied migrations are no-ops.
 
 ALTER TABLE public.teams
-  ADD COLUMN IF NOT EXISTS captain_id   uuid        REFERENCES public.profiles(id) ON DELETE SET NULL,
-  ADD COLUMN IF NOT EXISTS join_code    text,
-  ADD COLUMN IF NOT EXISTS disbanded_at timestamptz,
-  ADD COLUMN IF NOT EXISTS updated_at   timestamptz;
+  ADD COLUMN IF NOT EXISTS captain_id      uuid        REFERENCES public.profiles(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS join_code       text,
+  ADD COLUMN IF NOT EXISTS disbanded_at    timestamptz,
+  ADD COLUMN IF NOT EXISTS updated_at      timestamptz,
+  -- From migration 57 (team profiles):
+  ADD COLUMN IF NOT EXISTS motto           text,
+  ADD COLUMN IF NOT EXISTS banner_url      text,
+  ADD COLUMN IF NOT EXISTS avatar_url      text,
+  ADD COLUMN IF NOT EXISTS emoji           text DEFAULT '🏟️',
+  -- From migration 63 (team treasury):
+  ADD COLUMN IF NOT EXISTS treasury_neurons bigint NOT NULL DEFAULT 0;
+
+-- ── §1b  team_treasury_ledger: create if not exists ───────────────────────
+-- Created in migration 63. Defensive CREATE IF NOT EXISTS ensures this migration
+-- is self-contained. ON DELETE CASCADE on both FKs: ledger entry is meaningless
+-- without its team or user; cascade avoids orphaned rows on GDPR deletion.
+-- Note: migration 63 used ON DELETE CASCADE for both — preserved here.
+CREATE TABLE IF NOT EXISTS public.team_treasury_ledger (
+  id         uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  team_id    uuid        NOT NULL REFERENCES public.teams(id)    ON DELETE CASCADE,
+  user_id    uuid        NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  amount     int         NOT NULL CHECK (amount > 0),
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_treasury_ledger_team
+  ON public.team_treasury_ledger(team_id, created_at DESC);
 
 -- ── §2  Helper: generate a short readable join code ───────────────────────
 -- 6 uppercase alpha chars (no I/O for legibility). 26^6 ≈ 308 M combinations.
@@ -960,3 +1008,8 @@ REVOKE ALL ON FUNCTION public._gen_team_join_code() FROM PUBLIC;
 -- Premium: monetizes depth, not participation. Future iteration.
 -- Rate limiting on join_team_by_code: requires infra, future hardening.
 -- is_scout admin management: requires SECURITY DEFINER admin RPC, future work.
+-- profiles SELECT RLS: currently exposes arbitrary profile rows/columns to
+--   client queries. Security debt — separate iteration (leaderboard/social
+--   depend on direct SELECT; hardening requires scoping those paths first).
+
+COMMIT;
