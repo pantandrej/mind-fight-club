@@ -18,6 +18,10 @@
 import { sb } from './services/supabase.js';
 import { getState } from './state.js';
 
+// Module-level roster cache — populated by _renderMyTeam, read by click handlers.
+// Avoids putting any user-controlled string into inline JS onclick attributes.
+let _cachedMembers = [];
+
 // ── i18n ─────────────────────────────────────────────────────────────────────
 function _lang() {
   return document.querySelector('.lang-btn.active')?.textContent?.toLowerCase() || 'ru';
@@ -293,6 +297,10 @@ function _renderMyTeam(el, {
 
   const captainMember = members.find(m => m.id === team.captain_id);
 
+  // Cache members in module scope so click handlers can look up names without
+  // interpolating user-controlled strings into JS onclick attribute literals.
+  _cachedMembers = members;
+
   // ── ROSTER rows ──────────────────────────────────────────────────────
   const rosterRows = members.map(m => {
     const isThisCaptain = m.id === team.captain_id;
@@ -302,14 +310,15 @@ function _renderMyTeam(el, {
       ? `<img src="${_escAttr(m.avatar_url)}" style="width:100%;height:100%;object-fit:cover" alt=""/>`
       : `<span style="font-size:15px;font-weight:800;color:#fff">${_escHtml(initial)}</span>`;
 
-    // Captain-only controls per member
+    // Captain-only controls — only the UUID (not display_name) goes into the
+    // attribute. The handler looks up display_name from _cachedMembers.
     let controls = '';
     if (isCaptain && !isMe) {
       controls = `
         <div style="display:flex;gap:6px;flex-shrink:0">
-          <button onclick="window._mtDoTransfer('${_escAttr(m.id)}','${_escAttr(m.display_name || '')}')"
+          <button data-mid="${_escAttr(m.id)}" data-action="transfer"
             class="mt-member-ctrl mt-ctrl-transfer" title="${t('transferCaptain')}">👑</button>
-          <button onclick="window._mtDoKick('${_escAttr(m.id)}','${_escAttr(m.display_name || '')}')"
+          <button data-mid="${_escAttr(m.id)}" data-action="kick"
             class="mt-member-ctrl mt-ctrl-kick" title="${t('kickMember')}">✕</button>
         </div>`;
     }
@@ -500,11 +509,11 @@ function _renderMyTeam(el, {
     </div>
 
     <!-- Captain edit modal (hidden) -->
-    <div id="mt-captain-edit-modal" class="mt-modal-overlay" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+    <div id="mt-captain-edit-modal" class="mt-modal-overlay" style="display:none" onclick="if(event.target===this)window._mtCloseCaptainEdit()">
       <div class="mt-modal">
         <div class="mt-modal-hdr">
           <span class="mt-modal-title">${t('editTeam')}</span>
-          <button onclick="document.getElementById('mt-captain-edit-modal').style.display='none'" class="mt-modal-close">✕</button>
+          <button onclick="window._mtCloseCaptainEdit()" class="mt-modal-close">✕</button>
         </div>
         <div class="mt-modal-body">
           <label class="mt-modal-label">Название</label>
@@ -522,10 +531,22 @@ function _renderMyTeam(el, {
         </div>
         <div class="mt-modal-actions">
           <button onclick="window._mtSaveProfile()" class="mt-btn-gradient" style="flex:1">${t('save')}</button>
-          <button onclick="document.getElementById('mt-captain-edit-modal').style.display='none'" class="mt-btn-sec">${t('cancel')}</button>
+          <button onclick="window._mtCloseCaptainEdit()" class="mt-btn-sec">${t('cancel')}</button>
         </div>
       </div>
     </div>`;
+
+  // Event delegation for data-mid roster buttons (avoids user strings in JS literals).
+  el.addEventListener('click', e => {
+    const btn = e.target.closest('[data-mid]');
+    if (!btn) return;
+    const mid    = btn.dataset.mid;
+    const action = btn.dataset.action;
+    const member = _cachedMembers.find(m => m.id === mid);
+    const name   = member?.display_name || 'Игрок';
+    if (action === 'transfer') window._mtDoTransfer(mid, name);
+    if (action === 'kick')     window._mtDoKick(mid, name);
+  }, { once: true });
 }
 
 // ── Join by code ──────────────────────────────────────────────────────────────
@@ -660,10 +681,16 @@ window._mtJoinViaLink = async function(teamId) {
   await _handleInviteLink(null, teamId);
 };
 
-// ── Captain edit modal ────────────────────────────────────────────────────────
+// ── Captain edit modal open/close ─────────────────────────────────────────────
 window._mtOpenCaptainEdit = function() {
   const modal = document.getElementById('mt-captain-edit-modal');
   if (modal) { modal.style.display = 'flex'; document.body.style.overflow = 'hidden'; }
+};
+
+window._mtCloseCaptainEdit = function() {
+  const modal = document.getElementById('mt-captain-edit-modal');
+  if (modal) modal.style.display = 'none';
+  document.body.style.overflow = '';
 };
 
 // ── Save team profile (captain only via update_my_team RPC) ──────────────────
@@ -706,8 +733,7 @@ window._mtSaveProfile = async function() {
     return;
   }
 
-  const modal = document.getElementById('mt-captain-edit-modal');
-  if (modal) { modal.style.display = 'none'; document.body.style.overflow = ''; }
+  window._mtCloseCaptainEdit();
   window.toast?.('✅ Профиль команды обновлён');
   loadMyTeam();
 };
