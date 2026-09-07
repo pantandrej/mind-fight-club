@@ -52,10 +52,10 @@ export async function loadMyTeam() {
 
   const weekStart = _getWeekStart();
   const [teamRes, rosterRes, tiebreakRes, barRankRes, onlineRankRes, brainRes, treasuryRes, activityRes] = await Promise.all([
-    sb.from('teams')
-      .select('id,name,city,motto,banner_url,avatar_url,emoji,treasury_neurons,captain_id,join_code,disbanded_at')
-      .eq('id', me.team_id)
-      .single(),
+    // get_my_team() SECURITY DEFINER: returns full team data incl. join_code.
+    // Direct sb.from('teams').select('*') is denied (join_code column revoked).
+    // Only members of a team can read that team's join_code via this RPC.
+    sb.rpc('get_my_team'),
     // Roster via SECURITY DEFINER RPC — scopes columns, stable for future hardening.
     sb.rpc('get_my_team_roster'),
     sb.rpc('get_team_tiebreaker', { p_team_id: me.team_id }),
@@ -77,9 +77,10 @@ export async function loadMyTeam() {
     sb.rpc('get_my_team_activity_today'),
   ]);
 
-  const team = teamRes.data;
+  // get_my_team() returns {ok, id, name, ...} flat jsonb.
+  const team = teamRes.data?.ok ? teamRes.data : null;
 
-  // Defensive: if team is disbanded, show special state.
+  // Defensive: if team is disbanded or RPC failed, show special state.
   if (!team || team.disbanded_at) {
     _renderDisbanded(el);
     return;
@@ -109,7 +110,7 @@ export async function loadMyTeam() {
     barRankRes, onlineRankRes,
     activeSet, currentUser,
     isAdmin, isCaptain, brainPoints,
-    myTeamId: me.team_id, treasuryContribs,
+    myTeamId: team.id, treasuryContribs,
   });
 }
 
@@ -607,26 +608,32 @@ async function _handleInviteLink(code, uuid) {
       .select('team_id').eq('id', currentUser.id).single();
     if (profile?.team_id === uuid) return;
 
-    const { data: team } = await sb.from('teams')
-      .select('name,join_code,disbanded_at')
-      .eq('id', uuid)
-      .single();
-    if (!team || team.disbanded_at) {
+    // get_public_team() returns safe public fields — no join_code exposed to client.
+    // join_team_by_legacy_id() looks up join_code server-side and delegates to
+    // join_team_by_code() internally — client never sees the code.
+    const { data: pubTeam } = await sb.rpc('get_public_team', { p_team_id: uuid });
+    if (!pubTeam?.ok) {
+      window.toast?.('Эта команда не найдена');
+      return;
+    }
+    if (pubTeam.disbanded_at) {
       window.toast?.('Эта команда больше не существует');
       return;
     }
-    if (!team.join_code) {
-      window.toast?.('Команда не поддерживает вступление по ссылке. Попроси код у капитана.');
-      return;
-    }
-    if (!confirm(`Вступить в команду «${_escHtml(team.name)}»?`)) return;
+    if (!confirm(`Вступить в команду «${_escHtml(pubTeam.name)}»?`)) return;
 
-    const { data, error } = await sb.rpc('join_team_by_code', { p_join_code: team.join_code });
+    const { data, error } = await sb.rpc('join_team_by_legacy_id', { p_team_id: uuid });
     if (error || !data?.ok) {
-      window.toast?.('Ошибка при вступлении');
+      const msgs = {
+        team_not_found: 'Команда не найдена',
+        team_disbanded: 'Команда расформирована',
+        no_join_code:   'Команда не поддерживает вступление по ссылке. Попроси код у капитана.',
+        already_in_team: 'Ты уже в команде',
+      };
+      window.toast?.('❌ ' + (msgs[data?.reason] || 'Ошибка при вступлении'));
       return;
     }
-    window.toast?.(`✅ Ты в команде «${_escHtml(team.name)}»!`);
+    window.toast?.(`✅ Ты в команде «${_escHtml(pubTeam.name)}»!`);
     loadMyTeam();
   }
 }

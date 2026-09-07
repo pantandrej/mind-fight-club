@@ -26,6 +26,17 @@
 --     (motto/banner_url/avatar_url/emoji from mig 57) exist via IF NOT EXISTS.
 -- 12. team_treasury_ledger (from mig 63) created IF NOT EXISTS before RLS block.
 -- 13. Entire migration wrapped in BEGIN/COMMIT for atomic execution.
+-- v7 security fix — join_code enumeration:
+-- 14. Enable RLS on teams (was missing — policies existed but had no effect).
+-- 15. REVOKE SELECT on teams from authenticated/anon; GRANT SELECT only on
+--     safe public columns (join_code excluded). Direct sb.from('teams').select(*)
+--     or any explicit join_code select → permission denied.
+-- 16. get_my_team() RPC: returns full team row incl. join_code for own team only.
+-- 17. get_public_team(uuid) RPC: returns public fields, never join_code.
+-- 18. join_team_by_legacy_id(uuid) RPC: handles ?join=UUID invite links
+--     server-side — looks up join_code internally, never returns it to client.
+-- 19. my-team.js: replaced direct teams SELECT with get_my_team() RPC;
+--     legacy UUID invite path uses join_team_by_legacy_id().
 --
 -- Dependency audit (all tables/columns used but not created here):
 --   teams                             ← migration 40
@@ -307,11 +318,28 @@ BEGIN
   END LOOP;
 END $$;
 
+-- Enable RLS so the policies above actually take effect.
+-- Without this, all policies on teams are created but never evaluated.
+ALTER TABLE public.teams ENABLE ROW LEVEL SECURITY;
+
+-- Row-level: all active and disbanded teams are publicly enumerable (discovery).
 DROP POLICY IF EXISTS "teams_read" ON public.teams;
 CREATE POLICY "teams_read"
   ON public.teams
   FOR SELECT
   USING (true);
+
+-- Column-level: revoke table-level SELECT (which exposed join_code) and
+-- re-grant only safe public columns. join_code is accessible only via
+-- get_my_team() SECURITY DEFINER (runs as function owner, not 'authenticated').
+-- SECURITY DEFINER functions bypass column-level grants (run as postgres).
+-- This makes sb.from('teams').select('*') and any explicit join_code select
+-- return permission denied for authenticated and anon callers.
+REVOKE SELECT ON public.teams FROM authenticated, anon;
+GRANT SELECT (
+  id, name, city, motto, banner_url, avatar_url, emoji,
+  captain_id, disbanded_at, treasury_neurons, updated_at, created_at
+) ON public.teams TO authenticated, anon;
 
 -- RLS on team_treasury_ledger: block all direct client writes.
 ALTER TABLE public.team_treasury_ledger ENABLE ROW LEVEL SECURITY;
@@ -995,7 +1023,140 @@ $$;
 REVOKE ALL ON FUNCTION public.get_my_team_activity_today() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_my_team_activity_today() TO authenticated;
 
--- ── §18 Lock down _gen_team_join_code from public access ──────────────────
+-- ── §18 RPC: get_my_team — full team data for current user (incl. join_code) ─
+-- Only members of a team can retrieve that team's join_code.
+-- Runs as function owner (SECURITY DEFINER), so it bypasses the column-level
+-- REVOKE that hides join_code from direct authenticated/anon client SELECTs.
+CREATE OR REPLACE FUNCTION public.get_my_team()
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_uid     uuid := auth.uid();
+  v_team_id uuid;
+  v_result  jsonb;
+BEGIN
+  IF v_uid IS NULL THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'unauthenticated');
+  END IF;
+
+  SELECT team_id INTO v_team_id FROM profiles WHERE id = v_uid;
+  IF v_team_id IS NULL THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'not_in_team');
+  END IF;
+
+  SELECT jsonb_build_object(
+    'ok',               true,
+    'id',               t.id,
+    'name',             t.name,
+    'city',             t.city,
+    'motto',            t.motto,
+    'banner_url',       t.banner_url,
+    'avatar_url',       t.avatar_url,
+    'emoji',            t.emoji,
+    'captain_id',       t.captain_id,
+    'join_code',        t.join_code,
+    'disbanded_at',     t.disbanded_at,
+    'treasury_neurons', t.treasury_neurons,
+    'updated_at',       t.updated_at
+  ) INTO v_result
+  FROM teams t
+  WHERE t.id = v_team_id;
+
+  RETURN COALESCE(v_result, jsonb_build_object('ok', false, 'reason', 'team_not_found'));
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.get_my_team() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_my_team() TO authenticated;
+
+-- ── §19 RPC: get_public_team — safe public fields, no join_code ──────────
+-- Used for team profile pages, invite confirmation dialogs, leaderboard overlays.
+-- Never returns join_code regardless of who calls.
+CREATE OR REPLACE FUNCTION public.get_public_team(p_team_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_result jsonb;
+BEGIN
+  SELECT jsonb_build_object(
+    'ok',           true,
+    'id',           t.id,
+    'name',         t.name,
+    'city',         t.city,
+    'motto',        t.motto,
+    'banner_url',   t.banner_url,
+    'avatar_url',   t.avatar_url,
+    'emoji',        t.emoji,
+    'captain_id',   t.captain_id,
+    'disbanded_at', t.disbanded_at,
+    'updated_at',   t.updated_at
+  ) INTO v_result
+  FROM teams t
+  WHERE t.id = p_team_id;
+
+  RETURN COALESCE(v_result, jsonb_build_object('ok', false, 'reason', 'team_not_found'));
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.get_public_team(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_public_team(uuid) TO authenticated, anon;
+
+-- ── §20 RPC: join_team_by_legacy_id — legacy ?join=UUID invite ────────────
+-- Handles invite links that used team UUID directly (pre-canonical join_code links).
+-- Retrieves join_code server-side; never exposes it to the client.
+-- join_team_by_code() is called internally for consistent membership logic.
+CREATE OR REPLACE FUNCTION public.join_team_by_legacy_id(p_team_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_uid       uuid := auth.uid();
+  v_code      text;
+  v_disbanded timestamptz;
+  v_name      text;
+  v_join_result jsonb;
+BEGIN
+  IF v_uid IS NULL THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'unauthenticated');
+  END IF;
+
+  SELECT join_code, disbanded_at, name INTO v_code, v_disbanded, v_name
+  FROM teams WHERE id = p_team_id;
+
+  IF v_name IS NULL THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'team_not_found');
+  END IF;
+
+  IF v_disbanded IS NOT NULL THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'team_disbanded');
+  END IF;
+
+  IF v_code IS NULL THEN
+    -- Team exists but has no join_code (edge case: pre-75 team not yet backfilled).
+    RETURN jsonb_build_object('ok', false, 'reason', 'no_join_code');
+  END IF;
+
+  -- Delegate to join_team_by_code for consistent membership logic.
+  -- join_code is never returned to the caller.
+  v_join_result := public.join_team_by_code(v_code);
+
+  -- Strip join_code from result if present; add team_name for UX.
+  RETURN (v_join_result - 'join_code') || jsonb_build_object('team_name', v_name);
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.join_team_by_legacy_id(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.join_team_by_legacy_id(uuid) TO authenticated;
+
+-- ── §21 Lock down _gen_team_join_code from public access ──────────────────
 REVOKE ALL ON FUNCTION public._gen_team_join_code() FROM PUBLIC;
 
 -- ── Notes: what is NOT in this migration ─────────────────────────────────
