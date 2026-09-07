@@ -76,30 +76,27 @@ REVOKE EXECUTE ON FUNCTION public.record_duel_win_bf(uuid)           FROM PUBLIC
 -- §4  brain_fight_contributions — immutable contribution ledger
 --
 -- Design decisions:
+--   scoring_user_id uuid NOT NULL (no FK):
+--     Immutable pseudonymous competition key. Set server-side at
+--     INSERT time (= auth.uid()). Has NO foreign key to profiles —
+--     survives profile deletion unchanged. Used for all score grouping,
+--     daily/source uniqueness, and audit. Never returned to clients.
+--
 --   user_id nullable, ON DELETE SET NULL (P0.9):
---     Account deletion sets user_id = NULL but the contribution row
---     survives. team_id, points, week_start, source_type, source_id
---     remain for team score integrity. Deleted user is not personally
---     identifiable. Display queries filter user_id IS NOT NULL.
---     Edge-case: multi-day contributions from a deleted user within
---     the same week each count as a separate player in the top-3
---     formula (we lose the cross-day grouping after deletion).
---     This is accepted for v1 — the case is rare and the effect
---     slightly benefits the team (more participation points).
+--     Account deletion sets user_id = NULL but the row survives.
+--     scoring_user_id is unaffected — team score is stable before
+--     and after deletion. Display queries JOIN profiles on user_id IS
+--     NOT NULL; deleted users simply omitted from contributor UI.
 --
 --   activity_date (P0-new):
 --     Server-set UTC date of the contribution. Enables UNIQUE
---     (user_id, source_type, activity_date) to enforce exactly one
---     BF award per user per UTC day, even if two different approved
---     question UUIDs share the same scheduled_date. DB constraint is
---     the concurrency-safe enforcement; ON CONFLICT DO NOTHING in
---     the INSERT detects duplicate-day races.
+--     (scoring_user_id, source_type, activity_date) to enforce exactly
+--     one BF award per player per UTC day. DB constraint is the
+--     concurrency-safe enforcement; ON CONFLICT DO NOTHING detects races.
 --
 --   source_id retained:
---     Audit reference to the actual question answered, even when
---     the daily UNIQUE fires and bf_pts = 0 for a second question.
---     The source_id uniqueness constraint (per-question idempotency)
---     remains as belt-and-suspenders.
+--     Audit reference to the actual question answered.
+--     Per-question idempotency via (scoring_user_id, source_type, source_id).
 --
 --   No client SELECT:
 --     RLS enabled, no SELECT policy → clients cannot read raw
@@ -108,24 +105,25 @@ REVOKE EXECUTE ON FUNCTION public.record_duel_win_bf(uuid)           FROM PUBLIC
 --     SECURITY DEFINER functions bypass RLS and can read/write freely.
 -- ──────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.brain_fight_contributions (
-  id            uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id       uuid                 REFERENCES public.profiles(id)  ON DELETE SET NULL,
-  team_id       uuid                 REFERENCES public.teams(id)      ON DELETE SET NULL,
-  week_start    date        NOT NULL,
-  source_type   text        NOT NULL CHECK (source_type IN ('superq')), -- 'duel'/'training' disabled
-  source_id     uuid        NOT NULL,   -- quiz_daily_questions.id for 'superq'
-  activity_date date        NOT NULL,   -- server-set UTC date; never client-supplied
-  points        integer     NOT NULL CHECK (points > 0),
-  occurred_at   timestamptz NOT NULL DEFAULT now(),
-  created_at    timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT bfc_source_unique UNIQUE (user_id, source_type, source_id),
-  CONSTRAINT bfc_daily_unique  UNIQUE (user_id, source_type, activity_date)
+  id              uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  scoring_user_id uuid        NOT NULL,    -- immutable; no FK; survives profile deletion
+  user_id         uuid                 REFERENCES public.profiles(id)  ON DELETE SET NULL,
+  team_id         uuid                 REFERENCES public.teams(id)      ON DELETE SET NULL,
+  week_start      date        NOT NULL,
+  source_type     text        NOT NULL CHECK (source_type IN ('superq')), -- 'duel'/'training' disabled
+  source_id       uuid        NOT NULL,   -- quiz_daily_questions.id for 'superq'
+  activity_date   date        NOT NULL,   -- server-set UTC date; never client-supplied
+  points          integer     NOT NULL CHECK (points > 0),
+  occurred_at     timestamptz NOT NULL DEFAULT now(),
+  created_at      timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT bfc_source_unique UNIQUE (scoring_user_id, source_type, source_id),
+  CONSTRAINT bfc_daily_unique  UNIQUE (scoring_user_id, source_type, activity_date)
 );
 
-CREATE INDEX IF NOT EXISTS idx_bfc_user_week   ON public.brain_fight_contributions(user_id, week_start);
-CREATE INDEX IF NOT EXISTS idx_bfc_team_week   ON public.brain_fight_contributions(team_id, week_start);
-CREATE INDEX IF NOT EXISTS idx_bfc_week        ON public.brain_fight_contributions(week_start);
-CREATE INDEX IF NOT EXISTS idx_bfc_activity    ON public.brain_fight_contributions(user_id, source_type, activity_date);
+CREATE INDEX IF NOT EXISTS idx_bfc_scoring_week ON public.brain_fight_contributions(scoring_user_id, week_start);
+CREATE INDEX IF NOT EXISTS idx_bfc_team_week    ON public.brain_fight_contributions(team_id, week_start);
+CREATE INDEX IF NOT EXISTS idx_bfc_week         ON public.brain_fight_contributions(week_start);
+CREATE INDEX IF NOT EXISTS idx_bfc_activity     ON public.brain_fight_contributions(scoring_user_id, source_type, activity_date);
 
 ALTER TABLE public.brain_fight_contributions ENABLE ROW LEVEL SECURITY;
 -- No policies: RLS blocks all client reads/writes.
@@ -237,15 +235,15 @@ BEGIN
   END IF;
 
   -- Write immutable contribution ledger entry.
+  -- scoring_user_id = v_user_id (server-set, no FK, survives profile deletion).
   -- ON CONFLICT bfc_daily_unique: different question answered same UTC day
   --   → DO NOTHING (daily BF already awarded); bf_pts set to 0 below.
-  -- ON CONFLICT bfc_source_unique: would only occur in race condition
-  --   (pre-check already guards this; this INSERT is unreachable in that case).
+  -- ON CONFLICT bfc_source_unique: race condition guard (belt-and-suspenders).
   INSERT INTO brain_fight_contributions (
-    user_id, team_id, week_start, source_type, source_id,
+    scoring_user_id, user_id, team_id, week_start, source_type, source_id,
     activity_date, points, occurred_at
   ) VALUES (
-    v_user_id, v_team_id, v_week_start, 'superq', p_question_id,
+    v_user_id, v_user_id, v_team_id, v_week_start, 'superq', p_question_id,
     v_today, v_bf_pts, now()
   )
   ON CONFLICT DO NOTHING;  -- handles both bfc_source_unique and bfc_daily_unique
@@ -275,15 +273,14 @@ $$;
 -- Single call aggregates from brain_fight_contributions (superq only).
 -- Returns everything the BF screen needs; no staleness from cron cache.
 -- Exposed fields: team name/emoji/city, aggregated points, ranks.
--- Not exposed: join_code, treasury, raw contribution events, timestamps.
+-- Not exposed: join_code, treasury, raw contribution events, scoring_user_id.
 -- Authenticated only; no anon access.
 --
 -- Scoring:
 --   Team score = sum of top-3 player totals
 --               + 1 per additional player with >0 points.
--- Grouping for deleted users:
---   COALESCE(user_id, id) used as effective_player_id.
---   Deleted users (user_id=NULL) each count as distinct player per row.
+-- Grouping: scoring_user_id (stable; unaffected by profile deletion).
+--   Deleted users retain their historical score identity.
 -- City rank:
 --   Server-computed via PARTITION BY lower(trim(city)).
 --   NULL/empty city → city_rank and total_city_teams are NULL.
@@ -324,10 +321,10 @@ BEGIN
 
   RETURN (
     WITH
-    -- Per-effective-player scores (COALESCE handles deleted-user rows)
+    -- Per-player scores grouped by scoring_user_id (stable after profile deletion)
     player_scores AS (
       SELECT
-        COALESCE(bfc.user_id, bfc.id)  AS effective_player_id,
+        bfc.scoring_user_id,
         bfc.user_id,
         bfc.team_id,
         SUM(bfc.points)                AS total
@@ -335,7 +332,7 @@ BEGIN
       WHERE bfc.week_start    = v_week_start
         AND bfc.team_id       IS NOT NULL
         AND bfc.source_type   = 'superq'
-      GROUP BY COALESCE(bfc.user_id, bfc.id), bfc.user_id, bfc.team_id
+      GROUP BY bfc.scoring_user_id, bfc.user_id, bfc.team_id
     ),
     -- Apply team formula: top-3 fully, each beyond with >0 pts → +1
     team_totals AS (
@@ -499,8 +496,7 @@ GRANT EXECUTE ON FUNCTION public.get_brain_fights_week() TO authenticated;
 --
 -- Aggregates from brain_fight_contributions (source_type='superq' only).
 -- team_id is immutably captured at contribution time — no team-switch bug.
--- COALESCE(user_id, id) groups deleted-user contributions per row
--- (same edge-case limitation as get_brain_fights_week; accepted for v1).
+-- Groups by scoring_user_id (stable; survives profile deletion unchanged).
 -- ──────────────────────────────────────────────────────────────────
 CREATE OR REPLACE FUNCTION public.sync_team_brain_fights_daily()
 RETURNS void
@@ -518,14 +514,14 @@ BEGIN
   FOR v_team IN SELECT id FROM teams WHERE disbanded_at IS NULL LOOP
     WITH player_scores AS (
       SELECT
-        COALESCE(bfc.user_id, bfc.id) AS effective_player_id,
+        bfc.scoring_user_id,
         SUM(bfc.points)               AS total,
         ROW_NUMBER() OVER (ORDER BY SUM(bfc.points) DESC)::int AS rn
       FROM brain_fight_contributions bfc
       WHERE bfc.week_start    = v_week_start
         AND bfc.team_id       = v_team.id
         AND bfc.source_type   = 'superq'
-      GROUP BY COALESCE(bfc.user_id, bfc.id)
+      GROUP BY bfc.scoring_user_id
     )
     SELECT
       COALESCE(SUM(CASE WHEN rn <= 3 THEN total ELSE 0 END), 0),
@@ -577,17 +573,18 @@ BEGIN
   PERFORM sync_team_brain_fights_daily();
 
   -- Compute global standings from immutable ledger (superq only)
+  -- Groups by scoring_user_id (stable; survives profile deletion unchanged).
   FOR v_row IN
     WITH player_scores AS (
       SELECT
-        COALESCE(bfc.user_id, bfc.id) AS effective_player_id,
+        bfc.scoring_user_id,
         bfc.team_id,
         SUM(bfc.points)               AS total
       FROM brain_fight_contributions bfc
       WHERE bfc.week_start    = v_week_start
         AND bfc.team_id       IS NOT NULL
         AND bfc.source_type   = 'superq'
-      GROUP BY COALESCE(bfc.user_id, bfc.id), bfc.team_id
+      GROUP BY bfc.scoring_user_id, bfc.team_id
     ),
     team_totals AS (
       SELECT
@@ -647,6 +644,8 @@ COMMIT;
 -- brain_fight_contributions (new table):
 --   No policies — RLS blocks all client access (read and write).
 --   SECURITY DEFINER functions bypass RLS.
+--   scoring_user_id: immutable, no FK, never returned to clients.
+--   user_id: nullable FK, set NULL on profile deletion (score unaffected).
 --
 -- team_weekly_brain_fights:
 --   UNCHANGED — already "twbf_read" FOR SELECT only (migration 42).
