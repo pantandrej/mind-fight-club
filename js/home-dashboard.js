@@ -181,23 +181,13 @@ async function _loadTeam() {
   }
 }
 
-async function _loadTeamBF(teamId) {
+async function _loadTeamBF(_teamId) {
+  // Use authoritative RPC (migration 76) — aggregates from verified contributions only
   try {
-    const d = new Date();
-    const day = d.getUTCDay();
-    const diff = day === 0 ? -6 : 1 - day;
-    const mon = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + diff));
-    const weekStart = mon.toISOString().slice(0, 10);
-
-    const { data } = await window.sb
-      .from('team_weekly_brain_fights')
-      .select('points')
-      .eq('team_id', teamId)
-      .eq('week_start', weekStart)
-      .maybeSingle();
-
-    const pts = data?.points;
-    if (!pts) return; // nothing to show if zero/null
+    if (!window.sb) return;
+    const { data } = await window.sb.rpc('get_brain_fights_week');
+    const pts = data?.ok ? data.my_team?.points : null;
+    if (!pts) return;
 
     const bfLine = document.getElementById('hdb-bf-line');
     if (bfLine) {
