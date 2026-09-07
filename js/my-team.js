@@ -22,6 +22,19 @@ import { getState } from './state.js';
 // Avoids putting any user-controlled string into inline JS onclick attributes.
 let _cachedMembers = [];
 
+// Named delegation handler — stored at module scope so removeEventListener can
+// de-duplicate it across repeated loadMyTeam() calls.
+function _rosterClickHandler(e) {
+  const btn = e.target.closest('[data-mid]');
+  if (!btn) return;
+  const mid    = btn.dataset.mid;
+  const action = btn.dataset.action;
+  const member = _cachedMembers.find(m => m.id === mid);
+  const name   = member?.display_name || 'Игрок';
+  if (action === 'transfer') window._mtDoTransfer(mid, name);
+  if (action === 'kick')     window._mtDoKick(mid, name);
+}
+
 // ── i18n ─────────────────────────────────────────────────────────────────────
 function _lang() {
   return document.querySelector('.lang-btn.active')?.textContent?.toLowerCase() || 'ru';
@@ -536,17 +549,10 @@ function _renderMyTeam(el, {
       </div>
     </div>`;
 
-  // Event delegation for data-mid roster buttons (avoids user strings in JS literals).
-  el.addEventListener('click', e => {
-    const btn = e.target.closest('[data-mid]');
-    if (!btn) return;
-    const mid    = btn.dataset.mid;
-    const action = btn.dataset.action;
-    const member = _cachedMembers.find(m => m.id === mid);
-    const name   = member?.display_name || 'Игрок';
-    if (action === 'transfer') window._mtDoTransfer(mid, name);
-    if (action === 'kick')     window._mtDoKick(mid, name);
-  }, { once: true });
+  // Idempotent delegation: remove before add so repeated loadMyTeam() calls
+  // never accumulate duplicate handlers on the same element.
+  el.removeEventListener('click', _rosterClickHandler);
+  el.addEventListener('click', _rosterClickHandler);
 }
 
 // ── Join by code ──────────────────────────────────────────────────────────────
