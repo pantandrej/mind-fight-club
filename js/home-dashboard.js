@@ -175,9 +175,36 @@ async function _loadTeam() {
   try {
     const { data } = await window.sb.rpc('get_my_team');
     _renderTeamPulse(data);
+    if (data?.ok && data.id) _loadTeamBF(data.id);
   } catch(e) {
     _renderTeamPulse(null);
   }
+}
+
+async function _loadTeamBF(teamId) {
+  try {
+    const d = new Date();
+    const day = d.getUTCDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    const mon = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + diff));
+    const weekStart = mon.toISOString().slice(0, 10);
+
+    const { data } = await window.sb
+      .from('team_weekly_brain_fights')
+      .select('points')
+      .eq('team_id', teamId)
+      .eq('week_start', weekStart)
+      .maybeSingle();
+
+    const pts = data?.points;
+    if (!pts) return; // nothing to show if zero/null
+
+    const bfLine = document.getElementById('hdb-bf-line');
+    if (bfLine) {
+      bfLine.style.display = '';
+      bfLine.textContent = `🧠 Brain Fights: ${pts} очк. на этой неделе`;
+    }
+  } catch(e) { /* silently ignore */ }
 }
 
 function _renderTeamPulse(t) {
@@ -209,6 +236,8 @@ function _renderTeamPulse(t) {
       <div style="flex:1;min-width:0">
         <div style="font-size:15px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${safeName}</div>
         <div style="font-size:12px;color:var(--muted);margin-top:2px">${safeLabel}: ${_esc(treasury)}</div>
+        <div id="hdb-bf-line" style="display:none;font-size:11px;color:#3cc864;font-weight:700;margin-top:3px;cursor:pointer"
+          onclick="event.stopPropagation();showScreen('brain-fights-screen');window.loadBrainFights?.()"></div>
       </div>
       <span style="color:var(--accent);font-size:18px;font-weight:900">›</span>
     </div>`;

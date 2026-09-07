@@ -29,6 +29,7 @@ import './profile-passport.js';
 import { initDailyLogic, checkBrandRoute } from './brands/brands.js';
 import { loadClubFinder } from './club-finder.js';
 import { loadMyTeam } from './my-team.js';
+import { loadBrainFights } from './brain-fights.js';
 import { loadScoutForm } from './scout-form.js';
 import { sendPushToUser } from './pwa.js';
 import { loadOrgAnalytics, exportOrgCSV } from './organizer-analytics.js';
@@ -38,7 +39,8 @@ import { loadQModeration } from './q-moderation.js';
 import { renderHomeDashboard } from './home-dashboard.js';
 
 // ── Boot ──────────────────────────────────────────────────────────
-window.loadMyTeam    = loadMyTeam;
+window.loadMyTeam       = loadMyTeam;
+window.loadBrainFights  = loadBrainFights;
 window.loadScoutForm = loadScoutForm;
 window._sendPushToUser    = sendPushToUser;
 window.loadOrgAnalytics   = loadOrgAnalytics;
