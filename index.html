@@ -1605,10 +1605,10 @@
 
         <!-- Team -->
         <section class="prf-section">
-          <button class="prf-team-btn" onclick="openClubsScreen()">
+          <button class="prf-team-btn" id="profile-team-btn" onclick="showScreen('my-team-screen');window.loadMyTeam?.()">
             <span>
-              <span style="display:block;font-size:15px;font-weight:900;margin-bottom:3px">🧠 Команда</span>
-              <span id="profile-club-sub" style="display:block;color:var(--muted);font-size:12px">Вступи в клуб или создай свой</span>
+              <span style="display:block;font-size:15px;font-weight:900;margin-bottom:3px" id="profile-team-name">👥 Команда</span>
+              <span id="profile-club-sub" style="display:block;color:var(--muted);font-size:12px">Вступи по коду или создай свою</span>
             </span>
             <span style="color:var(--accent);font-size:18px;font-weight:900">›</span>
           </button>
@@ -3726,13 +3726,12 @@ window._pickTeamEmoji = async function(emoji) {
   // Restore emoji without destroying badge
   const el = document.getElementById('my-team-emoji');
   if(el){ const b = el.querySelector('div'); el.textContent = emoji; if(b) el.appendChild(b); }
-  // Save to DB
-  try {
-    await window.sb.from('teams').update({ emoji }).eq('id', myTeam.id);
+  // Save to DB via canonical RPC (direct teams UPDATE is blocked by RLS/column-level grant)
+  const { data: emojiRes } = await window.sb.rpc('update_my_team', { p_emoji: emoji });
+  if (emojiRes?.ok === false) {
+    window.toast?.('Ошибка сохранения лого');
+  } else {
     window.toast?.('✅ Лого обновлено');
-  } catch(e) {
-    try { await window.sb.from('teams_v2').update({ avatar_emoji: emoji }).eq('id', myTeam.id); }
-    catch(e2) { console.warn('emoji save:', e2.message); }
   }
 };
 </script>

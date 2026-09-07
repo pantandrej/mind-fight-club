@@ -1563,13 +1563,17 @@ async function loadProfileStats(){
   loadDuelHistory();
   loadFriends();
   loadPendingChallenges();
-  // Update team subtitle in profile
+  // Update team card in profile using canonical get_my_team() RPC
   (async () => {
-    const sub = document.getElementById('profile-club-sub');
+    const sub    = document.getElementById('profile-club-sub');
+    const nameEl = document.getElementById('profile-team-name');
     if (!sub || !currentUser) return;
-    const { data: member } = await sb.from('club_members')
-      .select('clubs(name)').eq('user_id', currentUser.id).maybeSingle();
-    if (member?.clubs?.name) sub.textContent = member.clubs.name;
+    const { data: t } = await sb.rpc('get_my_team');
+    if (t?.ok && t.name) {
+      if (nameEl) nameEl.textContent = '👥 ' + t.name;
+      sub.textContent = 'Команда · открыть →';
+    }
+    // else: keep defaults ("👥 Команда" / "Вступи по коду или создай свою")
   })();
 }
 
@@ -13347,9 +13351,7 @@ async function loadMyClub() {
       </div>
       <div style="font-size:12px;color:var(--accent2);font-weight:700">→</div>
     </div>`;
-  // Update profile subtitle too
-  const sub = document.getElementById('profile-club-sub');
-  if (sub) sub.textContent = c.name;
+  // profile-club-sub now reflects team, not club — do not overwrite
 }
 
 window.openClubDetail = async function(clubId) {
