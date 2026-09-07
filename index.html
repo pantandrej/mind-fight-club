@@ -220,10 +220,10 @@
     <div class="hdb-today-card">
       <div class="hdb-today-top">
         <div>
-          <div class="hdb-section-label">Сегодня в BFC</div>
+          <div class="hdb-section-label" id="hdb-today-label">Сегодня в BFC</div>
           <div class="hdb-today-neurons">
             <span id="hdb-neurons" style="font-size:26px;font-weight:900;color:var(--accent)">0</span>
-            <span style="font-size:13px;color:var(--muted);margin-left:6px">нейронов</span>
+            <span id="hdb-neurons-unit" style="font-size:13px;color:var(--muted);margin-left:6px">нейронов</span>
           </div>
         </div>
         <div class="hdb-streak-mini" onclick="showPlayMenu()" style="cursor:pointer">
@@ -233,10 +233,10 @@
         </div>
       </div>
 
-      <!-- Quick Play remaining -->
+      <!-- Today priority slot: C=Quick Play (A/B inserted here when backend ready) -->
       <div class="hdb-qp-row" onclick="startQuickPlay()" style="cursor:pointer">
         <span style="font-size:18px">⚡</span>
-        <span style="font-size:13px;font-weight:700;flex:1">Быстрая игра</span>
+        <span id="hdb-qp-label" style="font-size:13px;font-weight:700;flex:1">Быстрая игра</span>
         <span id="hdb-qp-badge" style="font-size:12px;font-weight:800;color:var(--accent)"></span>
         <span style="color:var(--accent);font-weight:900">›</span>
       </div>
@@ -266,17 +266,17 @@
     </div>
 
     <!-- ── КОМАНДА (Team Pulse) ── -->
-    <div class="hdb-section-label" style="margin-bottom:8px">Команда</div>
+    <div class="hdb-section-label" id="hdb-team-label" style="margin-bottom:8px">Команда</div>
     <div id="hdb-team-card" class="hdb-team-card">
       <div style="font-size:13px;color:var(--muted)">Загрузка...</div>
     </div>
 
-    <!-- ── БЫСТРЫЕ ДЕЙСТВИЯ (2×2 grid) ── -->
-    <div class="hdb-section-label" style="margin-top:20px;margin-bottom:8px">Играть</div>
+    <!-- ── БЫСТРЫЕ ДЕЙСТВИЯ (2×2 grid, exactly 4) ── -->
+    <div class="hdb-section-label" id="hdb-play-label" style="margin-top:20px;margin-bottom:8px">Играть</div>
     <div class="hdb-actions-grid">
       <div class="hdb-action-card hdb-action-primary" onclick="startQuickPlay()">
         <div class="hdb-action-icon">⚡</div>
-        <div class="hdb-action-name">Быстрая игра</div>
+        <div class="hdb-action-name" id="m-feed-name">Быстрая игра</div>
         <div class="hdb-action-desc" id="m-feed-desc">10 вопросов в день</div>
       </div>
       <div class="hdb-action-card" onclick="showScreen('duel')">
@@ -284,15 +284,15 @@
         <div class="hdb-action-name">Дуэль</div>
         <div class="hdb-action-desc">С другом по коду</div>
       </div>
-      <div class="hdb-action-card" onclick="startMatchmaking()">
-        <div class="hdb-action-icon">🔍</div>
-        <div class="hdb-action-name">Случайный бой</div>
-        <div class="hdb-action-desc">Найди соперника</div>
-      </div>
-      <div class="hdb-action-card hdb-action-soon">
+      <div class="hdb-action-card hdb-action-soon" onclick="showScreen('brain-fights-screen')">
         <div class="hdb-action-icon">🧠</div>
         <div class="hdb-action-name">Brain Fights</div>
         <div class="hdb-action-desc hdb-soon-badge">Скоро</div>
+      </div>
+      <div class="hdb-action-card" onclick="showCupScreen()">
+        <div class="hdb-action-icon">🏆</div>
+        <div class="hdb-action-name">События</div>
+        <div class="hdb-action-desc">Турниры и пак-игры</div>
       </div>
     </div>
 
@@ -359,6 +359,27 @@
       <div class="chip" data-cat="ART" onclick="toggleCat(this)">🎨 <span class="chip-label">Искусство</span></div>
       <div class="chip" data-cat="GAMING" onclick="toggleCat(this)">🎮 <span class="chip-label">Игры</span></div>
     </div>
+  </div>
+</div>
+
+<!-- BRAIN FIGHTS — interim screen -->
+<div class="screen" id="brain-fights-screen" style="justify-content:flex-start">
+  <div class="hdr">
+    <div class="logo"><img src="/public/logo.png" alt="BFC"></div>
+    <div class="hdr-right">
+      <div class="neurons-pill"><div class="n-orb"></div><span id="n-bf">0</span></div>
+    </div>
+  </div>
+  <div style="width:100%;max-width:560px;padding:40px 24px 80px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:16px">
+    <div style="font-size:56px;line-height:1;filter:drop-shadow(0 4px 16px rgba(168,85,247,.5))">🧠</div>
+    <div style="font-size:24px;font-weight:900;letter-spacing:-.5px">Brain Fights</div>
+    <div style="font-size:14px;color:var(--muted);line-height:1.6;max-width:320px">
+      Рейтинговые интеллектуальные дуэли между лучшими игроками.<br>
+      Ваш рейтинг, ваша репутация, ваши лиги.
+    </div>
+    <div style="background:rgba(168,85,247,.12);border:1px solid rgba(168,85,247,.3);border-radius:14px;padding:12px 24px;font-size:13px;font-weight:800;color:rgba(168,85,247,1);letter-spacing:1px;text-transform:uppercase;margin-top:8px">Скоро</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:4px">Пока что сыграй в Быструю игру или Дуэль</div>
+    <button onclick="showPlayMenu()" style="background:var(--accent);border:none;border-radius:12px;padding:12px 28px;font-size:14px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit;margin-top:8px">⚡ Играть сейчас</button>
   </div>
 </div>
 
@@ -2774,7 +2795,8 @@
     <div class="nav-brand-logo" onclick="showScreen('home')" style="cursor:pointer"><img src="/public/logo.png" alt="BFC"></div>
     <button class="nav-item active" id="nav-home" onclick="showScreen('home')"><div class="nav-icon">🏠</div><div class="nav-label" id="nav-home-label">Главная</div></button>
     <button class="nav-item" id="nav-quiz" onclick="showPlayMenu()"><div class="nav-icon">⚡</div><div class="nav-label" id="nav-play-label">Играть</div></button>
-    <button class="nav-item" id="nav-teams-list-screen" onclick="window.loadTeamsList?.()"><div class="nav-icon">👥</div><div class="nav-label">Команды</div></button>
+    <button class="nav-item" id="nav-brain-fights-screen" onclick="showScreen('brain-fights-screen')"><div class="nav-icon">🧠</div><div class="nav-label" id="nav-brain-label">Brain Fights</div></button>
+    <button class="nav-item" id="nav-teams-list-screen" onclick="window.loadTeamsList?.()"><div class="nav-icon">👥</div><div class="nav-label" id="nav-teams-label">Команда</div></button>
     <button class="nav-item" id="nav-tournament" onclick="showCupScreen()"><div class="nav-icon">🏆</div><div class="nav-label" id="nav-cup-label">События</div></button>
     <button class="nav-item" id="nav-profile" onclick="showScreen('profile')"><div class="nav-icon">👤</div><div class="nav-label" id="nav-profile-label">Профиль</div></button>
     <!-- hidden nav items kept for legacy screen-active highlighting -->

@@ -14,7 +14,7 @@ export function updNeurons() {
   const { neurons, xp } = getState();
   [
     'n-home','n-quiz','n-duel','n-tourn','n-shop',
-    'n-profile','n-share','n-teams','n-ot','n-mm','n-club-hdr',
+    'n-profile','n-share','n-teams','n-ot','n-mm','n-club-hdr','n-bf',
   ].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.textContent = neurons;

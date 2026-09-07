@@ -116,7 +116,7 @@ const T={
     wlCount:'Joined:',wlCountSuffix:'people from 38 countries',
     scLabel:'Round complete',scSub:'neurons earned',scCorrectLabel:'Correct',scStreakLabel:'Best streak',scAccLabel:'Accuracy',
     scAgain:'⚡ Play again',scDuel:'⚔️ Live Duel',scTourn:'🏆 Tournament',scJoin:'📧 Join waitlist',
-    next:'Next →',navHome:'Home',navPlay:'Play',navDuel:'Duel',navCup:'Tournament',navJoin:'Sign In',
+    next:'Next →',navHome:'Home',navPlay:'Play',navDuel:'Duel',navCup:'Events',navBrain:'Brain Fights',navJoin:'Sign In',
     badgeEarned:'🏆 Badge earned:',oppAnswered:'✓ Opponent answered',
     statsTitle:'Statistics',statsGames:'Games',statsCorrect:'Correct',statsAcc:'Accuracy',statsStreak:'Best streak',
     achievTitle:'Achievements',rulesTitle:'How it works',freeVsPrem:'Free vs Premium',
@@ -152,7 +152,7 @@ const T={
     wlCount:'Присоединились:',wlCountSuffix:'человек из 38 стран',
     scLabel:'Раунд завершён',scSub:'нейронов заработано',scCorrectLabel:'Верных',scStreakLabel:'Лучшая серия',scAccLabel:'Точность',
     scAgain:'⚡ Играть снова',scDuel:'⚔️ Дуэль',scTourn:'🏆 Турнир',scJoin:'📧 Вступить',
-    next:'Далее →',navHome:'Главная',navPlay:'Режимы игры',navDuel:'Дуэль',navCup:'Турнир',navJoin:'Войти',
+    next:'Далее →',navHome:'Главная',navPlay:'Играть',navDuel:'Дуэль',navCup:'События',navBrain:'Brain Fights',navJoin:'Войти',
     badgeEarned:'🏆 Достижение:',oppAnswered:'✓ Соперник ответил',
     statsTitle:'Статистика',statsGames:'Игры',statsCorrect:'Верных',statsAcc:'Точность',statsStreak:'Лучшая серия',
     achievTitle:'Достижения',rulesTitle:'Как это работает',freeVsPrem:'Бесплатно и Premium',
@@ -276,7 +276,8 @@ function applyLang(){
   setText('nav-home-label',L.navHome);
   setText('nav-play-label',L.navPlay);
   setText('nav-duel-label',L.navDuel);
-  setText('nav-cup-label',L.navCup||'Турнир');
+  setText('nav-cup-label',L.navCup||'События');
+  setText('nav-brain-label',L.navBrain||'Brain Fights');
   setText('nav-profile-label',lang==='ru'?'Профиль':'Profile');
   setText('nav-teams-label',lang==='ru'?'Команда':'Team');
   const shopNav=safeEl('nav-shop-label');

@@ -2,50 +2,126 @@
 
 import { getState } from './state.js';
 
-let _teamCache = null;
-let _refreshTimer = null;
+// ── i18n helper (falls back to key) ──────────────────────────────────────────
+function _t(key, ru, en) {
+  const lang = typeof window.t === 'function' ? null : null; // resolved below
+  if (typeof window.t === 'function') {
+    const v = window.t(key);
+    if (v && v !== key) return v;
+  }
+  const l = typeof lang === 'string' ? lang : (document.querySelector('.lang-btn.active')?.textContent?.toLowerCase() || 'ru');
+  return l === 'en' ? en : ru;
+}
 
+const HOME_STRINGS = {
+  greeting:     { ru: 'Привет',                en: 'Hi' },
+  todayLabel:   { ru: 'Сегодня в BFC',         en: 'Today in BFC' },
+  neurons:      { ru: 'нейронов',              en: 'neurons' },
+  quickPlay:    { ru: 'Быстрая игра',          en: 'Quick Play' },
+  qRemaining:   { ru: 'вопр. осталось',        en: 'left' },
+  qLimit:       { ru: 'Лимит исчерпан',        en: 'Limit reached' },
+  streakBest:   { ru: 'Лучшая серия',          en: 'Best streak' },
+  streakDays:   { ru: 'дн.',                   en: 'd.' },
+  streakStart:  { ru: 'Сыграй сегодня — начни серию!', en: 'Play today — start a streak!' },
+  teamLabel:    { ru: 'Команда',               en: 'Team' },
+  teamJoin:     { ru: 'Вступи в команду',      en: 'Join a team' },
+  teamCreate:   { ru: 'или создай свою →',     en: 'or create your own →' },
+  treasury:     { ru: 'Казна',                 en: 'Treasury' },
+  playLabel:    { ru: 'Играть',                en: 'Play' },
+  duel:         { ru: 'Дуэль',                 en: 'Duel' },
+  duelSub:      { ru: 'С другом по коду',      en: 'With a friend by code' },
+  brainFights:  { ru: 'Brain Fights',          en: 'Brain Fights' },
+  soon:         { ru: 'Скоро',                 en: 'Soon' },
+  events:       { ru: 'События',               en: 'Events' },
+  eventsSub:    { ru: 'Турниры и пак-игры',    en: 'Tournaments & packs' },
+};
+
+function s(key) {
+  const lang = document.querySelector('.lang-btn.active')?.textContent?.toLowerCase() || 'ru';
+  const entry = HOME_STRINGS[key];
+  if (!entry) return key;
+  return lang === 'en' ? entry.en : entry.ru;
+}
+
+// ── XSS escape (reuse router.js helper if available) ─────────────────────────
+function _esc(str) {
+  if (typeof window._esc === 'function') return window._esc(str);
+  return String(str ?? '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
+
+// ── Main entry ────────────────────────────────────────────────────────────────
 export async function renderHomeDashboard() {
   const state = getState();
-  if (!state.currentUser) return; // unauthenticated — landing handles it
+  if (!state.currentUser) return;
 
   _renderSkeleton(state);
   _loadRealData(state);
 }
 
+// ── Skeleton (sync, instant) ──────────────────────────────────────────────────
 function _renderSkeleton(state) {
-  const name = state.currentUser?.user_metadata?.name
+  // Greeting — use auth metadata as initial; async profile read may override
+  const metaName = state.currentUser?.user_metadata?.full_name
+    || state.currentUser?.user_metadata?.name
     || state.currentUser?.email?.split('@')[0]
-    || 'игрок';
-  const shortName = name.split(' ')[0];
+    || 'Игрок';
+  _setGreeting(metaName.split(' ')[0]);
 
-  const el = document.getElementById('hdb-greeting');
-  if (el) el.textContent = `Привет, ${shortName} 👋`;
-
+  // Neurons
   const neurons = document.getElementById('hdb-neurons');
   if (neurons) neurons.textContent = (state.neurons ?? 0).toLocaleString('ru');
 
   _renderStreak(state);
-  _renderQuickPlay(state);
+  _renderTodayCard(state);
+  _renderTexts();
+}
+
+function _setGreeting(firstName) {
+  const el = document.getElementById('hdb-greeting');
+  if (el) el.textContent = `${s('greeting')}, ${firstName} 👋`;
+}
+
+function _renderTexts() {
+  const map = {
+    'hdb-today-label':  s('todayLabel'),
+    'hdb-neurons-unit': s('neurons'),
+    'hdb-team-label':   s('teamLabel'),
+    'hdb-play-label':   s('playLabel'),
+  };
+  for (const [id, text] of Object.entries(map)) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+  }
 }
 
 function _renderStreak(state) {
   const streak = state.streak ?? 0;
   const best   = state.bestStreak ?? 0;
 
-  const el = document.getElementById('hdb-streak-val');
-  if (el) el.textContent = streak;
+  const valEl = document.getElementById('hdb-streak-val');
+  if (valEl) valEl.textContent = streak;
 
-  const sub = document.getElementById('hdb-streak-sub');
-  if (sub) sub.textContent = streak > 0
-    ? `Лучшая серия: ${best} дн.`
-    : 'Сыграй сегодня — начни серию!';
+  const subEl = document.getElementById('hdb-streak-sub');
+  if (subEl) subEl.textContent = streak > 0
+    ? `${s('streakBest')}: ${best} ${s('streakDays')}`
+    : s('streakStart');
 
   const flame = document.getElementById('hdb-streak-flame');
-  if (flame) flame.textContent = streak >= 7 ? '🔥' : streak >= 3 ? '🔥' : '💡';
+  if (flame) flame.textContent = streak >= 3 ? '🔥' : '💡';
 }
 
-function _renderQuickPlay(state) {
+// ── Today card priority: A) Weekly Arena  B) Featured Pack  C) Quick Play ───
+// A and B have no backend yet → always renders C. Structure preserved for future insertion.
+function _renderTodayCard(state) {
+  // A: Weekly Arena — no backend, skip
+  // B: Featured public pack — no backend, skip
+  // C: Quick Play fallback
+  _renderQuickPlayFallback(state);
+}
+
+function _renderQuickPlayFallback(state) {
   const rem = typeof window.getRemainingFreeQuestions === 'function'
     ? window.getRemainingFreeQuestions()
     : null;
@@ -55,27 +131,49 @@ function _renderQuickPlay(state) {
     if (rem === null) {
       badge.textContent = '';
     } else if (rem <= 0) {
-      badge.textContent = 'Лимит исчерпан';
+      badge.textContent = s('qLimit');
       badge.style.color = 'var(--muted)';
     } else {
-      badge.textContent = `${rem} вопросов осталось`;
+      badge.textContent = `${rem} ${s('qRemaining')}`;
       badge.style.color = 'var(--accent)';
     }
   }
+
+  const label = document.getElementById('hdb-qp-label');
+  if (label) label.textContent = s('quickPlay');
 }
 
+// ── Async data loads ──────────────────────────────────────────────────────────
 async function _loadRealData(state) {
   await Promise.allSettled([
+    _loadDisplayName(state),
     _loadTeam(),
-    _loadActivity(),
   ]);
+}
+
+async function _loadDisplayName(state) {
+  if (!window.sb || !state.currentUser?.id) return;
+  try {
+    const { data } = await window.sb
+      .from('profiles')
+      .select('display_name')
+      .eq('id', state.currentUser.id)
+      .single();
+    const name = data?.display_name
+      || state.currentUser?.user_metadata?.full_name
+      || state.currentUser?.user_metadata?.name
+      || state.currentUser?.email?.split('@')[0]
+      || 'Игрок';
+    _setGreeting(name.split(' ')[0]);
+  } catch(e) {
+    // greeting already set from metadata
+  }
 }
 
 async function _loadTeam() {
   if (!window.sb) return;
   try {
     const { data } = await window.sb.rpc('get_my_team');
-    _teamCache = data;
     _renderTeamPulse(data);
   } catch(e) {
     _renderTeamPulse(null);
@@ -91,37 +189,36 @@ function _renderTeamPulse(t) {
       <div class="hdb-team-empty" onclick="showScreen('my-team-screen');window.loadMyTeam?.()">
         <span style="font-size:22px">👥</span>
         <span style="flex:1">
-          <span style="display:block;font-size:14px;font-weight:800">Вступи в команду</span>
-          <span style="display:block;font-size:12px;color:var(--muted)">или создай свою →</span>
+          <span style="display:block;font-size:14px;font-weight:800">${_esc(s('teamJoin'))}</span>
+          <span style="display:block;font-size:12px;color:var(--muted)">${_esc(s('teamCreate'))}</span>
         </span>
       </div>`;
     return;
   }
 
-  const emoji = t.emoji || '👥';
-  const treasury = t.treasury_neurons != null ? `${(t.treasury_neurons).toLocaleString('ru')} ⚡` : '—';
+  const safeEmoji   = _esc(t.emoji || '👥');
+  const safeName    = _esc(t.name);
+  const treasury    = t.treasury_neurons != null
+    ? `${Number(t.treasury_neurons).toLocaleString('ru')} ⚡`
+    : '—';
+  const safeLabel   = _esc(s('treasury'));
 
   card.innerHTML = `
     <div class="hdb-team-info" onclick="showScreen('my-team-screen');window.loadMyTeam?.()">
-      <div style="font-size:28px;flex-shrink:0">${emoji}</div>
+      <div style="font-size:28px;flex-shrink:0">${safeEmoji}</div>
       <div style="flex:1;min-width:0">
-        <div style="font-size:15px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.name}</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:2px">Казна: ${treasury}</div>
+        <div style="font-size:15px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${safeName}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">${safeLabel}: ${_esc(treasury)}</div>
       </div>
       <span style="color:var(--accent);font-size:18px;font-weight:900">›</span>
     </div>`;
 }
 
-async function _loadActivity() {
-  // activity feed lives in the existing #home-activity-feed container
-  // no-op: handled by legacy loadActivityFeed()
-}
-
-// Called on neuron/xp state changes to refresh the neurons display
+// ── Called on neuron/xp state changes ────────────────────────────────────────
 export function refreshHomeDashboardState() {
   const state = getState();
   _renderSkeleton(state);
 }
 
-window.renderHomeDashboard = renderHomeDashboard;
+window.renderHomeDashboard     = renderHomeDashboard;
 window.refreshHomeDashboardState = refreshHomeDashboardState;
