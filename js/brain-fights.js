@@ -177,9 +177,9 @@ function _renderBF(el, data, myUserId) {
   const weekLbl  = _weekLabel(week_start);
   const teamCity = my_team.city || '';
 
-  // HERO
-  const rankDisplay = my_team.rank
-    ? `#${my_team.rank} ${_t('of')} ${my_team.total_teams ?? ''}`
+  // HERO — global rank (server-derived)
+  const rankDisplay = my_team.global_rank
+    ? `#${my_team.global_rank} ${_t('of')} ${my_team.total_global_teams ?? ''}`
     : '—';
   const heroScoreColor = my_team.points > 0 ? '#3cc864' : 'var(--muted)';
 
@@ -230,8 +230,9 @@ function _renderBF(el, data, myUserId) {
     ? (leaderboard || []).filter(r => r.city?.toLowerCase() === teamCity.toLowerCase())
     : [];
 
-  const lbRowsGlobal = _lbRows(leaderboard || []);
-  const lbRowsCity   = hasCityTab ? _lbRows(cityEntries) : '';
+  // Global tab uses global_rank; city tab uses server-computed city_rank
+  const lbRowsGlobal = _lbRows(leaderboard || [], 'global_rank');
+  const lbRowsCity   = hasCityTab ? _lbRows(cityEntries, 'city_rank') : '';
 
   const cityTabHtml = hasCityTab ? `
     <button class="bf-tab" id="bf-tab-city" onclick="window._bfSwitchTab('city')">${_t('tabCity')}: ${_esc(teamCity)}</button>` : '';
@@ -320,13 +321,15 @@ function _renderBF(el, data, myUserId) {
 }
 
 // ── Leaderboard rows ───────────────────────────────────────────────────────────
-function _lbRows(entries) {
+// rankKey: 'global_rank' for the global tab, 'city_rank' for the city tab.
+// city_rank is server-computed (PARTITION BY city) — not derived from array position.
+function _lbRows(entries, rankKey = 'global_rank') {
   if (!entries.length) {
     return `<p class="bf-empty-label" style="padding:12px 8px">${_t('noActivity')}</p>`;
   }
   return entries.map(r => `
     <div class="bf-lb-row${r.is_my_team ? ' bf-lb-me' : ''}">
-      <span class="bf-lb-rank">#${r.rank}</span>
+      <span class="bf-lb-rank">#${r[rankKey] ?? '—'}</span>
       <span class="bf-lb-emoji">${_esc(r.emoji || '🏟️')}</span>
       <span class="bf-lb-name">${_esc(r.name || '—')}</span>
       ${r.city ? `<span class="bf-lb-city">${_esc(r.city)}</span>` : ''}
