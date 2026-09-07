@@ -27,7 +27,6 @@ export async function loadMyTeam() {
   const inviteUUID = params.get('join');
   if (inviteCode || inviteUUID) {
     history.replaceState({}, '', window.location.pathname);
-    // Dispatch join after rendering the screen.
     setTimeout(() => _handleInviteLink(inviteCode, inviteUUID), 0);
   }
 
@@ -49,7 +48,6 @@ export async function loadMyTeam() {
       .select('id,name,city,motto,banner_url,avatar_url,emoji,treasury_neurons,captain_id,join_code,disbanded_at')
       .eq('id', me.team_id)
       .single(),
-    // Roster: captain first, then alphabetical. No competitive ordering by neurons.
     sb.from('profiles')
       .select('id,display_name,avatar_url,is_scout')
       .eq('team_id', me.team_id)
@@ -69,7 +67,14 @@ export async function loadMyTeam() {
       .limit(5),
   ]);
 
-  const team     = teamRes.data;
+  const team = teamRes.data;
+
+  // Defensive: if team is disbanded, show special state.
+  if (!team || team.disbanded_at) {
+    _renderDisbanded(el);
+    return;
+  }
+
   const tiebreak = tiebreakRes.data ?? 0;
   const today    = new Date().toISOString().slice(0, 10);
 
@@ -112,6 +117,34 @@ export async function loadMyTeam() {
     myTeamId: me.team_id, treasuryContribs,
   });
 }
+
+// ── Disbanded team screen ─────────────────────────────────────────────────
+function _renderDisbanded(el) {
+  el.innerHTML = `
+    <div class="hdr" style="position:sticky;top:0;z-index:10;backdrop-filter:blur(12px);background:rgba(10,10,20,.85)">
+      <button onclick="showScreen('home')" style="background:none;border:none;color:var(--text);font-size:22px;cursor:pointer;padding:0 4px">‹</button>
+      <div style="font-size:15px;font-weight:900">🏟️ Моя Команда</div>
+      <div style="width:30px"></div>
+    </div>
+    <div style="padding:40px 24px;display:flex;flex-direction:column;align-items:center;gap:16px;text-align:center">
+      <div style="font-size:56px">🏚️</div>
+      <div style="font-size:18px;font-weight:900">Команда расформирована</div>
+      <div style="font-size:13px;color:var(--muted);max-width:280px;line-height:1.6">
+        Твоя команда больше не активна. Вступи в другую команду или создай новую.
+      </div>
+      <button onclick="window._mtClearAndReload()"
+        style="margin-top:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:14px;padding:14px 28px;font-size:15px;font-weight:900;color:#fff;cursor:pointer;font-family:inherit">
+        Найти команду
+      </button>
+    </div>`;
+}
+
+window._mtClearAndReload = async function() {
+  // Trigger a leave_team RPC to clean up the stale profile cache,
+  // then reload so the no-team screen is shown.
+  await sb.rpc('leave_team', {}).catch(() => {});
+  loadMyTeam();
+};
 
 // ── No team screen ────────────────────────────────────────────────────────
 function _renderNoTeam(el) {
@@ -176,6 +209,22 @@ function _getWeekStart() {
   return mon.toISOString().slice(0, 10);
 }
 
+// ── XSS helpers ───────────────────────────────────────────────────────────
+// _escHtml: escapes user-controlled strings for insertion into innerHTML.
+function _escHtml(s) {
+  return String(s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// _escAttr: escapes for HTML attribute values (double-quoted).
+function _escAttr(s) {
+  return String(s || '').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 // ── Main render ───────────────────────────────────────────────────────────
 function _renderMyTeam(el, {
   team, members, tiebreak,
@@ -235,16 +284,12 @@ function _renderMyTeam(el, {
   // NOTE: is_scout is guarded by guard_critical_profile_fields trigger (mig 70+73).
   // Direct profiles.update({ is_scout }) is a silent no-op for authenticated role.
   // Requires a SECURITY DEFINER admin RPC (future iteration).
-  // Shown as disabled with explanation to avoid fake-success UX.
   const scoutSection = isAdmin ? `
     <div style="background:rgba(255,200,0,.06);border:1px solid rgba(255,200,0,.25);border-radius:18px;padding:20px">
       <div style="font-size:14px;font-weight:800;margin-bottom:4px">🎯 Управление скаутами</div>
       <div style="font-size:12px;color:rgba(255,200,0,.7);margin-bottom:8px">Только для администраторов</div>
       <div style="font-size:12px;color:var(--muted);background:rgba(255,255,255,.04);border-radius:10px;padding:10px 12px;line-height:1.6">
-        ⚠️ Назначение скаутов через UI пока недоступно.<br>
-        Поле <code>is_scout</code> защищено триггером на уровне БД.<br>
-        Используй SQL Editor (Supabase) → <code>UPDATE profiles SET is_scout = true WHERE id = '...'</code><br>
-        (от service role, не от authenticated).
+        ⚠️ Назначение скаутов через UI временно недоступно.
       </div>
     </div>
   ` : '';
@@ -270,6 +315,11 @@ function _renderMyTeam(el, {
     </div>
   ` : '';
 
+  // join_code is alphanumeric only (generated by RPC) — safe for JS attribute and URL.
+  // Still escape defensively.
+  const safeJoinCode = _escHtml(team.join_code || '');
+  const safeJoinCodeAttr = _escAttr(team.join_code || '');
+
   el.innerHTML = `
     <div class="hdr" style="position:sticky;top:0;z-index:10;backdrop-filter:blur(12px);background:rgba(10,10,20,.85)">
       <button onclick="showScreen('home')" style="background:none;border:none;color:var(--text);font-size:22px;cursor:pointer;padding:0 4px">‹</button>
@@ -284,18 +334,18 @@ function _renderMyTeam(el, {
       <!-- 1. Team identity ─────────────────────────────────────── -->
       <div style="border-radius:20px;overflow:hidden;border:1px solid rgba(0,237,181,.3);position:relative">
         <div style="height:140px;overflow:hidden;background:linear-gradient(135deg,rgba(0,237,181,.3),rgba(168,85,247,.2))">
-          ${team.banner_url ? `<img src="${team.banner_url}" style="width:100%;height:100%;object-fit:cover">` : ''}
+          ${team.banner_url ? `<img src="${_escAttr(team.banner_url)}" style="width:100%;height:100%;object-fit:cover">` : ''}
         </div>
         <div style="position:absolute;top:100px;left:50%;transform:translateX(-50%)">
           <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));border:3px solid var(--bg);display:flex;align-items:center;justify-content:center;font-size:28px;overflow:hidden">
-            ${team.avatar_url ? `<img src="${team.avatar_url}" style="width:100%;height:100%;object-fit:cover">` : emoji}
+            ${team.avatar_url ? `<img src="${_escAttr(team.avatar_url)}" style="width:100%;height:100%;object-fit:cover">` : _escHtml(emoji)}
           </div>
         </div>
         <div style="background:var(--bg2);padding:44px 16px 16px;text-align:center">
-          <div style="font-size:20px;font-weight:900;margin-bottom:4px">${team.name}</div>
+          <div style="font-size:20px;font-weight:900;margin-bottom:4px">${_escHtml(team.name)}</div>
           ${isCaptain ? `<div style="font-size:10px;color:var(--accent2);font-weight:700;margin-bottom:2px">👑 Капитан</div>` : ''}
-          ${team.city ? `<div style="font-size:12px;color:var(--muted)">📍 ${team.city}</div>` : ''}
-          ${team.motto ? `<div style="font-size:12px;color:var(--accent2);font-style:italic;margin-top:4px">"${team.motto}"</div>` : ''}
+          ${team.city ? `<div style="font-size:12px;color:var(--muted)">📍 ${_escHtml(team.city)}</div>` : ''}
+          ${team.motto ? `<div style="font-size:12px;color:var(--accent2);font-style:italic;margin-top:4px">&ldquo;${_escHtml(team.motto)}&rdquo;</div>` : ''}
           <div style="margin-top:10px;display:inline-flex;align-items:center;gap:6px;background:rgba(0,237,181,.15);border-radius:20px;padding:6px 14px">
             <span style="font-size:14px">⚡</span>
             <span style="font-size:16px;font-weight:900">${tiebreak}</span>
@@ -303,10 +353,10 @@ function _renderMyTeam(el, {
           </div>
           <!-- Invite: canonical ?team_code= link -->
           <div style="margin-top:10px;display:flex;flex-direction:column;align-items:center;gap:6px">
-            ${team.join_code
-              ? `<div style="font-size:11px;color:var(--muted)">Код команды: <strong style="color:var(--text);letter-spacing:2px;font-size:14px">${team.join_code}</strong></div>`
+            ${safeJoinCode
+              ? `<div style="font-size:11px;color:var(--muted)">Код команды: <strong style="color:var(--text);letter-spacing:2px;font-size:14px">${safeJoinCode}</strong></div>`
               : ''}
-            <button onclick="window._mtCopyInvite('${team.join_code || ''}')"
+            <button onclick="window._mtCopyInvite('${safeJoinCodeAttr}')"
               style="background:rgba(0,237,181,.15);border:1px solid rgba(0,237,181,.3);border-radius:20px;padding:7px 16px;font-size:12px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit">
               🔗 Пригласить в команду
             </button>
@@ -369,12 +419,12 @@ function _renderMyTeam(el, {
             return `
             <div style="display:flex;align-items:center;gap:12px;background:${isThisCaptain ? 'rgba(0,237,181,.06)' : 'var(--bg2)'};border:1px solid ${isThisCaptain ? 'rgba(0,237,181,.25)' : 'var(--border)'};border-radius:14px;padding:12px">
               <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;overflow:hidden">
-                ${m.avatar_url ? `<img src="${m.avatar_url}" style="width:100%;height:100%;object-fit:cover"/>` : '🧠'}
+                ${m.avatar_url ? `<img src="${_escAttr(m.avatar_url)}" style="width:100%;height:100%;object-fit:cover"/>` : '🧠'}
               </div>
               <div style="flex:1;min-width:0">
                 <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
                   <span style="font-size:14px;font-weight:${isThisCaptain ? '900' : '700'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-                    ${m.display_name || 'Игрок'}${isMe ? ' <span style="font-size:10px;color:var(--accent2)">(ты)</span>' : ''}
+                    ${_escHtml(m.display_name || 'Игрок')}${isMe ? ' <span style="font-size:10px;color:var(--accent2)">(ты)</span>' : ''}
                   </span>
                   ${isThisCaptain ? '<span style="font-size:10px;background:rgba(0,237,181,.15);color:var(--accent2);border-radius:6px;padding:2px 6px;font-weight:700">👑 капитан</span>' : ''}
                   ${m.is_scout ? '<span style="font-size:10px;background:rgba(255,200,0,.15);color:#f5c400;border-radius:6px;padding:2px 6px;font-weight:700">🎯 скаут</span>' : ''}
@@ -395,7 +445,7 @@ function _renderMyTeam(el, {
           ${members.map(m => `
             <div style="display:flex;align-items:center;gap:5px;background:${activeSet.has(m.id) ? 'rgba(60,200,100,.1)' : 'rgba(255,255,255,.04)'};border:1px solid ${activeSet.has(m.id) ? 'rgba(60,200,100,.3)' : 'var(--border)'};border-radius:20px;padding:4px 10px">
               <div style="width:7px;height:7px;border-radius:50%;background:${activeSet.has(m.id) ? '#3cc864' : 'var(--muted)'}"></div>
-              <span style="font-size:11px;font-weight:700;color:${activeSet.has(m.id) ? 'var(--text)' : 'var(--muted)'}">${m.display_name || 'Игрок'}</span>
+              <span style="font-size:11px;font-weight:700;color:${activeSet.has(m.id) ? 'var(--text)' : 'var(--muted)'}">${_escHtml(m.display_name || 'Игрок')}</span>
             </div>
           `).join('')}
         </div>
@@ -422,7 +472,7 @@ function _renderMyTeam(el, {
           <div style="font-size:11px;color:var(--muted);margin-bottom:8px;font-weight:700;text-transform:uppercase;letter-spacing:.05em">Последние взносы</div>
           ${treasuryContribs.map(c => `
             <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:12px">
-              <span style="color:var(--muted)">${c.profiles?.display_name || 'Игрок'}</span>
+              <span style="color:var(--muted)">${_escHtml(c.profiles?.display_name || 'Игрок')}</span>
               <span style="font-weight:700;color:#f5c400">+${c.amount} ⚡</span>
             </div>
           `).join('')}
@@ -530,7 +580,7 @@ window._mtLeaveTeam = async function() {
 // join_code is the canonical share surface. UUID is not in the invite URL.
 window._mtCopyInvite = function(joinCode) {
   if (!joinCode) { window.toast?.('Код команды недоступен'); return; }
-  const url  = `${window.location.origin}/?team_code=${joinCode}`;
+  const url  = `${window.location.origin}/?team_code=${encodeURIComponent(joinCode)}`;
   const text = `Вступай в мою команду BFC! Код: ${joinCode}\n${url}`;
   navigator.clipboard.writeText(text).then(() => {
     window.toast?.('✅ Ссылка скопирована!');
@@ -540,18 +590,16 @@ window._mtCopyInvite = function(joinCode) {
 };
 
 // ── Handle invite link on page load ──────────────────────────────────────
-// Supports canonical ?team_code=ABCDEF and legacy ?join=UUID (backward compat).
 async function _handleInviteLink(code, uuid) {
   const { currentUser } = getState();
   if (!currentUser) return;
 
   if (code) {
-    // Canonical path: join directly by code.
     const { data: profile } = await sb.from('profiles')
       .select('team_id').eq('id', currentUser.id).single();
-    if (profile?.team_id) return; // already in a team
+    if (profile?.team_id) return;
 
-    if (!confirm(`Вступить в команду по коду ${code}?`)) return;
+    if (!confirm(`Вступить в команду по коду ${_escHtml(code)}?`)) return;
     const { data, error } = await sb.rpc('join_team_by_code', { p_join_code: code });
     if (error || !data?.ok) {
       const msgs = {
@@ -567,7 +615,6 @@ async function _handleInviteLink(code, uuid) {
   }
 
   if (uuid) {
-    // Legacy path: UUID link. Fetch team's join_code and proceed via canonical join.
     const { data: profile } = await sb.from('profiles')
       .select('team_id').eq('id', currentUser.id).single();
     if (profile?.team_id === uuid) return;
@@ -584,19 +631,18 @@ async function _handleInviteLink(code, uuid) {
       window.toast?.('Команда не поддерживает вступление по ссылке. Попроси код у капитана.');
       return;
     }
-    if (!confirm(`Вступить в команду «${team.name}»?`)) return;
+    if (!confirm(`Вступить в команду «${_escHtml(team.name)}»?`)) return;
 
     const { data, error } = await sb.rpc('join_team_by_code', { p_join_code: team.join_code });
     if (error || !data?.ok) {
       window.toast?.('Ошибка при вступлении');
       return;
     }
-    window.toast?.(`✅ Ты в команде «${team.name}»!`);
+    window.toast?.(`✅ Ты в команде «${_escHtml(team.name)}»!`);
     loadMyTeam();
   }
 }
 
-// Legacy export (called from legacy.js / index.html ?join= handler if exists).
 window._mtJoinViaLink = async function(teamId) {
   await _handleInviteLink(null, teamId);
 };
@@ -620,6 +666,16 @@ window._mtSaveProfile = async function() {
   const avatarUrl = document.getElementById('mt-edit-avatar')?.value?.trim() || null;
 
   if (!name) { window.toast?.('Введи название команды'); return; }
+
+  // URL protocol validation: only https:// allowed for image URLs.
+  if (bannerUrl && !bannerUrl.startsWith('https://')) {
+    window.toast?.('❌ URL баннера должен начинаться с https://');
+    return;
+  }
+  if (avatarUrl && !avatarUrl.startsWith('https://')) {
+    window.toast?.('❌ URL аватара должен начинаться с https://');
+    return;
+  }
 
   const { data, error } = await sb.rpc('update_my_team', {
     p_name:       name,
@@ -701,7 +757,7 @@ window._mtRegenerateCode = async function() {
     window.toast?.('❌ ' + (msgs[data?.reason] || 'Ошибка обновления кода'));
     return;
   }
-  window.toast?.(`✅ Новый код: ${data.join_code}`);
+  window.toast?.(`✅ Новый код: ${_escHtml(data.join_code)}`);
   loadMyTeam();
 };
 
@@ -765,9 +821,5 @@ window._mtDonate = async function() {
   if (treasuryEl) treasuryEl.textContent = data.treasury;
   loadMyTeam();
 };
-
-function _escAttr(s) {
-  return String(s || '').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
 
 window.loadMyTeam = loadMyTeam;

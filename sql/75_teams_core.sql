@@ -1,22 +1,36 @@
 -- ══════════════════════════════════════════════════════════════════════════
--- Migration 75 v2: Teams Core — captain, join_code, soft-delete, RPCs
+-- Migration 75 v3: Teams Core — captain, join_code, soft-delete, RPCs
 --
--- Problems fixed from v1 (FINAL REVIEW):
+-- Problems fixed from v1 (FINAL REVIEW, issues 1-14):
 --  1. CRITICAL: DELETE FROM teams destroyed team_member_history (ON DELETE CASCADE).
 --     Fixed: teams are never hard-deleted. disbanded_at timestamptz marks disband.
 --  2. team_member_history.team_id FK changed from ON DELETE CASCADE → RESTRICT.
 --  3. All CREATE POLICY now guarded with DROP POLICY IF EXISTS (idempotency).
 --  4. join_team_by_code rejects disbanded teams (disbanded_at IS NOT NULL).
---  5. Captain-deletion trigger: auto-disband any active team when captain profile
---     is deleted (ON DELETE SET NULL alone left active teams without a captain).
+--  5. Captain-deletion trigger: auto-disband team + clear ALL member profiles.team_id
+--     + close ALL member history rows when captain profile is deleted.
 --  6. donate_to_team: added p_amount upper bound (10 000) + disbanded_at check.
---  7. team_member_history SELECT policy: authenticated users only (was: public).
---  8. join_code uniqueness checked only against active teams → disbanded teams
---     release their code for future reuse.
---  9. Source-of-truth clarified in comments: profiles.team_id is fast cache,
---     team_member_history is historical authority.
+--  7. team_member_history SELECT policy: own rows OR same-team only (not all authenticated).
+--  8. join_code uniqueness: GLOBAL unique index — disbanded codes are never reused.
+--  9. Source-of-truth clarified: profiles.team_id is fast cache, team_member_history
+--     is historical authority.
 -- 10. update_my_team / regenerate_team_code reject disbanded teams.
 -- 11. Added teams.updated_at column (referenced by RPCs but not in mig 40).
+--
+-- Problems fixed from v2 (FINAL REVIEW v2, issues 1-15):
+--  1. _handle_captain_profile_deleted: now also clears all member profiles.team_id
+--     and closes all active history rows when a team is disbanded.
+--  2. join_code global uniqueness: dropped partial index, created global unique index.
+--     Disbanded teams retain their code forever; codes are never reused.
+--  3. _gen_team_join_code: checks uniqueness across ALL teams (not just active).
+--  4. tmh_select policy: restricted to own rows OR same-team rows only.
+--  5. join_team_by_code: explicit history conflict check instead of ON CONFLICT DO NOTHING.
+--  6. create_team: checks active team_member_history in addition to profiles.team_id.
+--  7. leave_team / kick_member: handle missing history row explicitly (repair + proceed).
+--  8. Profile delete cascade documented honestly: history is removed with profile (GDPR).
+--  9. Treasury ledger: donate_to_team already has FOR UPDATE + upper bound + disbanded guard.
+-- 10. Scout section: SQL instructions removed from production UI.
+-- 11. Comments: removed "preserved forever" claim about history rows.
 --
 -- Does NOT touch migrations 68–74.
 -- Does NOT implement Brain Fights formula (future iteration).
@@ -25,7 +39,7 @@
 
 -- ── §1  Schema: add columns to teams ─────────────────────────────────────
 -- captain_id: nullable (NULL = captain deleted or team not yet migrated).
--- join_code:  6-char uppercase alpha, generated server-side.
+-- join_code:  6-char uppercase alpha, generated server-side. Never reused.
 -- disbanded_at: NULL = active, NOT NULL = disbanded (soft-delete).
 -- updated_at: audit timestamp referenced by RPCs.
 
@@ -37,8 +51,7 @@ ALTER TABLE public.teams
 
 -- ── §2  Helper: generate a short readable join code ───────────────────────
 -- 6 uppercase alpha chars (no I/O for legibility). 26^6 ≈ 308 M combinations.
--- Checks uniqueness only against ACTIVE teams — disbanded teams release their
--- codes for future reuse.
+-- Checks uniqueness against ALL teams — disbanded codes are never reused.
 -- Called server-side only; REVOKE from PUBLIC at end of migration.
 CREATE OR REPLACE FUNCTION public._gen_team_join_code()
 RETURNS text
@@ -56,10 +69,9 @@ BEGIN
     FOR i IN 1..6 LOOP
       result := result || substr(chars, floor(random() * length(chars))::int + 1, 1);
     END LOOP;
-    -- Only check uniqueness against active teams; disbanded ones release their code.
+    -- Check uniqueness across ALL teams — disbanded codes must not be reissued.
     EXIT WHEN NOT EXISTS (
-      SELECT 1 FROM public.teams
-      WHERE join_code = result AND disbanded_at IS NULL
+      SELECT 1 FROM public.teams WHERE join_code = result
     );
     attempt := attempt + 1;
     IF attempt > 100 THEN
@@ -75,6 +87,7 @@ $$;
 -- ── §3  Backfill: join codes and captain_id for existing teams ────────────
 
 -- Generate unique join codes for existing teams that don't have one yet.
+-- Check uniqueness globally (not just active) to guarantee codes are never reused.
 DO $$
 DECLARE
   rec  record;
@@ -88,32 +101,22 @@ BEGIN
       FOR i IN 1..6 LOOP
         code := code || substr(chars, floor(random() * length(chars))::int + 1, 1);
       END LOOP;
+      -- Global uniqueness check.
       EXIT WHEN NOT EXISTS (
-        SELECT 1 FROM public.teams
-        WHERE join_code = code AND id <> rec.id AND disbanded_at IS NULL
+        SELECT 1 FROM public.teams WHERE join_code = code AND id <> rec.id
       );
     END LOOP;
     UPDATE public.teams SET join_code = code WHERE id = rec.id;
   END LOOP;
 END $$;
 
--- Make join_code NOT NULL for active teams only; disbanded teams may have NULL code.
--- We enforce NOT NULL at the application layer: RPCs always set it on create.
--- The UNIQUE constraint covers non-NULL values naturally in PostgreSQL.
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint
-    WHERE conrelid = 'public.teams'::regclass AND conname = 'teams_join_code_key'
-  ) THEN
-    -- Partial unique index: only active teams need unique codes.
-    -- Disbanded teams may retain their old code (now reusable) or have it NULL.
-  END IF;
-END $$;
+-- Drop old partial unique index (only covered active teams — allowed code reuse after disband).
+-- Replace with global unique index: codes are retired permanently when a team disbands.
+DROP INDEX IF EXISTS idx_teams_join_code_active;
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_teams_join_code_active
+CREATE UNIQUE INDEX IF NOT EXISTS idx_teams_join_code_global
   ON public.teams(join_code)
-  WHERE disbanded_at IS NULL AND join_code IS NOT NULL;
+  WHERE join_code IS NOT NULL;
 
 -- Backfill captain_id for existing active teams: oldest member by profile created_at.
 UPDATE public.teams t
@@ -134,8 +137,10 @@ WHERE t.captain_id IS NULL
 --
 -- ON DELETE RESTRICT on team_id: prevents accidental hard-deletion of teams while
 -- history exists. Teams must be soft-deleted (disbanded_at) instead.
--- ON DELETE CASCADE on user_id: if a user's profile is permanently deleted, their
--- history rows can go too (GDPR / account deletion).
+-- ON DELETE CASCADE on user_id: if a user's profile is permanently deleted,
+-- their history rows are also deleted (GDPR / account deletion).
+-- This is intentional: a deleted account loses its history.
+-- Competition results attributed to a team are preserved at the team level.
 
 CREATE TABLE IF NOT EXISTS public.team_member_history (
   id        uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -169,16 +174,23 @@ END $$;
 
 ALTER TABLE public.team_member_history ENABLE ROW LEVEL SECURITY;
 
--- Authenticated users can read history (their own and their team's for roster display).
--- Not globally public — membership timestamps (joined_at/left_at) don't need to
--- be exposed to unauthenticated users.
+-- Own rows OR same-team rows (roster display). Not globally public.
+-- Membership timestamps (joined_at/left_at) should not be visible to arbitrary users.
 DROP POLICY IF EXISTS "tmh_select_own_or_public" ON public.team_member_history;
 DROP POLICY IF EXISTS "tmh_select_authenticated"  ON public.team_member_history;
-CREATE POLICY "tmh_select_authenticated"
+DROP POLICY IF EXISTS "tmh_select_own_or_team"    ON public.team_member_history;
+CREATE POLICY "tmh_select_own_or_team"
   ON public.team_member_history
   FOR SELECT
   TO authenticated
-  USING (true);
+  USING (
+    user_id = auth.uid()
+    OR EXISTS (
+      SELECT 1 FROM public.profiles p
+      WHERE p.id = auth.uid()
+        AND p.team_id = team_member_history.team_id
+    )
+  );
 -- All writes (INSERT/UPDATE/DELETE) through SECURITY DEFINER RPCs → no write policies.
 
 -- Backfill history for currently active members (joined_at = now() since exact date unknown).
@@ -190,9 +202,12 @@ ON CONFLICT DO NOTHING;
 
 -- ── §5  Captain-deletion trigger ──────────────────────────────────────────
 -- Problem: captain_id ON DELETE SET NULL (FK action) would leave an active team
--- with captain_id = NULL. This trigger fires BEFORE the profile DELETE and
--- auto-disbands any active team where the deleted user was captain.
--- The FK action then tries to set captain_id = NULL — already NULL, no-op.
+-- with captain_id = NULL and all members still showing team_id in their profile.
+-- This trigger fires BEFORE the profile DELETE and:
+--   1. Soft-disbands any active team the deleted user captained.
+--   2. Closes all active history rows for remaining members.
+--   3. Clears profiles.team_id for remaining members.
+-- The captain's own history row is closed by ON DELETE CASCADE when the profile is deleted.
 
 CREATE OR REPLACE FUNCTION public._handle_captain_profile_deleted()
 RETURNS TRIGGER
@@ -200,14 +215,35 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+  v_team_id uuid;
 BEGIN
-  -- Auto-disband any active team captained by the profile being deleted.
+  -- Disband any active team captained by the profile being deleted.
   UPDATE public.teams
   SET disbanded_at = now(),
       captain_id   = NULL,
       updated_at   = now()
   WHERE captain_id  = OLD.id
-    AND disbanded_at IS NULL;
+    AND disbanded_at IS NULL
+  RETURNING id INTO v_team_id;
+
+  IF v_team_id IS NOT NULL THEN
+    -- Close all active history rows for remaining members.
+    -- The captain's own row is handled by ON DELETE CASCADE on profiles.id.
+    UPDATE public.team_member_history
+    SET left_at = now()
+    WHERE team_id = v_team_id
+      AND left_at IS NULL
+      AND user_id <> OLD.id;
+
+    -- Clear team_id from remaining members' profile cache.
+    UPDATE public.profiles
+    SET team_id    = NULL,
+        updated_at = now()
+    WHERE team_id = v_team_id
+      AND id <> OLD.id;
+  END IF;
+
   RETURN OLD;
 END;
 $$;
@@ -307,6 +343,14 @@ BEGIN
     RETURN jsonb_build_object('ok', false, 'reason', 'already_in_team');
   END IF;
 
+  -- Also check team_member_history — profiles.team_id can be stale if the trigger
+  -- blocked a direct write. The history is the authoritative source of truth.
+  IF EXISTS (
+    SELECT 1 FROM team_member_history WHERE user_id = v_uid AND left_at IS NULL
+  ) THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'already_in_team');
+  END IF;
+
   v_code := _gen_team_join_code();
 
   INSERT INTO teams (name, city, emoji, captain_id, join_code, created_at, updated_at)
@@ -337,7 +381,6 @@ AS $$
 DECLARE
   v_uid       uuid := auth.uid();
   v_team_id   uuid;
-  v_disbanded timestamptz;
   v_existing  uuid;
 BEGIN
   IF v_uid IS NULL THEN
@@ -350,7 +393,7 @@ BEGIN
   END IF;
 
   -- Find active team by code only. Disbanded teams are invisible to join.
-  SELECT id, disbanded_at INTO v_team_id, v_disbanded
+  SELECT id INTO v_team_id
   FROM teams WHERE join_code = p_join_code AND disbanded_at IS NULL;
 
   IF v_team_id IS NULL THEN
@@ -369,13 +412,24 @@ BEGIN
     RETURN jsonb_build_object('ok', false, 'reason', 'already_in_team');
   END IF;
 
+  -- Check history explicitly — no ON CONFLICT DO NOTHING (silent inconsistency).
+  IF EXISTS (
+    SELECT 1 FROM team_member_history
+    WHERE user_id = v_uid AND team_id = v_team_id AND left_at IS NULL
+  ) THEN
+    -- Active history row exists but profile cache says no team — inconsistent state.
+    -- Repair the cache and return success.
+    UPDATE profiles SET team_id = v_team_id, updated_at = now() WHERE id = v_uid;
+    RETURN jsonb_build_object('ok', true, 'already_member', true, 'team_id', v_team_id);
+  END IF;
+
   -- Join: update cache + record history.
   UPDATE profiles SET team_id = v_team_id, updated_at = now() WHERE id = v_uid;
 
-  -- Partial UNIQUE index prevents duplicate active membership rows.
+  -- The partial UNIQUE index on (user_id) WHERE left_at IS NULL guarantees
+  -- this INSERT will fail with a unique violation if a concurrent join sneaked in.
   INSERT INTO team_member_history (user_id, team_id, joined_at)
-  VALUES (v_uid, v_team_id, now())
-  ON CONFLICT DO NOTHING;
+  VALUES (v_uid, v_team_id, now());
 
   RETURN jsonb_build_object('ok', true, 'already_member', false, 'team_id', v_team_id);
 END;
@@ -387,7 +441,8 @@ GRANT EXECUTE ON FUNCTION public.join_team_by_code(text) TO authenticated;
 -- ── §9  RPC: leave_team ───────────────────────────────────────────────────
 -- Captain with other members must transfer captaincy first.
 -- Captain as sole member: SOFT-DISBAND — sets disbanded_at, clears captain_id,
---   closes membership history. Team row and history are preserved forever.
+--   closes membership history. Team row is preserved; history is preserved
+--   unless the user later deletes their profile (then ON DELETE CASCADE removes it).
 CREATE OR REPLACE FUNCTION public.leave_team()
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -399,6 +454,7 @@ DECLARE
   v_team_id      uuid;
   v_captain_id   uuid;
   v_member_count int;
+  v_rows_closed  int;
 BEGIN
   IF v_uid IS NULL THEN
     RETURN jsonb_build_object('ok', false, 'reason', 'unauthenticated');
@@ -433,7 +489,15 @@ BEGIN
       UPDATE team_member_history
         SET left_at = now()
         WHERE user_id = v_uid AND team_id = v_team_id AND left_at IS NULL;
-      -- 3. Mark team as disbanded. DO NOT DELETE — history must be preserved.
+      GET DIAGNOSTICS v_rows_closed = ROW_COUNT;
+      -- If 0 rows closed: history missing (data inconsistency). Insert corrective row.
+      IF v_rows_closed = 0 THEN
+        INSERT INTO team_member_history (user_id, team_id, joined_at, left_at)
+        VALUES (v_uid, v_team_id, now(), now())
+        ON CONFLICT DO NOTHING;
+      END IF;
+      -- 3. Mark team as disbanded. DO NOT DELETE — team identity and competition
+      --    history are preserved at the team level.
       UPDATE teams
         SET captain_id   = NULL,
             disbanded_at = now(),
@@ -448,6 +512,13 @@ BEGIN
   UPDATE team_member_history
     SET left_at = now()
     WHERE user_id = v_uid AND team_id = v_team_id AND left_at IS NULL;
+  GET DIAGNOSTICS v_rows_closed = ROW_COUNT;
+  -- If 0 rows closed: history missing. Insert corrective row.
+  IF v_rows_closed = 0 THEN
+    INSERT INTO team_member_history (user_id, team_id, joined_at, left_at)
+    VALUES (v_uid, v_team_id, now(), now())
+    ON CONFLICT DO NOTHING;
+  END IF;
 
   RETURN jsonb_build_object('ok', true, 'disbanded', false);
 END;
@@ -515,6 +586,7 @@ DECLARE
   v_team_id     uuid;
   v_captain_id  uuid;
   v_target_team uuid;
+  v_rows_closed int;
 BEGIN
   IF v_uid IS NULL THEN
     RETURN jsonb_build_object('ok', false, 'reason', 'unauthenticated');
@@ -544,6 +616,13 @@ BEGIN
   UPDATE team_member_history
     SET left_at = now()
     WHERE user_id = p_target_user_id AND team_id = v_team_id AND left_at IS NULL;
+  GET DIAGNOSTICS v_rows_closed = ROW_COUNT;
+  -- If 0 rows closed: history missing. Insert corrective row.
+  IF v_rows_closed = 0 THEN
+    INSERT INTO team_member_history (user_id, team_id, joined_at, left_at)
+    VALUES (p_target_user_id, v_team_id, now(), now())
+    ON CONFLICT DO NOTHING;
+  END IF;
 
   RETURN jsonb_build_object('ok', true);
 END;
