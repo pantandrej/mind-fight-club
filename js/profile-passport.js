@@ -9,22 +9,20 @@ window._ppOpenEditModal = function(focus) {
   const modal = document.getElementById('pp-edit-modal');
   if (!modal) return;
 
-  // Pre-fill fields from current UI values
-  const nameEl  = document.getElementById('pp-modal-name');
-  const cityEl  = document.getElementById('pp-modal-city');
-  const bioEl   = document.getElementById('pp-modal-bio');
-  const modalAv = document.getElementById('pp-modal-av');
+  const nameEl    = document.getElementById('pp-modal-name');
+  const cityEl    = document.getElementById('pp-modal-city');
+  const bioEl     = document.getElementById('pp-modal-bio');
+  const modalAv   = document.getElementById('pp-modal-av');
   const profileAv = document.getElementById('profile-av');
 
   if (nameEl) nameEl.value = document.getElementById('profile-name')?.textContent || '';
   if (cityEl) cityEl.value = document.getElementById('profile-city-display')?.textContent || '';
   if (bioEl)  bioEl.value  = document.getElementById('profile-bio-text')?.textContent || '';
 
-  // Mirror avatar state into modal avatar preview
   if (modalAv && profileAv) {
     if (profileAv.style.backgroundImage) {
-      modalAv.style.backgroundImage  = profileAv.style.backgroundImage;
-      modalAv.style.backgroundSize   = 'cover';
+      modalAv.style.backgroundImage    = profileAv.style.backgroundImage;
+      modalAv.style.backgroundSize     = 'cover';
       modalAv.style.backgroundPosition = 'center';
       modalAv.textContent = '';
     } else {
@@ -36,11 +34,10 @@ window._ppOpenEditModal = function(focus) {
   modal.style.display = 'flex';
   document.body.style.overflow = 'hidden';
 
-  // Focus the requested field
   setTimeout(() => {
-    if (focus === 'bio'    && bioEl)  bioEl.focus();
-    else if (focus === 'city' && cityEl) cityEl.focus();
-    else if (focus === 'name' && nameEl) nameEl.focus();
+    if      (focus === 'bio'    && bioEl)  bioEl.focus();
+    else if (focus === 'city'   && cityEl) cityEl.focus();
+    else if (focus === 'name'   && nameEl) nameEl.focus();
     else if (focus === 'avatar') document.getElementById('pp-avatar-file-modal')?.click();
   }, 80);
 };
@@ -60,30 +57,46 @@ window._ppSaveAllFields = async function() {
   if (!window.sb) { window.toast?.('❌ Нет соединения'); return; }
 
   const rpcArgs = {};
-  if (name !== undefined && name !== null) rpcArgs.p_display_name = name || null;
-  if (city !== undefined && city !== null) rpcArgs.p_city         = city || null;
-  if (bio  !== undefined && bio  !== null) rpcArgs.p_bio          = bio  || null;
+  // display_name: only send if non-empty — empty name is not allowed
+  if (name) rpcArgs.p_display_name = name;
+  // city & bio: send actual value including '' — empty string clears the field in DB
+  // (migration 73: CASE WHEN p_x IS NOT NULL THEN p_x ELSE column END;
+  //  '' IS NOT NULL → true → writes '' which clears the field)
+  if (city !== undefined) rpcArgs.p_city = city;  // '' clears, 'xxx' sets
+  if (bio  !== undefined) rpcArgs.p_bio  = bio;   // '' clears, 'xxx' sets
 
-  const { error } = await window.sb.rpc('update_my_profile', rpcArgs);
-  if (error) { window.toast?.('❌ Ошибка сохранения'); return; }
+  const { data, error } = await window.sb.rpc('update_my_profile', rpcArgs);
 
-  // Write-through to localStorage
+  if (error || data?.ok !== true) {
+    const reason = error?.message || data?.reason || 'unknown';
+    window.toast?.('❌ Ошибка сохранения: ' + reason.slice(0, 60));
+    return; // do NOT close modal; do NOT update UI or localStorage
+  }
+
+  // Write-through to localStorage (only after confirmed ok:true)
   if (name) localStorage.setItem('mfc_display_name', name);
   if (city) localStorage.setItem('mfc_city', city);
+  else if (city === '') localStorage.removeItem('mfc_city');
 
-  // Update hero UI immediately — no reload needed
+  // Update hero UI immediately
   if (name) {
     const nameEl = document.getElementById('profile-name');
     if (nameEl) nameEl.textContent = name;
     const avEl = document.getElementById('profile-av');
     if (avEl && !avEl.style.backgroundImage) avEl.textContent = name[0].toUpperCase();
   }
+
+  // city: update display or hide tag if cleared
+  const cityDisplay = document.getElementById('profile-city-display');
+  const cityTag     = document.getElementById('profile-city-tag');
   if (city) {
-    const cityDisplay = document.getElementById('profile-city-display');
     if (cityDisplay) cityDisplay.textContent = city;
-    const cityTag = document.getElementById('profile-city-tag');
-    if (cityTag) cityTag.style.display = '';
+    if (cityTag)     cityTag.style.display = '';
+  } else if (city === '') {
+    if (cityTag) cityTag.style.display = 'none';
   }
+
+  // bio: show or hide
   const bioTextEl = document.getElementById('profile-bio-text');
   const bioPhEl   = document.getElementById('profile-bio-placeholder');
   if (bio) {

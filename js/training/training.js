@@ -1940,28 +1940,41 @@ function toggleAvatarEdit() {
 async function saveAvatarFile(input) {
   const file = input?.files?.[0];
   if (!file) return;
+
+  // Validate MIME — reject non-image content regardless of extension
+  const ALLOWED_MIME = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+  if (!ALLOWED_MIME.includes(file.type)) {
+    toast('❌ Только JPG, PNG или WebP');
+    if (input) input.value = '';
+    return;
+  }
   if (file.size > 2 * 1024 * 1024) { toast('❌ Файл больше 2 МБ'); return; }
   if (!currentUser) { toast('❌ Войди в аккаунт'); return; }
 
   toast('⏳ Загружаем фото...');
-  // Normalize path to always use same slot per user — prevents orphaned files
+  // Path normalized to same slot per user; RLS policy allows jpg/jpeg/png/webp extensions
   const path = `avatars/${currentUser.id}.jpg`;
   const { error: upErr } = await sb.storage.from('mfc-media').upload(path, file, { upsert: true, contentType: file.type });
   if (upErr) { toast('❌ Ошибка загрузки: ' + upErr.message.slice(0, 60)); return; }
 
   const { data: urlData } = sb.storage.from('mfc-media').getPublicUrl(path);
   const url = urlData?.publicUrl;
-  if (!url) { toast('❌ Не удалось получить URL'); return; }
+  if (!url) { toast('❌ Не удалось получить URL фото'); return; }
 
   // Use SECURITY DEFINER RPC — avoids guard_critical_profile_fields trigger on direct upsert
-  const { error: rpcErr } = await sb.rpc('update_my_profile', { p_avatar_url: url });
-  if (rpcErr) { toast('❌ Не удалось сохранить фото'); return; }
+  const { data: rpcData, error: rpcErr } = await sb.rpc('update_my_profile', { p_avatar_url: url });
+  if (rpcErr || rpcData?.ok !== true) {
+    // Storage upload succeeded but profile save failed — report clearly
+    const reason = rpcErr?.message || rpcData?.reason || 'unknown';
+    toast('❌ Фото загружено, но профиль не обновлён: ' + reason.slice(0, 50));
+    return; // do NOT show success; do NOT update UI
+  }
   await sb.auth.updateUser({ data: { avatar_url: url } });
 
-  // Update avatar everywhere in UI
+  // Update avatar everywhere in UI only after confirmed ok:true
   document.querySelectorAll('#profile-av, #pp-modal-av').forEach(el => {
-    el.style.backgroundImage = `url(${url})`;
-    el.style.backgroundSize = 'cover';
+    el.style.backgroundImage    = `url(${url})`;
+    el.style.backgroundSize     = 'cover';
     el.style.backgroundPosition = 'center';
     el.textContent = '';
   });
