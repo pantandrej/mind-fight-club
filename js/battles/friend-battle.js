@@ -113,6 +113,27 @@ async function joinDuel(){
     return;
   }
 
+  // Guest limit check — must happen before entering lobby/LIVE.
+  // A limit-denied guest must not participate even if the host starts.
+  if(!window._battleSessionStarted){
+    const { data: _sd, error: _se } = await sb.rpc('start_game_session', {
+      p_mode: 'friend_battle',
+      p_opponent_id: null,
+      p_invite_id: null,
+    });
+    if(_se){
+      window.toast?.('Не удалось начать баттл. Проверь интернет.');
+      return;
+    }
+    if(!_sd?.allowed){
+      if(window.track) window.track('battle_limit_reached', { plan: _sd?.plan, trigger: 'guest_duel_join' });
+      window.showDailyLimitScreen?.('battle');
+      return;
+    }
+    window._currentSessionId     = _sd.session_id || null;
+    window._battleSessionStarted = true;
+  }
+
   duelCode=code; duelRole='guest';
   duelMyName = res.guest_name || currentUser?.user_metadata?.full_name?.split(' ')[0] || 'Гость';
   duelMyScore=0;duelOppScore=0;duelQs=[];duelIdx=0;duelMyCorrect=0;_duelSpeedNeurons=0;
@@ -184,9 +205,28 @@ function startDuelPoll(){
 }
 
 async function startDuelGame(){
-  // HOST triggers start — SERVER selects questions (not the client).
-  // Client sends NO questions, NO correct answers.
-  // If not enough secure questions → server returns error, duel stays unstarted.
+  // HOST triggers start. Battle limit is checked HERE, before start_duel(),
+  // so the room is never transitioned to 'started' if the host is over limit.
+  if(!window._battleSessionStarted){
+    const { data: _sd, error: _se } = await sb.rpc('start_game_session', {
+      p_mode: 'friend_battle',
+      p_opponent_id: null,
+      p_invite_id: null,
+    });
+    if(_se){
+      window.toast?.('Не удалось начать баттл. Проверь интернет.');
+      return;
+    }
+    if(!_sd?.allowed){
+      if(window.track) window.track('battle_limit_reached', { plan: _sd?.plan, trigger: 'host_duel_start' });
+      window.showDailyLimitScreen?.('battle');
+      return;
+    }
+    window._currentSessionId     = _sd.session_id || null;
+    window._battleSessionStarted = true;
+  }
+
+  // Only now transition the room — server selects questions, no client input.
   const { data: res, error } = await sb.rpc('start_duel', { p_code: duelCode });
 
   if (error || !res?.ok) {
@@ -382,13 +422,9 @@ function loadDuelQ(){
     b.innerHTML='<span class="ans-l">'+answerLetter(i)+'</span><span>'+a+'</span>';
     b.onclick=()=>pickDuel(i);ans.appendChild(b);
   });
-  // Fill all previous opponent dots that are still empty → opponent missed those questions
-  if(duelIdx > 0 && !window._isBotDuel){
-    for(let pi = 0; pi < duelIdx; pi++){
-      const prevDot = document.getElementById('d-opp-dots-dot-' + pi);
-      if(prevDot && !prevDot.textContent){ setOppDot(pi, false, 0); }
-    }
-  }
+  // Real duel: opponent dots are set ONLY by get_duel() neutral progress polling.
+  // Never infer miss/correctness from local question progression.
+  // Bot duel dots are handled by simulateBotAnswer() which has correctness info.
   _oppScoreAtQStart = duelOppScore;
   setDot('d-my-dots',duelIdx,'active');
   // Don't set opp dot active here — opp progress is driven by DB polling
@@ -544,35 +580,55 @@ async function duelNextQ(){
       document.getElementById('d-q-text').textContent = '⏳ Ты ответил на все вопросы! Ждём соперника...';
       document.getElementById('d-cat-pill').textContent = '';
 
-      // Do NOT write score/done flags directly — server derives completion from
-      // the immutable answer ledger (duel_answers table). Client polls get_duel_result.
+      // Server derives completion from immutable ledger (duel_answers).
+      // endDuel() may only be called when server returns waiting===false.
+      // Never fabricate a 0:0 result — server expires_at is authoritative.
       const _waitStart = Date.now();
       let _waitEnded = false;
-      const waitPoll = setInterval(async() => {
+      let _waitInterval = 2000; // start at 2s, slow down after 60s
+      const _doWaitPoll = async () => {
         if(_waitEnded) return;
-        const elapsed = Date.now() - _waitStart;
-        const remaining = Math.max(0, Math.ceil((60000 - elapsed) / 1000));
-        const txt = document.getElementById('d-q-text');
-        if(txt) txt.textContent = elapsed < 10000
-          ? '⏳ Ждём соперника...'
-          : `⏳ Ждём соперника... (${remaining}с)`;
-
         try {
           const { data: res } = await sb.rpc('get_duel_result', { p_code: duelCode });
           if(!res?.ok || _waitEnded) return;
 
           if(res.waiting === false){
-            // Server has authoritative result
-            _waitEnded = true;
-            clearInterval(waitPoll);
-            endDuel(res);
-          } else if(elapsed > 60000){
-            // Client-side safety: call once more and use whatever server says
+            // Server has authoritative result — only acceptable path to endDuel
             _waitEnded = true;
             clearInterval(waitPoll);
             endDuel(res);
           }
+          // waiting===true: keep polling, never fabricate result
         } catch(e){ console.warn('[duel] waitPoll error:', e); }
+      };
+      const waitPoll = setInterval(async() => {
+        if(_waitEnded) return;
+        const elapsed = Date.now() - _waitStart;
+        const txt = document.getElementById('d-q-text');
+
+        if(elapsed < 60000){
+          // First 60s: show countdown
+          const remaining = Math.max(0, Math.ceil((60000 - elapsed) / 1000));
+          if(txt) txt.textContent = elapsed < 10000
+            ? '⏳ Ждём соперника...'
+            : `⏳ Ждём соперника... (${remaining}с)`;
+        } else {
+          // After 60s: server expires_at decides — keep waiting, slow to 5s
+          if(txt) txt.textContent = '⏳ Соперник ещё играет...';
+          // Show back-to-menu option without ending the duel
+          const _backBtn = document.getElementById('d-wait-back-btn');
+          if(_backBtn) _backBtn.style.display = 'block';
+          // Reduce polling cadence (reschedule at 5s)
+          if(_waitInterval === 2000){
+            _waitInterval = 5000;
+            clearInterval(waitPoll);
+            const _slowPoll = setInterval(async() => {
+              if(_waitEnded){ clearInterval(_slowPoll); return; }
+              await _doWaitPoll();
+            }, 5000);
+          }
+        }
+        await _doWaitPoll();
       }, 2000);
     }
   } else {
@@ -580,8 +636,11 @@ async function duelNextQ(){
   }
 }
 async function _saveDuelStats(myS, oppS, win) {
-  // For real duels: get_duel_result RPC already wrote game_sessions.won server-side.
-  // For bot duels: write session stats locally (bot duels are unranked).
+  // Real duel result is stored in duel_rooms.winner_id + duel_answers (authoritative).
+  // game_sessions is used only for start/limit accounting in v1.
+  // won/score/questions_count are intentionally NOT written to game_sessions for real duels
+  // (no stable duel→session link exists; heuristic matching was removed).
+  // For bot duels: write session stats locally (unranked, noncompetitive).
   const sessionId = window._currentDuelSessionId || window._currentSessionId;
   if (window._isBotDuel && window.sb && sessionId) {
     try {
