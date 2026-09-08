@@ -124,6 +124,9 @@ async function checkBattleLimitBeforeQueue() {
 }
 
 async function startMatchmaking(){
+  // P1: Random Duel disabled until it uses the same server-authoritative duel core
+  window.toast?.('🔜 Случайный бой — скоро! Пока выбери «Дуэль с другом».');
+  return;
 
   if(!currentUser){ _showSignInToPlay(); return; }
 
