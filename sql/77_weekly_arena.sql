@@ -172,29 +172,69 @@ ALTER TABLE public.weekly_arena_answers ENABLE ROW LEVEL SECURITY;
 
 
 -- ──────────────────────────────────────────────────────────────────
--- §5.1  Column-level answer-key security (P0.1 — true fix)
+-- §5.1  Answer-key security — table-level REVOKE + column GRANT + competitive secrets
 --
--- Problem: client receives question_text via get_weekly_arena(), then can
---   match against questions table and read correct_index via REST:
---   GET /rest/v1/questions?question_ru=eq.<text>&select=correct_index → answer.
---   The waq_id opaque token alone is NOT sufficient — it only hides question_id,
---   not the underlying question_text-to-correct_index mapping.
+-- P0.1 — Column-level REVOKE alone is insufficient.
+--   When anon/authenticated have TABLE-LEVEL SELECT on public.questions (the
+--   Supabase default), a REVOKE on a single column is a no-op: table-level
+--   privilege already authorises every column. Pattern from migration 75 (teams):
+--     REVOKE SELECT ON table FROM anon, authenticated;
+--     GRANT SELECT (safe_col1, ...) ON table TO anon, authenticated;
+--   SECURITY DEFINER functions run as postgres → unaffected by this REVOKE.
 --
--- Fix: REVOKE SELECT (correct_index) FROM anon, authenticated.
---   PostgreSQL column-level privileges are respected by PostgREST.
---   Column is excluded from SELECT * and returns 403 when explicitly requested.
---   SECURITY DEFINER functions run as postgres — this REVOKE does not affect them.
+-- P0.2 — Competitive-secret reservation model.
+--   questions.is_competitive_secret = true: admin-reserved for a future arena.
+--   get_question_reveals() NEVER returns correct_index for:
+--     (a) questions where is_competitive_secret = true, OR
+--     (b) questions in weekly_arena_questions for any arena where now() < ends_at
+--         (covers both UPCOMING and LIVE, not just LIVE).
+--   Lifecycle: admin sets is_competitive_secret=true before arena creation →
+--   question flows through UPCOMING/LIVE with answer hidden → admin optionally
+--   resets to false after arena finishes to re-enable training reveals.
 --
--- get_question_reveals(ids): authenticated clients get correct_index for non-Arena
---   questions (for post-answer reveals in training/tournament/battle).
---   Arena questions during LIVE return no row → client never gets the answer.
---   A client who maps question_text → question_id and calls this RPC during LIVE
---   gets NULL — the arena check inside the function prevents the lookup.
+-- P0.3 — Guest (anon) gameplay.
+--   get_question_reveals is now granted to anon as well as authenticated.
+--   Safe: the function only returns non-secret, non-arena correct_indexes.
 --
--- get_question_reveals_admin(ids): admin-only, returns correct_index for ALL
---   questions including live Arena questions (for q-moderation UI).
+-- get_question_reveals_admin(ids): admin-only, bypasses all secrecy checks.
 -- ──────────────────────────────────────────────────────────────────
-REVOKE SELECT (correct_index) ON public.questions FROM anon, authenticated;
+
+-- Add is_competitive_secret column (idempotent).
+ALTER TABLE public.questions
+  ADD COLUMN IF NOT EXISTS is_competitive_secret boolean NOT NULL DEFAULT false;
+
+-- Table-level REVOKE (correct pattern — replaces the ineffective column-level REVOKE).
+REVOKE SELECT ON public.questions FROM anon, authenticated;
+
+-- Re-grant all safe columns. DO block skips any column that doesn't exist yet.
+DO $$
+DECLARE col text;
+BEGIN
+  FOREACH col IN ARRAY ARRAY[
+    'id','question_text','question_ru','question_en',
+    'answers_json','answers_ru','answers_en',
+    'q','a',
+    'image_url','audio_url','video_url',
+    'answer_image_url','answer_audio_url','answer_video_url',
+    'slide_img_url','answer_slide_img_url',
+    'explanation_ru','media_type','question_type',
+    'category','difficulty','status','source_type',
+    'game_type','language','import_key',
+    'created_at','updated_at','approved_at',
+    'is_competitive_secret'
+  ] LOOP
+    IF EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name   = 'questions'
+        AND column_name  = col
+    ) THEN
+      EXECUTE format('GRANT SELECT (%I) ON public.questions TO anon, authenticated', col);
+    END IF;
+  END LOOP;
+END;
+$$;
+-- correct_index is intentionally NOT in the list above.
 
 CREATE OR REPLACE FUNCTION public.get_question_reveals(p_ids uuid[])
 RETURNS TABLE(id uuid, correct_index int)
@@ -205,15 +245,16 @@ AS $$
   SELECT q.id, q.correct_index
   FROM questions q
   WHERE q.id = ANY(p_ids)
+    AND q.is_competitive_secret = false
     AND q.id NOT IN (
       SELECT waq.question_id
       FROM weekly_arena_questions waq
       JOIN weekly_arenas wa ON wa.id = waq.arena_id
-      WHERE wa.starts_at <= now() AND now() < wa.ends_at
+      WHERE now() < wa.ends_at   -- blocks UPCOMING and LIVE (not just LIVE)
     );
 $$;
-REVOKE ALL ON FUNCTION public.get_question_reveals(uuid[]) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.get_question_reveals(uuid[]) TO authenticated;
+REVOKE ALL ON FUNCTION public.get_question_reveals(uuid[]) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_question_reveals(uuid[]) TO authenticated, anon;
 
 CREATE OR REPLACE FUNCTION public.get_question_reveals_admin(p_ids uuid[])
 RETURNS TABLE(id uuid, correct_index int)
