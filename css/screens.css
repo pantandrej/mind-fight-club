@@ -36,6 +36,7 @@
 .nav-icon{font-size:18px;line-height:1}
 .nav-label{font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted)}
 .nav-item.active .nav-label{color:var(--accent2)}
+.nav-item.active .nav-icon{filter:drop-shadow(0 0 6px rgba(0,237,181,.5))}
 
 /* Toast */
 .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--bg3);border:0.5px solid var(--border);border-radius:12px;padding:10px 18px;font-size:13px;font-weight:700;color:var(--text);z-index:1000;opacity:0;transition:opacity .3s;pointer-events:none;max-width:calc(100vw - 40px);text-align:center;line-height:1.4}
@@ -702,19 +703,19 @@
 .wa-loading{text-align:center;padding:60px 24px;color:var(--muted);font-size:14px}
 
 /* Hero */
-.wa-hero{background:linear-gradient(135deg,#0d1f1a 0%,#0a1510 100%);border:1px solid rgba(60,200,100,.18);border-radius:18px;padding:24px 20px;text-align:center}
-.wa-hero-label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#3cc864;font-weight:700;margin-bottom:6px}
+.wa-hero{background:linear-gradient(135deg,rgba(0,237,181,.07) 0%,rgba(0,0,0,0) 100%),var(--bg2);border:1px solid rgba(0,237,181,.22);border-radius:18px;padding:24px 20px;text-align:center}
+.wa-hero-label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);font-weight:700;margin-bottom:6px}
 .wa-hero-title{font-size:22px;font-weight:900;color:var(--text);margin-bottom:10px;line-height:1.2}
 .wa-status{display:inline-block;font-size:12px;font-weight:700;padding:4px 12px;border-radius:100px;margin-bottom:8px}
 .wa-status--upcoming{background:rgba(255,200,0,.15);color:#ffc800}
-.wa-status--live{background:rgba(60,200,100,.2);color:#3cc864;animation:wa-pulse 2s infinite}
+.wa-status--live{background:rgba(0,237,181,.18);color:var(--accent);animation:wa-pulse 2s infinite}
 .wa-status--finished{background:rgba(120,120,120,.15);color:var(--muted)}
 @keyframes wa-pulse{0%,100%{opacity:1}50%{opacity:.6}}
 .wa-time{font-size:12px;color:var(--muted);margin-bottom:4px}
 .wa-count{font-size:12px;color:var(--muted)}
 
 /* My stats */
-.wa-my-stats{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;background:rgba(60,200,100,.07);border:1px solid rgba(60,200,100,.12);border-radius:14px;padding:16px}
+.wa-my-stats{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;background:rgba(0,237,181,.05);border:1px solid rgba(0,237,181,.12);border-radius:14px;padding:16px}
 .wa-stat{display:flex;flex-direction:column;align-items:center;min-width:60px}
 .wa-stat-val{font-size:22px;font-weight:900;color:var(--text)}
 .wa-stat-lbl{font-size:11px;color:var(--muted);margin-top:2px;text-align:center}
@@ -722,10 +723,11 @@
 /* CTA */
 .wa-cta{display:flex;justify-content:center;gap:12px;flex-wrap:wrap}
 .wa-cta-info{font-size:13px;color:var(--muted);text-align:center;padding:12px 0}
-.wa-btn{border:none;border-radius:12px;font-size:16px;font-weight:800;padding:14px 32px;cursor:pointer;transition:opacity .15s}
-.wa-btn--primary{background:#3cc864;color:#0a1510}
-.wa-btn--secondary{background:rgba(60,200,100,.12);color:#3cc864;border:1px solid rgba(60,200,100,.25)}
-.wa-btn:disabled{opacity:.5;cursor:not-allowed}
+.wa-btn{border:none;border-radius:12px;font-size:16px;font-weight:800;padding:14px 32px;cursor:pointer;transition:opacity .15s,box-shadow .15s}
+.wa-btn--primary{background:var(--accent);color:#000;box-shadow:0 4px 20px rgba(0,237,181,.25)}
+.wa-btn--primary:hover{opacity:.9}
+.wa-btn--secondary{background:rgba(0,237,181,.1);color:var(--accent);border:1px solid rgba(0,237,181,.28)}
+.wa-btn:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
 
 /* Question */
 .wa-question{display:flex;flex-direction:column;gap:12px;padding:4px 0}
@@ -734,36 +736,39 @@
 .wa-q-audio{width:100%;border-radius:8px}
 .wa-q-text{font-size:16px;font-weight:700;color:var(--text);line-height:1.4;text-align:center;padding:0 4px}
 .wa-answers{display:flex;flex-direction:column;gap:8px}
-.wa-ans-btn{background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.1);border-radius:12px;padding:13px 16px;font-size:15px;font-weight:600;color:var(--text);cursor:pointer;text-align:left;transition:background .12s,border-color .12s}
-.wa-ans-btn:not(:disabled):hover{background:rgba(60,200,100,.12);border-color:#3cc864}
+.wa-ans-btn{background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.08);border-radius:12px;padding:13px 16px;font-size:15px;font-weight:600;color:var(--text);cursor:pointer;text-align:left;transition:background .12s,border-color .12s}
+.wa-ans-btn:not(:disabled):hover{background:rgba(0,237,181,.1);border-color:var(--accent)}
 .wa-ans-btn:disabled{cursor:not-allowed}
-.wa-ans--correct{background:rgba(60,200,100,.25)!important;border-color:#3cc864!important;color:#3cc864}
-.wa-ans--wrong{background:rgba(255,60,60,.2)!important;border-color:#f55!important}
-.wa-q-feedback{text-align:center;font-size:18px;font-weight:800;padding:8px}
-.wa-q-feedback--ok{color:#3cc864}
+.wa-ans--correct{background:rgba(0,237,181,.2)!important;border-color:var(--accent)!important;color:var(--accent)}
+.wa-ans--wrong{background:rgba(255,60,60,.15)!important;border-color:#f55!important}
+.wa-q-feedback{text-align:center;font-size:16px;font-weight:700;padding:8px;border-radius:8px;margin-top:4px}
+.wa-q-feedback--accepted{color:var(--text);background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1)}
+.wa-q-feedback--ok{color:var(--accent)}
 .wa-q-feedback--no{color:#f55}
 .wa-q-feedback--error{color:var(--muted)}
 
 /* Done */
-.wa-done{text-align:center;background:rgba(60,200,100,.08);border:1px solid rgba(60,200,100,.2);border-radius:18px;padding:28px 20px;display:flex;flex-direction:column;align-items:center;gap:12px}
+.wa-done{text-align:center;background:rgba(0,237,181,.05);border:1px solid rgba(0,237,181,.18);border-radius:18px;padding:28px 20px;display:flex;flex-direction:column;align-items:center;gap:12px}
 .wa-done-title{font-size:22px;font-weight:900;color:var(--text)}
-.wa-done-score{font-size:40px;font-weight:900;color:#3cc864}
+.wa-done-wait{font-size:13px;color:var(--muted);line-height:1.5}
+.wa-done-score{font-size:40px;font-weight:900;color:var(--accent)}
 .wa-done-correct{font-size:14px;color:var(--muted)}
-.wa-done-bf{font-size:13px;font-weight:700;color:#3cc864;background:rgba(60,200,100,.12);border-radius:8px;padding:6px 14px}
+.wa-done-bf{font-size:13px;font-weight:700;color:var(--accent);background:rgba(0,237,181,.1);border-radius:8px;padding:6px 14px}
 
 /* Results */
-.wa-my-result{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;padding:16px;background:rgba(60,200,100,.07);border:1px solid rgba(60,200,100,.12);border-radius:14px}
+.wa-my-result{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;padding:16px;background:rgba(0,237,181,.05);border:1px solid rgba(0,237,181,.12);border-radius:14px}
 .wa-lb-title{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-top:8px;margin-bottom:6px}
 .wa-lb-row{display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:0.5px solid rgba(255,255,255,.06);font-size:13px}
 .wa-lb-row:last-child{border-bottom:none}
-.wa-lb-me{background:rgba(60,200,100,.07);border-radius:8px;padding:10px 8px}
+.wa-lb-me{background:rgba(0,237,181,.07);border-radius:8px;padding:10px 8px}
 .wa-lb-rank{font-weight:800;color:var(--muted);min-width:28px;font-size:12px}
 .wa-lb-name{flex:1;font-weight:600;color:var(--text)}
 .wa-lb-team{font-size:11px;color:var(--muted);margin-left:4px}
-.wa-lb-score{font-weight:800;color:#3cc864;white-space:nowrap}
+.wa-lb-score{font-weight:800;color:var(--accent);white-space:nowrap}
+.wa-lb-soon{font-size:13px;color:var(--muted);text-align:center;padding:16px 0;line-height:1.5}
 
 /* How it works */
-.wa-how{background:rgba(255,255,255,.03);border-radius:14px;padding:16px}
+.wa-how{background:rgba(255,255,255,.02);border:0.5px solid var(--border);border-radius:14px;padding:16px}
 .wa-how-title{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
 .wa-how-item{font-size:13px;color:var(--text);line-height:1.5;padding:5px 0;border-bottom:0.5px solid rgba(255,255,255,.06)}
 .wa-how-item:last-child{border-bottom:none}
