@@ -104,7 +104,13 @@ export async function loadMyTeam() {
   if (!el) return;
 
   if (!currentUser) {
-    el.innerHTML = `<div style="padding:40px;text-align:center;color:var(--muted)">${t('signIn')}</div>`;
+    el.innerHTML = `
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;gap:16px;padding:24px;text-align:center">
+        <div style="font-size:48px">👥</div>
+        <div style="font-size:18px;font-weight:800;color:var(--fg)">Войди, чтобы видеть команду</div>
+        <div style="font-size:13px;color:var(--muted);max-width:260px">Создай или вступи в команду, чтобы участвовать в Brain Fights и арене</div>
+        <button onclick="window.signIn?.()" style="margin-top:8px;padding:12px 28px;background:var(--accent);color:#000;border:none;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer">Войти</button>
+      </div>`;
     return;
   }
 

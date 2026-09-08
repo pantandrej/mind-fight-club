@@ -154,9 +154,11 @@ function _renderSignIn(el) {
   el.innerHTML = `
     ${_hdr()}
     <div class="bf-page">
-      <div class="bf-empty-hero">
-        <div style="font-size:52px;margin-bottom:14px">🧠</div>
-        <p style="font-size:14px;color:var(--muted);margin:0">${_t('signIn')}</p>
+      <div class="bf-empty-hero" style="padding:40px 24px">
+        <div style="font-size:52px;margin-bottom:16px">🧠</div>
+        <div style="font-size:18px;font-weight:800;color:var(--fg);margin-bottom:8px">${_t('signIn')}</div>
+        <p style="font-size:13px;color:var(--muted);margin:0 0 24px;max-width:260px">Участвуй в командных играх и недельной арене</p>
+        <button onclick="window.signIn?.()" style="padding:12px 28px;background:var(--accent);color:#000;border:none;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer">Войти</button>
       </div>
     </div>`;
 }
