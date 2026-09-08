@@ -180,11 +180,6 @@ function startDuelPoll(){
       }
     }
 
-    // Running score update during battle (scores in duel_rooms are safe to show)
-    if(data.status==='started'){
-      const oppScore = duelRole==='host' ? data.guest_score : data.host_score;
-      if(oppScore != null){ duelOppScore=oppScore; updateDuelScores(); }
-    }
   },2000);
 }
 
@@ -292,14 +287,9 @@ async function startDuelBattle({ chargeSession = true, mode = 'friend_battle', q
   buildBattleDots(duelQs.length);
   showDuelSection('d-battle');
 
-  // Opponent profile tap — fetch opp user_id for mini profile modal
+  // Opponent profile tap: direct duel_rooms read removed (no client SELECT grant).
+  // _duelOppUserId stays null in v1; opponent name is already in duelOppNameStr.
   _duelOppUserId = null;
-  if (!window._isBotDuel) {
-    sb.from('duel_rooms').select('host_id,guest_id').eq('code', duelCode).single()
-      .then(({data}) => {
-        if (data) _duelOppUserId = duelRole === 'host' ? data.guest_id : data.host_id;
-      }).catch(() => {});
-  }
   // Make opponent name elements tappable to show mini profile
   ['ds-opp-name', 'd-res-opp-name'].forEach(id => {
     const el = document.getElementById(id);

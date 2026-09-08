@@ -25,29 +25,14 @@ ALTER TABLE duel_rooms
 
 DROP POLICY IF EXISTS "duel_rooms_public_write" ON duel_rooms;
 DROP POLICY IF EXISTS "duel_rooms_public_read"  ON duel_rooms;
+-- Also drop the narrowed read policy if it was previously created.
+-- No authenticated client SELECT policy: any authenticated user could enumerate
+-- all open room codes via REST, which leaks invite codes.
+-- All reads go through get_duel() / get_duel_result() SECURITY DEFINER RPCs.
+DROP POLICY IF EXISTS "duel_rooms_auth_read"    ON duel_rooms;
 
--- Allow authenticated users to SELECT rows (row-level: any row is readable for lobby join)
--- Column-level REVOKE below hides sensitive fields.
-CREATE POLICY "duel_rooms_auth_read"
-  ON duel_rooms FOR SELECT
-  TO authenticated
-  USING (true);
-
--- REVOKE sensitive columns from direct REST reads.
--- host_user_id / guest_user_id: private identity — never expose to clients
--- questions: legacy column no longer used; revoke for safety
--- winner_id / forfeit_by: sensitive until duel is finished (RPCs handle reveal)
--- REVOKE SELECT entirely — no direct score/answer reads during LIVE.
--- All reads go through get_duel (LIVE) or get_duel_result (FINISHED) RPCs.
--- Only lobby-safe columns granted: no scores, no answer arrays, no done flags.
-REVOKE SELECT ON TABLE duel_rooms FROM authenticated, anon;
-GRANT  SELECT (
-  code, status, host_name, guest_name,
-  created_at, started_at, expires_at, finished_at,
-  last_phrase
-) ON TABLE duel_rooms TO authenticated;
--- anon: no direct table access; unauthenticated players cannot duel in v1
-REVOKE ALL ON TABLE duel_rooms FROM anon;
+-- Full REVOKE: no direct client access to duel_rooms at all.
+REVOKE ALL ON TABLE duel_rooms FROM authenticated, anon;
 
 -- ── 3. Private question assignment table ────────────────────────────────
 -- Server-only: question selection per duel. No user RLS policies (implicit deny).
@@ -578,11 +563,13 @@ BEGIN
   SELECT COUNT(*) >= _total_qs INTO _guest_done
   FROM duel_answers WHERE duel_code = p_code AND user_id = _room.guest_user_id;
 
-  -- If already finished: compute from ledger (not cached room values) and write
-  -- the calling player's game_session if not already set. This handles the second
-  -- player arriving at get_duel_result after the first player already finalized.
+  -- If already finished: compute scores from authoritative ledger and return.
+  -- No game_session write here: v1 does not write duel results to game_sessions.
+  -- Stable association (host_session_id / guest_session_id on duel_rooms) is a
+  -- future migration. The heuristic "most recent session in 2 hours" was removed
+  -- to prevent corrupting unrelated sessions. Battle-limit accounting is already
+  -- captured at session creation time; won/score/questions_count are left null.
   IF _room.status = 'finished' THEN
-    -- Always compute from authoritative ledger, not from potentially stale duel_rooms columns
     SELECT COALESCE(SUM(points), 0) INTO _host_score
     FROM duel_answers WHERE duel_code = p_code AND user_id = _room.host_user_id;
     SELECT COALESCE(SUM(points), 0) INTO _guest_score
@@ -591,17 +578,6 @@ BEGIN
     _op_score := CASE _role WHEN 'host' THEN _guest_score ELSE _host_score END;
     _win := CASE _role WHEN 'host' THEN _room.winner_id = _room.host_user_id ELSE _room.winner_id = _room.guest_user_id END;
     _tie := _room.winner_id IS NULL AND _room.finished_at IS NOT NULL;
-    -- Idempotent game_session write for this caller (BLOCKER 3: second player path)
-    UPDATE game_sessions SET
-      won             = _win,
-      score           = _my_score,
-      questions_count = _total_qs
-    WHERE user_id = _uid
-      AND mode IN ('friend_battle', 'random_battle')
-      AND created_at > now() - interval '2 hours'
-      AND (won IS NULL OR won = false)
-    ORDER BY created_at DESC
-    LIMIT 1;
     SELECT COUNT(*) INTO _my_correct FROM duel_answers WHERE duel_code = p_code AND user_id = _uid AND is_correct = true;
     RETURN jsonb_build_object(
       'ok', true, 'waiting', false, 'win', _win, 'tie', _tie,
@@ -645,17 +621,10 @@ BEGIN
     END
   WHERE code = p_code AND status = 'started'; -- guard against concurrent finalize
 
-  -- Update game_sessions.won from server-authoritative result
-  UPDATE game_sessions SET
-    won             = _win,
-    score           = _my_score,
-    questions_count = _total_qs
-  WHERE user_id = _uid
-    AND mode IN ('friend_battle', 'random_battle')
-    AND created_at > now() - interval '2 hours'
-    AND (won IS NULL OR won = false)
-  ORDER BY created_at DESC
-  LIMIT 1;
+  -- game_session result fields (won/score) intentionally NOT written here.
+  -- v1: no stable duel→session link; heuristic "latest session in N hours" removed.
+  -- Authoritative result lives in duel_rooms.winner_id + duel_answers.
+  -- Battle-limit accounting is already captured at session creation.
 
   SELECT COUNT(*) INTO _my_correct FROM duel_answers WHERE duel_code = p_code AND user_id = _uid AND is_correct = true;
 
