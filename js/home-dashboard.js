@@ -113,12 +113,42 @@ function _renderStreak(state) {
 }
 
 // ── Today card priority: A) Weekly Arena  B) Featured Pack  C) Quick Play ───
-// A and B have no backend yet → always renders C. Structure preserved for future insertion.
 function _renderTodayCard(state) {
-  // A: Weekly Arena — no backend, skip
-  // B: Featured public pack — no backend, skip
-  // C: Quick Play fallback
+  // A: Weekly Arena — loaded async; fallback to C immediately, upgraded if LIVE
   _renderQuickPlayFallback(state);
+  _loadArenaCard();
+}
+
+async function _loadArenaCard() {
+  if (!window.sb) return;
+  try {
+    const { data } = await window.sb.rpc('get_weekly_arena');
+    if (!data?.ok) return;
+    const a = data.arena;
+    // Show only when LIVE or starts within 2 hours
+    const now = Date.now();
+    const startsIn = new Date(a.starts_at).getTime() - now;
+    const isLive = a.status === 'live';
+    const isSoon = a.status === 'upcoming' && startsIn > 0 && startsIn < 2 * 3600 * 1000;
+    if (!isLive && !isSoon) return;
+
+    const label = document.getElementById('hdb-today-label');
+    if (label) label.textContent = 'Weekly Arena';
+
+    const badge = document.getElementById('hdb-qp-badge');
+    const qpLabel = document.getElementById('hdb-qp-label');
+    if (badge) {
+      badge.textContent = isLive ? '🔴 Идёт сейчас' : '⏰ Скоро';
+      badge.style.color = isLive ? '#3cc864' : '#ffc800';
+    }
+    if (qpLabel) qpLabel.textContent = a.title || 'Weekly Arena';
+
+    // Make the Quick Play card navigate to arena screen
+    const qpCard = document.getElementById('hdb-qp-card');
+    if (qpCard) {
+      qpCard.onclick = () => { window.showScreen?.('weekly-arena-screen'); window.loadWeeklyArena?.(); };
+    }
+  } catch (_) { /* silently ignore */ }
 }
 
 function _renderQuickPlayFallback(state) {

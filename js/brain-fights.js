@@ -268,8 +268,12 @@ function _renderBF(el, data, myUserId) {
       </div>`;
   }).join('') : `<p class="bf-empty-label">${_t('historyEmpty')}</p>`;
 
+  // WEEKLY ARENA card (loaded async, injected after render)
+  const arenaCardId = 'bf-arena-card';
+
   // HOW TO EARN
   const howToEarn = `
+    <div id="${arenaCardId}"></div>
     <div class="bf-card bf-how-card">
       <div class="bf-section-hd">${_t('howToEarn')}</div>
       <div class="bf-how-list">
@@ -318,6 +322,36 @@ function _renderBF(el, data, myUserId) {
 
       <div style="height:30px"></div>
     </div>`;
+
+  // Async: inject Weekly Arena card if arena is live/upcoming
+  _injectArenaCard();
+}
+
+async function _injectArenaCard() {
+  const slot = document.getElementById('bf-arena-card');
+  if (!slot || !window.sb) return;
+  try {
+    const { data } = await window.sb.rpc('get_weekly_arena');
+    if (!data?.ok) return;
+    const a = data.arena;
+    if (a.status === 'finished') return; // don't clutter BF screen with old arenas
+    const statusLabel = { upcoming: '⏰ Скоро', live: '🔴 Live' }[a.status] || '';
+    const endsAt = a.status === 'live'
+      ? 'До ' + new Date(a.ends_at).toLocaleString('ru', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+      : 'Начало ' + new Date(a.starts_at).toLocaleString('ru', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    slot.innerHTML = `
+      <div class="bf-card" style="border:1px solid rgba(60,200,100,.25);cursor:pointer"
+           onclick="showScreen('weekly-arena-screen');window.loadWeeklyArena?.()">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#3cc864;font-weight:700;margin-bottom:4px">Weekly Arena ${statusLabel}</div>
+            <div style="font-size:15px;font-weight:800;color:var(--text)">${_esc(a.title)}</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:3px">${_esc(endsAt)}</div>
+          </div>
+          <span style="color:var(--accent);font-size:20px;font-weight:900">›</span>
+        </div>
+      </div>`;
+  } catch (_) {}
 }
 
 // ── Leaderboard rows ───────────────────────────────────────────────────────────

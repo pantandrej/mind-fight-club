@@ -43,7 +43,8 @@ export function showScreen(name) {
       if (name === 'home'        && typeof window.loadQuizDailyQuestion === 'function') window.loadQuizDailyQuestion();
       if (name === 'home'        && typeof window.renderHomeDashboard   === 'function') window.renderHomeDashboard();
       if (name === 'team-profile' && typeof window._teamProfileRefresh  === 'function') window._teamProfileRefresh();
-      if (name === 'brain-fights-screen' && typeof window.loadBrainFights === 'function') window.loadBrainFights();
+      if (name === 'brain-fights-screen'  && typeof window.loadBrainFights   === 'function') window.loadBrainFights();
+      if (name === 'weekly-arena-screen'  && typeof window.loadWeeklyArena  === 'function') window.loadWeeklyArena();
       if (name === 'quiz-profile-screen' && window._quizProfileSlug && typeof window.loadQuizProfile === 'function') window.loadQuizProfile(window._quizProfileSlug);
     } catch (e) { console.error('Screen render error:', e); }
   }, 50);

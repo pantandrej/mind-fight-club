@@ -365,6 +365,9 @@
 <!-- BRAIN FIGHTS — interim screen -->
 <div class="screen" id="brain-fights-screen" style="justify-content:flex-start;padding:0"></div>
 
+<!-- WEEKLY ARENA -->
+<div class="screen" id="weekly-arena-screen" style="justify-content:flex-start;padding:0"></div>
+
 <!-- QUIZ -->
 <div class="screen" id="quiz">
   <div class="hdr">
@@ -3802,6 +3805,11 @@ window._pickTeamEmoji = async function(emoji) {
       loadQuizProfile(_quizSlugMatch[1]);
     }
   }
+</script>
+
+<script type="module">
+  import { loadWeeklyArena } from '/js/weekly-arena.js';
+  window.loadWeeklyArena = loadWeeklyArena;
 </script>
 </body>
 </html>
