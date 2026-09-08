@@ -55,7 +55,18 @@ function _esc(str) {
 // ── Main entry ────────────────────────────────────────────────────────────────
 export async function renderHomeDashboard() {
   const state = getState();
-  if (!state.currentUser) return;
+  if (!state.currentUser) {
+    const card = document.getElementById('hdb-team-card');
+    if (card) card.innerHTML = `
+      <div class="hdb-team-empty" onclick="showScreen('my-team-screen');window.loadMyTeam?.()">
+        <span style="font-size:22px">👥</span>
+        <span style="flex:1">
+          <span style="display:block;font-size:14px;font-weight:800">${s('teamJoin')}</span>
+          <span style="display:block;font-size:12px;color:var(--muted)">${s('teamCreate')}</span>
+        </span>
+      </div>`;
+    return;
+  }
 
   _renderSkeleton(state);
   _loadRealData(state);
