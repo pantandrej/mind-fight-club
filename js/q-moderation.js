@@ -7,7 +7,20 @@ let _total  = 0;
 let _filter = 'pending'; // 'pending' | 'active'
 let _pendingCache = null; // все pending-вопросы, загруженные без OR-фильтра
 
-const SEL = 'id,question_text,question_ru,answers_json,correct_index,status,category,source_type,approved_at';
+const SEL = 'id,question_text,question_ru,answers_json,status,category,source_type,approved_at';
+
+// Enriches rows with correct_index via admin RPC (column-level REVOKE in place, P0.1).
+async function _enrichCorrectIndex(rows) {
+  if (!rows || !rows.length) return;
+  try {
+    const ids = rows.map(r => r.id).filter(Boolean);
+    if (!ids.length) return;
+    const { data } = await sb.rpc('get_question_reveals_admin', { p_ids: ids });
+    if (!Array.isArray(data)) return;
+    const map = Object.fromEntries(data.map(r => [r.id, r.correct_index]));
+    rows.forEach(r => { if (map[r.id] !== undefined) r.correct_index = map[r.id]; });
+  } catch(e) { console.warn('[qmod] enrichCorrectIndex failed:', e.message); }
+}
 
 // Два параллельных запроса через sb-клиент (OR ломается через Vercel прокси)
 async function _fetchPendingAll() {
@@ -17,6 +30,7 @@ async function _fetchPendingAll() {
   ]);
   const all = [...(r1.data || []), ...(r2.data || [])];
   all.sort((a, b) => (b.id > a.id ? 1 : -1));
+  await _enrichCorrectIndex(all);
   return all;
 }
 
@@ -67,11 +81,12 @@ async function _loadPage(inner, reset = false) {
 
   if (_filter === 'active') {
     const res = await sb.from('questions')
-      .select('id, question_text, question_ru, answers_json, correct_index, status, category, source_type, approved_at')
+      .select('id, question_text, question_ru, answers_json, status, category, source_type, approved_at')
       .eq('status', 'active')
       .order('approved_at', { ascending: false, nullsFirst: false })
       .range(_offset, _offset + PAGE - 1);
     data = res.data; error = res.error;
+    if (data) await _enrichCorrectIndex(data);
   } else {
     // Читаем из кеша (OR-фильтр ломается через Vercel прокси)
     if (!_pendingCache) _pendingCache = await _fetchPendingAll();
@@ -135,6 +150,7 @@ async function _loadPage(inner, reset = false) {
             .range(0, (_total || 2000) - 1);
           if (res.error) throw res.error;
           allRows = res.data;
+          if (allRows) await _enrichCorrectIndex(allRows);
         } else {
           if (!_pendingCache) _pendingCache = await _fetchPendingAll();
           allRows = _pendingCache;

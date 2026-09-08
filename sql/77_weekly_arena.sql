@@ -172,6 +172,67 @@ ALTER TABLE public.weekly_arena_answers ENABLE ROW LEVEL SECURITY;
 
 
 -- ──────────────────────────────────────────────────────────────────
+-- §5.1  Column-level answer-key security (P0.1 — true fix)
+--
+-- Problem: client receives question_text via get_weekly_arena(), then can
+--   match against questions table and read correct_index via REST:
+--   GET /rest/v1/questions?question_ru=eq.<text>&select=correct_index → answer.
+--   The waq_id opaque token alone is NOT sufficient — it only hides question_id,
+--   not the underlying question_text-to-correct_index mapping.
+--
+-- Fix: REVOKE SELECT (correct_index) FROM anon, authenticated.
+--   PostgreSQL column-level privileges are respected by PostgREST.
+--   Column is excluded from SELECT * and returns 403 when explicitly requested.
+--   SECURITY DEFINER functions run as postgres — this REVOKE does not affect them.
+--
+-- get_question_reveals(ids): authenticated clients get correct_index for non-Arena
+--   questions (for post-answer reveals in training/tournament/battle).
+--   Arena questions during LIVE return no row → client never gets the answer.
+--   A client who maps question_text → question_id and calls this RPC during LIVE
+--   gets NULL — the arena check inside the function prevents the lookup.
+--
+-- get_question_reveals_admin(ids): admin-only, returns correct_index for ALL
+--   questions including live Arena questions (for q-moderation UI).
+-- ──────────────────────────────────────────────────────────────────
+REVOKE SELECT (correct_index) ON public.questions FROM anon, authenticated;
+
+CREATE OR REPLACE FUNCTION public.get_question_reveals(p_ids uuid[])
+RETURNS TABLE(id uuid, correct_index int)
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT q.id, q.correct_index
+  FROM questions q
+  WHERE q.id = ANY(p_ids)
+    AND q.id NOT IN (
+      SELECT waq.question_id
+      FROM weekly_arena_questions waq
+      JOIN weekly_arenas wa ON wa.id = waq.arena_id
+      WHERE wa.starts_at <= now() AND now() < wa.ends_at
+    );
+$$;
+REVOKE ALL ON FUNCTION public.get_question_reveals(uuid[]) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.get_question_reveals(uuid[]) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.get_question_reveals_admin(p_ids uuid[])
+RETURNS TABLE(id uuid, correct_index int)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.is_admin = true) THEN
+    RETURN;
+  END IF;
+  RETURN QUERY SELECT q.id, q.correct_index FROM questions q WHERE q.id = ANY(p_ids);
+END;
+$$;
+REVOKE ALL ON FUNCTION public.get_question_reveals_admin(uuid[]) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.get_question_reveals_admin(uuid[]) TO authenticated;
+
+
+-- ──────────────────────────────────────────────────────────────────
 -- §6  Extend brain_fight_contributions source_type CHECK
 --
 -- Migration 76 applied CHECK (source_type IN ('superq')).
@@ -505,7 +566,10 @@ BEGIN
     v_completed := true;
 
     -- BF contribution on completion (source_type='weekly_arena')
-    v_week_start := v_today - ((EXTRACT(DOW FROM v_today)::int + 6) % 7);
+    -- Canonical week_start from arena.starts_at, not now() — all participants
+    -- completing the same arena always credit the same BF week regardless of when
+    -- they finish (fixes cross-midnight attribution bug).
+    v_week_start := DATE_TRUNC('week', v_arena.starts_at AT TIME ZONE 'UTC')::date;
 
     INSERT INTO brain_fight_contributions (
       scoring_user_id, user_id, team_id, week_start, source_type, source_id,
@@ -581,7 +645,10 @@ BEGIN
       'leaderboard', '[]'::jsonb,
       'my_result', (
         SELECT jsonb_build_object(
-          'answered',        wap.correct + (wap.total_questions - wap.correct),
+          'answered', (
+            SELECT COUNT(*)::int FROM weekly_arena_answers waa
+            WHERE waa.arena_id = p_arena_id AND waa.scoring_user_id = v_uid
+          ),
           'total_questions', wap.total_questions,
           'completed',       wap.completed_at IS NOT NULL
         )
@@ -990,11 +1057,27 @@ COMMIT;
 -- weekly_arena_participants: NO policies — RLS blocks all client access
 -- weekly_arena_answers:      NO policies — RLS blocks all client access
 --
--- Answer-key path (P0.1):
+-- Answer-key path (P0.1 — complete fix):
+--   REVOKE SELECT (correct_index) ON questions FROM anon, authenticated.
+--   PostgREST respects column-level privileges: column excluded from SELECT *;
+--   explicit column request returns 403. SECURITY DEFINER functions unaffected.
 --   Client receives waq_id (weekly_arena_questions.id), NOT question_id.
 --   No client SELECT on weekly_arena_questions → cannot map waq_id→question_id.
+--   Even if attacker matches question_text → question_id via REST, get_question_reveals()
+--   returns no row for questions in a live Arena → correct_index still unavailable.
 --   Server resolves waq_id→question_id→correct_index internally.
 --   correct_index never appears in any RPC response.
+--   get_question_reveals(ids): non-Arena correct_index for authenticated clients.
+--   get_question_reveals_admin(ids): all correct_indexes for is_admin users.
+--
+-- BF week attribution (P0.6 fix):
+--   submit_weekly_arena_answer: v_week_start from DATE_TRUNC(arena.starts_at)
+--   not from now() — all participants completing the same Arena credit the
+--   same BF week regardless of finish time (cross-midnight fix).
+--
+-- LIVE answered count (P0.7 fix):
+--   get_weekly_arena_results LIVE branch: actual COUNT(*) from weekly_arena_answers
+--   not the tautology wap.correct + (wap.total_questions - wap.correct).
 --
 -- Competitive integrity (P0.3):
 --   submit returns: ok, accepted, answered, total_questions, completed, bf_pts

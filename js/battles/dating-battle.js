@@ -104,13 +104,19 @@ async function _loadRoom() {
     _showPostGame(room); return;
   }
 
-  // Load question
+  // Load question (correct_index fetched via RPC — column-level REVOKE in place, P0.1)
   if (room.current_question_id) {
     const { data: q } = await sb
       .from('questions')
-      .select('id,q,a,correct_index,category')
+      .select('id,q,a,category')
       .eq('id', room.current_question_id)
       .maybeSingle();
+    if (q) {
+      try {
+        const { data: reveals } = await sb.rpc('get_question_reveals', { p_ids: [q.id] });
+        if (Array.isArray(reveals) && reveals.length) q.correct_index = reveals[0].correct_index;
+      } catch(e) { console.warn('[dating-battle] reveals fetch failed:', e.message); }
+    }
     _question = q;
   }
 

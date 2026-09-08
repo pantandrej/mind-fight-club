@@ -663,27 +663,28 @@ async function playDBPack(importKey, packId){
     if(links && links.length){
       const ids = links.map(r => r.question_id);
       // Use raw fetch (no user JWT) — authenticated role loses access to answers_json/answers_ru
-      const QCOLS = 'id,question_text,question_ru,answers_json,answers_ru,correct_index,slide_img_url,answer_slide_img_url,image_url,audio_url,video_url,media_type,category,language,status,import_key,explanation_ru,question_type,game_type,source_type';
+      const QCOLS = 'id,question_text,question_ru,answers_json,answers_ru,slide_img_url,answer_slide_img_url,image_url,audio_url,video_url,media_type,category,language,status,import_key,explanation_ru,question_type,game_type,source_type';
       const idsParam = ids.map(id=>`"${id}"`).join(',');
       const qRes = await fetch(`${window._supabaseUrl}/rest/v1/questions?id=in.(${idsParam})&status=eq.published&select=${QCOLS}`, {
         headers: { apikey: window._supabaseAnonKey }
       });
       data = qRes.ok ? await qRes.json() : null;
-      // Re-sort by position order from links
       if(data && data.length){
         const posMap = Object.fromEntries(links.map(r => [r.question_id, r.position]));
         data.sort((a,b) => (posMap[a.id]||0) - (posMap[b.id]||0));
+        await _mergeCorrectIndexes(data);
       }
     }
 
     // Fallback: load by import_key prefix (e.g. mb4_q001, mb4_q002...)
     if(!data || !data.length){
       const packPrefix = (importKey||'').toLowerCase();
-      const QCOLS = 'id,question_text,question_ru,answers_json,answers_ru,correct_index,slide_img_url,answer_slide_img_url,image_url,audio_url,video_url,media_type,category,language,status,import_key,explanation_ru,question_type,game_type,source_type';
+      const QCOLS = 'id,question_text,question_ru,answers_json,answers_ru,slide_img_url,answer_slide_img_url,image_url,audio_url,video_url,media_type,category,language,status,import_key,explanation_ru,question_type,game_type,source_type';
       const fbRes = await fetch(`${window._supabaseUrl}/rest/v1/questions?import_key=like.${packPrefix}_q%&status=eq.published&select=${QCOLS}&order=import_key`, {
         headers: { apikey: window._supabaseAnonKey }
       });
       data = fbRes.ok ? await fbRes.json() : null;
+      if(data && data.length) await _mergeCorrectIndexes(data);
     }
   } else {
     ({data, error} = await sb.from('questions')
@@ -787,6 +788,24 @@ function normalizeDBQuestionForQuickPlay(row){
 }
 
 // Loads published questions from Supabase for Quick Play use.
+// Fetches correct_index for the given rows via SECURITY DEFINER RPC and
+// mutates each row in place. Non-arena questions during LIVE get their
+// correct_index; arena questions during LIVE return no row (stays undefined).
+// Column-level REVOKE prevents direct REST reads of correct_index (P0.1).
+async function _mergeCorrectIndexes(rows) {
+  if (!rows || !rows.length || !sb) return;
+  try {
+    const ids = rows.map(r => r.id).filter(Boolean);
+    if (!ids.length) return;
+    const { data } = await sb.rpc('get_question_reveals', { p_ids: ids });
+    if (!Array.isArray(data)) return;
+    const map = Object.fromEntries(data.map(r => [r.id, r.correct_index]));
+    rows.forEach(r => { if (map[r.id] !== undefined) r.correct_index = map[r.id]; });
+  } catch (e) {
+    console.warn('[training] _mergeCorrectIndexes failed:', e.message);
+  }
+}
+
 // Returns normalised + validated array, or [] on error.
 async function loadPublishedQuickQuestionsFromDB(){
   const SUPA_URL = 'https://nhmidxkohjpcnhjucuuh.supabase.co';
@@ -795,11 +814,12 @@ async function loadPublishedQuickQuestionsFromDB(){
     // Direct fetch bypasses Vercel proxy — avoids 400 errors on large selects
     const r = await fetch(
       `${SUPA_URL}/rest/v1/questions?status=eq.active&order=approved_at.desc&limit=2000` +
-      `&select=id,question_text,answers_ru,correct_index,category,image_url,audio_url`,
+      `&select=id,question_text,answers_ru,category,image_url,audio_url`,
       { headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` } }
     );
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const rows = await r.json();
+    await _mergeCorrectIndexes(rows);
     const normalised = rows
       .map(row => normalizeDBQuestionForQuickPlay(row))
       .filter(q => q && isPlayableQuestion(q));
@@ -1820,10 +1840,13 @@ export async function loadBattleQuestions(lang = 'ru') {
   let dbRows = [];
   try {
     const r = await fetch(
-      `${SUPA_URL}/rest/v1/questions?status=eq.active&select=id,question_text,answers_ru,correct_index,category`,
+      `${SUPA_URL}/rest/v1/questions?status=eq.active&select=id,question_text,answers_ru,category`,
       { headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` } }
     );
-    if (r.ok) dbRows = await r.json();
+    if (r.ok) {
+      dbRows = await r.json();
+      await _mergeCorrectIndexes(dbRows);
+    }
   } catch (e) {
     console.warn('[battle] DB fetch failed:', e.message);
     return null;

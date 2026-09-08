@@ -911,7 +911,7 @@ async function startTournament(){
   try{
     if(packId){
       const {data: pqs, error} = await sb.from('game_pack_questions')
-        .select('position, questions(question_text,question_ru,answers_json,answers_ru,correct_index,audio_url,video_url,answer_audio_url,answer_video_url,question_type,slide_img_url,answer_slide_img_url,image_url)')
+        .select('position, questions(id,question_text,question_ru,answers_json,answers_ru,audio_url,video_url,answer_audio_url,answer_video_url,question_type,slide_img_url,answer_slide_img_url,image_url)')
         .eq('game_pack_id', packId).order('position',{ascending:true});
       if(error) throw error;
       if(pqs && pqs.length > 0){
@@ -920,14 +920,14 @@ async function startTournament(){
             const q = pq.questions;
             if(!q) return null;
             const a = q.answers_ru || q.answers_json || [];
-            const timeMap = {2:30,3:35,4:40,5:45,6:50};
             const isInfo = q.question_type === 'info';
             return {
               cat:           isInfo ? 'info' : 'Турнир',
               question_type: q.question_type,
               q:   {ru: q.question_ru || q.question_text || ''},
               a:   {ru: isInfo ? [] : a},
-              c:   isInfo ? 0 : (q.correct_index ?? 0),
+              c:   0,
+              _qid: q.id,
               t:   isInfo ? 15 : 30,
               img:     q.slide_img_url || q.image_url,
               img_a:   q.answer_slide_img_url || null,
@@ -937,6 +937,18 @@ async function startTournament(){
               video_a: q.answer_video_url || null,
             };
           }).filter(Boolean);
+        // Fetch correct_index via RPC — column-level REVOKE blocks direct REST (P0.1)
+        try {
+          const qids = questions.map(q => q._qid).filter(Boolean);
+          if (qids.length) {
+            const { data: reveals } = await sb.rpc('get_question_reveals', { p_ids: qids });
+            if (Array.isArray(reveals)) {
+              const revMap = Object.fromEntries(reveals.map(r => [r.id, r.correct_index]));
+              questions.forEach(q => { if (q._qid && revMap[q._qid] !== undefined) q.c = revMap[q._qid]; });
+            }
+          }
+        } catch(e) { console.warn('[tournament] reveals fetch failed:', e.message); }
+        questions.forEach(q => delete q._qid);
         toast('✅ Загружено ' + questions.length + ' вопросов из пака');
       }
     }
