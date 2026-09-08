@@ -37,12 +37,12 @@ CREATE POLICY "duel_rooms_auth_read"
 -- host_user_id / guest_user_id: private identity — never expose to clients
 -- questions: legacy column no longer used; revoke for safety
 -- winner_id / forfeit_by: sensitive until duel is finished (RPCs handle reveal)
+-- REVOKE SELECT entirely — no direct score/answer reads during LIVE.
+-- All reads go through get_duel (LIVE) or get_duel_result (FINISHED) RPCs.
+-- Only lobby-safe columns granted: no scores, no answer arrays, no done flags.
 REVOKE SELECT ON TABLE duel_rooms FROM authenticated, anon;
 GRANT  SELECT (
   code, status, host_name, guest_name,
-  host_score, guest_score,
-  host_answers, guest_answers,
-  host_done, guest_done,
   created_at, started_at, expires_at, finished_at,
   last_phrase
 ) ON TABLE duel_rooms TO authenticated;
@@ -190,8 +190,10 @@ REVOKE ALL ON FUNCTION join_duel_by_code(text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION join_duel_by_code(text) TO authenticated;
 
 -- ── 7. RPC: get_duel(p_code) ─────────────────────────────────────────────
--- Safe snapshot of duel state for polling. Returns sanitized questions (no id, no c).
--- Participants only (or waiting/ready rooms for lobby display).
+-- Safe snapshot of duel state for polling.
+-- LIVE privacy model: no scores, no answer arrays, no per-question correctness.
+-- Returns only neutral answered counts from duel_answers ledger during STARTED.
+-- Scores appear only after FINISHED via get_duel_result().
 CREATE OR REPLACE FUNCTION get_duel(p_code text)
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -199,10 +201,14 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  _uid      uuid := auth.uid();
-  _room     duel_rooms%ROWTYPE;
-  _role     text;
-  _questions jsonb := NULL;
+  _uid          uuid := auth.uid();
+  _room         duel_rooms%ROWTYPE;
+  _role         text;
+  _opp_uid      uuid;
+  _questions    jsonb := NULL;
+  _my_answered  int   := 0;
+  _opp_answered int   := 0;
+  _total_qs     int   := 0;
 BEGIN
   IF _uid IS NULL THEN
     RETURN jsonb_build_object('ok', false, 'error', 'unauthenticated');
@@ -215,16 +221,18 @@ BEGIN
 
   -- Determine caller role
   IF _room.host_user_id = _uid THEN
-    _role := 'host';
+    _role    := 'host';
+    _opp_uid := _room.guest_user_id;
   ELSIF _room.guest_user_id = _uid THEN
-    _role := 'guest';
+    _role    := 'guest';
+    _opp_uid := _room.host_user_id;
   ELSIF _room.status IN ('waiting', 'ready') THEN
     _role := NULL; -- lobby observer (pre-join)
   ELSE
     RETURN jsonb_build_object('ok', false, 'error', 'not_participant');
   END IF;
 
-  -- Load sanitized questions: no question_id, no correct_index
+  -- Load sanitized questions during STARTED or FINISHED: no question_id, no correct_index
   IF _room.status IN ('started', 'finished') THEN
     SELECT jsonb_agg(
       jsonb_build_object(
@@ -238,24 +246,35 @@ BEGIN
     FROM duel_question_assignments dqa
     JOIN questions q ON q.id = dqa.question_id
     WHERE dqa.duel_code = p_code;
+
+    SELECT COUNT(*) INTO _total_qs
+    FROM duel_question_assignments WHERE duel_code = p_code;
   END IF;
 
+  -- Neutral answered counts from immutable ledger (LIVE only)
+  -- During STARTED: reveals only HOW MANY each player has answered — never correctness.
+  IF _room.status = 'started' AND _role IS NOT NULL THEN
+    SELECT COUNT(*) INTO _my_answered
+    FROM duel_answers WHERE duel_code = p_code AND user_id = _uid;
+
+    IF _opp_uid IS NOT NULL THEN
+      SELECT COUNT(*) INTO _opp_answered
+      FROM duel_answers WHERE duel_code = p_code AND user_id = _opp_uid;
+    END IF;
+  END IF;
+
+  -- Return LIVE-safe payload: no scores, no answer arrays, no per-question correctness
   RETURN jsonb_build_object(
-    'ok',           true,
-    'status',       _room.status,
-    'role',         _role,
-    'host_name',    _room.host_name,
-    'guest_name',   _room.guest_name,
-    'host_score',   COALESCE(_room.host_score,  0),
-    'guest_score',  COALESCE(_room.guest_score, 0),
-    'host_answers', COALESCE(_room.host_answers,  '[]'::jsonb),
-    'guest_answers',COALESCE(_room.guest_answers, '[]'::jsonb),
-    'host_done',    COALESCE(_room.host_done,  false),
-    'guest_done',   COALESCE(_room.guest_done, false),
-    'expires_at',   _room.expires_at,
-    'started_at',   _room.started_at,
-    'finished_at',  _room.finished_at,
-    'questions',    _questions
+    'ok',                      true,
+    'status',                  _room.status,
+    'role',                    _role,
+    'host_name',               _room.host_name,
+    'guest_name',              _room.guest_name,
+    'expires_at',              _room.expires_at,
+    'questions',               _questions,
+    'my_answered_count',       _my_answered,
+    'opponent_answered_count', _opp_answered,
+    'total_questions',         _total_qs
   );
 END;
 $$;
@@ -326,6 +345,10 @@ BEGIN
       AND q.question_type = 'multiple_choice'
       AND q.correct_index IS NOT NULL
       AND q.correct_index >= 0
+      -- BLOCKER 2: only questions whose answers are never revealable via get_question_reveals
+      -- Normal questions can be preloaded by querying get_question_reveals before the duel.
+      -- is_competitive_secret=true questions are permanently blocked from that RPC (migration 77).
+      AND q.is_competitive_secret = true
       AND jsonb_array_length(COALESCE(q.answers_ru, q.answers_json, '[]'::jsonb)) = _opt_count
       AND NOT (q.id = ANY(_used_ids))
       -- Exclude questions currently in active Weekly Arena (privacy boundary from migration 77)
@@ -482,21 +505,8 @@ BEGIN
   ON CONFLICT (duel_code, user_id, question_idx) DO NOTHING;
 
   GET DIAGNOSTICS _inserted = ROW_COUNT;
-
-  -- Only update running score if a new row was inserted (idempotency)
-  IF _inserted > 0 THEN
-    IF _room.host_user_id = _uid THEN
-      UPDATE duel_rooms SET
-        host_score   = COALESCE(host_score, 0) + _pts,
-        host_answers = COALESCE(host_answers, '[]'::jsonb) || jsonb_build_array(_pts)
-      WHERE code = p_code;
-    ELSE
-      UPDATE duel_rooms SET
-        guest_score   = COALESCE(guest_score, 0) + _pts,
-        guest_answers = COALESCE(guest_answers, '[]'::jsonb) || jsonb_build_array(_pts)
-      WHERE code = p_code;
-    END IF;
-  END IF;
+  -- No running score update in duel_rooms: scores are a LIVE side channel.
+  -- Authoritative scores computed from duel_answers in get_duel_result only.
 
   -- Return neutral response — no correct_index, no is_correct, no points during LIVE
   SELECT COUNT(*) INTO _my_answered
@@ -568,12 +578,30 @@ BEGIN
   SELECT COUNT(*) >= _total_qs INTO _guest_done
   FROM duel_answers WHERE duel_code = p_code AND user_id = _room.guest_user_id;
 
-  -- If already finished, return cached result
+  -- If already finished: compute from ledger (not cached room values) and write
+  -- the calling player's game_session if not already set. This handles the second
+  -- player arriving at get_duel_result after the first player already finalized.
   IF _room.status = 'finished' THEN
-    _my_score := CASE _role WHEN 'host' THEN COALESCE(_room.host_score, 0) ELSE COALESCE(_room.guest_score, 0) END;
-    _op_score := CASE _role WHEN 'host' THEN COALESCE(_room.guest_score, 0) ELSE COALESCE(_room.host_score, 0) END;
+    -- Always compute from authoritative ledger, not from potentially stale duel_rooms columns
+    SELECT COALESCE(SUM(points), 0) INTO _host_score
+    FROM duel_answers WHERE duel_code = p_code AND user_id = _room.host_user_id;
+    SELECT COALESCE(SUM(points), 0) INTO _guest_score
+    FROM duel_answers WHERE duel_code = p_code AND user_id = _room.guest_user_id;
+    _my_score := CASE _role WHEN 'host' THEN _host_score ELSE _guest_score END;
+    _op_score := CASE _role WHEN 'host' THEN _guest_score ELSE _host_score END;
     _win := CASE _role WHEN 'host' THEN _room.winner_id = _room.host_user_id ELSE _room.winner_id = _room.guest_user_id END;
     _tie := _room.winner_id IS NULL AND _room.finished_at IS NOT NULL;
+    -- Idempotent game_session write for this caller (BLOCKER 3: second player path)
+    UPDATE game_sessions SET
+      won             = _win,
+      score           = _my_score,
+      questions_count = _total_qs
+    WHERE user_id = _uid
+      AND mode IN ('friend_battle', 'random_battle')
+      AND created_at > now() - interval '2 hours'
+      AND (won IS NULL OR won = false)
+    ORDER BY created_at DESC
+    LIMIT 1;
     SELECT COUNT(*) INTO _my_correct FROM duel_answers WHERE duel_code = p_code AND user_id = _uid AND is_correct = true;
     RETURN jsonb_build_object(
       'ok', true, 'waiting', false, 'win', _win, 'tie', _tie,
@@ -733,10 +761,26 @@ CREATE INDEX IF NOT EXISTS idx_dr_code       ON duel_rooms(code);
 CREATE INDEX IF NOT EXISTS idx_dr_status     ON duel_rooms(status) WHERE status IN ('waiting','ready','started');
 
 -- ══════════════════════════════════════════════════════════════════════════
--- VERIFY QUERIES (run after applying to confirm security posture)
+-- VERIFY QUERIES (run in SQL Editor after applying to confirm security posture)
 -- ══════════════════════════════════════════════════════════════════════════
+-- 1. Check duel_rooms policies:
 -- SELECT policyname, cmd, qual, with_check FROM pg_policies WHERE tablename = 'duel_rooms';
+-- 2. Check column grants (must NOT include host_score/guest_score/host_answers/guest_answers):
 -- SELECT grantee, privilege_type, column_name FROM information_schema.column_privileges
 --   WHERE table_name = 'duel_rooms' ORDER BY column_name;
+-- 3. Check private tables have no user policies:
 -- SELECT policyname, cmd FROM pg_policies WHERE tablename IN ('duel_question_assignments','duel_answers');
+-- 4. Check RPCs exist:
 -- SELECT routinename FROM information_schema.routines WHERE routine_name LIKE '%duel%';
+-- 5. COUNT competitive_secret questions by option count (MUST run before applying to confirm pool):
+-- SELECT
+--   jsonb_array_length(COALESCE(answers_ru, answers_json, '[]')) AS opt_count,
+--   COUNT(*) AS question_count
+-- FROM questions
+-- WHERE status = 'active'
+--   AND question_type = 'multiple_choice'
+--   AND is_competitive_secret = true
+--   AND correct_index IS NOT NULL
+-- GROUP BY 1
+-- ORDER BY 1;
+-- Required: at least 1 row per opt_count in [2, 3, 4, 5, 6] for duels to start.

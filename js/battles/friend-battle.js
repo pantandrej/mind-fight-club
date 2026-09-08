@@ -341,50 +341,34 @@ async function startDuelBattle({ chargeSession = true, mode = 'friend_battle', q
   };
   document.addEventListener('visibilitychange', window._duelTabWarn);
 
-  // Continuous opponent-score watcher (real duels only)
+  // Neutral opponent progress poll via get_duel() RPC (real duels only).
+  // Shows only how many questions opponent has answered — never correct/wrong.
+  // Scores are hidden until FINISHED (via get_duel_result).
   if(!window._isBotDuel){
     if(_oppPollInterval) clearInterval(_oppPollInterval);
-    const oppScoreF   = duelRole==='host' ? 'guest_score'   : 'host_score';
-    const oppAnswersF = duelRole==='host' ? 'guest_answers'  : 'host_answers';
-    let _lastOppAnswersLen = 0;
-    let _lastPhraseSeen = null;
+    let _lastOppAnswered = 0;
     _oppPollInterval = setInterval(async () => {
       if(window._isBotDuel){ clearInterval(_oppPollInterval); return; }
       try {
-        const {data} = await sb.from('duel_rooms')
-          .select(`${oppScoreF},${oppAnswersF},last_phrase`)
-          .eq('code',duelCode).single();
-        if(!data) return;
-        const newOppScore  = data[oppScoreF]   ?? 0;
-        const oppAnswers   = Array.isArray(data[oppAnswersF]) ? data[oppAnswersF] : [];
-        // Render each answered dot from the per-question array.
-        // Allow overwriting ✗ (pre-filled by loadDuelQ) if DB confirms opponent answered.
-        for(let i = 0; i < oppAnswers.length; i++){
-          const pts = oppAnswers[i] ?? 0;
-          const dot = document.getElementById('d-opp-dots-dot-' + i);
-          if(!dot) continue;
-          // Only skip if already showing correct (+pts) — always overwrite active/miss/empty
-          const alreadyDone = dot.classList.contains('done');
-          if(!alreadyDone){ setOppDot(i, pts > 0, pts); }
-        }
-        // Show hint if opponent just answered a new question
-        if(oppAnswers.length > _lastOppAnswersLen){
-          const lastPts = oppAnswers[oppAnswers.length - 1] ?? 0;
-          const hint = document.getElementById('opp-hint');
-          if(hint && lastPts > 0){
-            hint.textContent = `✓ ${duelOppNameStr} ответил правильно`;
-            hint.className='opp-hint answered';
+        const { data } = await sb.rpc('get_duel', { p_code: duelCode });
+        if(!data?.ok) return;
+        const oppAnswered = data.opponent_answered_count ?? 0;
+        const totalQs    = data.total_questions ?? duelQs.length;
+        if(oppAnswered > _lastOppAnswered){
+          // Show neutral dot for each newly answered question (no correctness info)
+          for(let i = _lastOppAnswered; i < oppAnswered; i++){
+            setOppDot(i, null); // null = neutral submitted state
           }
-          _lastOppAnswersLen = oppAnswers.length;
-        }
-        if(newOppScore !== duelOppScore){ duelOppScore = newOppScore; updateDuelScores(); }
-        // Post-game phrase via DB fallback
-        if(data.last_phrase && data.last_phrase !== _lastPhraseSeen){
-          _lastPhraseSeen = data.last_phrase;
-          _showPhraseToast(`${duelOppNameStr}: ${data.last_phrase}`);
+          // Neutral hint — no right/wrong information
+          const hint = document.getElementById('opp-hint');
+          if(hint){
+            hint.textContent = `• ${duelOppNameStr} ответил (${oppAnswered}/${totalQs})`;
+            hint.className = 'opp-hint answered';
+          }
+          _lastOppAnswered = oppAnswered;
         }
       } catch(e) { /* silent */ }
-    }, 1500);
+    }, 2000);
   }
 
   loadDuelQ();
@@ -466,7 +450,7 @@ async function duelExpire(){
     });
   } catch(e){ console.warn('[duel] expire submit failed:', e.message); }
   showFb('d-fb','⏱ Время вышло',false);
-  setMyDot(duelIdx, 0, false);
+  setMyDot(duelIdx, null); // neutral timeout state — correctness unknown during LIVE
   document.getElementById('d-next-btn').className='next-btn show';
 }
 function triggerCorrectAnimation(pts, buttonEl){
@@ -529,8 +513,8 @@ async function pickDuel(i){
 
     // Neutral feedback — correct answer is NEVER revealed during LIVE
     showFb('d-fb','✓ Ответ принят',true);
-    // Neutral dot: show answered state without correct/wrong indicator
-    setMyDot(duelIdx, 0, false); // will be updated in result screen
+    // Neutral dot: null = submitted, correctness unknown during LIVE
+    setMyDot(duelIdx, null);
     if(res.completed){
       // Player answered all questions — score/result comes from get_duel_result
       duelMyCorrect = 0; // will be set from server result
@@ -848,10 +832,8 @@ window.sendDuelPhrase = function(text) {
   // Send via Realtime if channel is alive
   if (_duelChannel) {
     _duelChannel.send({ type: 'broadcast', event: 'msg', payload: { text, isReaction: false } });
-  } else {
-    // Channel closed — write to DB so opponent's poll picks it up
-    sb.from('duel_rooms').update({ last_phrase: text }).eq('code', duelCode).then(() => {});
   }
+  // DB last_phrase fallback removed — no UPDATE grant on duel_rooms (v1: Realtime only)
   // Disable the button briefly to prevent spam
   const allBtns = document.querySelectorAll('.duel-phrase-btn');
   allBtns.forEach(b => { b.disabled = true; setTimeout(() => { b.disabled = false; }, 2000); });
@@ -1472,6 +1454,12 @@ function buildBattleDots(n) {
 function setMyDot(i, pts, isCorrect) {
   const d = document.getElementById('d-my-dots-dot-' + i);
   if (!d) return;
+  // pts===null → neutral submitted (real duel LIVE — correctness intentionally hidden)
+  if (pts === null) {
+    d.className = 'dot answered';
+    d.textContent = '•';
+    return;
+  }
   d.className = 'dot ' + (isCorrect ? 'done' : 'miss');
   d.textContent = isCorrect ? '+' + pts : '✗';
 }
@@ -1479,6 +1467,12 @@ function setMyDot(i, pts, isCorrect) {
 function setOppDot(i, isCorrect, pts) {
   const d = document.getElementById('d-opp-dots-dot-' + i);
   if (!d) return;
+  // isCorrect===null → neutral submitted (real duel LIVE — opponent correctness hidden)
+  if (isCorrect === null) {
+    d.className = 'dot answered';
+    d.textContent = '•';
+    return;
+  }
   d.className = 'dot ' + (isCorrect ? 'done' : 'miss');
   d.textContent = isCorrect ? (pts ? '+' + pts : '✓') : '✗';
 }
