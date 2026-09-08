@@ -274,15 +274,140 @@
    Base colors defined in variables.css, extra overrides here
    ══════════════════════════════════════════════════════════════ */
 
-[data-theme="light"] .nav { background: var(--bg); }
-[data-theme="light"] .hdr { background: var(--bg); }
-[data-theme="light"] .home-hero { background: linear-gradient(135deg,#e8e8f0,#f0f0f8); }
-[data-theme="light"] .auth-inner { background: #ffffff; border-color: rgba(0,0,0,.1); }
-[data-theme="light"] .play-menu-item:hover { background: rgba(0,237,181,.06); }
-[data-theme="light"] .nav-item.active { background: rgba(0,237,181,.12); }
-[data-theme="light"] .neurons-pill { background: rgba(0,237,181,.1); border-color: rgba(0,237,181,.25); }
-[data-theme="light"] .mode-card:hover { background: rgba(0,237,181,.08); }
-[data-theme="light"] .ans { background: rgba(0,0,0,.03); border-color: rgba(0,0,0,.1); color: var(--text); }
-[data-theme="light"] .ans:hover:not(:disabled) { background: rgba(0,237,181,.06); }
-[data-theme="light"] .streak-modal { background: var(--bg2); }
-[data-theme="light"] .toast { background: var(--bg2); border-color: var(--border); color: var(--text); }
+/* ── Light: sidebar + header ─────────────────────────────────── */
+[data-theme="light"] .nav {
+  background: #ffffff;
+  border-right-color: rgba(0,0,0,.09);
+  box-shadow: 1px 0 0 rgba(0,0,0,.04);
+}
+[data-theme="light"] .hdr {
+  background: #ffffff;
+  border-bottom-color: rgba(0,0,0,.08);
+  box-shadow: 0 1px 3px rgba(0,0,0,.06);
+}
+[data-theme="light"] .nav-item:hover { background: rgba(0,191,150,.08); }
+[data-theme="light"] .nav-item.active { background: rgba(0,191,150,.12); }
+[data-theme="light"] .nav-label { color: var(--muted); }
+[data-theme="light"] .nav-item.active .nav-label { color: var(--accent2); }
+[data-theme="light"] .nav-item.active .nav-icon { filter: drop-shadow(0 0 5px rgba(0,191,150,.5)); }
+
+/* ── Light: neurons pill + toast + modal ─────────────────────── */
+[data-theme="light"] .neurons-pill { background: rgba(0,191,150,.1); border-color: rgba(0,191,150,.3); }
+[data-theme="light"] .streak-modal { background: var(--bg2); box-shadow: 0 8px 40px rgba(0,0,0,.14); }
+[data-theme="light"] .toast { background: var(--bg2); border-color: var(--border); color: var(--text); box-shadow: 0 4px 16px rgba(0,0,0,.12); }
+
+/* ── Light: home ─────────────────────────────────────────────── */
+[data-theme="light"] .home-hero {
+  background: linear-gradient(135deg,#dfe8f8 0%,#f0f5ff 100%);
+  border-color: rgba(0,0,0,.07);
+  box-shadow: var(--shadow);
+}
+[data-theme="light"] .mode-card {
+  background: var(--bg2);
+  border-color: var(--border);
+  box-shadow: var(--shadow);
+}
+[data-theme="light"] .mode-card:hover { background: rgba(0,191,150,.06); border-color: rgba(0,191,150,.3); }
+[data-theme="light"] .hdb-action-card {
+  background: var(--bg2);
+  border-color: var(--border);
+  box-shadow: var(--shadow);
+}
+[data-theme="light"] .hdb-action-card:hover { border-color: rgba(0,191,150,.4); }
+[data-theme="light"] .hdb-team-card { background: var(--bg2); border-color: var(--border); box-shadow: var(--shadow); }
+[data-theme="light"] .hdb-today-card {
+  background: linear-gradient(135deg,rgba(0,191,150,.1),rgba(0,191,150,.04));
+  border-color: rgba(0,191,150,.25);
+  box-shadow: var(--shadow);
+}
+
+/* ── Light: quiz answers ─────────────────────────────────────── */
+[data-theme="light"] .ans {
+  background: #ffffff;
+  border-color: rgba(0,0,0,.10);
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(0,0,0,.05);
+}
+[data-theme="light"] .ans:hover:not(:disabled) {
+  background: rgba(0,191,150,.06);
+  border-color: rgba(0,191,150,.4);
+  box-shadow: 0 2px 8px rgba(0,0,0,.08);
+}
+[data-theme="light"] .ans.correct {
+  background: rgba(0,191,150,.10);
+  border-color: var(--green);
+  color: #005c46;
+}
+[data-theme="light"] .ans.wrong {
+  background: rgba(209,48,48,.07);
+  border-color: rgba(209,48,48,.35);
+  color: #b91c1c;
+}
+[data-theme="light"] .ans.selected {
+  background: rgba(0,191,150,.08);
+  border-color: var(--accent);
+  color: var(--accent2);
+}
+[data-theme="light"] .ans-l {
+  background: rgba(0,0,0,.06);
+  color: var(--muted);
+}
+[data-theme="light"] .ans.correct .ans-l { background: var(--green); color: #fff; }
+[data-theme="light"] .ans.wrong .ans-l { background: rgba(209,48,48,.5); color: #fff; }
+[data-theme="light"] .ans.selected .ans-l { background: var(--accent2); color: #fff; }
+
+/* ── Light: play menu ────────────────────────────────────────── */
+[data-theme="light"] .play-menu-item {
+  background: var(--bg2);
+  border-color: var(--border);
+  box-shadow: var(--shadow);
+}
+[data-theme="light"] .play-menu-item:hover { background: rgba(0,191,150,.06); border-color: rgba(0,191,150,.3); }
+
+/* ── Light: profile + team cards ─────────────────────────────── */
+[data-theme="light"] .prf-card,
+[data-theme="light"] .prf-stat,
+[data-theme="light"] .prf-action-btn {
+  background: #ffffff;
+  border-color: rgba(0,0,0,.09);
+  box-shadow: 0 1px 4px rgba(0,0,0,.06), 0 4px 12px rgba(0,0,0,.04);
+}
+[data-theme="light"] .prf-action-btn:hover { border-color: rgba(0,191,150,.3); }
+[data-theme="light"] .prf-xp-track { background: rgba(0,0,0,.08); }
+[data-theme="light"] .prf-edit-card { background: rgba(0,191,150,.05); border-color: rgba(0,191,150,.2); }
+
+/* ── Light: auth ─────────────────────────────────────────────── */
+[data-theme="light"] .auth-inner {
+  background: #ffffff;
+  border-color: rgba(0,0,0,.09);
+  box-shadow: 0 8px 40px rgba(0,0,0,.10);
+}
+
+/* ── Light: weekly arena + brain fights ──────────────────────── */
+[data-theme="light"] .wa-hero {
+  background: linear-gradient(135deg,rgba(0,191,150,.08) 0%,rgba(0,191,150,.02) 100%),#ffffff;
+  border-color: rgba(0,191,150,.22);
+  box-shadow: var(--shadow);
+}
+[data-theme="light"] .wa-btn--secondary {
+  background: rgba(0,191,150,.08);
+  border-color: rgba(0,191,150,.3);
+  color: var(--accent2);
+}
+[data-theme="light"] .bf-card {
+  background: #ffffff;
+  border-color: rgba(0,0,0,.09);
+  box-shadow: var(--shadow);
+}
+
+/* ── Light: progress track ───────────────────────────────────── */
+[data-theme="light"] .progress-track { background: rgba(0,0,0,.08); }
+[data-theme="light"] .q-card,
+[data-theme="light"] .quiz-inner { color: var(--text); }
+
+/* ── Dark desktop: body gets a hair darker for sidebar contrast ─ */
+@media (min-width: 960px) {
+  :root:not([data-theme="light"]) body { background: #070707; }
+  :root:not([data-theme="light"]) .nav { background: #000000; }
+  :root:not([data-theme="light"]) .screen { background: var(--bg); }
+}
