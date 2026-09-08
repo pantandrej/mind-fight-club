@@ -1,40 +1,50 @@
 // weekly-arena.js — Weekly Arena screen
-// Architecture: individual-paced within the LIVE window.
+// Architecture: individual-paced within a common server-controlled live window.
 // Server RPCs: get_weekly_arena, join_weekly_arena, submit_weekly_arena_answer,
 //              get_weekly_arena_results.
-// Client never sends: correct_index, is_correct, points.
+// Client sends: arena_id, waq_id (opaque token — NOT question_id), selected_index.
+// Client never receives: correct_index, is_correct, points (during LIVE).
 
 import { _esc } from './router.js';
 
 // ── i18n ─────────────────────────────────────────────────────────
 const S = {
-  title:        { ru: 'Weekly Arena',              en: 'Weekly Arena' },
-  upcoming:     { ru: 'Скоро',                     en: 'Upcoming' },
-  live:         { ru: 'Идёт сейчас',               en: 'Live now' },
-  finished:     { ru: 'Завершена',                 en: 'Finished' },
-  noArena:      { ru: 'Арен пока нет',             en: 'No arenas yet' },
-  starts:       { ru: 'Начало',                    en: 'Starts' },
-  ends:         { ru: 'Конец',                     en: 'Ends' },
-  join:         { ru: 'Участвовать',               en: 'Join' },
-  play:         { ru: 'Играть',                    en: 'Play' },
-  results:      { ru: 'Результаты',                en: 'Results' },
-  yourScore:    { ru: 'Мой счёт',                  en: 'My score' },
-  correct:      { ru: 'правильных',                en: 'correct' },
-  rank:         { ru: 'Место',                     en: 'Rank' },
-  players:      { ru: 'игроков',                   en: 'players' },
-  q:            { ru: 'вопрос',                    en: 'question' },
-  of:           { ru: 'из',                        en: 'of' },
-  checking:     { ru: 'Проверяю…',                 en: 'Checking…' },
-  loading:      { ru: 'Загрузка…',                 en: 'Loading…' },
-  notAuth:      { ru: 'Войдите для участия',        en: 'Sign in to participate' },
-  howTitle:     { ru: 'Как это работает',          en: 'How it works' },
-  how1:         { ru: 'Ответь на все вопросы в течение игровой недели', en: 'Answer all questions during the live window' },
-  how2:         { ru: 'Правильность проверяется сервером', en: 'Correctness verified by server' },
-  how3:         { ru: 'Результат идёт в зачёт Brain Fights', en: 'Result counts toward Brain Fights' },
-  done:         { ru: 'Арена пройдена! 🎉',         en: 'Arena complete! 🎉' },
-  bfEarned:     { ru: 'BF очки получены',           en: 'BF points earned' },
-  leaderboard:  { ru: 'Таблица лидеров',            en: 'Leaderboard' },
-  pts:          { ru: 'очк.',                       en: 'pts' },
+  title:         { ru: 'Weekly Arena',                          en: 'Weekly Arena' },
+  upcoming:      { ru: 'Скоро',                                 en: 'Upcoming' },
+  live:          { ru: 'Идёт сейчас',                           en: 'Live now' },
+  finished:      { ru: 'Завершена',                             en: 'Finished' },
+  noArena:       { ru: 'Арен пока нет',                         en: 'No arenas yet' },
+  starts:        { ru: 'Начало',                                en: 'Starts' },
+  ends:          { ru: 'Конец',                                 en: 'Ends' },
+  join:          { ru: 'Участвовать',                           en: 'Join' },
+  play:          { ru: 'Играть',                                en: 'Play' },
+  results:       { ru: 'Результаты',                            en: 'Results' },
+  yourScore:     { ru: 'Мой счёт',                              en: 'My score' },
+  correct:       { ru: 'правильных',                            en: 'correct' },
+  rank:          { ru: 'Место',                                 en: 'Rank' },
+  players:       { ru: 'игроков',                               en: 'players' },
+  q:             { ru: 'вопрос',                                en: 'question' },
+  of:            { ru: 'из',                                    en: 'of' },
+  checking:      { ru: 'Проверяю…',                             en: 'Checking…' },
+  loading:       { ru: 'Загрузка…',                             en: 'Loading…' },
+  notAuth:       { ru: 'Войдите для участия',                   en: 'Sign in to participate' },
+  loadError:     { ru: 'Ошибка загрузки',                       en: 'Load error' },
+  connError:     { ru: 'Ошибка соединения',                     en: 'Connection error' },
+  joinError:     { ru: 'Ошибка',                                en: 'Error' },
+  noQuestions:   { ru: 'Нет вопросов',                          en: 'No questions' },
+  accepted:      { ru: '✅ Ответ принят',                        en: '✅ Answer accepted' },
+  howTitle:      { ru: 'Как это работает',                      en: 'How it works' },
+  how1:          { ru: 'Ответь на все вопросы в едином живом окне', en: 'Answer all questions during the shared live window' },
+  how2:          { ru: 'Правильность проверяется сервером',     en: 'Correctness verified by server' },
+  how3:          { ru: 'Результат идёт в зачёт Brain Fights',   en: 'Result counts toward Brain Fights' },
+  done:          { ru: 'Арена пройдена! 🎉',                     en: 'Arena complete! 🎉' },
+  doneWait:      { ru: 'Результаты — после завершения арены',   en: 'Results available after arena ends' },
+  bfEarned:      { ru: 'BF очки получены',                      en: 'BF points earned' },
+  leaderboard:   { ru: 'Таблица лидеров',                       en: 'Leaderboard' },
+  lbLive:        { ru: 'Таблица лидеров будет доступна после завершения арены', en: 'Leaderboard available after arena ends' },
+  pts:           { ru: 'очк.',                                  en: 'pts' },
+  answered:      { ru: 'отвечено',                              en: 'answered' },
+  progress:      { ru: 'Прогресс',                              en: 'Progress' },
 };
 
 function _s(key) {
@@ -44,15 +54,18 @@ function _s(key) {
   return lang === 'en' ? e.en : e.ru;
 }
 
+function _dateStr(iso) {
+  const lang = document.querySelector('.lang-btn.active')?.textContent?.toLowerCase() || 'ru';
+  const locale = lang === 'en' ? 'en-US' : 'ru-RU';
+  return new Date(iso).toLocaleString(locale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
 // ── State ─────────────────────────────────────────────────────────
-let _arena        = null;
-let _questions    = [];
-let _qIdx         = 0;
-let _partId       = null;
-let _answered     = 0;
-let _score        = 0;
-let _correct      = 0;
-let _mode         = 'idle'; // idle | info | play | done
+let _arena       = null;
+let _questions   = [];
+let _qIdx        = 0;
+let _partId      = null;
+let _answered    = 0;
 
 // ── Entry point ───────────────────────────────────────────────────
 export async function loadWeeklyArena() {
@@ -60,48 +73,50 @@ export async function loadWeeklyArena() {
   if (!root) return;
   root.innerHTML = `<div class="wa-loading">${_s('loading')}</div>`;
 
-  if (!window.sb) { root.innerHTML = `<div class="wa-loading">${_s('notAuth')}</div>`; return; }
+  if (!window.sb) {
+    root.innerHTML = `<div class="wa-loading">${_s('notAuth')}</div>`;
+    return;
+  }
 
   try {
     const { data, error } = await window.sb.rpc('get_weekly_arena');
     if (error || !data?.ok) {
-      root.innerHTML = _renderNoArena(data?.reason);
+      root.innerHTML = _renderNoArena();
       return;
     }
     _arena     = data.arena;
     _questions = data.questions || [];
     const myP  = data.my_participation;
 
-    _partId    = myP?.participant_id || null;
-    _answered  = myP?.answered       || 0;
-    _score     = myP?.score          || 0;
-    _correct   = myP?.correct        || 0;
+    _partId   = myP?.participant_id || null;
+    _answered = myP?.answered       || 0;
 
     root.innerHTML = _renderArenaShell(data);
     _bindShell(data);
   } catch (e) {
-    root.innerHTML = `<div class="wa-loading">Ошибка загрузки</div>`;
+    root.innerHTML = `<div class="wa-loading">${_s('loadError')}</div>`;
     console.error('[WA]', e);
   }
 }
 
 // ── Shell render ──────────────────────────────────────────────────
 function _renderArenaShell(data) {
-  const a   = data.arena;
-  const myP = data.my_participation;
-  const statusLabel = { upcoming: _s('upcoming'), live: _s('live'), finished: _s('finished') }[a.status] || a.status;
-  const statusClass = { upcoming: 'wa-status--upcoming', live: 'wa-status--live', finished: 'wa-status--finished' }[a.status] || '';
+  const a      = data.arena;
+  const myP    = data.my_participation;
+  const status = a.eff_status;
 
-  const startsAt = new Date(a.starts_at).toLocaleString('ru', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-  const endsAt   = new Date(a.ends_at).toLocaleString('ru',   { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  const statusLabel = { upcoming: _s('upcoming'), live: _s('live'), finished: _s('finished') }[status] || status;
+  const statusClass = { upcoming: 'wa-status--upcoming', live: 'wa-status--live', finished: 'wa-status--finished' }[status] || '';
+
+  const endsAt = _dateStr(a.ends_at);
 
   const participated = myP !== null;
   const completed    = myP?.completed === true;
 
   let ctaHtml = '';
-  if (a.status === 'upcoming') {
-    ctaHtml = `<div class="wa-cta-info">${_s('starts')}: ${_esc(startsAt)}</div>`;
-  } else if (a.status === 'live') {
+  if (status === 'upcoming') {
+    ctaHtml = `<div class="wa-cta-info">${_s('starts')}: ${_esc(_dateStr(a.starts_at))}</div>`;
+  } else if (status === 'live') {
     if (!participated) {
       ctaHtml = `<button class="wa-btn wa-btn--primary" id="wa-join-btn">${_s('join')}</button>`;
     } else if (!completed) {
@@ -109,18 +124,24 @@ function _renderArenaShell(data) {
     } else {
       ctaHtml = `<button class="wa-btn wa-btn--secondary" id="wa-results-btn">${_s('results')}</button>`;
     }
-  } else if (a.status === 'finished') {
+  } else if (status === 'finished') {
     ctaHtml = `<button class="wa-btn wa-btn--secondary" id="wa-results-btn">${_s('results')}</button>`;
   }
 
+  // Stats shown only after FINISHED (score/correct hidden during LIVE — P0.3)
   let myStatsHtml = '';
-  if (participated) {
+  if (participated && status === 'finished' && myP.score != null) {
     myStatsHtml = `
       <div class="wa-my-stats">
-        <div class="wa-stat"><span class="wa-stat-val">${_esc(String(_score))}</span><span class="wa-stat-lbl">${_s('yourScore')}</span></div>
-        <div class="wa-stat"><span class="wa-stat-val">${_esc(String(_correct))}/${_esc(String(myP.total_questions))}</span><span class="wa-stat-lbl">${_s('correct')}</span></div>
+        <div class="wa-stat"><span class="wa-stat-val">${_esc(String(myP.score ?? 0))}</span><span class="wa-stat-lbl">${_s('yourScore')}</span></div>
+        <div class="wa-stat"><span class="wa-stat-val">${_esc(String(myP.correct ?? 0))}/${_esc(String(myP.total_questions ?? 0))}</span><span class="wa-stat-lbl">${_s('correct')}</span></div>
         ${myP.rank ? `<div class="wa-stat"><span class="wa-stat-val">#${_esc(String(myP.rank))}</span><span class="wa-stat-lbl">${_s('rank')}</span></div>` : ''}
-        <div class="wa-stat"><span class="wa-stat-val">${_esc(String(_answered))}/${_esc(String(myP.total_questions))}</span><span class="wa-stat-lbl">${_s('q')}</span></div>
+      </div>`;
+  } else if (participated && status === 'live') {
+    // During LIVE: show progress only
+    myStatsHtml = `
+      <div class="wa-my-stats">
+        <div class="wa-stat"><span class="wa-stat-val">${_esc(String(myP.answered ?? 0))}/${_esc(String(myP.total_questions ?? 0))}</span><span class="wa-stat-lbl">${_s('answered')}</span></div>
       </div>`;
   }
 
@@ -149,7 +170,7 @@ function _renderArenaShell(data) {
     </div>`;
 }
 
-function _renderNoArena(reason) {
+function _renderNoArena() {
   return `<div class="wa-wrap"><div class="wa-hero"><div class="wa-hero-label">${_s('title')}</div><div class="wa-hero-title">${_s('noArena')}</div></div></div>`;
 }
 
@@ -169,25 +190,23 @@ async function _doJoin(arenaId) {
     const { data, error } = await window.sb.rpc('join_weekly_arena', { p_arena_id: arenaId });
     if (error || !data?.ok) {
       if (btn) { btn.disabled = false; btn.textContent = _s('join'); }
-      window.toast?.(error?.message || data?.reason || 'Ошибка');
+      window.toast?.(error?.message || data?.reason || _s('joinError'));
       return;
     }
     _partId = data.participant_id;
-    // Replace join button with play button
     const cta = document.querySelector('.wa-cta');
     if (cta) cta.innerHTML = `<button class="wa-btn wa-btn--primary" id="wa-play-btn">${_s('play')}</button>`;
     document.getElementById('wa-play-btn')?.addEventListener('click', () => _startPlay());
   } catch (e) {
     if (btn) { btn.disabled = false; btn.textContent = _s('join'); }
-    window.toast?.('Ошибка соединения');
+    window.toast?.(_s('connError'));
   }
 }
 
 // ── Play flow ─────────────────────────────────────────────────────
 function _startPlay() {
-  if (!_questions.length) { window.toast?.('Нет вопросов'); return; }
-  // Find first unanswered question (server tracks, but we resume from _answered)
-  _qIdx = _answered; // resume after already-answered questions
+  if (!_questions.length) { window.toast?.(_s('noQuestions')); return; }
+  _qIdx = _answered;
   if (_qIdx >= _questions.length) { _showDone(null); return; }
   _renderQuestion(_qIdx);
 }
@@ -198,8 +217,10 @@ function _renderQuestion(idx) {
   const q = _questions[idx];
   if (!q) { _showDone(null); return; }
 
-  const total = _questions.length;
-  const answers = (q.answers_json || q.answers_ru || []);
+  const total   = _questions.length;
+  const lang    = document.querySelector('.lang-btn.active')?.textContent?.toLowerCase() || 'ru';
+  const answers = (lang === 'en' && q.answers_json ? q.answers_json : (q.answers_ru || q.answers_json || []));
+  const qText   = (lang === 'en' ? q.question_text : (q.question_ru || q.question_text || ''));
 
   const mediaHtml = q.image_url
     ? `<img src="${_esc(q.image_url)}" class="wa-q-img" alt="" />`
@@ -211,7 +232,7 @@ function _renderQuestion(idx) {
     <div class="wa-question">
       <div class="wa-q-progress">${_s('q')} ${idx + 1} ${_s('of')} ${total}</div>
       ${mediaHtml}
-      <div class="wa-q-text">${_esc(q.question_ru || q.question_text || '')}</div>
+      <div class="wa-q-text">${_esc(qText)}</div>
       <div class="wa-answers" id="wa-answers">
         ${answers.map((ans, i) => `
           <button class="wa-ans-btn" data-idx="${i}">${_esc(String(ans))}</button>
@@ -226,7 +247,6 @@ function _renderQuestion(idx) {
 }
 
 async function _pickAnswer(q, selectedIdx) {
-  // Disable all buttons immediately
   document.querySelectorAll('.wa-ans-btn').forEach(b => b.disabled = true);
 
   const fb = document.getElementById('wa-q-fb');
@@ -235,45 +255,37 @@ async function _pickAnswer(q, selectedIdx) {
   try {
     const { data, error } = await window.sb.rpc('submit_weekly_arena_answer', {
       p_arena_id:       _arena.id,
-      p_question_id:    q.question_id,
+      p_waq_id:         q.waq_id,      // opaque token; server resolves → question_id
       p_selected_index: selectedIdx,
     });
 
     if (error || !data?.ok) {
       const reason = data?.reason || error?.message || '';
       if (reason === 'already_answered') {
-        // Skip to next
         _qIdx++;
         _answered++;
         setTimeout(() => _advanceOrDone(data), 400);
         return;
       }
-      if (fb) { fb.textContent = reason || 'Ошибка'; fb.className = 'wa-q-feedback wa-q-feedback--error'; }
+      if (fb) { fb.textContent = reason || _s('connError'); fb.className = 'wa-q-feedback wa-q-feedback--error'; }
+      document.querySelectorAll('.wa-ans-btn').forEach(b => b.disabled = false);
       return;
     }
 
-    // Reveal correct answer
-    const correctIdx = data.correct_index;
-    document.querySelectorAll('.wa-ans-btn').forEach((b, i) => {
-      if (i === correctIdx)  b.classList.add('wa-ans--correct');
-      if (i === selectedIdx && !data.is_correct) b.classList.add('wa-ans--wrong');
-    });
-
+    // During LIVE: neutral "Ответ принят" — no colors, no correct/wrong (P0.3)
     if (fb) {
       fb.hidden = false;
-      fb.textContent = data.is_correct ? `✅ +${data.points}` : '❌';
-      fb.className = `wa-q-feedback ${data.is_correct ? 'wa-q-feedback--ok' : 'wa-q-feedback--no'}`;
+      fb.textContent = _s('accepted');
+      fb.className = 'wa-q-feedback wa-q-feedback--accepted';
     }
 
-    _score   = data.total_score;
-    _correct += data.is_correct ? 1 : 0;
     _answered++;
     _qIdx++;
 
-    setTimeout(() => _advanceOrDone(data), 1400);
+    setTimeout(() => _advanceOrDone(data), 1000);
 
   } catch (e) {
-    if (fb) { fb.hidden = false; fb.textContent = 'Ошибка соединения'; fb.className = 'wa-q-feedback wa-q-feedback--error'; }
+    if (fb) { fb.hidden = false; fb.textContent = _s('connError'); fb.className = 'wa-q-feedback wa-q-feedback--error'; }
     document.querySelectorAll('.wa-ans-btn').forEach(b => b.disabled = false);
   }
 }
@@ -289,17 +301,16 @@ function _advanceOrDone(lastData) {
 function _showDone(data) {
   const area = document.getElementById('wa-play-area');
   if (!area) return;
+  // During LIVE: no score shown — results revealed after arena ends (P0.3)
   const bfLine = (data?.bf_pts > 0) ? `<div class="wa-done-bf">🧠 +${data.bf_pts} ${_s('bfEarned')}</div>` : '';
   area.innerHTML = `
     <div class="wa-done">
       <div class="wa-done-title">${_s('done')}</div>
-      <div class="wa-done-score">${_score} ${_s('pts')}</div>
-      <div class="wa-done-correct">${_correct} ${_s('of')} ${_questions.length} ${_s('correct')}</div>
+      <div class="wa-done-wait">${_s('doneWait')}</div>
       ${bfLine}
       <button class="wa-btn wa-btn--secondary" id="wa-results-btn">${_s('results')}</button>
     </div>`;
 
-  // Update CTA zone
   const cta = document.querySelector('.wa-cta');
   if (cta) cta.innerHTML = `<button class="wa-btn wa-btn--secondary" id="wa-results-btn2">${_s('results')}</button>`;
 
@@ -316,24 +327,31 @@ async function _loadResults(arenaId) {
     const { data, error } = await window.sb.rpc('get_weekly_arena_results', { p_arena_id: arenaId });
     if (error || !data?.ok) { if (area) area.innerHTML = ''; return; }
 
-    const lb = data.leaderboard || [];
-    const me = data.my_result;
+    const lb  = data.leaderboard || [];
+    const me  = data.my_result;
+    const isLive = data.arena?.eff_status === 'live';
 
-    const meHtml = me ? `
+    // During LIVE: show progress, no score (P0.3)
+    const meHtml = me ? (isLive ? `
+      <div class="wa-my-result">
+        <div class="wa-stat"><span class="wa-stat-val">${me.answered ?? 0}/${me.total_questions ?? 0}</span><span class="wa-stat-lbl">${_s('answered')}</span></div>
+      </div>` : `
       <div class="wa-my-result">
         <div class="wa-stat"><span class="wa-stat-val">#${me.rank}</span><span class="wa-stat-lbl">${_s('rank')}</span></div>
         <div class="wa-stat"><span class="wa-stat-val">${me.score}</span><span class="wa-stat-lbl">${_s('yourScore')}</span></div>
         <div class="wa-stat"><span class="wa-stat-val">${me.correct}/${me.total_questions}</span><span class="wa-stat-lbl">${_s('correct')}</span></div>
-      </div>` : '';
+      </div>`) : '';
 
-    const lbHtml = lb.length ? `
-      <div class="wa-lb-title">${_s('leaderboard')}</div>
-      ${lb.map(r => `
-        <div class="wa-lb-row${r.is_me ? ' wa-lb-me' : ''}">
-          <span class="wa-lb-rank">#${r.rank}</span>
-          <span class="wa-lb-name">${_esc(r.display_name || '—')}${r.team_name ? ` <span class="wa-lb-team">${_esc(r.team_emoji || '')} ${_esc(r.team_name)}</span>` : ''}</span>
-          <span class="wa-lb-score">${r.score} ${_s('pts')}</span>
-        </div>`).join('')}` : '';
+    const lbHtml = isLive
+      ? `<div class="wa-lb-soon">${_s('lbLive')}</div>`
+      : lb.length ? `
+        <div class="wa-lb-title">${_s('leaderboard')}</div>
+        ${lb.map(r => `
+          <div class="wa-lb-row${r.is_me ? ' wa-lb-me' : ''}">
+            <span class="wa-lb-rank">#${r.rank}</span>
+            <span class="wa-lb-name">${_esc(r.display_name || '—')}${r.team_name ? ` <span class="wa-lb-team">${_esc(r.team_emoji || '')} ${_esc(r.team_name)}</span>` : ''}</span>
+            <span class="wa-lb-score">${r.score} ${_s('pts')}</span>
+          </div>`).join('')}` : '';
 
     if (area) area.innerHTML = `<div class="wa-results">${meHtml}${lbHtml}</div>`;
   } catch (e) {

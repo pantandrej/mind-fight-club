@@ -32,6 +32,7 @@ const HOME_STRINGS = {
   duelSub:      { ru: 'С другом по коду',      en: 'With a friend by code' },
   brainFights:  { ru: 'Brain Fights',          en: 'Brain Fights' },
   soon:         { ru: 'Скоро',                 en: 'Soon' },
+  liveNow:      { ru: 'Идёт сейчас',           en: 'Live now' },
   events:       { ru: 'События',               en: 'Events' },
   eventsSub:    { ru: 'Турниры и пак-игры',    en: 'Tournaments & packs' },
 };
@@ -113,8 +114,10 @@ function _renderStreak(state) {
 }
 
 // ── Today card priority: A) Weekly Arena  B) Featured Pack  C) Quick Play ───
+let _savedQpOnclick = null;
+
 function _renderTodayCard(state) {
-  // A: Weekly Arena — loaded async; fallback to C immediately, upgraded if LIVE
+  // A: Weekly Arena — loaded async; fallback to C immediately, upgraded if LIVE/soon
   _renderQuickPlayFallback(state);
   _loadArenaCard();
 }
@@ -123,32 +126,49 @@ async function _loadArenaCard() {
   if (!window.sb) return;
   try {
     const { data } = await window.sb.rpc('get_weekly_arena');
-    if (!data?.ok) return;
+    if (!data?.ok) { _restoreQuickPlay(); return; }
     const a = data.arena;
-    // Show only when LIVE or starts within 2 hours
+    // Use eff_status from server (derived from timestamps — P0.4)
     const now = Date.now();
     const startsIn = new Date(a.starts_at).getTime() - now;
-    const isLive = a.status === 'live';
-    const isSoon = a.status === 'upcoming' && startsIn > 0 && startsIn < 2 * 3600 * 1000;
-    if (!isLive && !isSoon) return;
+    const isLive = a.eff_status === 'live';
+    const isSoon = a.eff_status === 'upcoming' && startsIn > 0 && startsIn < 2 * 3600 * 1000;
+    if (!isLive && !isSoon) { _restoreQuickPlay(); return; }
 
     const label = document.getElementById('hdb-today-label');
     if (label) label.textContent = 'Weekly Arena';
 
-    const badge = document.getElementById('hdb-qp-badge');
+    const badge   = document.getElementById('hdb-qp-badge');
     const qpLabel = document.getElementById('hdb-qp-label');
     if (badge) {
-      badge.textContent = isLive ? '🔴 Идёт сейчас' : '⏰ Скоро';
+      badge.textContent = isLive ? `🔴 ${s('liveNow')}` : `⏰ ${s('soon')}`;
       badge.style.color = isLive ? '#3cc864' : '#ffc800';
     }
     if (qpLabel) qpLabel.textContent = a.title || 'Weekly Arena';
 
-    // Make the Quick Play card navigate to arena screen
-    const qpCard = document.getElementById('hdb-qp-card');
-    if (qpCard) {
-      qpCard.onclick = () => { window.showScreen?.('weekly-arena-screen'); window.loadWeeklyArena?.(); };
+    // Override Quick Play row onclick; save original for later restore (P1.10)
+    const qpRow = document.querySelector('.hdb-qp-row');
+    if (qpRow) {
+      if (_savedQpOnclick === null) _savedQpOnclick = qpRow.onclick;
+      qpRow.onclick = (e) => { e.stopPropagation(); window.showScreen?.('weekly-arena-screen'); window.loadWeeklyArena?.(); };
     }
-  } catch (_) { /* silently ignore */ }
+  } catch (_) { _restoreQuickPlay(); }
+}
+
+function _restoreQuickPlay() {
+  // Restore Quick Play row to original state (P1.10)
+  const qpRow = document.querySelector('.hdb-qp-row');
+  if (qpRow && _savedQpOnclick !== null) {
+    qpRow.onclick = _savedQpOnclick;
+    _savedQpOnclick = null;
+  }
+  const label = document.getElementById('hdb-today-label');
+  if (label) label.textContent = s('todayLabel');
+  const qpLabel = document.getElementById('hdb-qp-label');
+  if (qpLabel) qpLabel.textContent = s('quickPlay');
+  const badge = document.getElementById('hdb-qp-badge');
+  if (badge) badge.style.color = 'var(--accent)';
+  _renderQuickPlayFallback(null);
 }
 
 function _renderQuickPlayFallback(state) {

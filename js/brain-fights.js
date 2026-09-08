@@ -34,7 +34,13 @@ const BF = {
   earn1:          { ru: '🧠 Отвечай на Суперквиз каждый день (+5 за правильный ответ, +1 за попытку)', en: '🧠 Answer the Super Question daily (+5 correct, +1 for any attempt)' },
   earn2:          { ru: '📈 Твои очки суммируются в недельный счёт команды', en: '📈 Your points add to your team\'s weekly score' },
   earn3:          { ru: '🏆 Топ команды определяется в воскресенье',  en: '🏆 Top teams ranked every Sunday' },
+  earn4:          { ru: '🏟️ Weekly Arena — участие засчитывается в BF', en: '🏟️ Weekly Arena — participation counts toward BF' },
   noActivity:     { ru: 'Очков ещё нет. Сыграй Суперквиз!',         en: 'No points yet. Play the Super Question!' },
+  weeklyArena:    { ru: 'Weekly Arena',                              en: 'Weekly Arena' },
+  arenaLive:      { ru: '🔴 Live',                                   en: '🔴 Live' },
+  arenaSoon:      { ru: '⏰ Скоро',                                   en: '⏰ Soon' },
+  arenaUntil:     { ru: 'До',                                        en: 'Until' },
+  arenaStarts:    { ru: 'Начало',                                    en: 'Starts' },
   history:        { ru: 'История',                                    en: 'History' },
   historyEmpty:   { ru: 'История Brain Fights появится после первого сезона.', en: 'Brain Fights history will appear after the first season.' },
   pts:            { ru: 'очк.',                                       en: 'pts' },
@@ -209,18 +215,25 @@ function _renderBF(el, data, myUserId) {
       <span class="bf-contrib-row-pts">${c.points} ${_t('pts')}</span>
     </div>`).join('');
 
-  // MY CONTRIBUTION — superq only (no unsafe duel/training)
-  const superqPts = my_contrib?.superq_pts || 0;
+  // MY CONTRIBUTION — superq + weekly_arena (P0.2)
+  const superqPts      = my_contrib?.superq_pts       || 0;
+  const weeklyArenaPts = my_contrib?.weekly_arena_pts || 0;
+  const totalPts       = my_contrib?.total            || (superqPts + weeklyArenaPts);
 
   const myContribCard = `
     <div class="bf-card bf-mycontrib-card">
       <div class="bf-section-hd">${_t('myContrib')}</div>
-      <div class="bf-mycontrib-total">${superqPts} <span style="font-size:14px;color:var(--muted);font-weight:600">${_t('pts')}</span></div>
+      <div class="bf-mycontrib-total">${totalPts} <span style="font-size:14px;color:var(--muted);font-weight:600">${_t('pts')}</span></div>
       <div class="bf-mycontrib-rows">
         <div class="bf-mycontrib-row">
           <span>🧠 ${_t('superq')}</span>
           <span class="bf-mc-pts">${superqPts}</span>
         </div>
+        ${weeklyArenaPts > 0 ? `
+        <div class="bf-mycontrib-row">
+          <span>🏟️ ${_t('weeklyArena')}</span>
+          <span class="bf-mc-pts">${weeklyArenaPts}</span>
+        </div>` : ''}
       </div>
     </div>`;
 
@@ -334,19 +347,26 @@ async function _injectArenaCard() {
     const { data } = await window.sb.rpc('get_weekly_arena');
     if (!data?.ok) return;
     const a = data.arena;
-    if (a.status === 'finished') return; // don't clutter BF screen with old arenas
-    const statusLabel = { upcoming: '⏰ Скоро', live: '🔴 Live' }[a.status] || '';
-    const endsAt = a.status === 'live'
-      ? 'До ' + new Date(a.ends_at).toLocaleString('ru', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
-      : 'Начало ' + new Date(a.starts_at).toLocaleString('ru', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    // Don't show finished arenas on BF screen
+    if (a.eff_status === 'finished') return;
+
+    const lang = document.querySelector('.lang-btn.active')?.textContent?.toLowerCase() || 'ru';
+    const locale = lang === 'en' ? 'en-US' : 'ru-RU';
+    const fmtOpts = { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' };
+
+    const statusLabel = a.eff_status === 'live' ? _t('arenaLive') : _t('arenaSoon');
+    const timeLabel = a.eff_status === 'live'
+      ? `${_t('arenaUntil')} ${new Date(a.ends_at).toLocaleString(locale, fmtOpts)}`
+      : `${_t('arenaStarts')} ${new Date(a.starts_at).toLocaleString(locale, fmtOpts)}`;
+
     slot.innerHTML = `
       <div class="bf-card" style="border:1px solid rgba(60,200,100,.25);cursor:pointer"
            onclick="showScreen('weekly-arena-screen');window.loadWeeklyArena?.()">
         <div style="display:flex;align-items:center;justify-content:space-between">
           <div>
-            <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#3cc864;font-weight:700;margin-bottom:4px">Weekly Arena ${statusLabel}</div>
+            <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#3cc864;font-weight:700;margin-bottom:4px">${_t('weeklyArena')} ${_esc(statusLabel)}</div>
             <div style="font-size:15px;font-weight:800;color:var(--text)">${_esc(a.title)}</div>
-            <div style="font-size:12px;color:var(--muted);margin-top:3px">${_esc(endsAt)}</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:3px">${_esc(timeLabel)}</div>
           </div>
           <span style="color:var(--accent);font-size:20px;font-weight:900">›</span>
         </div>
