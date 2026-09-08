@@ -258,10 +258,12 @@ ALTER TABLE public.questions ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS questions_hide_competitive_secrets ON public.questions;
 CREATE POLICY questions_hide_competitive_secrets
   ON public.questions
-  AS RESTRICTIVE
   FOR SELECT
   TO anon, authenticated
   USING (is_competitive_secret = false);
+-- PERMISSIVE (default): normal questions pass (false = visible); secret rows
+-- fail the USING check and are invisible. No separate restrictive policy needed.
+-- Without at least one permissive SELECT policy, RLS would block all rows.
 
 -- ── Lifecycle enforcement: is_competitive_secret immutability ──────
 -- Rule: once a question is public (false), it can never become a competitive
