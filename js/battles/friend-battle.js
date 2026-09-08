@@ -114,7 +114,11 @@ async function joinDuel(){
   duelMyName=currentUser?.user_metadata?.full_name?.split(' ')[0]||'Guest'+(Math.floor(Math.random()*99)+1);
   duelMyScore=0;duelOppScore=0;duelQs=[];duelIdx=0;duelMyCorrect=0;_duelSpeedNeurons=0;
 
-  await sb.from('duel_rooms').update({status:'ready'}).eq('code',code);
+  // Write guest_user_id so server RPCs can verify participant identity
+  await sb.from('duel_rooms').update({
+    status: 'ready',
+    guest_user_id: currentUser?.id || null,
+  }).eq('code', code);
   track('duel_joined', {code});
 
   // Notify host via push
@@ -200,12 +204,6 @@ async function startDuelGame(){
     questions = await window.loadBattleQuestions(lang);
   }
 
-  console.log('[BFC friend battle canonical]', {
-    selected: questions?.length,
-    optCounts: questions?.map(q => q.a.length),
-    first: questions?.[0],
-  });
-
   if (!questions || questions.length < 5) {
     window.toast?.(lang === 'ru'
       ? '⚠️ Недостаточно вопросов для дуэли. Попробуйте позже.'
@@ -213,10 +211,24 @@ async function startDuelGame(){
     return;
   }
 
-  // Save canonical questions to room — guest reads these exact objects, no re-shuffling
-  await sb.from('duel_rooms').update({ status: 'started', questions }).eq('code', duelCode);
+  // SERVER-AUTHORITATIVE: send full questions (with correct_index) to server RPC.
+  // Server stores correct_index privately and returns questions WITHOUT correct_index.
+  // duel_rooms.questions will only contain sanitized questions (no c field).
+  const { data: storeResult, error: storeErr } = await sb.rpc('store_duel_questions', {
+    p_duel_code: duelCode,
+    p_questions: questions,
+  });
 
-  duelQs = questions;  // host uses same canonical array directly
+  if (storeErr || !storeResult?.ok) {
+    console.error('[duel] store_duel_questions failed:', storeErr?.message || storeResult?.error);
+    // Fallback: strip correct_index client-side and write directly (degraded mode)
+    const sanitized = questions.map(({ c: _stripped, ...rest }) => rest);
+    await sb.from('duel_rooms').update({ status: 'started', questions: sanitized }).eq('code', duelCode);
+    duelQs = questions; // host keeps c locally for bot/fallback display
+  } else {
+    duelQs = questions; // host keeps full array locally (including c for display feedback)
+  }
+
   clearInterval(duelPoll);
   startDuelBattle();
 }
@@ -429,15 +441,46 @@ function renderDuelTimer(){
   fill.style.width=pct+'%';fill.style.background=pct<35?'#e05555':pct<60?'#f0a050':'var(--accent)';
   const tv=document.getElementById('d-t-val');
   tv.textContent=duelTimeLeft+'s';tv.style.color=duelTimeLeft<=5?'#e05555':duelTimeLeft<=10?'#f0a050':'var(--accent2)';
-  const _q=duelQs[duelIdx]; document.getElementById('d-p-val').textContent='+'+(duelTimeLeft>0?duelTimeLeft:1);
+  // v1: fixed server scoring — timer is for pacing only, not speed-based points
+  document.getElementById('d-p-val').textContent='+10';
 }
 function duelTick(){if(duelTimeLeft<=0){clearInterval(duelTimer);duelExpire();return;}duelTimeLeft--;renderDuelTimer();}
-function duelExpire(){
+async function duelExpire(){
   if(duelAnswered)return;duelAnswered=true;
-  document.querySelectorAll('#d-answers .ans').forEach((b,i)=>{b.disabled=true;if(i===duelQs[duelIdx].c)b.className='ans correct';});
-  showFb('d-fb','⏱ '+duelQs[duelIdx].a[duelQs[duelIdx].c],false);
+  document.querySelectorAll('#d-answers .ans').forEach(b=>b.disabled=true);
+
+  if(window._isBotDuel){
+    const q = duelQs[duelIdx];
+    document.querySelectorAll('#d-answers .ans').forEach((b,i)=>{
+      if(i===q.c)b.className='ans correct';
+    });
+    showFb('d-fb','⏱ '+q.a[q.c],false);
+    setMyDot(duelIdx, 0, false);
+    document.getElementById('d-next-btn').className='next-btn show';
+    return;
+  }
+
+  // Real duel: notify server of timeout (-1 = no answer selected)
+  try {
+    const { data: res } = await sb.rpc('submit_duel_answer', {
+      p_duel_code:    duelCode,
+      p_question_idx: duelIdx,
+      p_selected_idx: -1,
+    });
+    const correctIdx = res?.correct_index;
+    if(correctIdx != null){
+      document.querySelectorAll('#d-answers .ans').forEach((b,i)=>{
+        if(i===correctIdx)b.className='ans correct';
+      });
+      const correctText = duelQs[duelIdx]?.a?.[correctIdx] ?? '';
+      showFb('d-fb','⏱ '+(correctText||''),false);
+    } else {
+      showFb('d-fb','⏱ Время вышло',false);
+    }
+  } catch(e){
+    showFb('d-fb','⏱ Время вышло',false);
+  }
   setMyDot(duelIdx, 0, false);
-  saveDuelScore();
   document.getElementById('d-next-btn').className='next-btn show';
 }
 function triggerCorrectAnimation(pts, buttonEl){
@@ -459,34 +502,78 @@ function triggerCorrectAnimation(pts, buttonEl){
 async function pickDuel(i){
   if(duelAnswered)return;duelAnswered=true;clearInterval(duelTimer);
   const q=duelQs[duelIdx];
-  document.querySelectorAll('#d-answers .ans').forEach(b=>b.disabled=true);
-  const pts=Math.max(1, duelTimeLeft);
-  if(i===q.c){
-    const correctBtn = document.querySelectorAll('#d-answers .ans')[i];
-    correctBtn.className='ans correct';
-    triggerCorrectAnimation(pts, correctBtn);
-    duelMyScore+=pts;duelMyCorrect++;updateDuelScores();
-    _duelSpeedNeurons += Math.max(1, Math.min(30, duelTimeLeft));
-    showFb('d-fb','✓ +'+pts,true);setMyDot(duelIdx, pts, true);
-  } else {
-    document.querySelectorAll('#d-answers .ans')[i].className='ans wrong';
-    document.querySelectorAll('#d-answers .ans')[q.c].className='ans correct';
-    showFb('d-fb','✗ '+q.a[q.c],false);setMyDot(duelIdx, 0, false);
+  const answerBtns = document.querySelectorAll('#d-answers .ans');
+  answerBtns.forEach(b=>b.disabled=true);
+
+  if(window._isBotDuel){
+    // Bot duels remain client-side (not competitive/rated)
+    const localC = q.c;
+    const pts = Math.max(1, duelTimeLeft);
+    if(i === localC){
+      answerBtns[i].className='ans correct';
+      triggerCorrectAnimation(pts, answerBtns[i]);
+      duelMyScore+=pts;duelMyCorrect++;updateDuelScores();
+      showFb('d-fb','✓ +'+pts,true);setMyDot(duelIdx, pts, true);
+    } else {
+      answerBtns[i].className='ans wrong';
+      answerBtns[localC].className='ans correct';
+      showFb('d-fb','✗ '+q.a[localC],false);setMyDot(duelIdx, 0, false);
+    }
+    document.getElementById('d-next-btn').className='next-btn show';
+    return;
   }
-  saveDuelScore();
+
+  // Real duel — SERVER DECIDES correctness and points
+  // Show a "pending" state while RPC is in flight
+  if(i >= 0 && answerBtns[i]) answerBtns[i].className='ans selected';
+  showFb('d-fb','...', true);
+
+  try {
+    const { data: res, error: rpcErr } = await sb.rpc('submit_duel_answer', {
+      p_duel_code:    duelCode,
+      p_question_idx: duelIdx,
+      p_selected_idx: i,
+    });
+
+    if(rpcErr || !res?.ok){
+      console.error('[duel] submit_duel_answer error:', rpcErr?.message || res?.error);
+      // Graceful degradation: show timeout state
+      showFb('d-fb','⚠️ Ошибка соединения',false);
+      document.getElementById('d-next-btn').className='next-btn show';
+      return;
+    }
+
+    const correctIdx = res.correct_index;
+    const pts        = res.points ?? 0;
+    const isCorrect  = res.correct === true;
+
+    // Highlight answers using server-provided correct_index
+    answerBtns.forEach((b, bi) => {
+      if(bi === correctIdx) b.className = 'ans correct';
+      else if(bi === i && !isCorrect) b.className = 'ans wrong';
+      else b.className = 'ans';
+    });
+
+    if(isCorrect){
+      triggerCorrectAnimation(pts, answerBtns[correctIdx]);
+      duelMyScore += pts; duelMyCorrect++; updateDuelScores();
+      showFb('d-fb','✓ +'+pts,true);setMyDot(duelIdx, pts, true);
+    } else {
+      const correctText = q.a?.[correctIdx] ?? '';
+      showFb('d-fb','✗ '+(correctText||''),false);setMyDot(duelIdx, 0, false);
+    }
+  } catch(e){
+    console.error('[duel] pickDuel RPC exception:', e);
+    showFb('d-fb','⚠️ Ошибка',false);
+  }
+
   document.getElementById('d-next-btn').className='next-btn show';
 }
+// saveDuelScore is DISABLED for real duels — server handles all score writes
+// via submit_duel_answer RPC (SECURITY DEFINER). Client must not write scores directly.
+// Bot duels are local-only and never write to duel_rooms.
 async function saveDuelScore(){
-  if(window._isBotDuel) return;
-  const scoreField   = duelRole==='host' ? 'host_score'   : 'guest_score';
-  const answersField = duelRole==='host' ? 'host_answers'  : 'guest_answers';
-  // Record this question's points (0 = miss/timeout)
-  _myAnswers[duelIdx] = duelMyScore - (_myAnswers.slice(0,duelIdx).reduce((a,b)=>a+b,0));
-  try {
-    await sb.from('duel_rooms')
-      .update({ [scoreField]: duelMyScore, [answersField]: _myAnswers })
-      .eq('code', duelCode);
-  } catch(e) { console.error('[duel] saveDuelScore failed:', e); }
+  // no-op: score authority moved to submit_duel_answer RPC
 }
 function updateDuelScores(){
   document.getElementById('ds-me-score').textContent=duelMyScore;
@@ -565,16 +652,20 @@ async function duelNextQ(){
 }
 async function _saveDuelStats(myS, oppS, win) {
   const sessionId = window._currentDuelSessionId || window._currentSessionId;
-  if (!window.sb || !sessionId) return;
-  try {
-    await window.sb.from('game_sessions').update({
-      score:           myS,
-      correct_answers: duelMyCorrect || 0,
-      questions_count: duelQs?.length || 10,
-      won:             win,
-    }).eq('id', sessionId);
-  } catch(e) { /* silent */ }
-  // Track win streak in localStorage
+
+  // Update game_sessions with answer stats (not won — server handles that via finalize_duel)
+  if (window.sb && sessionId) {
+    try {
+      await window.sb.from('game_sessions').update({
+        score:           myS,
+        correct_answers: duelMyCorrect || 0,
+        questions_count: duelQs?.length || 5,
+        // won is set by finalize_duel RPC (SECURITY DEFINER) — not from client
+      }).eq('id', sessionId);
+    } catch(e) { /* silent */ }
+  }
+
+  // Win streak in localStorage (client-side display only, not a security boundary)
   const _streakKey = 'bfc_duel_win_streak';
   if (win) {
     const prev = parseInt(localStorage.getItem(_streakKey) || '0', 10);
@@ -582,45 +673,41 @@ async function _saveDuelStats(myS, oppS, win) {
   } else {
     localStorage.setItem(_streakKey, '0');
   }
-  // Нейроны за скорость (за каждый верный ответ независимо от победы/поражения)
-  if (_duelSpeedNeurons > 0) {
+
+  // Speed neurons DISABLED in v1.0 — client must not control currency awards.
+  // Server-side reward logic will be re-added in a future sprint via finalize_duel.
+
+  // SERVER determines win and BF contribution via finalize_duel RPC
+  if (!window._isBotDuel && duelCode && window.sb) {
     try {
-      const { currentUser } = getState();
-      if (currentUser) {
-        const res = await window.sb.rpc('award_currency', {
-          p_operation_type: 'speed_answer',
-          p_operation_key:  'dspeed:' + duelCode + ':' + currentUser.id,
-          p_client_amount:  _duelSpeedNeurons,
-        });
-        if (!res.error && res.data?.neurons) {
-          setState({ neurons: res.data.neurons });
-          updNeurons();
-        }
-      }
-    } catch(e) { console.error('[duel] speed neurons exception:', e.message); }
+      await window.sb.rpc('finalize_duel', { p_duel_code: duelCode });
+    } catch(e) { /* silent — finalize_duel migration may not be applied yet */ }
   }
-  // Brain Fights: +3 балла за победу, макс 3 в день
-  if (win) {
+  // Bot duels: client-side BF win (bots are not competitive, no abuse vector)
+  if (window._isBotDuel && win) {
     try {
       const { currentUser } = getState();
       if (currentUser) {
-        window.sb.rpc('record_duel_win_bf', { p_user_id: currentUser.id }).catch(() => {});
+        window.sb?.rpc('record_duel_win_bf', { p_user_id: currentUser.id }).catch(() => {});
       }
     } catch(e) { /* silent */ }
   }
+
   // Check achievements async
-  if (window.checkAchievements) {
-    const { data: stats } = await window.sb.from('player_stats').select('*').eq('user_id', (await window.sb.auth.getUser()).data.user?.id).single().catch(() => ({ data: null }));
+  if (window.checkAchievements && window.sb) {
+    const { data: stats } = await window.sb.from('player_stats').select('*')
+      .eq('user_id', (await window.sb.auth.getUser()).data.user?.id)
+      .single().catch(() => ({ data: null }));
     if (stats) window.checkAchievements({
       duels_played: stats.duels_played,
       duels_won:    stats.duels_won,
       games_played: stats.games_played,
       streak:       stats.streak,
       neurons:      stats.neurons,
-      perfect_game: myS >= duelQs?.length * 90,
+      perfect_game: myS >= (duelQs?.length || 5) * 10,
     });
   }
-  // Sync club score
+
   if (window.syncTeamScoreAfterGame) window.syncTeamScoreAfterGame();
 }
 
