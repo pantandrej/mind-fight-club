@@ -687,11 +687,13 @@ async function playDBPack(importKey, packId){
       if(data && data.length) await _mergeCorrectIndexes(data);
     }
   } else {
+    const PACK_COLS = 'id,question_text,question_ru,answers_json,answers_ru,slide_img_url,answer_slide_img_url,image_url,audio_url,video_url,media_type,category,language,status,import_key,explanation_ru,question_type,game_type,source_type';
     ({data, error} = await sb.from('questions')
-      .select('*')
+      .select(PACK_COLS)
       .like('import_key', prefix+'_q%')
       .eq('status','published')
       .order('import_key'));
+    if (data && data.length) await _mergeCorrectIndexes(data);
   }
 
   if(!data || !data.length){
@@ -893,7 +895,7 @@ function startExtractedPack(data, packTitle, importKey){
       cat: q.category||'GENERAL',
       q: lang==='ru'?(q.question_ru||q.question_text||''):(q.question_text||q.question_ru||''),
       a: ans,
-      c: q.correct_index||0,
+      c: q.correct_index ?? null,
       t: q.question_type==='info' ? 0 : (25 + (ans.length || 4) * 5),
       img: slideImgUrl || (mediaType==='image'?imgUrl:null),
       audio: mediaType==='audio'?audUrl:null,
@@ -1009,7 +1011,8 @@ function hideExplanation(){
 function normalizeAndShuffleQuestion(q) {
   if (!q || !Array.isArray(q.a) || q.a.length < 2) return q;
   const original = q.a;
-  const correctAns = original[q.c ?? 0];
+  if (q.c == null) return q;   // no canonical answer — caller should have excluded this question
+  const correctAns = original[q.c];
   // Fisher-Yates shuffle on a copy
   const shuffled = [...original];
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -1863,8 +1866,8 @@ export async function loadBattleQuestions(lang = 'ru') {
     const answers = Array.isArray(row.answers_ru) ? row.answers_ru : [];
     const n = answers.length;
     if (n >= 2 && n <= 6 && row.question_text?.trim().length > 3) {
-      const ci = row.correct_index ?? 0;
-      if (ci >= 0 && ci < n) {
+      const ci = row.correct_index;
+      if (ci != null && ci >= 0 && ci < n) {
         byCount[n].push({ id: row.id, cat: row.category || 'GENERAL', q: row.question_text, a: answers, c: ci });
       }
     }

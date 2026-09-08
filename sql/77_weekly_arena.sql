@@ -236,6 +236,66 @@ END;
 $$;
 -- correct_index is intentionally NOT in the list above.
 
+-- ── Lifecycle enforcement: is_competitive_secret immutability ──────
+-- Rule: once a question is public (false), it can never become a competitive
+-- secret (true). A previously public question cannot be re-used for Arena.
+-- Allowed: INSERT with true; true→false (release after Arena); false stays false.
+-- Blocked: false→true (would allow caching then re-use as competitive content).
+
+CREATE OR REPLACE FUNCTION public._check_competitive_secret_immutability()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF OLD.is_competitive_secret = false AND NEW.is_competitive_secret = true THEN
+    RAISE EXCEPTION
+      'is_competitive_secret cannot be changed to true on a previously-public question (id: %). '
+      'Create a new question with is_competitive_secret=true instead.',
+      NEW.id
+      USING ERRCODE = 'check_violation';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS questions_competitive_secret_immutable ON public.questions;
+CREATE TRIGGER questions_competitive_secret_immutable
+  BEFORE UPDATE OF is_competitive_secret ON public.questions
+  FOR EACH ROW
+  EXECUTE FUNCTION public._check_competitive_secret_immutability();
+
+-- Rule: weekly_arena_questions can only reference questions born secret.
+-- Prevents ordinary training questions from being assigned to a competitive Arena.
+
+CREATE OR REPLACE FUNCTION public._check_waq_question_is_secret()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM public.questions q
+    WHERE q.id = NEW.question_id AND q.is_competitive_secret = true
+  ) THEN
+    RAISE EXCEPTION
+      'weekly_arena_questions: question % must have is_competitive_secret=true. '
+      'Ordinary training questions cannot be assigned to a competitive Arena.',
+      NEW.question_id
+      USING ERRCODE = 'check_violation';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS waq_question_must_be_secret ON public.weekly_arena_questions;
+CREATE TRIGGER waq_question_must_be_secret
+  BEFORE INSERT ON public.weekly_arena_questions
+  FOR EACH ROW
+  EXECUTE FUNCTION public._check_waq_question_is_secret();
+
 CREATE OR REPLACE FUNCTION public.get_question_reveals(p_ids uuid[])
 RETURNS TABLE(id uuid, correct_index int)
 LANGUAGE sql
