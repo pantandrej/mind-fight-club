@@ -378,7 +378,7 @@ async function renderDBGamePacks(){
       // Fallback: import_key LIKE prefix (works when import_key = batchKey)
       if(pack.import_key){
         const {count} = await sb.from('questions')
-          .select('*', {count:'exact', head:true})
+          .select('id', {count:'exact', head:true})
           .like('import_key', pack.import_key + '_%')
           .eq('status', 'published');
         countByPrefix = count || 0;
