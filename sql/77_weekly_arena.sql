@@ -220,8 +220,8 @@ BEGIN
     'explanation_ru','media_type','question_type',
     'category','difficulty','status','source_type',
     'game_type','language','import_key',
-    'created_at','updated_at','approved_at',
-    'is_competitive_secret'
+    'created_at','updated_at','approved_at'
+    -- is_competitive_secret intentionally excluded: server/admin metadata only
   ] LOOP
     IF EXISTS (
       SELECT 1 FROM information_schema.columns
@@ -234,7 +234,34 @@ BEGIN
   END LOOP;
 END;
 $$;
--- correct_index is intentionally NOT in the list above.
+-- correct_index and is_competitive_secret are intentionally NOT in the list above.
+
+-- ── Row-level secrecy for competitive questions ────────────────────
+-- Problem: column grants alone hide correct_index but leave the full question row
+--   (question_text, answers, media URLs) readable via direct REST. An attacker
+--   can pre-download all future Arena questions before the Arena starts,
+--   solve them offline, and arrive with pre-cached answers.
+--
+-- Fix: enable RLS on questions; add a RESTRICTIVE SELECT policy that blocks
+--   rows where is_competitive_secret = true from anon/authenticated.
+--   RESTRICTIVE policies ANDed with permissive ones — this guarantees secret rows
+--   are never returned regardless of other existing permissive policies.
+--   SECURITY DEFINER functions run as postgres (superuser), which bypasses RLS,
+--   so get_weekly_arena(), submit_weekly_arena_answer(), and moderation RPCs
+--   continue to access secret rows internally without any change.
+--
+-- After FINISHED: row remains hidden while is_competitive_secret=true.
+-- Admin releases via UPDATE questions SET is_competitive_secret=false.
+-- After release the row becomes a normal readable training question.
+ALTER TABLE public.questions ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS questions_hide_competitive_secrets ON public.questions;
+CREATE POLICY questions_hide_competitive_secrets
+  ON public.questions
+  AS RESTRICTIVE
+  FOR SELECT
+  TO anon, authenticated
+  USING (is_competitive_secret = false);
 
 -- ── Lifecycle enforcement: is_competitive_secret immutability ──────
 -- Rule: once a question is public (false), it can never become a competitive
