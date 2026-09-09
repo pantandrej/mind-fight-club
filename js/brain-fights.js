@@ -301,41 +301,46 @@ function _renderBF(el, data, myUserId) {
       </button>
     </div>`;
 
-  // FULL HTML
+  // FULL HTML — bf-col-main / bf-col-side allow CSS 2-col on desktop
   el.innerHTML = `
     ${_hdr()}
     <div class="bf-page">
+      <div class="bf-col-main">
 
-      <div class="bf-hero-card">
-        <div class="bf-hero-week">${_t('weekLabel')}: ${_esc(weekLbl)}</div>
-        <div style="display:flex;align-items:center;gap:14px;margin-top:10px">
-          <div class="bf-team-emoji">${_esc(my_team.emoji || '🏟️')}</div>
-          <div style="flex:1;min-width:0">
-            <div class="bf-hero-teamname">${_esc(my_team.name)}</div>
-            ${my_team.city ? `<div class="bf-hero-city">📍 ${_esc(my_team.city)}</div>` : ''}
+        <div class="bf-hero-card">
+          <div class="bf-hero-week">${_t('weekLabel')}: ${_esc(weekLbl)}</div>
+          <div style="display:flex;align-items:center;gap:14px;margin-top:10px">
+            <div class="bf-team-emoji">${_esc(my_team.emoji || '🏟️')}</div>
+            <div style="flex:1;min-width:0">
+              <div class="bf-hero-teamname">${_esc(my_team.name)}</div>
+              ${my_team.city ? `<div class="bf-hero-city">📍 ${_esc(my_team.city)}</div>` : ''}
+            </div>
+          </div>
+          <div class="bf-hero-score-row">
+            <div class="bf-hero-score" style="color:${heroScoreColor}">${my_team.points}</div>
+            <div class="bf-hero-score-lbl">${_t('teamScore')}</div>
+            <div class="bf-hero-rank">${rankDisplay}</div>
           </div>
         </div>
-        <div class="bf-hero-score-row">
-          <div class="bf-hero-score" style="color:${heroScoreColor}">${my_team.points}</div>
-          <div class="bf-hero-score-lbl">${_t('teamScore')}</div>
-          <div class="bf-hero-rank">${rankDisplay}</div>
-        </div>
+
+        ${myContribCard}
+
+        <div class="bf-section-hd">${_t('contributors')}</div>
+        <div class="bf-top3-grid">${top3Cards}</div>
+        ${rest.length ? `<div class="bf-card" style="padding:8px">${restRows}</div>` : ''}
+
       </div>
+      <div class="bf-col-side">
 
-      ${myContribCard}
+        ${lbSection}
 
-      <div class="bf-section-hd">${_t('contributors')}</div>
-      <div class="bf-top3-grid">${top3Cards}</div>
-      ${rest.length ? `<div class="bf-card" style="padding:8px">${restRows}</div>` : ''}
+        ${howToEarn}
 
-      ${lbSection}
+        <div class="bf-section-hd">${_t('history')}</div>
+        <div class="bf-card">${historyRows}</div>
 
-      ${howToEarn}
-
-      <div class="bf-section-hd">${_t('history')}</div>
-      <div class="bf-card">${historyRows}</div>
-
-      <div style="height:30px"></div>
+      </div>
+      <div style="height:30px;grid-column:1/-1"></div>
     </div>`;
 
   // Async: inject Weekly Arena card if arena is live/upcoming

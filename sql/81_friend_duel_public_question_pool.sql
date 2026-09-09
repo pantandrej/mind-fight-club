@@ -4,20 +4,21 @@
 --
 -- MOTIVATION
 -- ----------
--- Friend Duel v1 is a casual social mode (no BF contribution, no prize
+-- Friend Duel v1 is a casual social mode (no BF contribution, no high-stakes
 -- authority). It was originally wired to is_competitive_secret=true, which
 -- required a zero-count secret pool → every duel attempt returned
 -- not_enough_secure_questions before the pool was populated.
 --
--- The 1212-question public curated bank (status='active',
--- is_competitive_secret=false) is fully sufficient for Friend Duel v1:
+-- The 1212-question public curated bank (source_type='official_general') is
+-- fully sufficient for Friend Duel v1. Counts verified 2026-09-10:
 --   2-option: 277   3-option: 215   4-option: 429
---   5-option: 172   6-option: 119
--- (counts verified 2026-09-10)
+--   5-option: 172   6-option: 119   (total: 1212)
+-- ALL eligible questions are source_type='official_general'; no other
+-- source_type rows exist in the eligible pool.
 --
 -- DESIGN DECISION: BANK SEPARATION
 -- ---------------------------------
--- PUBLIC CURATED BANK (is_competitive_secret = false):
+-- PUBLIC CURATED BANK (is_competitive_secret = false, source_type = 'official_general'):
 --   • Quick Play, Friend Duel v1
 --   • Questions may have been seen before
 --   • No high-integrity competitive rewards
@@ -29,7 +30,10 @@
 --
 -- SCOPE OF THIS MIGRATION
 -- -----------------------
--- ① Replace start_duel() question filter: is_competitive_secret = false
+-- ① Replace start_duel() question filter:
+--      is_competitive_secret = false
+--      source_type = 'official_general'
+--      correct_index upper-bound guard: correct_index < answer-count
 -- ② Rename error code: not_enough_questions (was: not_enough_secure_questions)
 -- ③ All other start_duel() logic is preserved exactly:
 --    - advisory lock / deadlock prevention
@@ -44,11 +48,13 @@
 -- DO NOT APPLY WITHOUT REVIEW.
 -- ═══════════════════════════════════════════════════════════════════════════
 
--- ── start_duel() — ONLY question-selection filter changed ────────────────
+-- ── start_duel() — question-selection filter updated ─────────────────────
 -- Full function re-declared (PostgreSQL requires it for SECURITY DEFINER).
 -- Changes vs migration78 version:
---   Line ~477:  is_competitive_secret = false  (was: = true)
---   Line ~380:  error code renamed not_enough_questions (was: not_enough_secure_questions)
+--   is_competitive_secret = false  (was: = true)
+--   source_type = 'official_general'  (new guard — restricts to curated bank)
+--   correct_index < answer-count  (new guard — rejects malformed rows)
+--   error code not_enough_questions  (was: not_enough_secure_questions)
 -- Everything else is byte-for-byte identical to migration78.
 
 CREATE OR REPLACE FUNCTION start_duel(p_code text)
@@ -130,8 +136,9 @@ BEGIN
 
   -- ── Stage full question set (validate first, mutate second) ──────
   -- All 5 slots must be found before any duel_question_assignments INSERT.
-  -- Pool: public curated bank (is_competitive_secret = false).
-  -- ★ CHANGED from migration78: is_competitive_secret = false (was: = true)
+  -- Pool: official_general curated bank (is_competitive_secret=false,
+  -- source_type='official_general', correct_index bounds checked).
+  -- ★ CHANGED from migration78: see filter block below
   FOREACH _opt_count IN ARRAY _progression
   LOOP
     SELECT
@@ -147,6 +154,9 @@ BEGIN
       AND q.correct_index IS NOT NULL
       AND q.correct_index >= 0
       AND q.is_competitive_secret = false                         -- ★ public bank
+      AND q.source_type = 'official_general'                     -- ★ curated bank only
+      AND q.correct_index < jsonb_array_length(                  -- ★ upper-bound guard
+            COALESCE(q.answers_ru, q.answers_json, '[]'::jsonb))
       AND jsonb_array_length(COALESCE(q.answers_ru, q.answers_json, '[]'::jsonb)) = _opt_count
       AND NOT (q.id = ANY(_used_ids))
       AND q.id NOT IN (

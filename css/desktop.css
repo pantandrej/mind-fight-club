@@ -567,6 +567,64 @@
 [data-theme="light"] .q-card,
 [data-theme="light"] .quiz-inner { color: var(--text); }
 
+/* ── Light: primary CTA text contrast fix ───────────────────── */
+/* Root cause: --accent:#00BF96 gives only ~2.2:1 contrast with #fff.
+   Dark text (#002a20) gives 9.4:1. Applied to both explicit and
+   system-light (un-stamped) states. */
+[data-theme="light"] .next-btn,
+:root:not([data-theme="dark"]) .next-btn { color: #002a20; }
+[data-theme="light"] .big-btn:not(.gold):not(.green),
+:root:not([data-theme="dark"]) .big-btn:not(.gold):not(.green) { color: #002a20; }
+/* Disabled/hidden state (opacity:0, no .show) is already invisible — not a contrast issue. */
+
+/* ── Brain Fights desktop layout ────────────────────────────── */
+/* On mobile: single column (default .bf-page styles in screens.css).
+   On desktop ≥960: wider container, 2-column grid. */
+@media (min-width: 960px) {
+  #brain-fights-screen { padding-bottom: 0; }
+
+  .bf-hdr {
+    max-width: none;
+    padding: 12px 40px 10px;
+    /* Align header to same max-width as .bf-page grid */
+    box-sizing: border-box;
+    width: 100%;
+  }
+
+  .bf-page {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 16px 40px 60px;
+    display: grid;
+    grid-template-columns: 3fr 2fr;
+    gap: 0 28px;
+    align-items: start;
+    width: 100%;
+  }
+
+  .bf-col-main,
+  .bf-col-side {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  /* Hero card spans both columns on smaller desktop */
+  .bf-hero-card { margin-bottom: 12px; }
+
+  /* Tighten vertical spacing inside columns */
+  .bf-section-hd { margin: 14px 0 7px; }
+  .bf-card { margin-bottom: 6px; }
+}
+
+/* ── 1400px: slightly more breathing room ────────────────────── */
+@media (min-width: 1400px) {
+  .bf-page {
+    max-width: 1360px;
+    gap: 0 36px;
+  }
+}
+
 /* ── Dark desktop: body darker for sidebar contrast ─────────── */
 @media (min-width: 960px) {
   :root:not([data-theme="light"]) body { background: #070707; }
