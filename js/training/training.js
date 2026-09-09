@@ -233,49 +233,90 @@ let _quickPlayCompletedThisSession = false;
 // so startQuiz doesn't see the freshly-written lock as a block.
 let _quickPlayStartInProgress = false;
 
+// Remaining server sessions after last granted round (for premium replay UX).
+let _quickPlayServerRemaining = 0;
+
 async function startQuickPlay(){
-  // ── Server-side limit check (enforces PLAN_LIMITS server-side) ──
-  if (typeof window.sb !== 'undefined' && window._appState?.getState().currentUser) {
+  // ── In-flight guard: prevents double-tap race (two concurrent start_game_session) ──
+  if(_quickPlayStartInProgress) return;
+  _quickPlayStartInProgress = true;
+  _quickPlayServerRemaining = 0;
+
+  try{
+    const currentUser = window._appState?.getState().currentUser;
+
+    // ── Guest fast-path: no server session, local lock is authoritative ──
+    if(!currentUser){
+      if(blockQuickPlayIfLocked()) return;
+      currentGameType = 'quick'; currentPackKey = null; selectedCat = 'ALL';
+      _scoreShownForGame = false; _roundAnswers = [];
+      _quickPlayCompletedThisSession = false;
+      await startQuiz(null, false);
+      return;
+    }
+
+    // ── Authenticated: BUILD QUESTIONS FIRST, consume quota only if valid ──
+
+    // Step 1: load published questions (safe columns, no correct_index)
+    const dbPool = await loadPublishedQuickQuestionsFromDB();
+    if(!dbPool || dbPool.length === 0){
+      window.toast?.(lang==='ru'
+        ? '❌ Не удалось загрузить вопросы из базы'
+        : "❌ Couldn't load questions", 3000);
+      if(typeof showNoFreshQuickQuestionsScreen === 'function') showNoFreshQuickQuestionsScreen();
+      return;
+    }
+
+    // Step 2: filter seen questions
+    const playedIds = await getPlayedQuestionIds('quick');
+    const pool = dbPool.filter(q => !playedIds.has(String(q.id)));
+    if(!pool.length){
+      if(typeof showNoFreshQuickQuestionsScreen === 'function') showNoFreshQuickQuestionsScreen();
+      return;
+    }
+
+    // Step 3: build gold-standard 10 (hard block if cannot)
+    const standard = buildStandardPackQuestions(pool);
+    if(!standard){
+      if(typeof showNoFreshQuickQuestionsScreen === 'function') showNoFreshQuickQuestionsScreen();
+      return;
+    }
+
+    // ── Step 4: quota check — only consume a session if we have a valid round ──
     const { data: sessionData, error: sessionErr } = await window.sb.rpc('start_game_session', {
       p_mode: 'training'
     });
-    if (sessionErr) {
+    if(sessionErr){
       console.error('[training] start_game_session error:', sessionErr.message);
-      // Block on RPC error — do not allow rating play without server verification
       window.toast?.('Не удалось проверить дневной лимит. Проверь интернет и попробуй ещё раз.');
       return;
-    } else if (sessionData && !sessionData.allowed) {
+    }
+    if(!sessionData.allowed){
       const plan  = sessionData.plan  || 'free';
       const used  = sessionData.used  ?? '?';
-      const limit = sessionData.limit ?? 10;
-      if (typeof window.track === 'function') {
-        window.track('training_limit_reached', { plan, used, limit });
-        window.track('premium_paywall_viewed', { trigger: 'training_limit', plan });
-      }
-      if (typeof window.showDailyLimitScreen === 'function') window.showDailyLimitScreen('training');
-      else if (typeof window.showScreen === 'function') window.showScreen('daily-limit');
+      const limit = sessionData.limit ?? 1;
+      window.track?.('training_limit_reached', { plan, used, limit });
+      window.track?.('premium_paywall_viewed', { trigger: 'training_limit', plan });
+      if(typeof showDailyLimitScreen === 'function') showDailyLimitScreen('training');
+      else window.showScreen?.('daily-limit');
       return;
     }
-    // Store session_id for this specific quick play game
-    if (sessionData?.session_id) {
-      window._currentSessionId   = sessionData.session_id;
-      window._quickPlaySessionId = sessionData.session_id; // explicit: owned by this quick play
-    }
-  }
 
-  // Iron-clad lock — applies to everyone, including admins
-  if(blockQuickPlayIfLocked()) return;
-  currentGameType = 'quick';
-  currentPackKey  = null;
-  selectedCat = 'ALL';
-  _scoreShownForGame = false; _roundAnswers = [];
-  _quickPlayCompletedThisSession = false; // reset for fresh round
-  // Do NOT lock yet — lock only after DB questions are loaded and standard is built.
-  // _quickPlayStartInProgress lets startQuiz skip the lock-check on entry.
-  _quickPlayStartInProgress = true;
-  try{
+    // Session granted
+    _quickPlayServerRemaining = sessionData.remaining ?? 0;
+    if(sessionData.session_id){
+      window._currentSessionId   = sessionData.session_id;
+      window._quickPlaySessionId = sessionData.session_id;
+    }
+
+    // ── Step 5: hand pre-built questions to startQuiz (skips re-fetch) ──
+    window._preparedQuickPlaySet = standard;
+    currentGameType = 'quick'; currentPackKey = null; selectedCat = 'ALL';
+    _scoreShownForGame = false; _roundAnswers = [];
+    _quickPlayCompletedThisSession = false;
     await startQuiz(null, false);
-  } finally {
+
+  }finally{
     _quickPlayStartInProgress = false;
   }
 }
@@ -1442,8 +1483,10 @@ function showScore(){
   if(!localStorage.getItem('mfc_first_game_done')){
     localStorage.setItem('mfc_first_game_done','1');
   }
-  // addSeasonPoints ONCE here with accumulated _roundScore
-  if(_roundScore > 0) addSeasonPoints(_roundScore);
+  // addSeasonPoints ONCE here with accumulated _roundScore.
+  // Quick Play scores are client-computed and not server-verified — excluded from
+  // season leaderboard to prevent forgeable rankings (SAFE > forgeable).
+  if(_roundScore > 0 && currentGameType !== 'quick') addSeasonPoints(_roundScore);
   if(_roundScore > 0 && window._syncClubScore) window._syncClubScore(_roundScore);
   if(_roundScore > 0 && window._syncQuizScore) window._syncQuizScore(Math.round(_roundScore*0.5));
   showScreen('score');
@@ -1524,12 +1567,21 @@ function updateScoreScreenButtons(){
   scAgainBtn.removeAttribute('onclick');
   scAgainBtn.disabled = false;
 
-  // Triple guard: game type, session completion flag, persistent daily lock
-  const isQuickLocked = currentGameType === 'quick'
-    || _quickPlayCompletedThisSession
-    || isQuickPlayLocked();
+  // For authenticated premium users, server may allow more rounds today.
+  // _quickPlayServerRemaining is set from start_game_session.remaining after each granted round.
+  const serverRoundsLeft = (_quickPlayServerRemaining > 0) && !!(window._appState?.getState().currentUser);
 
-  if(isQuickLocked){
+  const isQuickLocked = (currentGameType === 'quick'
+    || _quickPlayCompletedThisSession
+    || isQuickPlayLocked()) && !serverRoundsLeft;
+
+  if(currentGameType === 'quick' && serverRoundsLeft){
+    // Premium user has remaining rounds — offer replay via server re-check
+    scAgainBtn.textContent = lang==='ru'
+      ? `▶ Ещё раунд (${_quickPlayServerRemaining} осталось)`
+      : `▶ Play again (${_quickPlayServerRemaining} left)`;
+    scAgainBtn.onclick = function(e){ e.preventDefault(); startQuickPlay(); return false; };
+  } else if(isQuickLocked){
     scAgainBtn.textContent = lang==='ru' ? '🔒 Лимит на сегодня исчерпан' : '🔒 Daily limit reached';
     scAgainBtn.onclick = function(e){ e.preventDefault(); showDailyLimitScreen('training'); return false; };
   } else if(currentGameType === 'pack' && currentPackKey){

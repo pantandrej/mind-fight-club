@@ -6833,42 +6833,33 @@ async function startQuiz(packId, skipLimitCheck){
     }
   }
   
-  // ── Quick play: load from DB, filter history, build gold-standard 10 ──
-  // Show loading toast while we fetch from Supabase
-  toast(lang==='ru' ? '⏳ Загружаем вопросы...' : '⏳ Loading questions...', 1800);
+  // ── Quick play: get gold-standard 10 ──
+  // Authenticated path: startQuickPlay() pre-builds and hands off via window._preparedQuickPlaySet
+  // so quota was only consumed AFTER questions were confirmed valid.
+  // Guest / direct path: build here (no server session involved).
+  let standard;
+  if(window._preparedQuickPlaySet){
+    standard = window._preparedQuickPlaySet;
+    window._preparedQuickPlaySet = null; // consume — do not reuse
+  } else {
+    toast(lang==='ru' ? '⏳ Загружаем вопросы...' : '⏳ Loading questions...', 1800);
 
-  // 1. Load published questions from DB
-  const dbPool = await loadPublishedQuickQuestionsFromDB();
-
-  if(dbPool.length === 0){
-    // DB unavailable or no published questions at all
-    toast(lang==='ru'
-      ? '❌ Не удалось загрузить вопросы из базы'
-      : "❌ Couldn't load questions", 3000);
-    showNoFreshQuickQuestionsScreen();
-    return;
+    const dbPool = await loadPublishedQuickQuestionsFromDB();
+    if(dbPool.length === 0){
+      toast(lang==='ru'
+        ? '❌ Не удалось загрузить вопросы из базы'
+        : "❌ Couldn't load questions", 3000);
+      showNoFreshQuickQuestionsScreen();
+      return;
+    }
+    const playedIds = await getPlayedQuestionIds('quick');
+    const pool = dbPool.filter(q => !playedIds.has(String(q.id)));
+    if(!pool.length){ showNoFreshQuickQuestionsScreen(); return; }
+    standard = buildStandardPackQuestions(pool);
+    if(!standard){ showNoFreshQuickQuestionsScreen(); return; }
   }
 
-  // 2. Filter out already-seen questions (history: local + remote)
-  const playedIds = await getPlayedQuestionIds('quick');
-  let pool = dbPool.filter(q => !playedIds.has(String(q.id)));
-
-  if(pool.length === 0){
-    showNoFreshQuickQuestionsScreen();
-    return;
-  }
-
-  // 3. Build exactly 10 questions by gold standard 2,2,3,3,4,4,5,5,6,6
-  const standard = buildStandardPackQuestions(pool);
-
-  if(!standard){
-    // buildStandardPackQuestions shows toast with missing type counts
-    // but we still want to show the "no fresh questions" screen (not just a toast)
-    showNoFreshQuickQuestionsScreen();
-    return;
-  }
-
-  // ✅ Questions are assembled — lock quick play NOW (game will definitely start)
+  // ✅ Questions confirmed — lock quick play NOW (game will definitely start)
   lockQuickPlayStarted();
 
   curQ = standard; // exactly 10, ordered 2×2opt,2×3opt,2×4opt,2×5opt,2×6opt
