@@ -140,7 +140,7 @@
   /* Streak card full width */
   .streak-card { grid-column: 1 / -1; }
 
-  /* ── PROFILE ─────────────────────────────────────────────── */
+  /* ── PROFILE (legacy .profile-inner — kept for fallback) ──── */
   .profile-inner {
     max-width: none;
     padding: 24px 40px 60px;
@@ -153,6 +153,13 @@
   .profile-hero { grid-column: 1; grid-row: 1 / 4; align-self: start; }
   .profile-stats-grid { grid-column: 2; grid-row: 1; grid-template-columns: repeat(3,1fr); }
   .profile-badges-grid { grid-column: 2; grid-row: 2; grid-template-columns: repeat(5,1fr); }
+
+  /* ── PASSPORT PROFILE (pp-page) desktop base ─────────────── */
+  .pp-page {
+    max-width: none;
+    padding: 24px 40px 60px;
+    width: 100%;
+  }
 
   /* ── SHOP ────────────────────────────────────────────────── */
   .shop-inner {
@@ -257,6 +264,116 @@
   #theme-toggle-hdr { display: none; }
 }
 
+/* ── 1200px+ PROFILE DASHBOARD ──────────────────────────────── */
+@media (min-width: 1200px) {
+
+  /* Centered outer container */
+  .pp-page {
+    max-width: 1320px;
+    margin: 0 auto;
+    padding: 28px 48px 60px;
+  }
+
+  /* Two-column layout */
+  #profile-passport-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 24px;
+  }
+
+  #pp-col-left {
+    flex: 0 0 64%;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  #pp-col-right {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  /* ── Hero: horizontal layout ──── */
+  .pp-hero-card {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 8px 20px;
+    padding: 22px 24px;
+    margin-bottom: 12px;
+  }
+
+  .pp-hero-top {
+    order: 1;
+    flex: 1;
+    min-width: 0;
+    margin-bottom: 0;
+  }
+
+  .pp-bio {
+    order: 3;
+    flex-basis: 100%;
+    margin-bottom: 0;
+    margin-top: 2px;
+  }
+
+  .pp-hero-actions {
+    order: 2;
+    flex-shrink: 0;
+    flex-direction: column;
+    width: auto;
+    gap: 8px;
+    align-self: flex-start;
+  }
+
+  .pp-btn-edit {
+    flex: none;
+    width: auto;
+    min-width: 148px;
+    padding: 9px 18px;
+  }
+
+  /* ── Unified 6-tile stats grid ── */
+  #pp-stats-unified {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  #pp-stats-unified .pp-currency-row,
+  #pp-stats-unified .pp-stats-row {
+    display: contents;
+  }
+
+  /* All 6 tiles: uniform height and style */
+  #pp-stats-unified .pp-currency-pill,
+  #pp-stats-unified .pp-stat-item {
+    min-height: 72px;
+    border-radius: 14px;
+    padding: 12px 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    justify-content: center;
+    text-align: left;
+  }
+
+  #pp-stats-unified .pp-stat-item {
+    text-align: center;
+    align-items: center;
+  }
+
+  #pp-stats-unified .pp-stat-item strong { font-size: 22px; }
+
+  #pp-stats-unified .pp-cp-val { font-size: 22px; }
+}
+
 /* ── 1400px+ ───────────────────────────────────────────────── */
 @media (min-width: 1400px) {
   :root { --sidebar-w: 240px; }
@@ -267,6 +384,8 @@
   .shop-inner { padding: 32px 60px 60px; }
   .teams-inner { padding: 32px 60px 60px; }
   .char-inner { padding: 32px 60px 60px; }
+
+  .pp-page { padding: 32px 60px 60px; }
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -405,9 +524,19 @@
 [data-theme="light"] .q-card,
 [data-theme="light"] .quiz-inner { color: var(--text); }
 
-/* ── Dark desktop: body gets a hair darker for sidebar contrast ─ */
+/* ── Dark desktop: body darker for sidebar contrast ─────────── */
 @media (min-width: 960px) {
   :root:not([data-theme="light"]) body { background: #070707; }
-  :root:not([data-theme="light"]) .nav { background: #000000; }
+  /* Dark navy sidebar (replaces pure black) */
+  :root:not([data-theme="light"]) .nav {
+    background: #07101e;
+    border-right-color: rgba(0,237,181,.12);
+  }
+  :root:not([data-theme="light"]) .nav-item.active {
+    background: rgba(0,237,181,.14);
+  }
+  :root:not([data-theme="light"]) .nav-item:hover {
+    background: rgba(0,237,181,.08);
+  }
   :root:not([data-theme="light"]) .screen { background: var(--bg); }
 }

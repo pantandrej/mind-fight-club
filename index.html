@@ -1440,6 +1440,7 @@
 
     <!-- ── PASSPORT (authenticated) ── -->
     <div id="profile-passport-content">
+    <div id="pp-col-left">
 
       <!-- HERO CARD -->
       <div class="pp-hero-card">
@@ -1469,30 +1470,30 @@
         </div>
       </div>
 
-      <!-- XP + NEURONS -->
-      <div class="pp-currency-row">
-        <div class="pp-currency-pill">
-          <span class="pp-cp-icon">⭐</span>
-          <div class="pp-cp-body">
-            <div id="pp-xp-val" class="pp-cp-val">0</div>
-            <div id="pp-rank-txt" class="pp-cp-lbl">XP · Новобранец</div>
+      <!-- XP + NEURONS + STATS (unified stats block) -->
+      <div id="pp-stats-unified">
+        <div class="pp-currency-row">
+          <div class="pp-currency-pill">
+            <span class="pp-cp-icon">⭐</span>
+            <div class="pp-cp-body">
+              <div id="pp-xp-val" class="pp-cp-val">0</div>
+              <div id="pp-rank-txt" class="pp-cp-lbl">XP · Новобранец</div>
+            </div>
+          </div>
+          <div class="pp-currency-pill pp-neurons-pill">
+            <span class="pp-cp-icon" style="color:var(--gold)">⚡</span>
+            <div class="pp-cp-body">
+              <div id="n-profile" class="pp-cp-val" style="color:var(--gold)">0</div>
+              <div class="pp-cp-lbl">Нейроны</div>
+            </div>
           </div>
         </div>
-        <div class="pp-currency-pill pp-neurons-pill">
-          <span class="pp-cp-icon" style="color:var(--gold)">⚡</span>
-          <div class="pp-cp-body">
-            <div id="n-profile" class="pp-cp-val" style="color:var(--gold)">0</div>
-            <div class="pp-cp-lbl">Нейроны</div>
-          </div>
+        <div class="pp-stats-row">
+          <div class="pp-stat-item"><strong id="ps-games">—</strong><span id="ps-games-lbl">Игры</span></div>
+          <div class="pp-stat-item"><strong id="ps-acc">—</strong><span id="ps-acc-lbl">Точность</span></div>
+          <div class="pp-stat-item"><strong id="ps-streak">—</strong><span>Серия</span></div>
+          <div class="pp-stat-item"><strong id="ps-duels">—</strong><span id="ps-duels-lbl">Дуэли</span></div>
         </div>
-      </div>
-
-      <!-- STATS -->
-      <div class="pp-stats-row">
-        <div class="pp-stat-item"><strong id="ps-games">—</strong><span id="ps-games-lbl">Игры</span></div>
-        <div class="pp-stat-item"><strong id="ps-acc">—</strong><span id="ps-acc-lbl">Точность</span></div>
-        <div class="pp-stat-item"><strong id="ps-streak">—</strong><span>Серия</span></div>
-        <div class="pp-stat-item"><strong id="ps-duels">—</strong><span id="ps-duels-lbl">Дуэли</span></div>
       </div>
 
       <!-- TEAM -->
@@ -1516,6 +1517,9 @@
           <div id="duel-history-list" style="display:flex;flex-direction:column;gap:8px"></div>
         </div>
       </div>
+
+    </div><!-- /pp-col-left -->
+    <div id="pp-col-right">
 
       <!-- ACHIEVEMENTS -->
       <div id="profile-badges-grid" style="display:none"></div>
@@ -1581,6 +1585,7 @@
         </button>
       </div>
 
+    </div><!-- /pp-col-right -->
     </div><!-- /profile-passport-content -->
 
     <!-- ── HIDDEN LEGACY IDs (JS compatibility) ── -->
