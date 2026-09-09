@@ -136,9 +136,12 @@ BEGIN
   FROM   jsonb_array_elements_text(p_answers) WITH ORDINALITY AS x(val, ord);
 
   -- ── INSERT — server forces is_competitive_secret = true ──────────
+  -- answers_json is the canonical NOT NULL column (all existing inserts use it).
+  -- answers_ru is a nullable alias; write both for full compatibility.
   INSERT INTO questions (
     question_text,
     question_ru,
+    answers_json,
     answers_ru,
     correct_index,
     category,
@@ -150,6 +153,7 @@ BEGIN
   ) VALUES (
     trim(p_question_text),
     trim(p_question_text),
+    v_answers,
     v_answers,
     p_correct_index,
     v_cat,
@@ -373,13 +377,14 @@ BEGIN
     v_expl := v_item->>'explanation';
 
     -- ── INSERT ────────────────────────────────────────────────────
+    -- answers_json is the canonical NOT NULL column.
     BEGIN
       INSERT INTO questions (
-        question_text, question_ru, answers_ru, correct_index,
+        question_text, question_ru, answers_json, answers_ru, correct_index,
         category, explanation_ru, question_type, source_type,
         status, is_competitive_secret
       ) VALUES (
-        v_qtext, v_qtext, v_answers, v_correct,
+        v_qtext, v_qtext, v_answers, v_answers, v_correct,
         v_category, v_expl, 'multiple_choice', 'competitive',
         'active', true
       )
