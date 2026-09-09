@@ -1588,7 +1588,7 @@ async function showShareScreen(){
   document.getElementById('sh-wa').textContent = lang==='ru'?'Поделиться в WhatsApp':'Share to WhatsApp';
   document.getElementById('sh-copy').textContent = lang==='ru'?'Скопировать':'Copy';
   document.getElementById('sh-duel').textContent = lang==='ru'?'Вызвать на дуэль':'Challenge a friend';
-  const shTeam = document.getElementById('sh-team'); if (shTeam) shTeam.textContent = lang==='ru'?'Вступить в клуб':'Join / create club';
+  const shTeam = document.getElementById('sh-team'); if (shTeam) shTeam.textContent = lang==='ru'?'Вступить в команду':'Join / create team';
   document.getElementById('sh-home').textContent = lang==='ru'?'← На главную':'← Back to home';
   showScreen('share');
 }

@@ -5,7 +5,7 @@ import { track } from '../services/analytics.js';
 // ── Friend Battle (Duel) ─────────────────────────────────────────
 // 1v1 real-time duel: create room, join by code, 5 questions (BATTLE_QUESTION_PROGRESSION).
 // Shares battle limit counter with matchmaking and bot opponents
-// (PLAN_LIMITS.free.battlesPerDay = 3, premium = 15).
+// (PLAN_LIMITS.free.battlesPerDay = 3, premium = 10).
 // Tournaments are NOT counted in this limit.
 // Social bonus: one incoming challenge from a new opponent/day
 // is allowed above the limit for virality — no reward farming.
