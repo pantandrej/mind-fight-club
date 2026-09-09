@@ -2087,12 +2087,16 @@ async function adminLoadSecretCounts(){
     const counts = data.counts || {};
     const total  = data.total  || 0;
 
-    // Check duel readiness: at least 1 of each type 2–6
+    // TECHNICAL: at least 1 of each type 2–6
     const missingTypes = [2,3,4,5,6].filter(n => !(counts[n] >= 1));
-    const ready = missingTypes.length === 0;
-    const readinessHtml = ready
-      ? '<div style="color:var(--green);font-size:12px;font-weight:700;margin-top:4px">✅ Дуэли: технически готовы</div>'
-      : '<div style="color:var(--red);font-size:12px;font-weight:700;margin-top:4px">⛔ Дуэли: не хватает типов ' + missingTypes.join(', ') + '</div>';
+    const techReady = missingTypes.length === 0;
+    // LAUNCH: all targets met (30/50/100/50/30)
+    const launchReady = techReady && [2,3,4,5,6].every(n => (counts[n] || 0) >= _SECRET_TARGETS[n]);
+    const readinessHtml = launchReady
+      ? '<div style="color:var(--green);font-size:12px;font-weight:700;margin-top:4px">🚀 Пул готов к запуску</div>'
+      : techReady
+        ? '<div style="color:var(--gold,#f59e0b);font-size:12px;font-weight:700;margin-top:4px">✅ Дуэли технически доступны — добавьте вопросы до целей</div>'
+        : '<div style="color:var(--red);font-size:12px;font-weight:700;margin-top:4px">⛔ Дуэли: не хватает типов ' + missingTypes.join(', ') + '</div>';
 
     const rows = [2,3,4,5,6].map(n => {
       const have   = counts[n] || 0;
@@ -2179,6 +2183,22 @@ async function adminSaveSecretQuestion(){
   adminLoadSecretCounts();
 }
 
+const _VALID_CATEGORIES = new Set(['GENERAL','SCIENCE','HISTORY','GEOGRAPHY','CULTURE','SPORT','TECH','MUSIC','CINEMA','FOOD']);
+
+function adminCopyImportTemplate(){
+  const tpl = JSON.stringify([
+    {"question_text":"На какой планете находится самый высокий вулкан в Солнечной системе?","answers":["Марс","Венера"],"correct_index":0,"category":"SCIENCE","explanation":"Олимп (Olympus Mons) — около 22 км"},
+    {"question_text":"Сколько игроков в команде по классическому волейболу на площадке?","answers":["5","6","7"],"correct_index":1,"category":"SPORT"},
+    {"question_text":"Какой город является столицей Австралии?","answers":["Сидней","Мельбурн","Канберра","Брисбен"],"correct_index":2,"category":"GEOGRAPHY"},
+    {"question_text":"Кто написал роман «Мастер и Маргарита»?","answers":["Достоевский","Булгаков","Пастернак","Толстой","Чехов"],"correct_index":1,"category":"CULTURE"},
+    {"question_text":"В каком году была основана компания Apple?","answers":["1972","1974","1976","1978","1980","1984"],"correct_index":2,"category":"TECH"}
+  ], null, 2);
+  navigator.clipboard?.writeText(tpl).then(() => toast('📋 Шаблон скопирован')).catch(() => {
+    const ta = document.getElementById('admin-secret-json');
+    if(ta){ ta.value = tpl; toast('Шаблон вставлен в поле'); }
+  });
+}
+
 async function adminBulkImportCompetitive(){
   const raw     = (document.getElementById('admin-secret-json')?.value || '').trim();
   const resultEl = document.getElementById('admin-secret-bulk-result');
@@ -2189,6 +2209,40 @@ async function adminBulkImportCompetitive(){
   catch(e){ toast('❌ Невалидный JSON: ' + e.message); return; }
 
   if(!Array.isArray(parsed) || !parsed.length){ toast('Пустой массив'); return; }
+
+  // Client-side pre-validation
+  const preErrors = [];
+  const seenTexts = new Set();
+  parsed.forEach((q, i) => {
+    const row = i + 1;
+    const text = (q.question_text || q.question || '').trim();
+    if(!text) preErrors.push('Строка ' + row + ': пустой текст вопроса');
+    else if(seenTexts.has(text.toLowerCase())) preErrors.push('Строка ' + row + ': дубликат внутри пачки');
+    else seenTexts.add(text.toLowerCase());
+    if(!Array.isArray(q.answers) || q.answers.length < 2 || q.answers.length > 6)
+      preErrors.push('Строка ' + row + ': answers должен быть массивом из 2–6 элементов');
+    const ci = q.correct_index;
+    if(ci === undefined || ci === null || typeof ci !== 'number' || !Number.isInteger(ci) || ci < 0 || ci >= (q.answers?.length || 0))
+      preErrors.push('Строка ' + row + ': некорректный correct_index');
+    if(q.category && !_VALID_CATEGORIES.has(q.category))
+      preErrors.push('Строка ' + row + ': неизвестная категория "' + q.category + '"');
+  });
+
+  if(preErrors.length){
+    resultEl.style.display = 'block';
+    const wrap = document.createElement('div');
+    wrap.innerHTML = '<b style="color:var(--red)">Ошибки перед отправкой (' + preErrors.length + '):</b>';
+    preErrors.slice(0,10).forEach(msg => {
+      const row = document.createElement('div');
+      row.style.color = 'var(--red)';
+      row.style.fontSize = '11px';
+      row.appendChild(document.createTextNode(msg));
+      wrap.appendChild(row);
+    });
+    if(preErrors.length > 10){ const more = document.createElement('div'); more.style.color='var(--muted)'; more.textContent = '… и ещё ' + (preErrors.length-10); wrap.appendChild(more); }
+    resultEl.appendChild(wrap);
+    return;
+  }
 
   toast('⏳ Импортируем ' + parsed.length + ' вопросов...');
   const {data, error} = await sb.rpc('bulk_import_competitive', { p_questions: parsed });

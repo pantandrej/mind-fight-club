@@ -186,6 +186,24 @@ function startDuelPoll(){
   },2000);
 }
 
+function showDuelComingSoonScreen(){
+  const screen = document.getElementById('friend-battle-screen') || document.body;
+  const overlay = document.createElement('div');
+  overlay.id = 'duel-coming-soon-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:var(--bg,#0d1b2a)';
+  overlay.innerHTML = `
+    <div style="text-align:center;padding:40px 32px;max-width:340px">
+      <div style="font-size:52px;margin-bottom:16px">⚔️</div>
+      <div style="font-size:22px;font-weight:800;color:var(--text,#fff);margin-bottom:10px;line-height:1.25">Дуэли готовятся<br>к запуску</div>
+      <div style="font-size:15px;color:var(--muted,#7a8a9a);margin-bottom:28px;line-height:1.5">Мы наполняем защищённый пул вопросов. Совсем скоро!</div>
+      <button onclick="document.getElementById('duel-coming-soon-overlay').remove()"
+        style="padding:13px 32px;background:var(--accent,#7c3aed);border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">
+        Понятно
+      </button>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
 async function startDuelGame(){
   // HOST triggers start. start_duel() atomically checks BOTH players' limits,
   // selects questions, inserts game_sessions, and transitions READY→STARTED.
@@ -200,7 +218,7 @@ async function startDuelGame(){
     } else if (errCode === 'guest_limit_reached') {
       window.toast?.('У соперника закончился лимит дуэлей на сегодня.');
     } else if (errCode === 'not_enough_secure_questions') {
-      window.toast?.('⚠️ Недостаточно вопросов для безопасной дуэли. Попробуйте позже.');
+      showDuelComingSoonScreen();
     } else if (errCode === 'not_ready') {
       window.toast?.('Дождитесь, пока соперник присоединится.');
     } else {

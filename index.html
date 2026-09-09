@@ -1800,10 +1800,16 @@
         <textarea id="admin-secret-json" placeholder='[{"question_text":"...","answers":["A","B","C","D"],"correct_index":0,"category":"GENERAL"}]'
           rows="4" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:11px;font-family:monospace;resize:vertical;box-sizing:border-box"></textarea>
         <div id="admin-secret-bulk-result" style="display:none;margin-top:6px;font-size:11px;padding:8px;background:var(--bg3);border-radius:8px;color:var(--text)"></div>
-        <button onclick="adminBulkImportCompetitive()"
-          style="margin-top:6px;width:100%;padding:9px;background:rgba(168,85,247,.15);border:1px solid rgba(168,85,247,.4);border-radius:10px;color:rgba(168,85,247,1);font-weight:700;font-size:13px;cursor:pointer;font-family:inherit">
-          Импортировать
-        </button>
+        <div style="display:flex;gap:6px;margin-top:6px">
+          <button onclick="adminCopyImportTemplate()"
+            style="flex:0 0 auto;padding:9px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;color:var(--muted);font-weight:600;font-size:12px;cursor:pointer;font-family:inherit">
+            Скопировать шаблон
+          </button>
+          <button onclick="adminBulkImportCompetitive()"
+            style="flex:1;padding:9px;background:rgba(168,85,247,.15);border:1px solid rgba(168,85,247,.4);border-radius:10px;color:rgba(168,85,247,1);font-weight:700;font-size:13px;cursor:pointer;font-family:inherit">
+            Импортировать
+          </button>
+        </div>
       </div>
     </div>
 
