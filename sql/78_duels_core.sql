@@ -266,13 +266,117 @@ $$;
 REVOKE ALL ON FUNCTION get_duel(text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION get_duel(text) TO authenticated;
 
+-- ── 8a. INTERNAL HELPER: _check_duel_battle_eligibility() ───────────────
+-- Canonical battle eligibility check — same rules as start_game_session,
+-- without advisory lock and without INSERT. Called inside start_duel() only.
+--
+-- Canonical limits (mirroring start_game_session exactly):
+--   free    → 3 battles/day
+--   premium → 10 battles/day
+-- Day: (NOW() AT TIME ZONE 'UTC')::DATE — same UTC day boundary.
+-- Counter: mode IN (friend_battle, random_battle, virtual_battle) AND social_bonus=false.
+--
+-- Social bonus (same rules as start_game_session):
+--   Allowed only when a valid accepted battle_invite exists AND social_bonus
+--   not yet used today. Consumes the invite (marks expired) only at commit
+--   time in start_duel(), NOT here.
+--   Friend Duel v1 always passes p_invite_id=NULL → social bonus never triggers.
+--   This is an explicit v1 product decision: social bonus for Friend Duel
+--   requires wiring the invite flow to duel creation (future work).
+--
+-- Does NOT consume quota. Does NOT modify any table.
+-- REVOKE FROM PUBLIC: internal to migration 78 only.
+CREATE OR REPLACE FUNCTION _check_duel_battle_eligibility(
+  p_user_id     uuid,
+  p_opponent_id uuid DEFAULT NULL,
+  p_invite_id   uuid DEFAULT NULL
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_day          DATE    := (NOW() AT TIME ZONE 'UTC')::DATE;
+  v_plan         TEXT;
+  v_battle_limit INTEGER;
+  v_battles_used INTEGER;
+  v_social_used  INTEGER;
+BEGIN
+  SELECT get_user_plan(p_user_id) INTO v_plan;
+
+  -- Same limit table as start_game_session
+  v_battle_limit := CASE WHEN v_plan = 'premium' THEN 10 ELSE 3 END;
+
+  SELECT COUNT(*) INTO v_battles_used
+  FROM game_sessions
+  WHERE user_id    = p_user_id
+    AND day_utc    = v_day
+    AND mode IN ('friend_battle', 'random_battle', 'virtual_battle')
+    AND social_bonus = false;
+
+  IF v_battles_used < v_battle_limit THEN
+    RETURN jsonb_build_object(
+      'allowed',      true,
+      'plan',         v_plan,
+      'used',         v_battles_used,
+      'limit',        v_battle_limit,
+      'social_bonus', false
+    );
+  END IF;
+
+  -- Over base limit: check social bonus (same logic as start_game_session)
+  IF p_invite_id IS NOT NULL AND p_opponent_id IS NOT NULL THEN
+    IF EXISTS (
+      SELECT 1 FROM battle_invites
+      WHERE id          = p_invite_id
+        AND receiver_id = p_user_id
+        AND sender_id   = p_opponent_id
+        AND status      = 'accepted'
+    ) THEN
+      SELECT COUNT(*) INTO v_social_used
+      FROM game_sessions
+      WHERE user_id    = p_user_id
+        AND day_utc    = v_day
+        AND social_bonus = true;
+      IF v_social_used < 1 THEN
+        RETURN jsonb_build_object(
+          'allowed',      true,
+          'plan',         v_plan,
+          'used',         v_battles_used,
+          'limit',        v_battle_limit,
+          'social_bonus', true
+        );
+      END IF;
+    END IF;
+  END IF;
+
+  RETURN jsonb_build_object(
+    'allowed',      false,
+    'plan',         v_plan,
+    'used',         v_battles_used,
+    'limit',        v_battle_limit,
+    'social_bonus', false
+  );
+END;
+$$;
+-- Internal only — not callable by users or anon
+REVOKE ALL ON FUNCTION _check_duel_battle_eligibility(uuid, uuid, uuid) FROM PUBLIC, anon;
+
 -- ── 8. RPC: start_duel(p_code) ───────────────────────────────────────────
 -- Host triggers start. SERVER atomically:
---   1. Validates room state and guest presence
---   2. Checks battle limit for BOTH host and guest (advisory lock per user)
---   3. Selects secret questions (is_competitive_secret=true)
---   4. Only if ALL checks pass: inserts game_sessions for both players, starts room
--- IMPORTANT: if question pool is empty, zero sessions are created (limit untouched).
+--   1. Lock room FOR UPDATE
+--   2. Validate host/guest/status
+--   3. Lock both users in deterministic UUID order (prevents A↔B deadlock)
+--   4. Check host eligibility via _check_duel_battle_eligibility()
+--   5. Check guest eligibility via _check_duel_battle_eligibility()
+--   6. STAGE full question set into local arrays (NO duel_question_assignments
+--      writes until all 5 slots confirmed — any pool failure → zero assignments)
+--   7. DELETE old assignments, INSERT all staged assignments
+--   8. INSERT game_sessions for both players (consume quota)
+--   9. UPDATE duel_rooms status='started'
+-- Invariant on any failure: zero new game_sessions, room stays READY,
+--   zero partial duel_question_assignments from this attempt.
 -- Error codes: host_limit_reached | guest_limit_reached | not_enough_secure_questions
 CREATE OR REPLACE FUNCTION start_duel(p_code text)
 RETURNS jsonb
@@ -283,9 +387,17 @@ AS $$
 DECLARE
   _uid              uuid := auth.uid();
   _room             duel_rooms%ROWTYPE;
-  _progression      int[] := ARRAY[2, 3, 4, 5, 6];
+  v_day             DATE := (NOW() AT TIME ZONE 'UTC')::DATE;
+  _host_elig        jsonb;
+  _guest_elig       jsonb;
+  -- Staged question data (collected before any INSERT)
+  _progression      int[]   := ARRAY[2, 3, 4, 5, 6];
   _opt_count        int;
-  _used_ids         uuid[] := ARRAY[]::uuid[];
+  _used_ids         uuid[]  := ARRAY[]::uuid[];
+  _staged_ids       uuid[]  := ARRAY[]::uuid[];
+  _staged_corrects  int[]   := ARRAY[]::int[];
+  _staged_times     int[]   := ARRAY[]::int[];
+  _staged_json      jsonb   := '[]'::jsonb; -- sanitized client payload
   _q_id             uuid;
   _q_text           text;
   _q_answers        jsonb;
@@ -293,15 +405,9 @@ DECLARE
   _q_correct        int;
   _q_time           int;
   _idx              int := 0;
-  _qs_out           jsonb := '[]'::jsonb;
   _expires_min      int := 15;
-  -- Limit check vars
-  _host_plan        text;
-  _guest_plan       text;
-  _host_limit       int;
-  _guest_limit      int;
-  _host_used        int;
-  _guest_used       int;
+  _lock_first       uuid;
+  _lock_second      uuid;
 BEGIN
   IF _uid IS NULL THEN
     RETURN jsonb_build_object('ok', false, 'error', 'unauthenticated');
@@ -324,39 +430,36 @@ BEGIN
     RETURN jsonb_build_object('ok', false, 'error', 'no_guest');
   END IF;
 
-  -- ── Host battle limit check ──────────────────────────────────────
-  -- Advisory lock prevents concurrent double-charge for this user/day
-  PERFORM pg_advisory_xact_lock(hashtext(_room.host_user_id::TEXT || ':' || CURRENT_DATE::TEXT || ':battle'));
-  _host_plan  := get_user_plan(_room.host_user_id);
-  _host_limit := CASE WHEN _host_plan = 'premium' THEN 10 ELSE 3 END;
-  SELECT COUNT(*) INTO _host_used
-  FROM game_sessions
-  WHERE user_id    = _room.host_user_id
-    AND day_utc    = CURRENT_DATE
-    AND mode IN ('friend_battle', 'random_battle', 'virtual_battle')
-    AND social_bonus = false;
-  IF _host_used >= _host_limit THEN
+  -- ── Deterministic advisory lock order ────────────────────────────
+  -- Lock the user with the lexicographically smaller UUID first to prevent
+  -- A↔B deadlock when two rooms have the same two players in opposite roles.
+  IF _room.host_user_id::TEXT < _room.guest_user_id::TEXT THEN
+    _lock_first  := _room.host_user_id;
+    _lock_second := _room.guest_user_id;
+  ELSE
+    _lock_first  := _room.guest_user_id;
+    _lock_second := _room.host_user_id;
+  END IF;
+  PERFORM pg_advisory_xact_lock(hashtext(_lock_first::TEXT  || ':' || v_day::TEXT || ':battle'));
+  PERFORM pg_advisory_xact_lock(hashtext(_lock_second::TEXT || ':' || v_day::TEXT || ':battle'));
+
+  -- ── Eligibility: host ─────────────────────────────────────────────
+  -- No invite_id for Friend Duel v1 → social bonus never triggered (explicit decision).
+  _host_elig := _check_duel_battle_eligibility(_room.host_user_id, _room.guest_user_id, NULL);
+  IF NOT (_host_elig->>'allowed')::boolean THEN
     RETURN jsonb_build_object('ok', false, 'error', 'host_limit_reached');
   END IF;
 
-  -- ── Guest battle limit check ─────────────────────────────────────
-  PERFORM pg_advisory_xact_lock(hashtext(_room.guest_user_id::TEXT || ':' || CURRENT_DATE::TEXT || ':battle'));
-  _guest_plan  := get_user_plan(_room.guest_user_id);
-  _guest_limit := CASE WHEN _guest_plan = 'premium' THEN 10 ELSE 3 END;
-  SELECT COUNT(*) INTO _guest_used
-  FROM game_sessions
-  WHERE user_id    = _room.guest_user_id
-    AND day_utc    = CURRENT_DATE
-    AND mode IN ('friend_battle', 'random_battle', 'virtual_battle')
-    AND social_bonus = false;
-  IF _guest_used >= _guest_limit THEN
+  -- ── Eligibility: guest ────────────────────────────────────────────
+  _guest_elig := _check_duel_battle_eligibility(_room.guest_user_id, _room.host_user_id, NULL);
+  IF NOT (_guest_elig->>'allowed')::boolean THEN
     RETURN jsonb_build_object('ok', false, 'error', 'guest_limit_reached');
   END IF;
 
-  -- ── Question selection ────────────────────────────────────────────
-  -- Happens BEFORE session inserts: pool failure leaves no sessions (limit untouched).
-  DELETE FROM duel_question_assignments WHERE duel_code = p_code;
-
+  -- ── Stage full question set (validate first, mutate second) ──────
+  -- All 5 slots must be found before any duel_question_assignments INSERT.
+  -- If any slot is missing → return not_enough_secure_questions with
+  -- zero assignments written and zero sessions created.
   FOREACH _opt_count IN ARRAY _progression
   LOOP
     SELECT
@@ -384,7 +487,7 @@ BEGIN
     LIMIT 1;
 
     IF NOT FOUND OR _q_id IS NULL THEN
-      -- Pool exhausted — no sessions created, limit untouched. SAFE + disabled > insecure.
+      -- Pool empty for this opt_count. Zero assignments written, zero sessions.
       RETURN jsonb_build_object(
         'ok', false,
         'error', 'not_enough_secure_questions',
@@ -397,24 +500,37 @@ BEGIN
       WHEN 5 THEN 45 WHEN 6 THEN 50 ELSE 30
     END;
 
-    INSERT INTO duel_question_assignments (duel_code, question_idx, question_id, correct_index, question_time)
-    VALUES (p_code, _idx, _q_id, _q_correct, _q_time);
-
-    _qs_out := _qs_out || jsonb_build_array(jsonb_build_object(
+    -- Accumulate into local arrays only — no DB write yet
+    _staged_ids      := _staged_ids     || ARRAY[_q_id];
+    _staged_corrects := _staged_corrects || ARRAY[_q_correct];
+    _staged_times    := _staged_times   || ARRAY[_q_time];
+    _staged_json     := _staged_json || jsonb_build_array(jsonb_build_object(
       'idx', _idx, 'cat', _q_category, 'q', _q_text, 'a', _q_answers, 't', _q_time
     ));
-
     _used_ids := _used_ids || ARRAY[_q_id];
     _idx := _idx + 1;
   END LOOP;
 
-  -- ── All checks passed — consume quota and start ──────────────────
+  -- ── All 5 slots found — now commit persistently ──────────────────
+  -- Clear any stale assignments from a previous attempt first
+  DELETE FROM duel_question_assignments WHERE duel_code = p_code;
+
+  -- Bulk insert all staged assignments
+  FOR _idx IN 1..array_length(_staged_ids, 1)
+  LOOP
+    INSERT INTO duel_question_assignments (duel_code, question_idx, question_id, correct_index, question_time)
+    VALUES (p_code, _idx - 1, _staged_ids[_idx], _staged_corrects[_idx], _staged_times[_idx]);
+  END LOOP;
+
+  -- Create game_sessions for both players (consume quota)
+  -- social_bonus from eligibility check (always false in v1 — no invite_id passed)
   INSERT INTO game_sessions (user_id, mode, day_utc, opponent_id, social_bonus)
-  VALUES (_room.host_user_id, 'friend_battle', CURRENT_DATE, _room.guest_user_id, false);
+  VALUES (_room.host_user_id,  'friend_battle', v_day, _room.guest_user_id, (_host_elig->>'social_bonus')::boolean);
 
   INSERT INTO game_sessions (user_id, mode, day_utc, opponent_id, social_bonus)
-  VALUES (_room.guest_user_id, 'friend_battle', CURRENT_DATE, _room.host_user_id, false);
+  VALUES (_room.guest_user_id, 'friend_battle', v_day, _room.host_user_id,  (_guest_elig->>'social_bonus')::boolean);
 
+  -- Transition room
   UPDATE duel_rooms SET
     status       = 'started',
     started_at   = now(),
@@ -431,7 +547,7 @@ BEGIN
 
   RETURN jsonb_build_object(
     'ok',        true,
-    'questions', _qs_out,
+    'questions', _staged_json,
     'expires_at', (now() + (_expires_min || ' minutes')::interval)
   );
 END;
