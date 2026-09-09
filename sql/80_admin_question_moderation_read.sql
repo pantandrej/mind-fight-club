@@ -173,7 +173,7 @@ BEGIN
   p_limit := GREATEST(1, LEAST(p_limit, 5000));
 
   -- ── Validate mode ────────────────────────────────────────────────
-  IF p_mode NOT IN ('general','community','import','pack','fix','overlay') THEN
+  IF p_mode NOT IN ('general','community','import','pack','fix','overlay','community_admin','import_list') THEN
     RETURN jsonb_build_object('ok', false, 'reason', 'unknown_mode');
   END IF;
 
@@ -379,6 +379,46 @@ BEGIN
     ) t;
     RETURN jsonb_build_object('ok', true, 'rows', COALESCE(v_rows, '[]'::jsonb));
 
+  -- ════════════════════════════════════════════════════════════════
+  ELSIF p_mode = 'community_admin' THEN
+  -- ════════════════════════════════════════════════════════════════
+    -- Admin community panel: community questions ordered by rating
+    -- Fields match loadAdminCommunity() consumer: id, question_ru, status,
+    -- avg_rating, play_count, report_count, author_user_id, created_at
+    SELECT COALESCE(jsonb_agg(row_to_json(t)), '[]'::jsonb)
+    INTO   v_rows
+    FROM (
+      SELECT id, question_ru, status,
+             COALESCE(avg_rating, 0)     AS avg_rating,
+             COALESCE(play_count, 0)     AS play_count,
+             COALESCE(report_count, 0)   AS report_count,
+             author_user_id, created_at
+      FROM questions
+      WHERE source_type = 'community'
+        AND status NOT IN ('archived_unsupported', 'archived')
+        AND is_competitive_secret = false
+      ORDER BY avg_rating DESC NULLS LAST
+      LIMIT LEAST(p_limit, 100)
+    ) t;
+    RETURN jsonb_build_object('ok', true, 'rows', COALESCE(v_rows, '[]'::jsonb));
+
+  -- ════════════════════════════════════════════════════════════════
+  ELSIF p_mode = 'import_list' THEN
+  -- ════════════════════════════════════════════════════════════════
+    -- Admin imports list: compact per-question data for batch grouping
+    -- Fields: id, import_key, status, category, source_type, created_at
+    SELECT COALESCE(jsonb_agg(row_to_json(t)), '[]'::jsonb)
+    INTO   v_rows
+    FROM (
+      SELECT id, import_key, status, category, source_type, created_at
+      FROM questions
+      WHERE import_key IS NOT NULL
+        AND is_competitive_secret = false
+      ORDER BY created_at DESC
+      LIMIT LEAST(p_limit, 5000)
+    ) t;
+    RETURN jsonb_build_object('ok', true, 'rows', COALESCE(v_rows, '[]'::jsonb));
+
   END IF;
 
   -- Unreachable; mode validated above
@@ -389,3 +429,172 @@ $$;
 REVOKE ALL ON FUNCTION admin_get_questions_for_tester(text, text, int) FROM PUBLIC;
 REVOKE ALL ON FUNCTION admin_get_questions_for_tester(text, text, int) FROM anon;
 GRANT  EXECUTE ON FUNCTION admin_get_questions_for_tester(text, text, int) TO authenticated;
+
+-- ════════════════════════════════════════════════════════════════
+-- RPC 3: admin_get_question_admin_stats
+-- ════════════════════════════════════════════════════════════════
+-- Covers aggregate/inspection needs for admin screens that previously
+-- used direct sb.from('questions') count/head queries or row reads:
+--   - runHealthCheck         → 'health_counts' + 'health_media'
+--   - tournamentPreflight    → 'tournament_media_count'
+--   - adminPublishImport     → 'import_post_count' + 'import_find_one'
+--   - runDBQualityCheck      → 'quality_counts'
+--
+-- Actions with p_key semantics:
+--   health_counts             p_key ignored
+--   health_media              p_key ignored
+--   quality_counts            p_key ignored
+--   tournament_media_count    p_key = JSON array of UUID strings
+--   import_post_count         p_key = batch key prefix
+--   import_find_one           p_key = batch key prefix
+-- ════════════════════════════════════════════════════════════════
+
+CREATE OR REPLACE FUNCTION admin_get_question_admin_stats(
+  p_action text,
+  p_key    text DEFAULT NULL
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_uid  uuid := auth.uid();
+  v_ids  uuid[];
+  v_id   uuid;
+  v_result jsonb;
+BEGIN
+  -- ── Auth check ───────────────────────────────────────────────────
+  IF v_uid IS NULL THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'unauthenticated');
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM admin_users WHERE user_id = v_uid AND is_active = true
+  ) THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'not_admin');
+  END IF;
+
+  -- ════════════════════════════════════════════════════════════════
+  IF p_action = 'health_counts' THEN
+  -- ════════════════════════════════════════════════════════════════
+    -- Aggregates for runHealthCheck question stats section
+    -- Excludes competitive-secret rows from source-type counts
+    SELECT jsonb_build_object(
+      'ok',           true,
+      'og_published', (SELECT COUNT(*) FROM questions
+                       WHERE source_type = 'official_general' AND status = 'published'
+                         AND import_key NOT LIKE 'game_%' AND is_competitive_secret = false),
+      'og_draft',     (SELECT COUNT(*) FROM questions
+                       WHERE source_type = 'official_general' AND status = 'draft'
+                         AND import_key NOT LIKE 'game_%' AND is_competitive_secret = false),
+      'op_published', (SELECT COUNT(*) FROM questions
+                       WHERE source_type = 'official_pack' AND status = 'published'
+                         AND is_competitive_secret = false),
+      'op_draft',     (SELECT COUNT(*) FROM questions
+                       WHERE source_type = 'official_pack' AND status = 'draft'
+                         AND is_competitive_secret = false),
+      'community',    (SELECT COUNT(*) FROM questions WHERE source_type = 'community'),
+      'archived',     (SELECT COUNT(*) FROM questions WHERE status = 'archived_unsupported'),
+      'legacy_game',  (SELECT COUNT(*) FROM questions
+                       WHERE import_key LIKE 'game_%' AND status <> 'archived_unsupported'),
+      'invalid_mc',   (SELECT COUNT(*) FROM questions
+                       WHERE question_type = 'multiple_choice' AND status = 'published'
+                         AND correct_index IS NULL)
+    ) INTO v_result;
+    RETURN v_result;
+
+  -- ════════════════════════════════════════════════════════════════
+  ELSIF p_action = 'health_media' THEN
+  -- ════════════════════════════════════════════════════════════════
+    -- Media breakdown rows for admin media stats panel
+    SELECT jsonb_build_object(
+      'ok',   true,
+      'rows', COALESCE((
+        SELECT jsonb_agg(jsonb_build_object('media_type', media_type, 'status', status))
+        FROM questions
+        WHERE status = 'published' AND is_competitive_secret = false
+        LIMIT 2000
+      ), '[]'::jsonb)
+    ) INTO v_result;
+    RETURN v_result;
+
+  -- ════════════════════════════════════════════════════════════════
+  ELSIF p_action = 'quality_counts' THEN
+  -- ════════════════════════════════════════════════════════════════
+    -- Aggregates for runDBQualityCheck (6 checks)
+    SELECT jsonb_build_object(
+      'ok',          true,
+      'no_text',     (SELECT COUNT(*) FROM questions
+                      WHERE (question_ru IS NULL OR question_ru = '') AND status = 'published'),
+      'no_ans',      (SELECT COUNT(*) FROM questions
+                      WHERE (answers_json IS NULL OR answers_ru IS NULL) AND status = 'published'),
+      'no_ci',       (SELECT COUNT(*) FROM questions
+                      WHERE correct_index IS NULL AND status = 'published'),
+      'media_no_url',(SELECT COUNT(*) FROM questions
+                      WHERE media_type IS NOT NULL AND media_type NOT IN ('none','')
+                        AND (image_url IS NULL AND audio_url IS NULL AND video_url IS NULL)
+                        AND status = 'published'),
+      'deleted',     (SELECT COUNT(*) FROM questions WHERE status IN ('deleted','archived')),
+      'draft',       (SELECT COUNT(*) FROM questions WHERE status = 'draft')
+    ) INTO v_result;
+    RETURN v_result;
+
+  -- ════════════════════════════════════════════════════════════════
+  ELSIF p_action = 'tournament_media_count' THEN
+  -- ════════════════════════════════════════════════════════════════
+    -- Count questions (from a provided UUID list) that have media
+    -- p_key must be a JSON array of UUID strings e.g. '["uuid1","uuid2"]'
+    IF p_key IS NULL OR trim(p_key) = '' THEN
+      RETURN jsonb_build_object('ok', false, 'reason', 'p_key_required');
+    END IF;
+    BEGIN
+      SELECT ARRAY(
+        SELECT jsonb_array_elements_text(p_key::jsonb)::uuid
+      ) INTO v_ids;
+    EXCEPTION WHEN OTHERS THEN
+      RETURN jsonb_build_object('ok', false, 'reason', 'invalid_json');
+    END;
+    SELECT jsonb_build_object(
+      'ok',    true,
+      'count', (SELECT COUNT(*) FROM questions
+                WHERE id = ANY(v_ids)
+                  AND media_type IS NOT NULL AND media_type NOT IN ('none',''))
+    ) INTO v_result;
+    RETURN v_result;
+
+  -- ════════════════════════════════════════════════════════════════
+  ELSIF p_action = 'import_post_count' THEN
+  -- ════════════════════════════════════════════════════════════════
+    -- Count published questions for a batch after publish
+    IF p_key IS NULL OR trim(p_key) = '' THEN
+      RETURN jsonb_build_object('ok', false, 'reason', 'p_key_required');
+    END IF;
+    SELECT jsonb_build_object(
+      'ok',    true,
+      'count', (SELECT COUNT(*) FROM questions
+                WHERE import_key LIKE (p_key || '_%') AND status = 'published')
+    ) INTO v_result;
+    RETURN v_result;
+
+  -- ════════════════════════════════════════════════════════════════
+  ELSIF p_action = 'import_find_one' THEN
+  -- ════════════════════════════════════════════════════════════════
+    -- Return first question id for a batch key prefix (fallback pack lookup)
+    IF p_key IS NULL OR trim(p_key) = '' THEN
+      RETURN jsonb_build_object('ok', false, 'reason', 'p_key_required');
+    END IF;
+    SELECT id INTO v_id FROM questions
+    WHERE import_key LIKE (p_key || '_%')
+      AND is_competitive_secret = false
+    LIMIT 1;
+    RETURN jsonb_build_object('ok', true, 'id', v_id);
+
+  END IF;
+
+  RETURN jsonb_build_object('ok', false, 'reason', 'unknown_action');
+END;
+$$;
+
+REVOKE ALL ON FUNCTION admin_get_question_admin_stats(text, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION admin_get_question_admin_stats(text, text) FROM anon;
+GRANT  EXECUTE ON FUNCTION admin_get_question_admin_stats(text, text) TO authenticated;

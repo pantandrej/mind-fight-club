@@ -395,9 +395,9 @@
 
 /* ── Light: sidebar + header ─────────────────────────────────── */
 [data-theme="light"] .nav {
-  background: #ffffff;
+  background: #f7f8fa;
   border-right-color: rgba(0,0,0,.09);
-  box-shadow: 1px 0 0 rgba(0,0,0,.04);
+  box-shadow: 2px 0 8px rgba(0,0,0,.04);
 }
 [data-theme="light"] .hdr {
   background: #ffffff;
@@ -405,10 +405,14 @@
   box-shadow: 0 1px 3px rgba(0,0,0,.06);
 }
 [data-theme="light"] .nav-item:hover { background: rgba(0,191,150,.08); }
-[data-theme="light"] .nav-item.active { background: rgba(0,191,150,.12); }
+[data-theme="light"] .nav-item.active {
+  background: rgba(0,191,150,.13);
+  border-left: 2.5px solid var(--accent2);
+  padding-left: 9.5px;
+}
 [data-theme="light"] .nav-label { color: var(--muted); }
-[data-theme="light"] .nav-item.active .nav-label { color: var(--accent2); }
-[data-theme="light"] .nav-item.active .nav-icon { filter: drop-shadow(0 0 5px rgba(0,191,150,.5)); }
+[data-theme="light"] .nav-item.active .nav-label { color: var(--accent2); font-weight: 800; }
+[data-theme="light"] .nav-item.active .nav-icon { filter: drop-shadow(0 0 4px rgba(0,191,150,.4)); }
 
 /* ── Light: neurons pill + toast + modal ─────────────────────── */
 [data-theme="light"] .neurons-pill { background: rgba(0,191,150,.1); border-color: rgba(0,191,150,.3); }
@@ -494,6 +498,45 @@
 [data-theme="light"] .prf-action-btn:hover { border-color: rgba(0,191,150,.3); }
 [data-theme="light"] .prf-xp-track { background: rgba(0,0,0,.08); }
 [data-theme="light"] .prf-edit-card { background: rgba(0,191,150,.05); border-color: rgba(0,191,150,.2); }
+
+/* ── Light: profile hero card — replace dark navy gradient ───── */
+[data-theme="light"] .pp-hero-card {
+  background: linear-gradient(145deg, #eef9f6 0%, #ffffff 60%);
+  border-color: rgba(0,191,150,.18);
+  box-shadow: 0 2px 10px rgba(0,0,0,.06), 0 0 0 0.5px rgba(0,191,150,.12);
+}
+[data-theme="light"] .pp-name { color: #111827; }
+[data-theme="light"] .pp-bio { color: #374151; }
+[data-theme="light"] .pp-rank-badge {
+  background: rgba(0,191,150,.1);
+  border-color: rgba(0,191,150,.25);
+  color: #007a63;
+}
+[data-theme="light"] .pp-btn-edit {
+  background: rgba(0,191,150,.1);
+  border-color: rgba(0,191,150,.3);
+  color: #007a63;
+}
+[data-theme="light"] .pp-btn-share {
+  background: #f3f4f6;
+  border-color: rgba(0,0,0,.1);
+  color: #374151;
+}
+
+/* ── Light: stats tiles ─────────────────────────────────────── */
+[data-theme="light"] .pp-currency-pill,
+[data-theme="light"] .pp-stat-item {
+  background: #ffffff;
+  border-color: rgba(0,0,0,.08);
+  box-shadow: 0 1px 3px rgba(0,0,0,.05);
+}
+[data-theme="light"] .pp-neurons-pill {
+  background: rgba(201,130,10,.04);
+  border-color: rgba(201,130,10,.18);
+}
+[data-theme="light"] .pp-stat-item strong { color: #111827; }
+[data-theme="light"] .pp-cp-val { color: #111827; }
+[data-theme="light"] .pp-section-hd { color: #6b7280; }
 
 /* ── Light: auth ─────────────────────────────────────────────── */
 [data-theme="light"] .auth-inner {

@@ -1966,38 +1966,25 @@ async function runHealthCheck(){
     checks.push({label:`${t}.${c}`, ...r});
   }
 
-  // Questions stats — detailed breakdown
+  // Questions stats — via admin RPC (no direct questions table read)
   try{
-    const {count: ogPublished} = await sb.from('questions').select('*',{count:'exact',head:true})
-      .eq('source_type','official_general').eq('status','published').not('import_key','like','game_%');
-    const {count: ogDraft} = await sb.from('questions').select('*',{count:'exact',head:true})
-      .eq('source_type','official_general').eq('status','draft').not('import_key','like','game_%');
-    const {count: opPublished} = await sb.from('questions').select('*',{count:'exact',head:true})
-      .eq('source_type','official_pack').eq('status','published');
-    const {count: opDraft} = await sb.from('questions').select('*',{count:'exact',head:true})
-      .eq('source_type','official_pack').eq('status','draft');
-    const {count: community} = await sb.from('questions').select('*',{count:'exact',head:true})
-      .eq('source_type','community');
-    const {count: archived} = await sb.from('questions').select('*',{count:'exact',head:true})
-      .eq('status','archived_unsupported');
-    const {count: legacyGame} = await sb.from('questions').select('*',{count:'exact',head:true})
-      .like('import_key','game_%').not('status','eq','archived_unsupported');
-    const {count: invalidMC} = await sb.from('questions').select('*',{count:'exact',head:true})
-      .eq('question_type','multiple_choice').eq('status','published').is('correct_index',null);
+    const {data: hc, error: hcErr} = await sb.rpc('admin_get_question_admin_stats', {p_action:'health_counts'});
+    if(hcErr || !hc?.ok) throw new Error(hcErr?.message || hc?.reason || 'health_counts failed');
+    const {og_published, og_draft, op_published, op_draft, community, archived, legacy_game, invalid_mc} = hc;
 
-    const noOfficial = (ogPublished||0) === 0;
+    const noOfficial = (og_published||0) === 0;
     checks.push({
       label: noOfficial
         ? `⚠️ Нет валидных official_general published — импортируй official_general_mc.csv`
-        : `official_general published: ${ogPublished}`,
+        : `official_general published: ${og_published}`,
       ok: !noOfficial, info: !noOfficial
     });
-    checks.push({label:`official_general draft: ${ogDraft||0}`, ok:true, info:true});
-    checks.push({label:`official_pack published: ${opPublished||0}`, ok:true, info:true});
-    checks.push({label:`official_pack draft: ${opDraft||0}`, ok:true, info:true});
+    checks.push({label:`official_general draft: ${og_draft||0}`, ok:true, info:true});
+    checks.push({label:`official_pack published: ${op_published||0}`, ok:true, info:true});
+    checks.push({label:`official_pack draft: ${op_draft||0}`, ok:true, info:true});
     if(community) checks.push({label:`Community questions: ${community}`, ok:true, info:true});
-    if(legacyGame) checks.push({label:`Старые game_% (не archived): ${legacyGame} — запусти cleanup_old_imports.sql`, ok:false});
-    if(invalidMC) checks.push({label:`Invalid MC (no correct_index): ${invalidMC}`, ok:false});
+    if(legacy_game) checks.push({label:`Старые game_% (не archived): ${legacy_game} — запусти cleanup_old_imports.sql`, ok:false});
+    if(invalid_mc) checks.push({label:`Invalid MC (no correct_index): ${invalid_mc}`, ok:false});
     checks.push({label:`Archived unsupported: ${archived||0} (не мешают игре)`, ok:true, info:true});
   }catch(e){ checks.push({label:'Questions count error', ok:false, error:e.message}); }
 
@@ -2028,11 +2015,11 @@ async function tournamentPreflight(tournamentId){
     let mediaCount = 0;
     if(mediaQs && mediaQs.length){
       const ids = mediaQs.map(q=>q.question_id);
-      const {count} = await sb.from('questions')
-        .select('*',{count:'exact',head:true})
-        .in('id', ids)
-        .not('media_type','is',null);
-      mediaCount = count||0;
+      const {data: mcRes} = await sb.rpc('admin_get_question_admin_stats', {
+        p_action: 'tournament_media_count',
+        p_key:    JSON.stringify(ids),
+      });
+      mediaCount = (mcRes?.ok ? mcRes.count : 0) || 0;
     }
 
     const warnings = [];
@@ -2408,8 +2395,9 @@ async function _loadAdminDashboardInner(kpiEl, evEl){
   // ── Media question stats ──────────────────────────────
   const mediaEl = document.getElementById('admin-media-q');
   if(mediaEl){
-    // Count from DB questions table
-    const {data: qRows} = await sb.from('questions').select('media_type,status').limit(1000);
+    // Count from DB via admin RPC
+    const {data: hmRes} = await sb.rpc('admin_get_question_admin_stats', {p_action:'health_media'});
+    const qRows = (hmRes?.ok && Array.isArray(hmRes.rows)) ? hmRes.rows : [];
     const {data: localMediaQ} = {data: null}; // placeholder
     const published = (qRows||[]).filter(q=>q.status==='published');
     const imgs   = published.filter(q=>q.media_type==='image').length;
@@ -4764,12 +4752,11 @@ async function loadAdminCommunity(){
   const el = document.getElementById('admin-community-list');
   if(!el) return;
   el.innerHTML = '⏳ Загрузка...';
-  const {data: qs} = await sb.from('questions')
-    .select('id,question_ru,status,avg_rating,play_count,report_count,author_user_id,created_at')
-    .eq('source_type','community')
-    .not('status','in','(archived_unsupported,archived)')
-    .order('avg_rating',{ascending:false})
-    .limit(30);
+  const {data: caRes, error: caErr} = await sb.rpc('admin_get_questions_for_tester', {
+    p_mode: 'community_admin', p_key: null, p_limit: 100,
+  });
+  if(caErr){ el.innerHTML = `<div style="color:var(--red);font-size:12px">Ошибка: ${caErr.message}</div>`; return; }
+  const qs = caRes?.ok ? (caRes.rows || []) : [];
   if(!qs || !qs.length){
     el.innerHTML = '<div style="color:var(--muted);font-size:12px">Пока нет вопросов участников.</div>';
     return;
@@ -11316,13 +11303,13 @@ async function loadAdminImportsList(){
   el.innerHTML = '<div style="color:var(--muted);text-align:center;padding:24px">⏳ Загрузка...</div>';
 
   try{
-    // Group questions by batch key (strip _qN suffix)
-    const {data, error} = await sb.from('questions')
-      .select('id,import_key,status,category,source_type,created_at')
-      .not('import_key','is',null)
-      .order('created_at', {ascending:false})
-      .limit(3000);
+    // Group questions by batch key via admin RPC
+    const {data: ilRes, error} = await sb.rpc('admin_get_questions_for_tester', {
+      p_mode: 'import_list', p_key: null, p_limit: 5000,
+    });
     if(error) throw error;
+    if(!ilRes?.ok) throw new Error(ilRes?.reason || 'import_list failed');
+    const data = ilRes.rows || [];
 
     // Group by batch key
     const batches = {};
@@ -11393,11 +11380,12 @@ async function adminPublishImport(batchKey){
 
   //    Fallback: find pack via game_pack_questions join (legacy packs with different import_key)
   if(!packUpdated){
-    const {data: sampleQ} = await sb.from('questions')
-      .select('id').like('import_key', batchKey+'_%').limit(1);
-    if(sampleQ && sampleQ.length){
+    const {data: foRes} = await sb.rpc('admin_get_question_admin_stats', {
+      p_action: 'import_find_one', p_key: batchKey,
+    });
+    if(foRes?.ok && foRes.id){
       const {data: gpqRow} = await sb.from('game_pack_questions')
-        .select('game_pack_id').eq('question_id', sampleQ[0].id).limit(1);
+        .select('game_pack_id').eq('question_id', foRes.id).limit(1);
       if(gpqRow && gpqRow.length){
         const {error: packErr2} = await sb.from('game_packs')
           .update({status:'published'})
@@ -11409,9 +11397,11 @@ async function adminPublishImport(batchKey){
     }
   }
 
-  // 3. Count published questions
-  const {count} = await sb.from('questions').select('*',{count:'exact',head:true})
-    .like('import_key', batchKey+'_%').eq('status','published');
+  // 3. Count published questions via admin RPC
+  const {data: pcRes} = await sb.rpc('admin_get_question_admin_stats', {
+    p_action: 'import_post_count', p_key: batchKey,
+  });
+  const count = pcRes?.ok ? (pcRes.count || 0) : '?';
 
   const packMsg = packUpdated ? ' · пак опубликован' : ' · ⚠️ пак не найден в game_packs';
   toast(`✅ Опубликовано ${count||'?'} вопросов${packMsg}`);
@@ -11983,42 +11973,22 @@ async function runDBQualityCheck(){
   el.innerHTML += '<div style="margin-top:8px;font-size:10px;font-weight:800;color:var(--muted);letter-spacing:1px">🔬 КАЧЕСТВО БАЗЫ (v87):</div>';
 
   try{
-    // No question text
-    const {count:noText} = await sb.from('questions').select('*',{count:'exact',head:true})
-      .or('question_ru.is.null,question_ru.eq.').eq('status','published');
-    addRow(noText===0, `Published без текста вопроса: ${noText||0}`,
-      noText ? `showAllQuestionsAdmin('problems')` : null);
+    // All counts via single admin RPC call
+    const {data: qc, error: qcErr} = await sb.rpc('admin_get_question_admin_stats', {p_action:'quality_counts'});
+    if(qcErr || !qc?.ok) throw new Error(qcErr?.message || qc?.reason || 'quality_counts failed');
+    const {no_text, no_ans, no_ci, media_no_url, deleted, draft} = qc;
 
-    // No answers
-    const {count:noAns} = await sb.from('questions').select('*',{count:'exact',head:true})
-      .or('answers_json.is.null,answers_ru.is.null').eq('status','published');
-    addRow(noAns===0, `Published без вариантов: ${noAns||0}`,
-      noAns ? `showAllQuestionsAdmin('problems')` : null);
-
-    // No correct index
-    const {count:noCI} = await sb.from('questions').select('*',{count:'exact',head:true})
-      .is('correct_index',null).eq('status','published');
-    addRow(noCI===0, `Published без correct_index: ${noCI||0}`,
-      noCI ? `showAllQuestionsAdmin('problems')` : null);
-
-    // Media type set but no URL
-    const {count:mediaNoUrl} = await sb.from('questions').select('*',{count:'exact',head:true})
-      .not('media_type','in','(none,null)')
-      .or('image_url.is.null,audio_url.is.null,video_url.is.null')
-      .eq('status','published');
-    addRow(mediaNoUrl===0, `Published: media_type заявлен, но URL пуст: ${mediaNoUrl||0}`,
-      mediaNoUrl ? `showAllQuestionsAdmin('ph_media')` : null);
-
-    // Deleted/archived count (soft-deleted)
-    const {count:delCount} = await sb.from('questions').select('*',{count:'exact',head:true})
-      .in('status',['deleted','archived']);
-    addRow(true, `Мягко удалено/архивировано: ${delCount||0}`, null);
-
-    // Draft count
-    const {count:draftCount} = await sb.from('questions').select('*',{count:'exact',head:true})
-      .eq('status','draft');
-    addRow(null, `Draft (не видны игрокам): ${draftCount||0}`,
-      draftCount ? `showAllQuestionsAdmin('draft')` : null);
+    addRow(no_text===0, `Published без текста вопроса: ${no_text||0}`,
+      no_text ? `showAllQuestionsAdmin('problems')` : null);
+    addRow(no_ans===0, `Published без вариантов: ${no_ans||0}`,
+      no_ans ? `showAllQuestionsAdmin('problems')` : null);
+    addRow(no_ci===0, `Published без correct_index: ${no_ci||0}`,
+      no_ci ? `showAllQuestionsAdmin('problems')` : null);
+    addRow(media_no_url===0, `Published: media_type заявлен, но URL пуст: ${media_no_url||0}`,
+      media_no_url ? `showAllQuestionsAdmin('ph_media')` : null);
+    addRow(true, `Мягко удалено/архивировано: ${deleted||0}`, null);
+    addRow(null, `Draft (не видны игрокам): ${draft||0}`,
+      draft ? `showAllQuestionsAdmin('draft')` : null);
 
   }catch(e){
     el.innerHTML += `<div style="font-size:11px;color:var(--red)">❌ Ошибка quality check: ${e.message.slice(0,80)}</div>`;
