@@ -4431,82 +4431,28 @@ async function startTesterMode(mode, packImportKey){
 
   toast('⏳ Загружаем вопросы...');
 
-  let query;
+  // All question reads go through the admin-only SECURITY DEFINER RPC.
+  // correct_index is included in the response; no direct questions table access needed.
+  const pLimit = mode === 'community' ? 200 : 500;
+  const {data: res, error} = await sb.rpc('admin_get_questions_for_tester', {
+    p_mode:  mode,
+    p_key:   packImportKey || null,
+    p_limit: pLimit,
+  });
 
-  if(mode === 'fix'){
-    // Only questions with fix/bad reviews
-    const {data: reviews} = await sb.from('question_reviews')
-      .select('import_key').in('verdict',['fix','bad']);
-    if(!reviews || !reviews.length){ toast('Нет вопросов с замечаниями'); return; }
-    const keys = [...new Set(reviews.map(r=>r.import_key))];
-    query = sb.from('questions').select('*').in('import_key', keys).order('import_key');
-  } else if(mode === 'pack' && packImportKey){
-    // Questions for a specific pack (via game_pack_questions)
-    const {data: pack} = await sb.from('game_packs')
-      .select('id,title_ru').eq('import_key', packImportKey).single();
-    if(!pack){ toast('Пак не найден'); return; }
-    document.getElementById('tester-progress-txt').textContent = pack.title_ru;
-    // Try linked questions first, fallback to import_key prefix
-    let tryQuery = await sb.from('questions')
-      .select('*, game_pack_questions!inner(position)')
-      .eq('game_pack_questions.game_pack_id', pack.id)
-      .order('position', {foreignTable:'game_pack_questions'});
-    if(tryQuery.data && tryQuery.data.length){
-      query = {then: ()=>tryQuery}; // already resolved
-      const {data, error} = tryQuery;
-      if(!error && data && data.length){
-        // Use this result directly
-        testerQuestions = buildTesterQuestions(data);
-        testerIdx=0; testerAnswerShown=false;
-        showScreen('tester');
-        document.getElementById('tester-pack-selector').style.display='none';
-        document.getElementById('tester-content').style.display='flex';
-        testerRender(); return;
-      }
-    }
-    // Fallback: load by import_key prefix (when game_pack_questions not populated)
-    // Tester pack fallback: load by import_key prefix
-    const packPrefix = packImportKey.replace('game_','');
-    // Show only MC questions in tester — skip archived/unsupported
-    query = sb.from('questions').select('*')
-      .like('import_key', packPrefix+'_q%')
-      .not('status','in','(archived_unsupported,needs_reimport,archived)')
-      .eq('question_type','multiple_choice')
-      .order('import_key');
-  } else if(mode === 'import' && packImportKey){
-    // Questions from a specific import batch (by batch key prefix)
-    query = sb.from('questions')
-      .select('*')
-      .like('import_key', packImportKey + '_q%')
-      .eq('question_type', 'multiple_choice')
-      .order('import_key');
-  } else if(mode === 'community'){
-    // Community questions — for admin review
-    query = sb.from('questions')
-      .select('*')
-      .eq('source_type','community')
-      .eq('question_type','multiple_choice')
-      .not('status','in','(archived_unsupported,needs_reimport,archived)')
-      .order('created_at', {ascending: false})
-      .limit(200);
-  } else {
-    // General: official_general + official_pack, MC only, no archived, no legacy game_% keys
-    query = sb.from('questions')
-      .select('*')
-      .in('source_type', ['official_general','official_pack'])
-      .eq('question_type','multiple_choice')
-      .not('status','in','(archived_unsupported,needs_reimport,archived)')
-      .not('import_key','like','game_%')
-      .order('import_key')
-      .limit(500);
+  if(error){
+    toast('Ошибка загрузки: ' + error.message);
+    return;
+  }
+  if(!res?.ok){
+    if(res?.empty){ toast('Нет вопросов с замечаниями'); return; }
+    toast('Ошибка: ' + (res?.reason || 'не admin'));
+    return;
   }
 
-  const {data, error} = await query;
-  if(error || !data || !data.length){
-    // Empty state — don't show blank screen
-    showScreen('tester');
-    document.getElementById('tester-pack-selector').style.display = 'none';
-    document.getElementById('tester-content').style.display = 'flex';
+  const data = Array.isArray(res.rows) ? res.rows : [];
+
+  if(!data.length){
     document.getElementById('tester-content').innerHTML = `
       <div style="text-align:center;padding:40px 20px">
         <div style="font-size:40px;margin-bottom:12px">📭</div>
@@ -4519,7 +4465,11 @@ async function startTesterMode(mode, packImportKey){
     return;
   }
 
-  // Load existing reviews
+  if(mode === 'pack' && res.pack_title){
+    document.getElementById('tester-progress-txt').textContent = res.pack_title;
+  }
+
+  // Load existing reviews (question_reviews table — separate from questions, no restriction)
   const {data: existingReviews} = await sb.from('question_reviews')
     .select('*').eq('reviewer_id', currentUser.id).order('created_at', {ascending:false});
   testerResults = {};
@@ -4529,10 +4479,6 @@ async function startTesterMode(mode, packImportKey){
         testerResults[r.import_key] = {verdict: r.verdict, note: r.note, db_id: r.id};
     }
   }
-
-  // correct_index: column-revoked from authenticated; get_question_reveals is anon-callable (insecure).
-  // Tester data must come via admin_get_questions_for_moderation (migration 80) which includes
-  // correct_index directly. Until migration 80 is applied, correct_index will be undefined here.
 
   testerQuestions = buildTesterQuestions(data);
   testerIdx = 0; testerAnswerShown = false;
@@ -4791,18 +4737,13 @@ async function loadAdminPacks(){
     el.innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:16px">Нет паков.<br><span style="font-size:11px">Добавьте через official_pack_10.csv</span></div>';
     return;
   }
-  // For each pack count valid MC questions (via game_pack_questions)
+  // Count via game_pack_questions (avoids questions table SELECT restriction)
   let rows = '';
   for(const p of packs){
-    const {data: gpqs} = await sb.from('game_pack_questions').select('question_id').eq('game_pack_id', p.id);
-    const ids = (gpqs||[]).map(r=>r.question_id);
-    let qCount = 0;
-    if(ids.length){
-      const {count} = await sb.from('questions').select('*',{count:'exact',head:true})
-        .in('id', ids).eq('question_type','multiple_choice')
-        .not('status','in','(archived_unsupported,needs_reimport,archived)');
-      qCount = count||0;
-    }
+    const {count: gpqCount} = await sb.from('game_pack_questions')
+      .select('*', {count:'exact', head:true})
+      .eq('game_pack_id', p.id);
+    const qCount = gpqCount || 0;
     const sColor = p.status==='published'?'var(--green)':'var(--gold)';
     const qColor = qCount>=10?'var(--green)':qCount>0?'var(--gold)':'var(--red)';
     rows += `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid var(--border)">
@@ -4864,18 +4805,12 @@ async function loadTesterPackList(){
     return;
   }
 
-  // For each pack, count valid MC questions
+  // For each pack, count linked questions via game_pack_questions (avoids questions table SELECT restriction)
   const validPacks = [];
   for(const pack of allPacks){
-    const {count} = await sb.from('questions')
+    const {count} = await sb.from('game_pack_questions')
       .select('*', {count:'exact', head:true})
-      .eq('question_type','multiple_choice')
-      .not('status','in','(archived_unsupported,needs_reimport,archived)')
-      .in('id',
-        // subquery via game_pack_questions
-        (await sb.from('game_pack_questions').select('question_id').eq('game_pack_id', pack.id)
-        ).data?.map(r=>r.question_id) || []
-      );
+      .eq('game_pack_id', pack.id);
     const qCount = count || 0;
     if(qCount > 0) validPacks.push({...pack, validCount: qCount});
   }
@@ -11164,14 +11099,12 @@ async function aqLoad(){
   wrap.innerHTML = '<div style="color:var(--muted);font-size:13px;text-align:center;padding:24px">⏳ Загрузка вопросов из Supabase...</div>';
 
   try{
-    const {data, error} = await sb.from('questions')
-      .select('id,question_ru,question_text,answers_json,answers_ru,correct_index,category,status,source_type,import_key,media_type,image_url,audio_url,video_url,explanation_ru,created_at')
-      .not('source_type', 'like', 'official_pack')
-      .order('created_at', {ascending:false})
-      .limit(2000);
-
+    const {data: res, error} = await sb.rpc('admin_get_questions_for_tester', {
+      p_mode: 'overlay', p_limit: 2000,
+    });
     if(error) throw error;
-    _aqData = data || [];
+    if(!res?.ok) throw new Error(res?.reason || 'not_admin');
+    _aqData = res.rows || [];
     aqRender();
   }catch(e){
     if(wrap) wrap.innerHTML = `<div style="color:var(--red);padding:16px;font-size:13px">❌ Ошибка: ${e.message}</div>`;
