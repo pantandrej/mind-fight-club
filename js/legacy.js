@@ -2187,11 +2187,11 @@ const _VALID_CATEGORIES = new Set(['GENERAL','SCIENCE','HISTORY','GEOGRAPHY','CU
 
 function adminCopyImportTemplate(){
   const tpl = JSON.stringify([
-    {"question_text":"На какой планете находится самый высокий вулкан в Солнечной системе?","answers":["Марс","Венера"],"correct_index":0,"category":"SCIENCE","explanation":"Олимп (Olympus Mons) — около 22 км"},
-    {"question_text":"Сколько игроков в команде по классическому волейболу на площадке?","answers":["5","6","7"],"correct_index":1,"category":"SPORT"},
-    {"question_text":"Какой город является столицей Австралии?","answers":["Сидней","Мельбурн","Канберра","Брисбен"],"correct_index":2,"category":"GEOGRAPHY"},
-    {"question_text":"Кто написал роман «Мастер и Маргарита»?","answers":["Достоевский","Булгаков","Пастернак","Толстой","Чехов"],"correct_index":1,"category":"CULTURE"},
-    {"question_text":"В каком году была основана компания Apple?","answers":["1972","1974","1976","1978","1980","1984"],"correct_index":2,"category":"TECH"}
+    {"question_text":"[ПРИМЕР 2 ВАРИАНТА — ЗАМЕНИТЕ ТЕКСТ]","answers":["Вариант A","Вариант B"],"correct_index":0,"category":"GENERAL","explanation":"Необязательное пояснение"},
+    {"question_text":"[ПРИМЕР 3 ВАРИАНТА — ЗАМЕНИТЕ ТЕКСТ]","answers":["Вариант A","Вариант B","Вариант C"],"correct_index":1,"category":"SCIENCE"},
+    {"question_text":"[ПРИМЕР 4 ВАРИАНТА — ЗАМЕНИТЕ ТЕКСТ]","answers":["Вариант A","Вариант B","Вариант C","Вариант D"],"correct_index":2,"category":"HISTORY"},
+    {"question_text":"[ПРИМЕР 5 ВАРИАНТОВ — ЗАМЕНИТЕ ТЕКСТ]","answers":["Вариант A","Вариант B","Вариант C","Вариант D","Вариант E"],"correct_index":0,"category":"GEOGRAPHY"},
+    {"question_text":"[ПРИМЕР 6 ВАРИАНТОВ — ЗАМЕНИТЕ ТЕКСТ]","answers":["Вариант A","Вариант B","Вариант C","Вариант D","Вариант E","Вариант F"],"correct_index":3,"category":"CULTURE"}
   ], null, 2);
   navigator.clipboard?.writeText(tpl).then(() => toast('📋 Шаблон скопирован')).catch(() => {
     const ta = document.getElementById('admin-secret-json');
@@ -2215,12 +2215,22 @@ async function adminBulkImportCompetitive(){
   const seenTexts = new Set();
   parsed.forEach((q, i) => {
     const row = i + 1;
+    if(!q || typeof q !== 'object' || Array.isArray(q)){
+      preErrors.push('Строка ' + row + ': элемент должен быть объектом');
+      return;
+    }
     const text = (q.question_text || q.question || '').trim();
     if(!text) preErrors.push('Строка ' + row + ': пустой текст вопроса');
     else if(seenTexts.has(text.toLowerCase())) preErrors.push('Строка ' + row + ': дубликат внутри пачки');
     else seenTexts.add(text.toLowerCase());
-    if(!Array.isArray(q.answers) || q.answers.length < 2 || q.answers.length > 6)
+    if(!Array.isArray(q.answers) || q.answers.length < 2 || q.answers.length > 6){
       preErrors.push('Строка ' + row + ': answers должен быть массивом из 2–6 элементов');
+    } else {
+      q.answers.forEach((ans, ai) => {
+        if(typeof ans !== 'string' || !ans.trim())
+          preErrors.push('Строка ' + row + ': ответ ' + (ai+1) + ' пустой или не является строкой');
+      });
+    }
     const ci = q.correct_index;
     if(ci === undefined || ci === null || typeof ci !== 'number' || !Number.isInteger(ci) || ci < 0 || ci >= (q.answers?.length || 0))
       preErrors.push('Строка ' + row + ': некорректный correct_index');

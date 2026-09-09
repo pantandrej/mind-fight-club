@@ -187,7 +187,7 @@ function startDuelPoll(){
 }
 
 function showDuelComingSoonScreen(){
-  const screen = document.getElementById('friend-battle-screen') || document.body;
+  if(document.getElementById('duel-coming-soon-overlay')) return;
   const overlay = document.createElement('div');
   overlay.id = 'duel-coming-soon-overlay';
   overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:var(--bg,#0d1b2a)';
