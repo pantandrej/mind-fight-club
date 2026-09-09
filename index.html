@@ -1725,6 +1725,83 @@
       </button>
     </div>
 
+    <!-- Competitive Questions -->
+    <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--muted);margin:4px 0 2px">🔒 СЕКРЕТНЫЕ ВОПРОСЫ</div>
+    <div style="background:var(--bg2);border:1.5px solid rgba(168,85,247,.35);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px">
+
+      <!-- Counts / readiness panel -->
+      <div id="admin-secret-counts">
+        <div style="color:var(--muted);font-size:12px">⏳ Загрузка...</div>
+      </div>
+
+      <!-- Create single question button -->
+      <button onclick="adminShowSecretForm()"
+        style="width:100%;background:rgba(168,85,247,.12);border:1px dashed rgba(168,85,247,.5);border-radius:10px;padding:10px;font-size:13px;font-weight:700;color:rgba(168,85,247,1);cursor:pointer;font-family:inherit">
+        + Добавить вопрос
+      </button>
+
+      <!-- Create form (hidden by default) -->
+      <div id="admin-secret-form" style="display:none;flex-direction:column;gap:8px">
+        <div style="font-size:12px;font-weight:700;color:rgba(168,85,247,1)">Новый секретный вопрос</div>
+
+        <select id="asf-cat" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;font-family:inherit">
+          <option value="GENERAL">Общие знания</option>
+          <option value="SCIENCE">Наука</option>
+          <option value="HISTORY">История</option>
+          <option value="GEOGRAPHY">География</option>
+          <option value="CULTURE">Культура</option>
+          <option value="SPORT">Спорт</option>
+          <option value="TECH">Технологии</option>
+          <option value="MUSIC">Музыка</option>
+          <option value="CINEMA">Кино</option>
+          <option value="FOOD">Еда</option>
+        </select>
+
+        <textarea id="asf-question" placeholder="Текст вопроса..." rows="3"
+          style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;font-family:inherit;resize:vertical;box-sizing:border-box"></textarea>
+
+        <div style="display:flex;align-items:center;gap:8px">
+          <label style="font-size:12px;color:var(--muted);white-space:nowrap">Вариантов:</label>
+          <select id="asf-count" onchange="adminRenderAnswerInputs()" style="padding:6px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;font-family:inherit">
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4" selected>4</option>
+            <option value="5">5</option>
+            <option value="6">6</option>
+          </select>
+        </div>
+
+        <div id="asf-answers" style="display:flex;flex-direction:column;gap:6px"></div>
+
+        <textarea id="asf-expl" placeholder="Объяснение (необязательно)..." rows="2"
+          style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;font-family:inherit;resize:vertical;box-sizing:border-box"></textarea>
+
+        <div style="display:flex;gap:8px">
+          <button onclick="adminSaveSecretQuestion()"
+            style="flex:1;padding:10px;background:rgba(168,85,247,.85);border:none;border-radius:10px;color:#fff;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit">
+            Сохранить
+          </button>
+          <button onclick="document.getElementById('admin-secret-form').style.display='none'"
+            style="padding:10px 16px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;color:var(--muted);font-size:13px;cursor:pointer;font-family:inherit">
+            Отмена
+          </button>
+        </div>
+        <div id="asf-error" style="display:none;color:var(--red);font-size:12px;font-weight:600"></div>
+      </div>
+
+      <!-- Bulk JSON import -->
+      <div style="border-top:1px solid var(--border);padding-top:10px">
+        <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px">Массовый импорт (JSON)</div>
+        <textarea id="admin-secret-json" placeholder='[{"question_text":"...","answers":["A","B","C","D"],"correct_index":0,"category":"GENERAL"}]'
+          rows="4" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:11px;font-family:monospace;resize:vertical;box-sizing:border-box"></textarea>
+        <div id="admin-secret-bulk-result" style="display:none;margin-top:6px;font-size:11px;padding:8px;background:var(--bg3);border-radius:8px;color:var(--text)"></div>
+        <button onclick="adminBulkImportCompetitive()"
+          style="margin-top:6px;width:100%;padding:9px;background:rgba(168,85,247,.15);border:1px solid rgba(168,85,247,.4);border-radius:10px;color:rgba(168,85,247,1);font-weight:700;font-size:13px;cursor:pointer;font-family:inherit">
+          Импортировать
+        </button>
+      </div>
+    </div>
+
     <!-- Org applications -->
     <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--muted);margin:4px 0 2px">📋 ЗАЯВКИ ОРГАНИЗАТОРОВ</div>
     <div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;padding:14px">

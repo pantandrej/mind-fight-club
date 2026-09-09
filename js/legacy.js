@@ -2082,6 +2082,152 @@ async function loadCurrentUserRole(){
   }catch(e){ currentUserRole = null; }
 }
 
+// ═══════════════════════════════════════════════════════════════
+// COMPETITIVE SECRET QUESTION PIPELINE (Migration 79)
+// ═══════════════════════════════════════════════════════════════
+
+const _SECRET_TARGETS = { 2: 30, 3: 50, 4: 100, 5: 50, 6: 30 };
+
+async function adminLoadSecretCounts(){
+  const el = document.getElementById('admin-secret-counts');
+  if(!el) return;
+  try{
+    const {data, error} = await sb.rpc('admin_count_competitive');
+    if(error || !data?.ok){
+      el.innerHTML = '<div style="color:var(--muted);font-size:12px">Не удалось загрузить (' + (error?.message || data?.reason) + ')</div>';
+      return;
+    }
+    const counts = data.counts || {};
+    const total  = data.total  || 0;
+
+    // Check duel readiness: at least 1 of each type 2–6
+    const missingTypes = [2,3,4,5,6].filter(n => !(counts[n] >= 1));
+    const ready = missingTypes.length === 0;
+    const readinessHtml = ready
+      ? '<div style="color:var(--green);font-size:12px;font-weight:700;margin-top:4px">✅ Дуэли: технически готовы</div>'
+      : '<div style="color:var(--red);font-size:12px;font-weight:700;margin-top:4px">⛔ Дуэли: не хватает типов ' + missingTypes.join(', ') + '</div>';
+
+    const rows = [2,3,4,5,6].map(n => {
+      const have   = counts[n] || 0;
+      const target = _SECRET_TARGETS[n];
+      const pct    = Math.min(100, Math.round(have / target * 100));
+      const color  = pct >= 100 ? 'var(--green)' : pct >= 50 ? 'var(--gold)' : 'var(--red)';
+      return `<div style="display:flex;align-items:center;gap:6px;font-size:12px">
+        <span style="min-width:80px;color:var(--muted)">${n} варианта:</span>
+        <div style="flex:1;background:var(--bg3);border-radius:4px;height:6px;overflow:hidden">
+          <div style="width:${pct}%;height:100%;background:${color};border-radius:4px;transition:width .3s"></div>
+        </div>
+        <span style="min-width:52px;text-align:right;font-weight:700;color:${color}">${have} / ${target}</span>
+      </div>`;
+    }).join('');
+
+    el.innerHTML = `
+      <div style="font-size:12px;font-weight:700;color:rgba(168,85,247,1);margin-bottom:8px">Всего активных: ${total}</div>
+      <div style="display:flex;flex-direction:column;gap:5px">${rows}</div>
+      ${readinessHtml}`;
+  }catch(e){
+    el.innerHTML = '<div style="color:var(--muted);font-size:12px">Ошибка: ' + e.message + '</div>';
+  }
+}
+
+function adminShowSecretForm(){
+  const form = document.getElementById('admin-secret-form');
+  if(!form) return;
+  form.style.display = 'flex';
+  document.getElementById('asf-question').value = '';
+  document.getElementById('asf-expl').value     = '';
+  document.getElementById('asf-error').style.display = 'none';
+  document.getElementById('asf-count').value = '4';
+  adminRenderAnswerInputs();
+}
+
+function adminRenderAnswerInputs(){
+  const container = document.getElementById('asf-answers');
+  if(!container) return;
+  const count = parseInt(document.getElementById('asf-count').value, 10) || 4;
+  container.innerHTML = Array.from({length: count}, (_, i) => `
+    <div style="display:flex;align-items:center;gap:6px">
+      <label style="display:flex;align-items:center;gap:4px;cursor:pointer;min-width:22px">
+        <input type="radio" name="asf-correct" value="${i}" ${i===0?'checked':''}>
+      </label>
+      <input type="text" placeholder="Вариант ${i+1}" id="asf-ans-${i}"
+        style="flex:1;padding:7px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;font-family:inherit">
+    </div>`).join('');
+}
+
+async function adminSaveSecretQuestion(){
+  const errEl = document.getElementById('asf-error');
+  errEl.style.display = 'none';
+
+  const qtext   = (document.getElementById('asf-question').value || '').trim();
+  const count   = parseInt(document.getElementById('asf-count').value, 10) || 4;
+  const cat     = document.getElementById('asf-cat').value || 'GENERAL';
+  const expl    = (document.getElementById('asf-expl').value || '').trim() || null;
+  const correct = parseInt((document.querySelector('input[name="asf-correct"]:checked') || {}).value ?? '0', 10);
+
+  const answers = [];
+  for(let i = 0; i < count; i++){
+    const v = (document.getElementById('asf-ans-' + i)?.value || '').trim();
+    answers.push(v);
+  }
+
+  const {data, error} = await sb.rpc('create_competitive_question', {
+    p_question_text: qtext,
+    p_answers:       answers,
+    p_correct_index: correct,
+    p_category:      cat,
+    p_explanation:   expl,
+  });
+
+  if(error || !data?.ok){
+    const reason = data?.reason || error?.message || 'unknown';
+    const detail = data?.detail ? ' — ' + data.detail : '';
+    errEl.textContent = '❌ ' + reason + detail;
+    errEl.style.display = 'block';
+    return;
+  }
+
+  toast('✅ Вопрос создан (' + count + ' вариантов)');
+  document.getElementById('admin-secret-form').style.display = 'none';
+  adminLoadSecretCounts();
+}
+
+async function adminBulkImportCompetitive(){
+  const raw     = (document.getElementById('admin-secret-json')?.value || '').trim();
+  const resultEl = document.getElementById('admin-secret-bulk-result');
+  resultEl.style.display = 'none';
+
+  let parsed;
+  try{ parsed = JSON.parse(raw); }
+  catch(e){ toast('❌ Невалидный JSON: ' + e.message); return; }
+
+  if(!Array.isArray(parsed) || !parsed.length){ toast('Пустой массив'); return; }
+
+  toast('⏳ Импортируем ' + parsed.length + ' вопросов...');
+  const {data, error} = await sb.rpc('bulk_import_competitive', { p_questions: parsed });
+
+  if(error || !data?.ok){
+    resultEl.style.display = 'block';
+    resultEl.innerHTML = '<b style="color:var(--red)">Ошибка:</b> ' + (error?.message || data?.reason);
+    return;
+  }
+
+  const errLines = (data.errors || []).slice(0, 20).map(e =>
+    `<div style="color:var(--red)">Строка ${e.row}: ${e.reason}${e.detail ? ' — ' + e.detail : ''}</div>`
+  ).join('');
+
+  resultEl.style.display = 'block';
+  resultEl.innerHTML =
+    `<b>Всего: ${data.total}</b> &nbsp;·&nbsp; `
+    + `<b style="color:var(--green)">✅ ${data.inserted} вставлено</b> &nbsp;·&nbsp; `
+    + (data.rejected > 0 ? `<b style="color:var(--red)">❌ ${data.rejected} отклонено</b>` : '')
+    + (errLines ? '<div style="margin-top:6px">' + errLines + '</div>' : '');
+
+  if(data.inserted > 0) adminLoadSecretCounts();
+}
+
+// ═══════════════════════════════════════════════════════════════
+
 async function loadAdminDashboard(){
   // Show compact admin button in profile
   const dash = document.getElementById('admin-dashboard');
@@ -2092,6 +2238,7 @@ async function loadAdminDashboard(){
   if(!isAdmin()) return;
   // Check for pending organizer applications
   _checkOrgApplications();
+  adminLoadSecretCounts();
 
   const kpiEl = document.getElementById('admin-kpis');
   const evEl  = document.getElementById('admin-events');
