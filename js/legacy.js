@@ -4530,17 +4530,9 @@ async function startTesterMode(mode, packImportKey){
     }
   }
 
-  // correct_index is column-revoked from authenticated; fetch via admin RPC before building
-  try{
-    const ids = data.map(q=>q.id).filter(Boolean);
-    if(ids.length){
-      const {data: reveals} = await sb.rpc('get_question_reveals', {p_ids: ids});
-      if(Array.isArray(reveals)){
-        const map = Object.fromEntries(reveals.map(r=>[r.id, r.correct_index]));
-        data.forEach(q=>{ if(map[q.id] !== undefined) q.correct_index = map[q.id]; });
-      }
-    }
-  }catch(e){ console.warn('[tester] correct_index enrich failed:', e.message); }
+  // correct_index: column-revoked from authenticated; get_question_reveals is anon-callable (insecure).
+  // Tester data must come via admin_get_questions_for_moderation (migration 80) which includes
+  // correct_index directly. Until migration 80 is applied, correct_index will be undefined here.
 
   testerQuestions = buildTesterQuestions(data);
   testerIdx = 0; testerAnswerShown = false;

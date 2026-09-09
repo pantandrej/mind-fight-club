@@ -5,33 +5,18 @@ const PAGE = 20;
 let _offset = 0;
 let _total  = 0;
 let _filter = 'pending'; // 'pending' | 'active'
-let _pendingCache = null; // все pending-вопросы, загруженные без OR-фильтра
+let _pendingCache = null; // все pending-вопросы (full cache for client-side pagination)
+let _activeFirstPage = null; // pre-fetched first page of active questions
 
-const SEL = 'id,question_text,question_ru,answers_json,status,category,source_type,approved_at';
-
-// Enriches rows with correct_index via admin RPC (column-level REVOKE in place, P0.1).
-async function _enrichCorrectIndex(rows) {
-  if (!rows || !rows.length) return;
-  try {
-    const ids = rows.map(r => r.id).filter(Boolean);
-    if (!ids.length) return;
-    const { data } = await sb.rpc('get_question_reveals', { p_ids: ids });
-    if (!Array.isArray(data)) return;
-    const map = Object.fromEntries(data.map(r => [r.id, r.correct_index]));
-    rows.forEach(r => { if (map[r.id] !== undefined) r.correct_index = map[r.id]; });
-  } catch(e) { console.warn('[qmod] enrichCorrectIndex failed:', e.message); }
-}
-
-// Два параллельных запроса через sb-клиент (OR ломается через Vercel прокси)
+// Fetches pending questions via admin-only SECURITY DEFINER RPC.
+// correct_index is included in the response (REVOKE from authenticated bypassed server-side).
 async function _fetchPendingAll() {
-  const [r1, r2] = await Promise.all([
-    sb.from('questions').select(SEL).is('status', null).neq('source_type', 'official_pack').order('id', { ascending: false }).limit(5000),
-    sb.from('questions').select(SEL).eq('status', 'pending').neq('source_type', 'official_pack').order('id', { ascending: false }).limit(5000),
-  ]);
-  const all = [...(r1.data || []), ...(r2.data || [])];
-  all.sort((a, b) => (b.id > a.id ? 1 : -1));
-  await _enrichCorrectIndex(all);
-  return all;
+  const { data, error } = await sb.rpc('admin_get_questions_for_moderation', {
+    p_status: 'pending', p_offset: 0, p_limit: 5000,
+  });
+  if (error) throw error;
+  if (!data?.ok) throw new Error(data?.reason || 'not_admin');
+  return Array.isArray(data.rows) ? data.rows : [];
 }
 
 export async function loadQModeration() {
@@ -40,14 +25,25 @@ export async function loadQModeration() {
 
   _offset = 0;
   _pendingCache = null;
+  _activeFirstPage = null;
   inner.innerHTML = `<div id="qmod-loading" style="text-align:center;padding:40px;color:var(--muted)">Загрузка...</div>`;
 
   if (_filter === 'active') {
-    const { count } = await sb.from('questions').select('id', { count: 'exact', head: true }).eq('status', 'active');
-    _total = count || 0;
+    // Fetch first page via admin RPC to get total count
+    const { data: firstPage, error: fpErr } = await sb.rpc('admin_get_questions_for_moderation', {
+      p_status: 'active', p_offset: 0, p_limit: PAGE,
+    });
+    if (fpErr) throw fpErr;
+    if (!firstPage?.ok) {
+      inner.innerHTML = `<div style="color:var(--red);padding:20px">Нет доступа: ${firstPage?.reason || 'not_admin'}</div>`;
+      return;
+    }
+    _total = Number(firstPage.total) || 0;
+    _activeFirstPage = Array.isArray(firstPage.rows) ? firstPage.rows : [];
   } else {
     _pendingCache = await _fetchPendingAll();
     _total = _pendingCache.length;
+    _activeFirstPage = null;
   }
 
   _renderFilter(inner);
@@ -80,13 +76,22 @@ async function _loadPage(inner, reset = false) {
   let data, error;
 
   if (_filter === 'active') {
-    const res = await sb.from('questions')
-      .select('id, question_text, question_ru, answers_json, status, category, source_type, approved_at')
-      .eq('status', 'active')
-      .order('approved_at', { ascending: false, nullsFirst: false })
-      .range(_offset, _offset + PAGE - 1);
-    data = res.data; error = res.error;
-    if (data) await _enrichCorrectIndex(data);
+    // Use pre-fetched first page if available, otherwise call admin RPC
+    if (_activeFirstPage && _offset === 0) {
+      data = _activeFirstPage;
+      _activeFirstPage = null;
+      error = null;
+    } else {
+      const res = await sb.rpc('admin_get_questions_for_moderation', {
+        p_status: 'active', p_offset: _offset, p_limit: PAGE,
+      });
+      error = res.error;
+      data = res.error ? null : (res.data?.rows || []);
+      if (!res.error && res.data && !res.data.ok) {
+        error = { message: res.data.reason || 'not_admin' };
+        data = null;
+      }
+    }
   } else {
     // Читаем из кеша (OR-фильтр ломается через Vercel прокси)
     if (!_pendingCache) _pendingCache = await _fetchPendingAll();
@@ -143,14 +148,12 @@ async function _loadPage(inner, reset = false) {
 
         let allRows;
         if (_filter === 'active') {
-          const res = await sb.from('questions')
-            .select(SEL)
-            .eq('status', 'active')
-            .order('approved_at', { ascending: false, nullsFirst: false })
-            .range(0, (_total || 2000) - 1);
+          const res = await sb.rpc('admin_get_questions_for_moderation', {
+            p_status: 'active', p_offset: 0, p_limit: _total || 2000,
+          });
           if (res.error) throw res.error;
-          allRows = res.data;
-          if (allRows) await _enrichCorrectIndex(allRows);
+          if (!res.data?.ok) throw new Error(res.data?.reason || 'not_admin');
+          allRows = res.data.rows || [];
         } else {
           if (!_pendingCache) _pendingCache = await _fetchPendingAll();
           allRows = _pendingCache;
