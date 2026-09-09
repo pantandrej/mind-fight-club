@@ -4530,6 +4530,18 @@ async function startTesterMode(mode, packImportKey){
     }
   }
 
+  // correct_index is column-revoked from authenticated; fetch via admin RPC before building
+  try{
+    const ids = data.map(q=>q.id).filter(Boolean);
+    if(ids.length){
+      const {data: reveals} = await sb.rpc('get_question_reveals', {p_ids: ids});
+      if(Array.isArray(reveals)){
+        const map = Object.fromEntries(reveals.map(r=>[r.id, r.correct_index]));
+        data.forEach(q=>{ if(map[q.id] !== undefined) q.correct_index = map[q.id]; });
+      }
+    }
+  }catch(e){ console.warn('[tester] correct_index enrich failed:', e.message); }
+
   testerQuestions = buildTesterQuestions(data);
   testerIdx = 0; testerAnswerShown = false;
   testerRender();

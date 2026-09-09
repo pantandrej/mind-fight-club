@@ -15,7 +15,7 @@ async function _enrichCorrectIndex(rows) {
   try {
     const ids = rows.map(r => r.id).filter(Boolean);
     if (!ids.length) return;
-    const { data } = await sb.rpc('get_question_reveals_admin', { p_ids: ids });
+    const { data } = await sb.rpc('get_question_reveals', { p_ids: ids });
     if (!Array.isArray(data)) return;
     const map = Object.fromEntries(data.map(r => [r.id, r.correct_index]));
     rows.forEach(r => { if (map[r.id] !== undefined) r.correct_index = map[r.id]; });
