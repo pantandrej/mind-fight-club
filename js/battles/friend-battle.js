@@ -113,26 +113,8 @@ async function joinDuel(){
     return;
   }
 
-  // Guest limit check — must happen before entering lobby/LIVE.
-  // A limit-denied guest must not participate even if the host starts.
-  if(!window._battleSessionStarted){
-    const { data: _sd, error: _se } = await sb.rpc('start_game_session', {
-      p_mode: 'friend_battle',
-      p_opponent_id: null,
-      p_invite_id: null,
-    });
-    if(_se){
-      window.toast?.('Не удалось начать баттл. Проверь интернет.');
-      return;
-    }
-    if(!_sd?.allowed){
-      if(window.track) window.track('battle_limit_reached', { plan: _sd?.plan, trigger: 'guest_duel_join' });
-      window.showDailyLimitScreen?.('battle');
-      return;
-    }
-    window._currentSessionId     = _sd.session_id || null;
-    window._battleSessionStarted = true;
-  }
+  // Guest limit is checked server-side in start_duel() when host clicks Start.
+  // No start_game_session call here — quota consumed only when duel transitions READY→STARTED.
 
   duelCode=code; duelRole='guest';
   duelMyName = res.guest_name || currentUser?.user_metadata?.full_name?.split(' ')[0] || 'Гость';
@@ -205,33 +187,19 @@ function startDuelPoll(){
 }
 
 async function startDuelGame(){
-  // HOST triggers start. Battle limit is checked HERE, before start_duel(),
-  // so the room is never transitioned to 'started' if the host is over limit.
-  if(!window._battleSessionStarted){
-    const { data: _sd, error: _se } = await sb.rpc('start_game_session', {
-      p_mode: 'friend_battle',
-      p_opponent_id: null,
-      p_invite_id: null,
-    });
-    if(_se){
-      window.toast?.('Не удалось начать баттл. Проверь интернет.');
-      return;
-    }
-    if(!_sd?.allowed){
-      if(window.track) window.track('battle_limit_reached', { plan: _sd?.plan, trigger: 'host_duel_start' });
-      window.showDailyLimitScreen?.('battle');
-      return;
-    }
-    window._currentSessionId     = _sd.session_id || null;
-    window._battleSessionStarted = true;
-  }
-
-  // Only now transition the room — server selects questions, no client input.
+  // HOST triggers start. start_duel() atomically checks BOTH players' limits,
+  // selects questions, inserts game_sessions, and transitions READY→STARTED.
+  // No start_game_session call here — server is the sole authority.
   const { data: res, error } = await sb.rpc('start_duel', { p_code: duelCode });
 
   if (error || !res?.ok) {
     const errCode = error?.message || res?.error;
-    if (errCode === 'not_enough_secure_questions') {
+    if (errCode === 'host_limit_reached') {
+      if (window.track) window.track('battle_limit_reached', { trigger: 'host_duel_start' });
+      window.showDailyLimitScreen?.('battle');
+    } else if (errCode === 'guest_limit_reached') {
+      window.toast?.('У соперника закончился лимит дуэлей на сегодня.');
+    } else if (errCode === 'not_enough_secure_questions') {
       window.toast?.('⚠️ Недостаточно вопросов для безопасной дуэли. Попробуйте позже.');
     } else if (errCode === 'not_ready') {
       window.toast?.('Дождитесь, пока соперник присоединится.');
@@ -239,7 +207,6 @@ async function startDuelGame(){
       window.toast?.('Ошибка запуска дуэли: ' + errCode);
     }
     console.error('[duel] start_duel failed:', errCode);
-    // NO FALLBACK — safe + disabled > insecure. Duel remains unstarted.
     return;
   }
 
@@ -251,19 +218,20 @@ async function startDuelGame(){
   }
 
   clearInterval(duelPoll);
-  startDuelBattle();
+  // chargeSession=false: game_sessions already inserted by start_duel() server-side
+  startDuelBattle({ chargeSession: false });
 }
 
 
 async function startDuelBattle({ chargeSession = true, mode = 'friend_battle', questions = null } = {}){
   // ── Server-side limit check ────────────────────────────────────
-  // Only run if this path is responsible for creating the session.
-  // random_battle / virtual_battle paths set chargeSession=false
-  // after their own successful start_game_session call.
-  // Auto-detect: if upstream already set _battleSessionStarted, skip charging here
-  // This covers the matchFound → joinDuel → startDuelBattle path
+  // chargeSession=true  → Bot Duel (virtual_battle) path only.
+  // chargeSession=false → Friend Duel (both host and guest): start_duel() already
+  //   inserted game_sessions server-side. _battleSessionStarted/_currentSessionId
+  //   are NOT used for Friend Duel — do not rely on them here.
+  // Note: Random Duel is disabled in v1.
   if (window._battleSessionStarted && window._currentSessionId) {
-    chargeSession = false; // session already created upstream
+    chargeSession = false; // Bot Duel already created session upstream
   }
 
   if (chargeSession && window.sb && window._appState?.getState().currentUser) {

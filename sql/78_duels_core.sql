@@ -267,9 +267,13 @@ REVOKE ALL ON FUNCTION get_duel(text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION get_duel(text) TO authenticated;
 
 -- ── 8. RPC: start_duel(p_code) ───────────────────────────────────────────
--- Host triggers start. SERVER selects questions, stores private key, sets expiry.
--- Client NEVER sends questions or correct answers.
--- Questions without question IDs are returned (sanitized).
+-- Host triggers start. SERVER atomically:
+--   1. Validates room state and guest presence
+--   2. Checks battle limit for BOTH host and guest (advisory lock per user)
+--   3. Selects secret questions (is_competitive_secret=true)
+--   4. Only if ALL checks pass: inserts game_sessions for both players, starts room
+-- IMPORTANT: if question pool is empty, zero sessions are created (limit untouched).
+-- Error codes: host_limit_reached | guest_limit_reached | not_enough_secure_questions
 CREATE OR REPLACE FUNCTION start_duel(p_code text)
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -277,20 +281,27 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  _uid        uuid := auth.uid();
-  _room       duel_rooms%ROWTYPE;
-  _progression int[] := ARRAY[2, 3, 4, 5, 6]; -- answer counts per question
-  _opt_count  int;
-  _used_ids   uuid[] := ARRAY[]::uuid[];
-  _q_id       uuid;
-  _q_text     text;
-  _q_answers  jsonb;
-  _q_category text;
-  _q_correct  int;
-  _q_time     int;
-  _idx        int := 0;
-  _qs_out     jsonb := '[]'::jsonb;
-  _expires_min int := 15; -- minutes for entire duel
+  _uid              uuid := auth.uid();
+  _room             duel_rooms%ROWTYPE;
+  _progression      int[] := ARRAY[2, 3, 4, 5, 6];
+  _opt_count        int;
+  _used_ids         uuid[] := ARRAY[]::uuid[];
+  _q_id             uuid;
+  _q_text           text;
+  _q_answers        jsonb;
+  _q_category       text;
+  _q_correct        int;
+  _q_time           int;
+  _idx              int := 0;
+  _qs_out           jsonb := '[]'::jsonb;
+  _expires_min      int := 15;
+  -- Limit check vars
+  _host_plan        text;
+  _guest_plan       text;
+  _host_limit       int;
+  _guest_limit      int;
+  _host_used        int;
+  _guest_used       int;
 BEGIN
   IF _uid IS NULL THEN
     RETURN jsonb_build_object('ok', false, 'error', 'unauthenticated');
@@ -301,21 +312,51 @@ BEGIN
     RETURN jsonb_build_object('ok', false, 'error', 'not_found');
   END IF;
 
-  -- Only host can start
   IF _room.host_user_id != _uid THEN
     RETURN jsonb_build_object('ok', false, 'error', 'not_host');
   END IF;
 
-  -- Must be in ready state (guest has joined)
   IF _room.status != 'ready' THEN
-    RETURN jsonb_build_object('ok', false, 'error', 'not_ready',
-      'status', _room.status);
+    RETURN jsonb_build_object('ok', false, 'error', 'not_ready', 'status', _room.status);
   END IF;
 
-  -- Clear any previous question assignment (idempotent restart safety)
+  IF _room.guest_user_id IS NULL THEN
+    RETURN jsonb_build_object('ok', false, 'error', 'no_guest');
+  END IF;
+
+  -- ── Host battle limit check ──────────────────────────────────────
+  -- Advisory lock prevents concurrent double-charge for this user/day
+  PERFORM pg_advisory_xact_lock(hashtext(_room.host_user_id::TEXT || ':' || CURRENT_DATE::TEXT || ':battle'));
+  _host_plan  := get_user_plan(_room.host_user_id);
+  _host_limit := CASE WHEN _host_plan = 'premium' THEN 10 ELSE 3 END;
+  SELECT COUNT(*) INTO _host_used
+  FROM game_sessions
+  WHERE user_id    = _room.host_user_id
+    AND day_utc    = CURRENT_DATE
+    AND mode IN ('friend_battle', 'random_battle', 'virtual_battle')
+    AND social_bonus = false;
+  IF _host_used >= _host_limit THEN
+    RETURN jsonb_build_object('ok', false, 'error', 'host_limit_reached');
+  END IF;
+
+  -- ── Guest battle limit check ─────────────────────────────────────
+  PERFORM pg_advisory_xact_lock(hashtext(_room.guest_user_id::TEXT || ':' || CURRENT_DATE::TEXT || ':battle'));
+  _guest_plan  := get_user_plan(_room.guest_user_id);
+  _guest_limit := CASE WHEN _guest_plan = 'premium' THEN 10 ELSE 3 END;
+  SELECT COUNT(*) INTO _guest_used
+  FROM game_sessions
+  WHERE user_id    = _room.guest_user_id
+    AND day_utc    = CURRENT_DATE
+    AND mode IN ('friend_battle', 'random_battle', 'virtual_battle')
+    AND social_bonus = false;
+  IF _guest_used >= _guest_limit THEN
+    RETURN jsonb_build_object('ok', false, 'error', 'guest_limit_reached');
+  END IF;
+
+  -- ── Question selection ────────────────────────────────────────────
+  -- Happens BEFORE session inserts: pool failure leaves no sessions (limit untouched).
   DELETE FROM duel_question_assignments WHERE duel_code = p_code;
 
-  -- SERVER selects one question per answer-count in the progression
   FOREACH _opt_count IN ARRAY _progression
   LOOP
     SELECT
@@ -330,13 +371,9 @@ BEGIN
       AND q.question_type = 'multiple_choice'
       AND q.correct_index IS NOT NULL
       AND q.correct_index >= 0
-      -- BLOCKER 2: only questions whose answers are never revealable via get_question_reveals
-      -- Normal questions can be preloaded by querying get_question_reveals before the duel.
-      -- is_competitive_secret=true questions are permanently blocked from that RPC (migration 77).
       AND q.is_competitive_secret = true
       AND jsonb_array_length(COALESCE(q.answers_ru, q.answers_json, '[]'::jsonb)) = _opt_count
       AND NOT (q.id = ANY(_used_ids))
-      -- Exclude questions currently in active Weekly Arena (privacy boundary from migration 77)
       AND q.id NOT IN (
         SELECT waq.question_id
         FROM weekly_arena_questions waq
@@ -347,7 +384,7 @@ BEGIN
     LIMIT 1;
 
     IF NOT FOUND OR _q_id IS NULL THEN
-      -- Not enough secure questions — abort. SAFE + disabled > insecure fallback.
+      -- Pool exhausted — no sessions created, limit untouched. SAFE + disabled > insecure.
       RETURN jsonb_build_object(
         'ok', false,
         'error', 'not_enough_secure_questions',
@@ -355,38 +392,33 @@ BEGIN
       );
     END IF;
 
-    -- Determine time limit based on option count
     _q_time := CASE _opt_count
-      WHEN 2 THEN 30
-      WHEN 3 THEN 35
-      WHEN 4 THEN 40
-      WHEN 5 THEN 45
-      WHEN 6 THEN 50
-      ELSE 30
+      WHEN 2 THEN 30 WHEN 3 THEN 35 WHEN 4 THEN 40
+      WHEN 5 THEN 45 WHEN 6 THEN 50 ELSE 30
     END;
 
     INSERT INTO duel_question_assignments (duel_code, question_idx, question_id, correct_index, question_time)
     VALUES (p_code, _idx, _q_id, _q_correct, _q_time);
 
-    -- Build sanitized question for public payload: no id, no correct_index
     _qs_out := _qs_out || jsonb_build_array(jsonb_build_object(
-      'idx', _idx,
-      'cat', _q_category,
-      'q',   _q_text,
-      'a',   _q_answers,
-      't',   _q_time
+      'idx', _idx, 'cat', _q_category, 'q', _q_text, 'a', _q_answers, 't', _q_time
     ));
 
     _used_ids := _used_ids || ARRAY[_q_id];
     _idx := _idx + 1;
   END LOOP;
 
-  -- Transition room to started with server-set expiry
+  -- ── All checks passed — consume quota and start ──────────────────
+  INSERT INTO game_sessions (user_id, mode, day_utc, opponent_id, social_bonus)
+  VALUES (_room.host_user_id, 'friend_battle', CURRENT_DATE, _room.guest_user_id, false);
+
+  INSERT INTO game_sessions (user_id, mode, day_utc, opponent_id, social_bonus)
+  VALUES (_room.guest_user_id, 'friend_battle', CURRENT_DATE, _room.host_user_id, false);
+
   UPDATE duel_rooms SET
-    status     = 'started',
-    started_at = now(),
-    expires_at = now() + (_expires_min || ' minutes')::interval,
-    -- Reset scores (in case of retry)
+    status       = 'started',
+    started_at   = now(),
+    expires_at   = now() + (_expires_min || ' minutes')::interval,
     host_score   = 0,
     guest_score  = 0,
     host_answers = '[]'::jsonb,
@@ -406,6 +438,47 @@ END;
 $$;
 REVOKE ALL ON FUNCTION start_duel(text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION start_duel(text) TO authenticated;
+
+-- ── 8b. RPC: leave_duel_lobby(p_code) ───────────────────────────────────
+-- Guest leaves the lobby before the duel starts.
+-- Only callable while status='ready'. Reverts room to 'waiting'.
+-- Idempotent: safe to call multiple times. Cannot leave after STARTED.
+CREATE OR REPLACE FUNCTION leave_duel_lobby(p_code text)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  _uid  uuid := auth.uid();
+  _room duel_rooms%ROWTYPE;
+BEGIN
+  IF _uid IS NULL THEN
+    RETURN jsonb_build_object('ok', false, 'error', 'unauthenticated');
+  END IF;
+
+  SELECT * INTO _room FROM duel_rooms WHERE code = p_code FOR UPDATE;
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('ok', false, 'error', 'not_found');
+  END IF;
+
+  IF _room.guest_user_id != _uid THEN
+    RETURN jsonb_build_object('ok', false, 'error', 'not_guest');
+  END IF;
+
+  IF _room.status != 'ready' THEN
+    RETURN jsonb_build_object('ok', false, 'error', 'cannot_leave', 'status', _room.status);
+  END IF;
+
+  UPDATE duel_rooms
+  SET status = 'waiting', guest_user_id = NULL, guest_name = NULL
+  WHERE code = p_code;
+
+  RETURN jsonb_build_object('ok', true);
+END;
+$$;
+REVOKE ALL ON FUNCTION leave_duel_lobby(text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION leave_duel_lobby(text) TO authenticated;
 
 -- ── 9. RPC: submit_duel_answer(p_code, p_question_idx, p_selected_idx) ──
 -- Player submits an answer (or timeout sentinel -1).
