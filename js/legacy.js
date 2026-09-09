@@ -2212,16 +2212,26 @@ async function adminBulkImportCompetitive(){
     return;
   }
 
-  const errLines = (data.errors || []).slice(0, 20).map(e =>
-    `<div style="color:var(--red)">Строка ${e.row}: ${e.reason}${e.detail ? ' — ' + e.detail : ''}</div>`
-  ).join('');
-
   resultEl.style.display = 'block';
   resultEl.innerHTML =
     `<b>Всего: ${data.total}</b> &nbsp;·&nbsp; `
     + `<b style="color:var(--green)">✅ ${data.inserted} вставлено</b> &nbsp;·&nbsp; `
-    + (data.rejected > 0 ? `<b style="color:var(--red)">❌ ${data.rejected} отклонено</b>` : '')
-    + (errLines ? '<div style="margin-top:6px">' + errLines + '</div>' : '');
+    + (data.rejected > 0 ? `<b style="color:var(--red)">❌ ${data.rejected} отклонено</b>` : '');
+
+  // Render error rows with textContent to avoid XSS from imported data
+  const errors = (data.errors || []).slice(0, 20);
+  if(errors.length){
+    const errWrap = document.createElement('div');
+    errWrap.style.marginTop = '6px';
+    errors.forEach(e => {
+      const row = document.createElement('div');
+      row.style.color = 'var(--red)';
+      const label = document.createTextNode('Строка ' + e.row + ': ' + e.reason + (e.detail ? ' — ' + e.detail : ''));
+      row.appendChild(label);
+      errWrap.appendChild(row);
+    });
+    resultEl.appendChild(errWrap);
+  }
 
   if(data.inserted > 0) adminLoadSecretCounts();
 }
