@@ -114,18 +114,24 @@ BEGIN
   -- ── Duplicate detection: reject if same text exists ANYWHERE ─────
   -- Checks all questions (not just is_competitive_secret=true).
   -- A question whose answer was ever public cannot be secret.
+  -- Blank-aware: question_ru='' falls through to question_text.
   v_norm_text := lower(trim(p_question_text));
   IF EXISTS (
     SELECT 1 FROM questions
-    WHERE lower(trim(COALESCE(question_ru, question_text, ''))) = v_norm_text
+    WHERE lower(
+            COALESCE(
+              NULLIF(trim(question_ru),   ''),
+              NULLIF(trim(question_text), ''),
+              ''
+            )
+          ) = v_norm_text
   ) THEN
     RETURN jsonb_build_object('ok', false, 'reason', 'duplicate_question',
       'detail', 'a question with this text already exists');
   END IF;
 
-  -- ── Rebuild answers array from validated trimmed values ───────────
-  -- jsonb_array_elements_text returns unquoted strings — no trim('"') needed.
-  SELECT jsonb_agg(x.val ORDER BY x.ord)
+  -- ── Rebuild answers: order-preserving, trimmed strings ────────────
+  SELECT jsonb_agg(trim(x.val) ORDER BY x.ord)
   INTO   v_answers
   FROM   jsonb_array_elements_text(p_answers) WITH ORDINALITY AS x(val, ord);
 
@@ -333,10 +339,17 @@ BEGIN
     END IF;
 
     -- ── Duplicate check: against ALL existing questions ───────────
+    -- Blank-aware: question_ru='' falls through to question_text.
     v_norm_text := lower(v_qtext);
     IF EXISTS (
       SELECT 1 FROM questions
-      WHERE lower(trim(COALESCE(question_ru, question_text, ''))) = v_norm_text
+      WHERE lower(
+              COALESCE(
+                NULLIF(trim(question_ru),   ''),
+                NULLIF(trim(question_text), ''),
+                ''
+              )
+            ) = v_norm_text
     ) THEN
       v_errors   := v_errors || jsonb_build_object('row', v_idx, 'reason', 'duplicate_question',
                       'detail', left(v_qtext, 60));
@@ -352,8 +365,8 @@ BEGIN
       CONTINUE;
     END IF;
 
-    -- ── Rebuild trimmed answers (order-preserving, no extra quotes) ─
-    SELECT jsonb_agg(x.val ORDER BY x.ord)
+    -- ── Rebuild answers: order-preserving, trimmed strings ────────────
+    SELECT jsonb_agg(trim(x.val) ORDER BY x.ord)
     INTO   v_answers
     FROM   jsonb_array_elements_text(v_answers_raw) WITH ORDINALITY AS x(val, ord);
 
