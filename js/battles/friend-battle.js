@@ -217,8 +217,8 @@ async function startDuelGame(){
       window.showDailyLimitScreen?.('battle');
     } else if (errCode === 'guest_limit_reached') {
       window.toast?.('У соперника закончился лимит дуэлей на сегодня.');
-    } else if (errCode === 'not_enough_secure_questions') {
-      showDuelComingSoonScreen();
+    } else if (errCode === 'not_enough_secure_questions' || errCode === 'not_enough_questions') {
+      window.toast?.('Не удалось подобрать вопросы для дуэли. Попробуйте ещё раз.');
     } else if (errCode === 'not_ready') {
       window.toast?.('Дождитесь, пока соперник присоединится.');
     } else {
