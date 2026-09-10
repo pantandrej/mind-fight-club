@@ -14,11 +14,11 @@
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://brainfight.club/">
 <meta property="og:title" content="Brain Fight Club — живые квиз-битвы">
-<meta property="og:description" content="Дуэли с друзьями, онлайн-турниры и клубные чемпионаты. Отвечай быстрее — побеждай. Бесплатно, без скачивания.">
+<meta property="og:description" content="Дуэли с друзьями, командные турниры и Brain Fights. Отвечай быстрее — побеждай. Бесплатно, без скачивания.">
 <meta property="og:image" content="https://brainfight.club/og-image.svg">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Brain Fight Club — живые квиз-битвы">
-<meta name="twitter:description" content="Дуэли с друзьями, онлайн-турниры и клубные чемпионаты. Бесплатно, без скачивания.">
+<meta name="twitter:description" content="Дуэли с друзьями, командные турниры и Brain Fights. Бесплатно, без скачивания.">
 <meta name="twitter:image" content="https://brainfight.club/og-image.svg">
 <link rel="canonical" href="https://brainfight.club/">
 <script type="application/ld+json">
@@ -49,7 +49,7 @@
     <img src="/public/logo.png" alt="BFC" style="height:80px;width:auto;margin-bottom:4px">
     <div style="font-size:13px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:28px">Brain Fight Club</div>
     <div style="font-size:26px;font-weight:900;line-height:1.2;margin-bottom:10px">Квиз-битвы<br>в реальном времени</div>
-    <div style="font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:28px">Дуэли с друзьями, турниры в барах и офисах,<br>клубные чемпионаты — всё бесплатно</div>
+    <div style="font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:28px">Дуэли с друзьями, турниры в барах и офисах,<br>командные Brain Fights — всё бесплатно</div>
     <div style="background:rgba(0,237,181,.08);border:1px solid rgba(0,237,181,.2);border-radius:16px;padding:14px;margin-bottom:24px;display:flex;align-items:center;justify-content:center;gap:8px">
       <div style="display:flex">
         <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;border:2px solid var(--bg)">А</div>
@@ -76,7 +76,7 @@
       <img src="/public/logo.png" alt="BFC" style="height:110px;width:auto;margin-bottom:6px;display:block">
       <div style="font-size:13px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:32px">Brain Fight Club</div>
       <div style="font-size:42px;font-weight:900;line-height:1.15;margin-bottom:16px">Квиз-битвы<br>в реальном времени</div>
-      <div style="font-size:16px;color:var(--muted);line-height:1.7;margin-bottom:36px">Дуэли с друзьями, турниры в барах и офисах,<br>клубные чемпионаты — всё бесплатно</div>
+      <div style="font-size:16px;color:var(--muted);line-height:1.7;margin-bottom:36px">Дуэли с друзьями, турниры в барах и офисах,<br>командные Brain Fights — всё бесплатно</div>
 
       <!-- Social proof -->
       <div style="display:inline-flex;align-items:center;gap:10px;background:rgba(0,237,181,.08);border:1px solid rgba(0,237,181,.2);border-radius:16px;padding:12px 18px;margin-bottom:32px">
@@ -416,7 +416,7 @@
       <div class="duel-hero">
         <div class="duel-hero-icon">⚔️</div>
         <div class="duel-hero-title" id="d-title">Дуэль</div>
-        <div class="duel-hero-sub" id="d-sub">Выбери режим: сразись с другом или найди случайного соперника онлайн.</div>
+        <div class="duel-hero-sub" id="d-sub">Сразись с другом — отправь ссылку или код.</div>
         <!-- Два варианта -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%;margin:12px 0">
           <button onclick="window._showDuelFriend()" style="background:var(--bg2);border:0.5px solid var(--border);border-radius:16px;padding:20px 14px;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .15s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
@@ -424,11 +424,11 @@
             <div style="font-size:14px;font-weight:800;color:var(--text)">С другом</div>
             <div style="font-size:11px;color:var(--muted);text-align:center">Отправь ссылку или код</div>
           </button>
-          <button onclick="startMatchmaking()" style="background:var(--bg2);border:0.5px solid var(--border);border-radius:16px;padding:20px 14px;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .15s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:16px;padding:20px 14px;display:flex;flex-direction:column;align-items:center;gap:8px;opacity:.5;cursor:default">
             <div style="font-size:32px">🔍</div>
             <div style="font-size:14px;font-weight:800;color:var(--text)">Случайный бой</div>
-            <div style="font-size:11px;color:var(--muted);text-align:center">Найти соперника онлайн</div>
-          </button>
+            <div style="font-size:11px;color:var(--muted);text-align:center">Скоро</div>
+          </div>
         </div>
       </div>
       <!-- Форма "с другом" (скрыта по умолчанию) -->
@@ -2242,13 +2242,13 @@
     </div>
 
     <!-- БАТТЛЫ -->
-    <div class="play-menu-item" onclick="startMatchmaking()">
+    <div class="play-menu-item" style="opacity:.45;pointer-events:none">
       <div class="play-menu-icon">🔍</div>
       <div class="play-menu-info">
         <div class="play-menu-title" id="pm-random">Случайный бой</div>
-        <div class="play-menu-sub" id="pm-random-sub">Найти соперника онлайн · 3 боя в день</div>
+        <div class="play-menu-sub" id="pm-random-sub">Поиск соперника онлайн</div>
       </div>
-      <div class="play-menu-badge" style="background:var(--red)" id="pm-random-badge">+50 ⚡</div>
+      <div class="play-menu-badge" style="background:var(--muted)" id="pm-random-badge">Скоро</div>
     </div>
     <!-- ДУЭЛЬ С ДРУГОМ -->
     <div class="play-menu-item" onclick="showScreen('duel')">
@@ -2359,7 +2359,7 @@
       <div class="rules-hdr"><div class="rules-hdr-icon">⚔️</div><div class="rules-hdr-title" id="r-duels-title">Дуэли</div><div class="rules-arrow" id="r-duels-arr">▼</div></div>
       <div class="rules-body" id="r-duels">
         Вызови друга на дуэль — оба получите <span class="rules-hl">одинаковые вопросы</span> и видите счёт в реальном времени.<br><br>
-        Или нажми <b>Случайный бой</b> — система найдёт случайного соперника онлайн.
+        Случайный бой (поиск случайного соперника онлайн) — готовится к запуску.
       </div>
     </div>
 
@@ -2374,8 +2374,8 @@
     <div class="rules-section" onclick="toggleRulesSection('r-tourn')">
       <div class="rules-hdr"><div class="rules-hdr-icon">🏆</div><div class="rules-hdr-title" id="r-tourn-title">Официальные турниры</div><div class="rules-arrow" id="r-tourn-arr">▼</div></div>
       <div class="rules-body" id="r-tourn">
-        Официальные турниры проводятся каждую неделю. Все игроки получают <span class="rules-hl">одинаковый набор вопросов</span> и стартуют одновременно.<br><br>
-        Финальный рейтинг виден всем. Победитель получает бейдж и нейроны.
+        Официальные турниры — все игроки получают <span class="rules-hl">одинаковый набор вопросов</span>. Финальный рейтинг виден всем. Победитель получает бейдж и нейроны.<br><br>
+        Расписание турниров публикуется в разделе События.
       </div>
     </div>
 
