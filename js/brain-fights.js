@@ -1,13 +1,14 @@
 // brain-fights.js — Brain Fights Core screen
 //
-// Data source after migration 76:
+// Data source after migration 82:
 //   get_brain_fights_week() SECURITY DEFINER RPC — single call returns
 //   everything aggregated server-side from brain_fight_contributions.
 //
 // Security contract:
 //   Client never writes BF points. All scoring via SECURITY DEFINER RPCs.
-//   Training and Duel excluded from official score until server-authoritative.
-//   Only Super Question (server-verified) contributes to official BF.
+//   Active sources: SuperQ, Friend Duel (wins), Weekly Arena.
+//   Daily Training BF: FUTURE-GATED (awaits session_questions + submit_training_answer).
+//   Team formula: SUM(top-3 full BF) + 5 × active players ranked #4+.
 import { sb }       from './services/supabase.js';
 import { getState } from './state.js';
 
@@ -26,15 +27,18 @@ const BF = {
   contributors:   { ru: 'Вклад команды',                            en: 'Team contributions' },
   myContrib:      { ru: 'Мой вклад на этой неделе',                 en: 'My contribution this week' },
   superq:         { ru: 'Суперквиз',                                 en: 'Super Q' },
+  duel:           { ru: 'Дуэли',                                      en: 'Duels' },
+  training:       { ru: 'Ежедневная игра',                           en: 'Daily Game' },
+  trainingSoon:   { ru: 'Скоро',                                      en: 'Soon' },
   total:          { ru: 'Итого',                                      en: 'Total' },
   leaderboard:    { ru: 'Лидерборд',                                 en: 'Leaderboard' },
   tabGlobal:      { ru: 'Глобальный',                                en: 'Global' },
   tabCity:        { ru: 'По городу',                                  en: 'City' },
-  howToEarn:      { ru: 'Как помочь команде',                        en: 'How to contribute' },
-  earn1:          { ru: '🧠 Отвечай на Суперквиз каждый день (+5 за правильный ответ, +1 за попытку)', en: '🧠 Answer the Super Question daily (+5 correct, +1 for any attempt)' },
-  earn2:          { ru: '📈 Твои очки суммируются в недельный счёт команды', en: '📈 Your points add to your team\'s weekly score' },
-  earn3:          { ru: '🏆 Топ команды определяется в воскресенье',  en: '🏆 Top teams ranked every Sunday' },
-  earn4:          { ru: '🏟️ Weekly Arena — участие засчитывается в BF', en: '🏟️ Weekly Arena — participation counts toward BF' },
+  howToEarn:      { ru: 'Как заработать очки BF',                    en: 'How to earn BF points' },
+  earn1:          { ru: '⚔️ Побеждай в дуэлях с друзьями (+3 BF за победу, максимум 3 победы в день)', en: '⚔️ Win friend duels (+3 BF per win, max 3 wins/day)' },
+  earn2:          { ru: '🧠 Отвечай на Суперквиз каждый день (+5 за правильный, +1 за попытку)', en: '🧠 Answer the Super Question daily (+5 correct, +1 for any attempt)' },
+  earn3:          { ru: '🏟️ Участвуй в Weekly Arena — получай очки за участие, результат и место в топ-3', en: '🏟️ Join the Weekly Arena — earn points for participation, performance, and top-3 finish' },
+  earn4:          { ru: '⚡ Ежедневная игра — скоро', en: '⚡ Daily Game — coming soon' },
   noActivity:     { ru: 'Очков ещё нет. Сыграй Суперквиз!',         en: 'No points yet. Play the Super Question!' },
   weeklyArena:    { ru: 'Weekly Arena',                              en: 'Weekly Arena' },
   arenaLive:      { ru: '🔴 Live',                                   en: '🔴 Live' },
@@ -217,10 +221,12 @@ function _renderBF(el, data, myUserId) {
       <span class="bf-contrib-row-pts">${c.points} ${_t('pts')}</span>
     </div>`).join('');
 
-  // MY CONTRIBUTION — superq + weekly_arena (P0.2)
+  // MY CONTRIBUTION — all 4 verified sources (migration82)
   const superqPts      = my_contrib?.superq_pts       || 0;
+  const duelPts        = my_contrib?.duel_pts         || 0;
+  const trainingPts    = my_contrib?.training_pts     || 0;
   const weeklyArenaPts = my_contrib?.weekly_arena_pts || 0;
-  const totalPts       = my_contrib?.total            || (superqPts + weeklyArenaPts);
+  const totalPts       = my_contrib?.total            || (superqPts + duelPts + trainingPts + weeklyArenaPts);
 
   const myContribCard = `
     <div class="bf-card bf-mycontrib-card">
@@ -228,14 +234,21 @@ function _renderBF(el, data, myUserId) {
       <div class="bf-mycontrib-total">${totalPts} <span style="font-size:14px;color:var(--muted);font-weight:600">${_t('pts')}</span></div>
       <div class="bf-mycontrib-rows">
         <div class="bf-mycontrib-row">
+          <span>⚔️ ${_t('duel')}</span>
+          <span class="bf-mc-pts">${duelPts}</span>
+        </div>
+        <div class="bf-mycontrib-row">
           <span>🧠 ${_t('superq')}</span>
           <span class="bf-mc-pts">${superqPts}</span>
         </div>
-        ${weeklyArenaPts > 0 ? `
         <div class="bf-mycontrib-row">
           <span>🏟️ ${_t('weeklyArena')}</span>
           <span class="bf-mc-pts">${weeklyArenaPts}</span>
-        </div>` : ''}
+        </div>
+        <div class="bf-mycontrib-row" style="opacity:.45">
+          <span>⚡ ${_t('training')} <span style="font-size:10px;color:var(--muted)">${_t('trainingSoon')}</span></span>
+          <span class="bf-mc-pts">${trainingPts}</span>
+        </div>
       </div>
     </div>`;
 
@@ -295,6 +308,7 @@ function _renderBF(el, data, myUserId) {
         <div class="bf-how-row">${_t('earn1')}</div>
         <div class="bf-how-row">${_t('earn2')}</div>
         <div class="bf-how-row">${_t('earn3')}</div>
+        <div class="bf-how-row" style="opacity:.5">${_t('earn4')}</div>
       </div>
       <button onclick="showScreen('home')" class="bf-btn-cta" style="margin-top:14px;width:100%">
         🧠 ${_t('superq')} →
