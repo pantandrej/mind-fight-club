@@ -7,7 +7,7 @@
 // Security contract:
 //   Client never writes BF points. All scoring via SECURITY DEFINER RPCs.
 //   Active sources: SuperQ, Friend Duel (wins), Weekly Arena.
-//   Daily Training BF: FUTURE-GATED (awaits session_questions + submit_training_answer).
+//   Daily Training BF: ACTIVE — start_daily_bf_session + complete_daily_bf_session (m82).
 //   Team formula: SUM(top-3 full BF) + 5 × active players ranked #4+.
 import { sb }       from './services/supabase.js';
 import { getState } from './state.js';
@@ -38,8 +38,8 @@ const BF = {
   earn1:          { ru: '⚔️ Побеждай в дуэлях с друзьями (+3 BF за победу, максимум 3 победы в день)', en: '⚔️ Win friend duels (+3 BF per win, max 3 wins/day)' },
   earn2:          { ru: '🧠 Отвечай на Суперквиз каждый день (+5 за правильный, +1 за попытку)', en: '🧠 Answer the Super Question daily (+5 correct, +1 for any attempt)' },
   earn3:          { ru: '🏟️ Участвуй в Weekly Arena — получай очки за участие, результат и место в топ-3', en: '🏟️ Join the Weekly Arena — earn points for participation, performance, and top-3 finish' },
-  earn4:          { ru: '⚡ Ежедневная игра — скоро', en: '⚡ Daily Game — coming soon' },
-  noActivity:     { ru: 'Очков ещё нет. Сыграй Суперквиз!',         en: 'No points yet. Play the Super Question!' },
+  earn4:          { ru: '⚡ Играй ежедневную игру — +1 BF за верный ответ, до +10 BF в день', en: '⚡ Play the Daily Game — +1 BF per correct answer, up to +10 BF/day' },
+  noActivity:     { ru: 'Очков ещё нет. Сыграй ежедневную игру, дуэль или ответь на Супервопрос!', en: 'No points yet. Play the Daily Game, a duel, or the Super Question!' },
   weeklyArena:    { ru: 'Weekly Arena',                              en: 'Weekly Arena' },
   arenaLive:      { ru: '🔴 Live',                                   en: '🔴 Live' },
   arenaSoon:      { ru: '⏰ Скоро',                                   en: '⏰ Soon' },
@@ -245,8 +245,8 @@ function _renderBF(el, data, myUserId) {
           <span>🏟️ ${_t('weeklyArena')}</span>
           <span class="bf-mc-pts">${weeklyArenaPts}</span>
         </div>
-        <div class="bf-mycontrib-row" style="opacity:.45">
-          <span>⚡ ${_t('training')} <span style="font-size:10px;color:var(--muted)">${_t('trainingSoon')}</span></span>
+        <div class="bf-mycontrib-row">
+          <span>⚡ ${_t('training')}</span>
           <span class="bf-mc-pts">${trainingPts}</span>
         </div>
       </div>
@@ -308,7 +308,7 @@ function _renderBF(el, data, myUserId) {
         <div class="bf-how-row">${_t('earn1')}</div>
         <div class="bf-how-row">${_t('earn2')}</div>
         <div class="bf-how-row">${_t('earn3')}</div>
-        <div class="bf-how-row" style="opacity:.5">${_t('earn4')}</div>
+        <div class="bf-how-row">${_t('earn4')}</div>
       </div>
       <button onclick="showScreen('home')" class="bf-btn-cta" style="margin-top:14px;width:100%">
         🧠 ${_t('superq')} →

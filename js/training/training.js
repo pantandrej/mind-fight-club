@@ -236,6 +236,26 @@ let _quickPlayStartInProgress = false;
 // Remaining server sessions after last granted round (for premium replay UX).
 let _quickPlayServerRemaining = 0;
 
+// Daily BF session state — null when not in a BF-eligible session.
+let _bfSession = null; // { session_id, bf_eligible }
+
+// Try to start a Daily BF session via start_daily_bf_session().
+// Returns truthy if the session should be used (bf_eligible or not — questions always provided).
+// Returns null if quota is exhausted (caller should fall back to start_game_session).
+async function tryStartDailyBfSession() {
+  try {
+    const { data, error } = await sb.rpc('start_daily_bf_session');
+    if (error || !data?.ok) return null;
+    _bfSession = { session_id: data.session_id, bf_eligible: data.bf_eligible };
+    window._currentSessionId   = data.session_id;
+    window._quickPlaySessionId = data.session_id;
+    _quickPlayServerRemaining  = data.remaining ?? 0;
+    return data;
+  } catch (_) {
+    return null;
+  }
+}
+
 async function startQuickPlay(){
   // ── In-flight guard: prevents double-tap race (two concurrent start_game_session) ──
   if(_quickPlayStartInProgress) return;
@@ -282,35 +302,60 @@ async function startQuickPlay(){
       return;
     }
 
-    // ── Step 4: quota check — only consume a session if we have a valid round ──
-    const { data: sessionData, error: sessionErr } = await window.sb.rpc('start_game_session', {
-      p_mode: 'training'
-    });
-    if(sessionErr){
-      console.error('[training] start_game_session error:', sessionErr.message);
-      window.toast?.('Не удалось проверить дневной лимит. Проверь интернет и попробуй ещё раз.');
-      return;
-    }
-    if(!sessionData.allowed){
-      const plan  = sessionData.plan  || 'free';
-      const used  = sessionData.used  ?? '?';
-      const limit = sessionData.limit ?? 1;
-      window.track?.('training_limit_reached', { plan, used, limit });
-      window.track?.('premium_paywall_viewed', { trigger: 'training_limit', plan });
-      if(typeof showDailyLimitScreen === 'function') showDailyLimitScreen('training');
-      else window.showScreen?.('daily-limit');
-      return;
+    // ── Step 4: quota check via start_daily_bf_session (preferred) ──
+    // start_daily_bf_session handles quota (same limits as start_game_session),
+    // assigns server-side questions, and tracks BF eligibility.
+    // On failure/unavailability, fall back to start_game_session.
+    _bfSession = null;
+    const bfData = await tryStartDailyBfSession();
+    if (!bfData) {
+      // BF RPC unavailable or quota exhausted — try legacy start_game_session
+      const { data: sessionData, error: sessionErr } = await window.sb.rpc('start_game_session', {
+        p_mode: 'training'
+      });
+      if(sessionErr){
+        console.error('[training] start_game_session error:', sessionErr.message);
+        window.toast?.('Не удалось проверить дневной лимит. Проверь интернет и попробуй ещё раз.');
+        return;
+      }
+      if(!sessionData.allowed){
+        const plan  = sessionData.plan  || 'free';
+        const used  = sessionData.used  ?? '?';
+        const limit = sessionData.limit ?? 1;
+        window.track?.('training_limit_reached', { plan, used, limit });
+        window.track?.('premium_paywall_viewed', { trigger: 'training_limit', plan });
+        if(typeof showDailyLimitScreen === 'function') showDailyLimitScreen('training');
+        else window.showScreen?.('daily-limit');
+        return;
+      }
+      _quickPlayServerRemaining = sessionData.remaining ?? 0;
+      if(sessionData.session_id){
+        window._currentSessionId   = sessionData.session_id;
+        window._quickPlaySessionId = sessionData.session_id;
+      }
     }
 
-    // Session granted
-    _quickPlayServerRemaining = sessionData.remaining ?? 0;
-    if(sessionData.session_id){
-      window._currentSessionId   = sessionData.session_id;
-      window._quickPlaySessionId = sessionData.session_id;
-    }
+    // Session granted (either via BF path or fallback)
 
     // ── Step 5: hand pre-built questions to startQuiz (skips re-fetch) ──
-    window._preparedQuickPlaySet = standard;
+    // BF path: use server-assigned questions (carry sq_id for answer submission).
+    // Fallback path: use locally-built standard set.
+    if (bfData?.questions?.length) {
+      // Normalize server question payload to training.js format.
+      // Server returns: {sq_id, q_id, pos, q, a, cat, t} — no correct_index.
+      const serverQs = bfData.questions.map(sq => ({
+        id:            sq.q_id,
+        sq_id:         sq.sq_id,
+        q:             sq.q,
+        a:             sq.a,
+        c:             undefined,  // no correct_index sent to client
+        cat:           sq.cat,
+        t:             sq.t,
+      }));
+      window._preparedQuickPlaySet = serverQs;
+    } else {
+      window._preparedQuickPlaySet = standard;
+    }
     currentGameType = 'quick'; currentPackKey = null; selectedCat = 'ALL';
     _scoreShownForGame = false; _roundAnswers = [];
     _quickPlayCompletedThisSession = false;
@@ -1446,17 +1491,38 @@ function showScore(){
   {
     const { currentUser } = getState();
     if(currentUser && currentGameType === 'quick' && window._quickPlaySessionId){
-      // Mark the session as completed (server-side, for daily_goal eligibility).
-      // complete_training_session checks: ownership, mode=training, elapsed >= 60s.
-      sb.rpc('complete_training_session', {
-        p_session_id: window._quickPlaySessionId,
-      }).catch(() => {});
-      // Speed reward: returns server_verification_unavailable (disabled until
-      // submit_training_answer() + session_questions table are implemented).
-      // Called for logging/monitoring purposes only — no neurons credited.
-      sb.rpc('claim_speed_reward', {
-        p_session_id: window._quickPlaySessionId,
-      }).catch(() => {});
+      if (_bfSession?.session_id) {
+        // BF session: submit server-authoritative answers for BF award.
+        // Collect {sq_id, selected_idx} from curQ (which carries sq_id from start_daily_bf_session)
+        // and _roundAnswers (module-level array: _roundAnswers[qIdx] = selectedOptionIndex).
+        const curQ = getState().curQ || [];
+        const answers = curQ
+          .map((q, i) => ({ sq_id: q.sq_id, selected_idx: _roundAnswers[i] ?? null }))
+          .filter(a => a.sq_id != null && a.selected_idx != null);
+        if (answers.length > 0) {
+          sb.rpc('complete_daily_bf_session', {
+            p_session_id: _bfSession.session_id,
+            p_answers: answers
+          }).then(({ data }) => {
+            if (data?.ok && data.bf_pts > 0) {
+              window.toast?.(`⚡ +${data.bf_pts} BF`, 2500);
+            }
+          }).catch(() => {});
+        }
+        // Also complete training session for streak tracking.
+        sb.rpc('complete_training_session', {
+          p_session_id: window._quickPlaySessionId,
+        }).catch(() => {});
+        _bfSession = null;
+      } else {
+        // No BF session (fallback path): mark complete for daily_goal.
+        sb.rpc('complete_training_session', {
+          p_session_id: window._quickPlaySessionId,
+        }).catch(() => {});
+        sb.rpc('claim_speed_reward', {
+          p_session_id: window._quickPlaySessionId,
+        }).catch(() => {});
+      }
     } else if(!currentUser && _speedNeurons > 0) {
       setState({ neurons: getState().neurons + _speedNeurons });
       updNeurons();
