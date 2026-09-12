@@ -705,9 +705,9 @@ check('F08', "[STATIC TEST] matchFound does NOT infer role from oppName truthine
 check('F09', '[STATIC TEST] main timer passes claimData.role to matchFound',
     re.search(r"matchFound\s*\(.*?claimData\.duel_code.*?claimData\.role\s*\)", mm_js, re.DOTALL))
 
-check('F10', '[STATIC TEST] 15s timeout passes cancelData.role via _cancelQueueOrEnterMatched',
+check('F10', '[STATIC TEST] 15s timeout enters real match via _cancelQueueOrEnterMatched which passes role to matchFound',
     '_cancelQueueOrEnterMatched' in mm_js
-    and re.search(r"matchFound\s*\(.*?cancelData\.duel_code.*?cancelData\.role", mm_js, re.DOTALL))
+    and re.search(r"matchFound\s*\(.*?data\.duel_code.*?data\.role", mm_js, re.DOTALL))
 
 # ── JS: all four cancellation flows await and honor matched ──────────────────
 
@@ -773,22 +773,20 @@ check('G03', "[STATIC TEST] cancel_random_matchmaking also uses ORDER BY created
 
 # ── JS: error handling in all four callers ───────────────────────────────────
 
-check('G04', '[STATIC TEST] 15s timeout handles result.error before showing bot offer',
-    re.search(r"elapsed\s*>=\s*15.*?result\.error.*?return", mm_js, re.DOTALL))
+check('G04', '[STATIC TEST] 15s timeout gates bot offer on result.cancelled===true (not just !matched)',
+    re.search(r"elapsed\s*>=\s*15.*?result\.cancelled\b.*?_showBotOffer", mm_js, re.DOTALL))
 
-check('G05', '[STATIC TEST] playWithBot handles result.error before bot start',
-    re.search(r"playWithBot.*?result\.error.*?return", mm_js, re.DOTALL))
+check('G05', '[STATIC TEST] playWithBot gates bot start on result.cancelled===true when queue exists',
+    re.search(r"playWithBot.*?mmQueueId.*?!result\.cancelled.*?return", mm_js, re.DOTALL))
 
-check('G06', '[STATIC TEST] cancelMatchmaking handles result.error before showPlayMenu',
-    re.search(r"cancelMatchmaking.*?result\.error.*?return.*?showPlayMenu", mm_js, re.DOTALL))
+check('G06', '[STATIC TEST] cancelMatchmaking gates showPlayMenu on result.cancelled===true',
+    re.search(r"cancelMatchmaking.*?mmQueueId.*?!result\.cancelled.*?return.*?showPlayMenu", mm_js, re.DOTALL))
 
-check('G07', '[STATIC TEST] _acceptChallenge handles result.error before switching challenge',
-    re.search(r"_acceptChallenge.*?result\.error.*?return", mm_js, re.DOTALL))
+check('G07', '[STATIC TEST] _acceptChallenge gates challenge switch on result.cancelled===true',
+    re.search(r"_acceptChallenge.*?mmQueueId.*?!result\.cancelled.*?return", mm_js, re.DOTALL))
 
-check('G08', '[STATIC TEST] all four call sites of _cancelQueueOrEnterMatched check result.error before continuing',
-    # Four call sites (15s timeout, playWithBot, cancelMatchmaking, _acceptChallenge).
-    # Each must have result.error guard. Count distinct result.error checks = 4.
-    len(re.findall(r'result\.error', mm_js)) == 4)
+check('G08', '[STATIC TEST] all four callers check result.cancelled (not bare !matched) before proceeding',
+    len(re.findall(r'result\.cancelled', mm_js)) >= 4)
 
 # ── DB/browser NOT EXECUTED ──────────────────────────────────────────────────
 
@@ -796,6 +794,67 @@ check_ne('G09', '[DB TRANSACTION TEST — NOT EXECUTED] old matched row + new wa
 check_ne('G10', '[DB TRANSACTION TEST — NOT EXECUTED] current waiting row becomes matched → next claim returns current duel, not historical row')
 check_ne('G11', '[BROWSER TEST — NOT EXECUTED] cancellation RPC network failure at second 15 → no virtual fallback starts, retry shown')
 check_ne('G12', '[BROWSER TEST — NOT EXECUTED] bot click during cancellation network failure → bot battle does not start')
+
+# ─────────────────────────────────────────────────────────────────────────────
+# H01-H16  Supabase error field + repeatable retry
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Extract _cancelQueueOrEnterMatched body for scoped checks
+_helper_m = re.search(
+    r'async\s+function\s+_cancelQueueOrEnterMatched\s*\([^)]*\)\s*\{(.*?)\n\}',
+    mm_js, re.DOTALL
+)
+_helper = _helper_m.group(1) if _helper_m else ''
+
+check('H01', '[STATIC TEST] helper destructures {data, error} from Supabase RPC',
+    re.search(r'\{\s*data\b.*?\berror\b.*?\}\s*=\s*await\s+sb\.rpc\s*\(\s*["\']cancel_random_matchmaking', _helper, re.DOTALL)
+    or re.search(r'\{\s*\berror\b.*?\bdata\b.*?\}\s*=\s*await\s+sb\.rpc\s*\(\s*["\']cancel_random_matchmaking', _helper, re.DOTALL))
+
+check('H02', '[STATIC TEST] helper returns error:true when Supabase rpcError is truthy',
+    re.search(r'rpcError\b.*?error\s*:\s*true', _helper, re.DOTALL))
+
+check('H03', '[STATIC TEST] helper returns error:true when data is null/falsy',
+    re.search(r'!\s*data.*?error\s*:\s*true', _helper, re.DOTALL))
+
+check('H04', '[STATIC TEST] helper returns error:true when data.ok !== true',
+    re.search(r'data\.ok\s*!==\s*true.*?error\s*:\s*true', _helper, re.DOTALL))
+
+check('H05', '[STATIC TEST] helper does NOT clear mmQueueId on error path',
+    # mmQueueId=null only appears in matched/cancelled branches, never adjacent to error:true
+    # Check: the two mmQueueId=null lines are only before matched/cancelled returns
+    (lambda h: (
+        'mmQueueId = null' in h
+        and not re.search(r'error\s*:\s*true[^}]{0,60}mmQueueId\s*=\s*null', h, re.DOTALL)
+        and not re.search(r'mmQueueId\s*=\s*null[^}]{0,60}error\s*:\s*true', h, re.DOTALL)
+    ))(_helper))
+
+check('H06', '[STATIC TEST] helper returns cancelled:true only after data.cancelled===true',
+    re.search(r"data\.cancelled\s*===\s*true.*?cancelled\s*:\s*true", _helper, re.DOTALL))
+
+check('H07', '[STATIC TEST] 15s timeout shows bots only on result.cancelled===true',
+    re.search(r"result\.cancelled\b.*?_showBotOffer", mm_js, re.DOTALL)
+    and not re.search(r"!result\.matched.*?_showBotOffer", mm_js, re.DOTALL))
+
+check('H08', '[STATIC TEST] playWithBot proceeds to bot only on result.cancelled===true when queue exists',
+    re.search(r"playWithBot.*?mmQueueId.*?!result\.cancelled.*?return", mm_js, re.DOTALL))
+
+check('H09', '[STATIC TEST] cancelMatchmaking leaves screen only on confirmed cancellation (result.cancelled)',
+    re.search(r"cancelMatchmaking.*?mmQueueId.*?!result\.cancelled.*?return.*?showPlayMenu", mm_js, re.DOTALL))
+
+check('H10', '[STATIC TEST] _acceptChallenge switches challenge only on result.cancelled===true',
+    re.search(r"_acceptChallenge.*?mmQueueId.*?!result\.cancelled.*?return", mm_js, re.DOTALL))
+
+check('H11', '[STATIC TEST] retry re-arms _showCancelError on further failure (recursive _retryCancel)',
+    re.search(r"_retryCancel.*?_showCancelError\s*\(\s*_retryCancel\s*\)", mm_js, re.DOTALL))
+
+check('H12', '[STATIC TEST] retry can resolve to matched or cancelled canonical outcome',
+    re.search(r"_retryCancel.*?r\.matched.*?r\.cancelled.*?_showBotOffer", mm_js, re.DOTALL)
+    or re.search(r"_retryCancel.*?r\.matched.*?r\.cancelled", mm_js, re.DOTALL))
+
+check_ne('H13', '[BROWSER/NETWORK TEST — NOT EXECUTED] Supabase RPC returns {data:null, error:X} → no bot chooser shown')
+check_ne('H14', '[BROWSER/NETWORK TEST — NOT EXECUTED] second retry failure → Retry button re-enabled and still works')
+check_ne('H15', '[BROWSER/NETWORK TEST — NOT EXECUTED] later successful retry with cancelled=true → virtual chooser opens')
+check_ne('H16', '[BROWSER/NETWORK TEST — NOT EXECUTED] later successful retry with matched=true → real duel opens')
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Results

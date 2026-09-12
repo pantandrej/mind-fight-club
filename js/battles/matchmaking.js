@@ -128,27 +128,28 @@ async function startMatchmaking(){
       return;
     }
 
-    // Timer expired — canonical cancel then offer virtual opponents if not matched
+    // Timer expired — canonical cancel then offer virtual opponents only on confirmed cancel
     if(elapsed >= 15){
       clearInterval(mmInterval); mmInterval = null;
       clearInterval(_boardInterval); _boardInterval = null;
       const result = await _cancelQueueOrEnterMatched(myName);
       if(result.matched) return;
-      if(result.error){
-        // Cancel RPC failed — state unknown, may be matched. Stay on screen with retry.
-        _showCancelError(async () => {
-          const r2 = await _cancelQueueOrEnterMatched(myName);
-          if(!r2.matched && !r2.error) _showBotOffer(window._pendingBot || pickRandomBot());
-        });
-        return;
-      }
-      _showBotOffer(window._pendingBot || pickRandomBot());
+      if(result.cancelled) { _showBotOffer(window._pendingBot || pickRandomBot()); return; }
+      // error: state unknown — show retry; re-arms itself on repeated failure
+      const _retryCancel = async () => {
+        const r = await _cancelQueueOrEnterMatched(myName);
+        if(r.matched) return;
+        if(r.cancelled) { _showBotOffer(window._pendingBot || pickRandomBot()); return; }
+        _showCancelError(_retryCancel); // re-arm for another attempt
+      };
+      _showCancelError(_retryCancel);
     }
   }, 1000);
 }
 
-// Shows a retry prompt on the matchmaking screen when the cancel RPC fails.
+// Shows a repeatable retry prompt on the matchmaking screen when cancel state is unknown.
 // Keeps the user on the matchmaking screen — does NOT show bots or navigate away.
+// Calls retryFn on each click; retryFn is responsible for re-arming on further failure.
 function _showCancelError(retryFn){
   const statusEl = document.getElementById('mm-status');
   const subEl    = document.getElementById('mm-sub');
@@ -159,31 +160,51 @@ function _showCancelError(retryFn){
   if(subEl){ subEl.style.display = ''; subEl.innerHTML =
     `<button id="mm-cancel-retry-btn" style="background:rgba(0,237,181,.2);border:0.5px solid rgba(0,237,181,.4);border-radius:8px;padding:6px 18px;font-size:13px;font-weight:800;color:var(--accent2);cursor:pointer;font-family:inherit">${lang==='ru'?'Повторить':'Retry'}</button>`; }
   if(cancelEl) cancelEl.style.display = '';
-  document.getElementById('mm-cancel-retry-btn')?.addEventListener('click', retryFn, { once: true });
+  const btn = document.getElementById('mm-cancel-retry-btn');
+  if(btn) btn.onclick = async () => {
+    btn.disabled = true;
+    btn.textContent = lang === 'ru' ? 'Проверяем...' : 'Checking...';
+    await retryFn();
+    // retryFn re-arms the button itself if still in error state; nothing to do on success.
+  };
 }
 
-// Canonical cancel helper: awaits RPC, enters real match if server already paired caller.
-// Returns {matched:true} if a real match was entered, {matched:false} if cancelled/failed.
-// On network failure: does NOT silently start a bot — returns {matched:false, error:true}.
+// Canonical cancel helper.
+//
+// Return contract (exactly one of matched/cancelled/error is true):
+//   { matched:true,    cancelled:false, error:false }  — real match entered via matchFound()
+//   { matched:false,   cancelled:true,  error:false }  — server confirmed cancellation
+//   { matched:false,   cancelled:false, error:true, reason }  — state unknown, do not proceed
+//
+// mmQueueId is cleared ONLY on a canonical outcome (matched or cancelled).
+// On error, mmQueueId is left intact so a retry can still cancel the correct row.
 async function _cancelQueueOrEnterMatched(myName){
-  let cancelData = null;
+  let data = null, rpcError = null;
   try {
-    const { data } = await sb.rpc('cancel_random_matchmaking');
-    cancelData = data;
+    ({ data, error: rpcError } = await sb.rpc('cancel_random_matchmaking'));
   } catch(e) {
-    // Network failure — fail safe: do not silently discard a possible real match
-    return { matched: false, error: true };
+    return { matched: false, cancelled: false, error: true, reason: e?.message || 'network_exception' };
   }
 
-  if(cancelData?.matched === true) {
-    // Server had already paired this player — enter real duel, do NOT show bots
+  // Treat any Supabase-level error, null data, or ok:false as unknown state
+  if(rpcError || !data || data.ok !== true) {
+    return { matched: false, cancelled: false, error: true,
+             reason: rpcError?.message || data?.reason || 'cancel_state_unknown' };
+  }
+
+  if(data.matched === true) {
     mmQueueId = null;
-    await matchFound(cancelData.duel_code, myName, cancelData.opponent_name, cancelData.role);
-    return { matched: true };
+    await matchFound(data.duel_code, myName, data.opponent_name, data.role);
+    return { matched: true, cancelled: false, error: false };
   }
 
-  mmQueueId = null;
-  return { matched: false };
+  if(data.cancelled === true) {
+    mmQueueId = null;
+    return { matched: false, cancelled: true, error: false };
+  }
+
+  // data.ok===true but neither matched nor cancelled — treat as unknown
+  return { matched: false, cancelled: false, error: true, reason: 'cancel_state_unknown' };
 }
 
 // Canonical entry point for a confirmed real match.
@@ -269,8 +290,8 @@ async function playWithBot(){
     const myName = currentUser?.user_metadata?.full_name?.split(' ')[0] || currentUser?.email?.split('@')[0] || 'You';
     const result = await _cancelQueueOrEnterMatched(myName);
     if(result.matched) return; // entered real match — stop bot flow
-    if(result.error){
-      // Cancel state unknown — do NOT start bot, show toast and stay
+    if(!result.cancelled){
+      // error: state unknown — do NOT start bot
       toast(lang === 'ru' ? '⚠️ Не удалось проверить статус. Попробуй ещё раз.' : '⚠️ Could not check status. Try again.');
       return;
     }
@@ -386,8 +407,8 @@ async function cancelMatchmaking(){
     const myName = currentUser?.user_metadata?.full_name?.split(' ')[0] || currentUser?.email?.split('@')[0] || 'You';
     const result = await _cancelQueueOrEnterMatched(myName);
     if(result.matched) return; // entered real match — do not go back to play menu
-    if(result.error){
-      // Cancel state unknown — do NOT navigate away, show toast
+    if(!result.cancelled){
+      // error: state unknown — do NOT navigate away
       toast(lang === 'ru' ? '⚠️ Не удалось отменить. Попробуй ещё раз.' : '⚠️ Could not cancel. Try again.');
       return;
     }
@@ -593,8 +614,8 @@ window._acceptChallenge = async function(rowId, oppDisplayName, isBot, botData) 
     // Await canonical cancel — if server already matched us, enter that real duel and stop
     const result = await _cancelQueueOrEnterMatched(myName);
     if(result.matched) return;
-    if(result.error){
-      // Cancel state unknown — do NOT accept another challenge
+    if(!result.cancelled){
+      // error: state unknown — do NOT accept another challenge
       toast(lang === 'ru' ? '⚠️ Не удалось проверить статус. Попробуй ещё раз.' : '⚠️ Could not check status. Try again.');
       return;
     }
