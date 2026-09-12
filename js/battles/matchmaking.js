@@ -118,56 +118,30 @@ async function startMatchmaking(){
     if(remaining > 0)
       document.getElementById('mm-sub').textContent = (lang==='ru'?'Осталось ':'Up to ')+remaining+'s';
 
-    // Check if matched
-    const {data:myRow} = await sb.from('matchmaking_queue').select('status,matched_duel_id').eq('id',mmQueueId).single();
-    if(myRow?.status === 'matched' && myRow?.matched_duel_id){
-      clearInterval(mmInterval);
-      await matchFound(myRow.matched_duel_id, myName);
+    // Every tick: attempt atomic server-side claim (BLOCKER 2/3 fix).
+    // No pre-query for opponents — claim_random_match handles that under advisory lock.
+    const { data: claimData, error: claimErr } = await sb.rpc('claim_random_match');
+    if(!claimErr && claimData?.ok && claimData?.matched) {
+      clearInterval(mmInterval); mmInterval = null;
+      clearInterval(_boardInterval); _boardInterval = null;
+      const duelCode   = claimData.duel_code;
+      const oppName    = claimData.opponent_name;
+      await matchFound(duelCode, myName, oppName);
       return;
     }
 
-    // Check for waiting opponents
-    const {data:opponents} = await sb.from('matchmaking_queue')
-      .select('id,user_id,display_name')
-      .eq('status','waiting')
-      .neq('user_id', currentUser.id)
-      .limit(1);
-
-    if(opponents && opponents.length > 0){
-      // Atomic server-side claim: prevents race conditions (B1, B2)
-      const { data: claimData, error: claimErr } = await sb.rpc('claim_random_match');
-      if(claimErr || !claimData?.ok) {
-        // RPC not yet deployed or error — skip this tick, retry next interval
-        return;
-      }
-      if(!claimData.matched) {
-        // Another caller claimed the opponent first — stay waiting
-        return;
-      }
-      const duelCode = claimData.duel_code;
-      const opp = opponents[0];
-      clearInterval(mmInterval);
-      // Push notify opponent (fire-and-forget, don't block on failure)
-      if (window.sendPushToUser) {
-        window.sendPushToUser(opp.user_id, {
-          title: `⚔️ ${myName} вызывает на дуэль!`,
-          body:  'Соперник найден — открой Brain Fight Club!',
-          url:   '/?duel=' + duelCode,
-          tag:   'duel-invite',
-        });
-      }
-      await matchFound(duelCode, myName, opp.display_name);
-      return;
-    }
-
-    // Timer expired — offer virtual opponents, do NOT auto-start
+    // Timer expired — call canonical cancel RPC then offer virtual opponents
     if(elapsed >= 15){
       clearInterval(mmInterval); mmInterval = null;
       clearInterval(_boardInterval); _boardInterval = null;
-      if(mmQueueId){
-        sb.from('matchmaking_queue').update({status:'cancelled'}).eq('id',mmQueueId).then(()=>{}).catch(()=>{});
-        mmQueueId = null;
+      // cancel_random_matchmaking: under advisory lock, safe against claim race
+      const { data: cancelData } = await sb.rpc('cancel_random_matchmaking').catch(()=>({data:null}));
+      if(cancelData?.matched) {
+        // Server matched us just before we tried to cancel — enter real match
+        await matchFound(cancelData.duel_code, myName, cancelData.opponent_name || '?');
+        return;
       }
+      mmQueueId = null;
       _showBotOffer(window._pendingBot || pickRandomBot());
     }
   }, 1000);
@@ -248,7 +222,7 @@ async function playWithBot(){
   window._isBotDuel  = true;
 
   if(mmQueueId){
-    sb.from('matchmaking_queue').update({status:'cancelled'}).eq('id',mmQueueId).then(()=>{}).catch(()=>{});
+    sb.rpc('cancel_random_matchmaking').catch(()=>{});
     mmQueueId = null;
   }
 
@@ -359,7 +333,7 @@ function cancelMatchmaking(){
   clearInterval(_boardInterval); _boardInterval = null;
   window._pendingBot = null;
   if(mmQueueId){
-    sb.from('matchmaking_queue').update({status:'cancelled'}).eq('id',mmQueueId).then(()=>{}).catch(()=>{});
+    sb.rpc('cancel_random_matchmaking').catch(()=>{});
     mmQueueId = null;
   }
   window._isBotDuel = false;
@@ -557,7 +531,7 @@ window._acceptChallenge = async function(rowId, oppDisplayName, isBot, botData) 
   clearInterval(_boardInterval); _boardInterval = null;
   clearInterval(mmInterval); mmInterval = null;
   if (mmQueueId) {
-    sb.from('matchmaking_queue').update({status:'cancelled'}).eq('id',mmQueueId).then(()=>{}).catch(()=>{});
+    sb.rpc('cancel_random_matchmaking').catch(()=>{});
     mmQueueId = null;
   }
 

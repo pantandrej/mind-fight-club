@@ -419,14 +419,14 @@ function obPickAnswer(idx, btn){
     fb.style.background = 'rgba(68,204,136,.15)';
     fb.style.border = '1px solid var(--green)';
     fb.style.color = 'var(--green)';
-    fb.textContent = '✅ Правильно! +20 ⚡';
+    fb.textContent = '✅ Правильно!';
   } else {
     fb.style.background = 'rgba(224,85,85,.1)';
     fb.style.border = '1px solid var(--red)';
     fb.style.color = 'var(--red)';
     fb.textContent = '❌ Неверно. Правильный: ' + q.a[q.c];
   }
-  document.getElementById('ob-score-live').textContent = '+' + _obScore + ' ⚡';
+  document.getElementById('ob-score-live').textContent = '';
 
   const nextBtn = document.getElementById('ob-next-q-btn');
   nextBtn.style.display = '';
@@ -454,15 +454,8 @@ function showObResult(){
   document.getElementById('ob-res-icon').textContent = icon;
   document.getElementById('ob-res-title').textContent = title;
   document.getElementById('ob-res-sub').textContent = sub;
-  document.getElementById('ob-res-neurons').textContent = '+' + _obScore + ' ⚡';
-  // Animate count-up
-  let n = 0;
-  const el = document.getElementById('ob-res-neurons');
-  const interval = setInterval(()=>{
-    n = Math.min(n + 4, _obScore);
-    el.textContent = '+' + n + ' ⚡';
-    if(n >= _obScore) clearInterval(interval);
-  }, 40);
+  const neuronsEl = document.getElementById('ob-res-neurons');
+  if (neuronsEl) neuronsEl.textContent = '';
 }
 
 function shouldShowOnboarding(){

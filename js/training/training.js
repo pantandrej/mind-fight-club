@@ -1251,11 +1251,11 @@ function expire(){
       p_sq_id:        q.sq_id,
       p_selected_idx: -1,
     }).then(({ data, error }) => {
-      if(error || !data) {
+      if(error || !data || data.ok !== true || typeof data.correct_index !== 'number') {
         _showBfRetry(() => _submitExpire());
         return;
       }
-      _applyExpire(data.correct_index ?? 0);
+      _applyExpire(data.correct_index);
     }).catch(() => { _showBfRetry(() => _submitExpire()); });
     _submitExpire();
     return;
@@ -1321,13 +1321,19 @@ function pick(i){
       p_sq_id:       q.sq_id,
       p_selected_idx: i,
     }).then(({ data, error }) => {
-      if(error || !data) {
+      if(error || !data || data.ok !== true
+         || typeof data.correct_index !== 'number'
+         || typeof data.is_correct !== 'boolean') {
+        // ok:false means invalid_session / invalid_sq_id / server error.
+        // Do NOT reveal correct answer or treat as canonical. Show retry.
         _showBfRetry(() => _submitPick());
         return;
       }
       _hideBfRetry();
-      _applyPickFeedback(i, data.correct_index, data.is_correct, q, pts, responseMs);
-      _roundAnswers[qIdx] = i;
+      // Use server-authoritative selected_idx (handles already_answered replay)
+      const resolvedIdx = typeof data.selected_idx === 'number' ? data.selected_idx : i;
+      _applyPickFeedback(resolvedIdx, data.correct_index, data.is_correct, q, pts, responseMs);
+      _roundAnswers[qIdx] = resolvedIdx;
     }).catch(() => { _showBfRetry(() => _submitPick()); });
     _submitPick();
     return;

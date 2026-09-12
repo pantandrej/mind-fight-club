@@ -544,11 +544,14 @@ REVOKE ALL ON FUNCTION public.finalize_weekly_arena_bf(uuid)
 --   Checks plan limits (free=1, premium=5 training sessions/day).
 --   Inserts game_sessions row (counts toward plan quota).
 --
--- BF ELIGIBILITY (P4):
---   If training BF already exists for today (via bfc_training_daily_uidx),
---   bf_eligible=false. Session still created + questions returned so the user
---   can play without BF. bf_eligible persisted on game_sessions row.
---   complete_daily_bf_session() verifies session.bf_eligible=true before award.
+-- BF ELIGIBILITY (P4, BLOCKER 1 FIX):
+--   Canonical rule: first training session of the user/UTC day gets bf_eligible=true.
+--   Check is based on game_sessions (not brain_fight_contributions) while holding
+--   the user/day advisory lock. This prevents the race where two Premium sessions
+--   start before either completes — both would otherwise see no contribution yet.
+--   Under the advisory lock, if any session with bf_eligible=true already exists
+--   today, the new session gets bf_eligible=false.
+--   Contribution check kept as defense-in-depth (secondary guard).
 --
 -- QUESTION BANK:
 --   Same public curated bank as Friend Duel (m81):
@@ -617,8 +620,22 @@ BEGIN
     );
   END IF;
 
-  -- Check BF eligibility: training BF already earned today?
+  -- BF eligibility: canonical check while holding the advisory lock (BLOCKER 1).
+  -- Check game_sessions for any session that already claimed bf_eligible=true today.
+  -- This prevents the race where two Premium sessions start before either completes.
   IF EXISTS (
+    SELECT 1 FROM game_sessions
+    WHERE user_id     = v_uid
+      AND day_utc     = v_today
+      AND mode        = 'training'
+      AND bf_eligible = true
+  ) THEN
+    v_bf_eligible := false;
+  END IF;
+
+  -- Defense-in-depth: if a contribution somehow already exists (e.g. manual admin
+  -- insert), also mark ineligible.
+  IF v_bf_eligible AND EXISTS (
     SELECT 1 FROM brain_fight_contributions
     WHERE scoring_user_id = v_uid
       AND source_type     = 'training'
@@ -816,6 +833,7 @@ BEGIN
       'ok',           true,
       'accepted',     false,
       'reason',       'already_answered',
+      'selected_idx', v_stored_idx,
       'is_correct',   v_stored_correct,
       'correct_index', v_correct_idx
     );
@@ -824,6 +842,7 @@ BEGIN
   RETURN jsonb_build_object(
     'ok',           true,
     'accepted',     true,
+    'selected_idx', p_selected_idx,
     'is_correct',   v_is_correct,
     'correct_index', v_correct_idx
   );
@@ -1403,36 +1422,42 @@ GRANT  EXECUTE ON FUNCTION public.get_question_reveals(uuid[]) TO authenticated;
 
 
 -- ──────────────────────────────────────────────────────────────────────────
--- §12  game_sessions.bf_eligible column  (P4)
+-- §12  game_sessions.bf_eligible column  (P4, BLOCKER 1 FIX)
 --
 -- Persists BF eligibility at session creation time.
--- complete_daily_bf_session() reads this column — concurrent Premium sessions
--- that both start before either completes both get bf_eligible=true ONLY for
--- the first one (bfc_training_daily_uidx will reject the second INSERT).
--- This column locks in the flag at start time, not at completion time.
+-- Eligibility is determined under the user/day advisory lock in
+-- start_daily_bf_session(), checking existing game_sessions rows.
+-- The FIRST session of the day gets bf_eligible=true; all subsequent sessions
+-- (including Premium extras started before the first completes) get false.
+-- complete_daily_bf_session() verifies this flag before awarding BF.
 -- ──────────────────────────────────────────────────────────────────────────
 ALTER TABLE public.game_sessions
   ADD COLUMN IF NOT EXISTS bf_eligible boolean DEFAULT false;
 
 
 -- ──────────────────────────────────────────────────────────────────────────
--- §13  claim_random_match()  (B1, B2, B3)
+-- §13  claim_random_match()  (B1, B2, B3, BLOCKER 2 FIX)
 --      Atomic server-side random battle matchmaking
 --
 -- Replaces client-side duel_rooms.insert() + matchmaking_queue.update().
--- Uses FOR UPDATE SKIP LOCKED to atomically claim an opponent row.
 --
--- FLOW:
---   1. Caller must be authenticated and have a waiting matchmaking_queue row.
---   2. Try to claim one other waiting row (FOR UPDATE SKIP LOCKED).
---   3. If found: create duel_rooms with canonical fields (host_user_id,
---      guest_user_id, status='ready'); update both queue rows to matched.
+-- CONCURRENCY (BLOCKER 2): Single transaction-level advisory lock on the
+--   'bfc_random_matchmaking' key serializes ALL pairing operations globally.
+--   FOR UPDATE SKIP LOCKED alone was insufficient: two callers could each lock
+--   the other as opponent, creating reciprocal duels. The advisory lock
+--   makes pairing strictly sequential at v1 scale.
+--
+-- FLOW (under advisory lock):
+--   1. Re-read caller's own row — verify still status='waiting'.
+--   2. Find one other waiting row.
+--   3. If found: generate duel code (with INSERT retry on collision),
+--      create canonical duel_rooms row, update both queue rows → matched.
 --      Return {ok:true, matched:true, role:'host', duel_code, opponent_name}.
 --   4. If not found: return {ok:true, matched:false} — caller stays waiting.
 --
 -- CLIENT FLOW after matched=true:
 --   role='host': call start_duel(duel_code) via canonical m78 RPC.
---   role='guest': poll matchmaking_queue for matched_duel_id, then joinDuel.
+--   Opponent polls matchmaking_queue for matched_duel_id, then joinDuel.
 --
 -- SECURITY: SECURITY DEFINER — bypasses RLS for duel_rooms and matchmaking_queue.
 -- ──────────────────────────────────────────────────────────────────────────
@@ -1448,12 +1473,17 @@ DECLARE
   v_opp_row      matchmaking_queue%ROWTYPE;
   v_duel_code    text;
   v_my_name      text;
+  v_attempt      int := 0;
 BEGIN
   IF v_uid IS NULL THEN
     RETURN jsonb_build_object('ok', false, 'reason', 'unauthenticated');
   END IF;
 
-  -- Find caller's own waiting queue row
+  -- Serialize all pairing operations under a single advisory lock.
+  -- This is the correct fix for the reciprocal-match race (BLOCKER 2).
+  PERFORM pg_advisory_xact_lock(hashtext('bfc_random_matchmaking'));
+
+  -- Re-read caller's own row under lock (status may have changed since client called)
   SELECT * INTO v_my_row
   FROM matchmaking_queue
   WHERE user_id = v_uid AND status = 'waiting'
@@ -1461,40 +1491,50 @@ BEGIN
   LIMIT 1;
 
   IF NOT FOUND THEN
+    -- Already matched or cancelled by a concurrent call
     RETURN jsonb_build_object('ok', false, 'reason', 'not_in_queue');
   END IF;
 
   v_my_name := v_my_row.display_name;
 
-  -- Atomically claim one other waiting player (SKIP LOCKED = skip rows locked by concurrent calls)
+  -- Find one other waiting player (any order under lock — no SKIP LOCKED needed)
   SELECT * INTO v_opp_row
   FROM matchmaking_queue
-  WHERE status = 'waiting'
+  WHERE status  = 'waiting'
     AND user_id <> v_uid
   ORDER BY created_at ASC
-  LIMIT 1
-  FOR UPDATE SKIP LOCKED;
+  LIMIT 1;
 
   IF NOT FOUND THEN
     -- No opponent yet — caller stays in queue
     RETURN jsonb_build_object('ok', true, 'matched', false);
   END IF;
 
-  -- Generate duel code
-  v_duel_code := upper(substring(md5(random()::text || clock_timestamp()::text), 1, 6));
-
-  -- Create canonical duel room (both identities known → status='ready')
-  INSERT INTO duel_rooms (
-    code, host_user_id, guest_user_id,
-    host_name, guest_name,
-    host_score, guest_score,
-    status, created_at
-  ) VALUES (
-    v_duel_code, v_uid, v_opp_row.user_id,
-    v_my_name, v_opp_row.display_name,
-    0, 0,
-    'ready', now()
-  );
+  -- Generate duel code, retry on collision (handles 6-char space exhaustion)
+  LOOP
+    v_duel_code := upper(substring(md5(random()::text || clock_timestamp()::text), 1, 6));
+    v_attempt   := v_attempt + 1;
+    BEGIN
+      -- Create canonical duel room (both identities known → status='ready')
+      INSERT INTO duel_rooms (
+        code, host_user_id, guest_user_id,
+        host_name, guest_name,
+        host_score, guest_score,
+        status, created_at
+      ) VALUES (
+        v_duel_code, v_uid, v_opp_row.user_id,
+        v_my_name, v_opp_row.display_name,
+        0, 0,
+        'ready', now()
+      );
+      EXIT;  -- INSERT succeeded → exit retry loop
+    EXCEPTION WHEN unique_violation THEN
+      IF v_attempt >= 5 THEN
+        RETURN jsonb_build_object('ok', false, 'reason', 'code_collision_exhausted');
+      END IF;
+      -- retry with new code
+    END;
+  END LOOP;
 
   -- Mark both queue rows matched
   UPDATE matchmaking_queue
@@ -1502,10 +1542,10 @@ BEGIN
   WHERE id IN (v_my_row.id, v_opp_row.id);
 
   RETURN jsonb_build_object(
-    'ok',           true,
-    'matched',      true,
-    'role',         'host',
-    'duel_code',    v_duel_code,
+    'ok',            true,
+    'matched',       true,
+    'role',          'host',
+    'duel_code',     v_duel_code,
     'opponent_name', v_opp_row.display_name
   );
 END;
@@ -1513,6 +1553,77 @@ $$;
 
 REVOKE ALL ON FUNCTION public.claim_random_match() FROM PUBLIC, anon;
 GRANT  EXECUTE ON FUNCTION public.claim_random_match() TO authenticated;
+
+
+-- ──────────────────────────────────────────────────────────────────────────
+-- §14  cancel_random_matchmaking()  (BLOCKER 3)
+--      Canonical server-side queue cancellation
+--
+-- Replaces all direct matchmaking_queue.update({status:'cancelled'}) client calls.
+-- Uses the SAME advisory lock as claim_random_match() to prevent the race where
+-- the server matches a row at second 14.9 and the client cancels it at second 15.
+--
+-- FLOW (under advisory lock):
+--   - Caller's row status='waiting':
+--       UPDATE to 'cancelled'
+--       Return {ok:true, cancelled:true, matched:false}
+--   - Caller's row status='matched':
+--       DO NOT cancel — return duel_code and opponent so client enters real match
+--       Return {ok:true, cancelled:false, matched:true, duel_code, opponent_name}
+--   - No queue row found: Return {ok:true, cancelled:false, matched:false}
+--
+-- CLIENT MUST: on matched=true → enter real match, do NOT show virtual opponents.
+-- ──────────────────────────────────────────────────────────────────────────
+CREATE OR REPLACE FUNCTION public.cancel_random_matchmaking()
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_uid      uuid := auth.uid();
+  v_row      matchmaking_queue%ROWTYPE;
+BEGIN
+  IF v_uid IS NULL THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'unauthenticated');
+  END IF;
+
+  -- Same advisory lock as claim_random_match — prevents cancel racing a match
+  PERFORM pg_advisory_xact_lock(hashtext('bfc_random_matchmaking'));
+
+  -- Find any active queue row for this caller
+  SELECT * INTO v_row
+  FROM matchmaking_queue
+  WHERE user_id = v_uid
+    AND status IN ('waiting', 'matched')
+  ORDER BY created_at DESC
+  LIMIT 1;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('ok', true, 'cancelled', false, 'matched', false);
+  END IF;
+
+  IF v_row.status = 'matched' THEN
+    -- Server already matched this player — do NOT cancel, return duel info
+    RETURN jsonb_build_object(
+      'ok',            true,
+      'cancelled',     false,
+      'matched',       true,
+      'duel_code',     v_row.matched_duel_id
+    );
+  END IF;
+
+  -- status='waiting' — safe to cancel
+  UPDATE matchmaking_queue
+  SET status = 'cancelled'
+  WHERE id = v_row.id;
+
+  RETURN jsonb_build_object('ok', true, 'cancelled', true, 'matched', false);
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.cancel_random_matchmaking() FROM PUBLIC, anon;
+GRANT  EXECUTE ON FUNCTION public.cancel_random_matchmaking() TO authenticated;
 
 
 COMMIT;

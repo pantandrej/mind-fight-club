@@ -48,12 +48,17 @@ sql_upper = sql.upper()
 
 PASS = []
 FAIL = []
+NOT_EXECUTED = []  # DB/browser tests — never counted in passing total
 
 def check(tid, desc, cond):
     if cond:
         PASS.append(tid)
     else:
         FAIL.append((tid, desc))
+
+def check_ne(tid, desc):
+    """Register a test that is NOT EXECUTED (DB or browser required)."""
+    NOT_EXECUTED.append((tid, desc))
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Transaction structure
@@ -327,8 +332,7 @@ check('D04', '[STATIC TEST] P0: get_question_reveals GRANT TO authenticated',
     re.search(r'GRANT\s+EXECUTE\s+ON\s+FUNCTION\s+public\.get_question_reveals.*authenticated', sql, re.IGNORECASE))
 
 # DB TRANSACTION TEST: anon call to get_question_reveals returns 0 rows
-check('D05', '[DB TRANSACTION TEST — NOT EXECUTED] P0: anon get_question_reveals returns empty',
-    True)  # NOT EXECUTED: requires live Supabase with anon key
+check_ne('D05', '[DB TRANSACTION TEST — NOT EXECUTED] P0: anon get_question_reveals returns empty')
 
 # ── P1: Idempotent submit_daily_bf_answer ────────────────────────────────────
 
@@ -352,8 +356,7 @@ check('D08', '[STATIC TEST] P1: submit_daily_bf_answer retry returns persisted i
     'v_stored_correct' in _submit_bf)
 
 # DB TRANSACTION TEST: concurrent calls return exactly one accepted=true
-check('D09', '[DB TRANSACTION TEST — NOT EXECUTED] P1: concurrent submit race returns single accepted=true',
-    True)  # NOT EXECUTED
+check_ne('D09', '[DB TRANSACTION TEST — NOT EXECUTED] P1: concurrent submit race returns single accepted=true')
 
 # ── P2: No local fallback on network failure ──────────────────────────────────
 
@@ -374,8 +377,7 @@ check('D13', '[STATIC TEST] P2: BF pick() catch calls _showBfRetry',
     '_showBfRetry' in tr_js)
 
 # MANUAL/BROWSER TEST: retry bar shows, Next disabled, retry restores reveal
-check('D14', '[MANUAL/BROWSER TEST — NOT EXECUTED] P2: retry UI shows on network failure, Next stays hidden',
-    True)  # NOT EXECUTED
+check_ne('D14', '[MANUAL/BROWSER TEST — NOT EXECUTED] P2: retry UI shows on network failure, Next stays hidden')
 
 # ── P3: Complete requires 10 resolved ────────────────────────────────────────
 
@@ -396,12 +398,10 @@ check('D17', '[STATIC TEST] P3: complete_daily_bf_session returns session_incomp
     'session_incomplete' in _complete_bf)
 
 # DB TRANSACTION TEST: completing after 9/10 returns session_incomplete
-check('D18', '[DB TRANSACTION TEST — NOT EXECUTED] P3: complete after 9 answered returns session_incomplete',
-    True)  # NOT EXECUTED
+check_ne('D18', '[DB TRANSACTION TEST — NOT EXECUTED] P3: complete after 9 answered returns session_incomplete')
 
 # DB TRANSACTION TEST: completing after 10/10 awards BF
-check('D19', '[DB TRANSACTION TEST — NOT EXECUTED] P3: complete after 10 answered awards BF',
-    True)  # NOT EXECUTED
+check_ne('D19', '[DB TRANSACTION TEST — NOT EXECUTED] P3: complete after 10 answered awards BF')
 
 # ── P4: BF eligibility canonical per session ──────────────────────────────────
 
@@ -418,8 +418,7 @@ check('D22', '[STATIC TEST] P4: complete_daily_bf_session verifies bf_eligible o
     'bf_eligible' in _complete_bf)
 
 # DB TRANSACTION TEST: second Premium session gets bf_pts=0
-check('D23', '[DB TRANSACTION TEST — NOT EXECUTED] P4: second Premium session complete returns bf_pts=0',
-    True)  # NOT EXECUTED
+check_ne('D23', '[DB TRANSACTION TEST — NOT EXECUTED] P4: second Premium session complete returns bf_pts=0')
 
 # ── P5: Clean stale comments ─────────────────────────────────────────────────
 
@@ -456,8 +455,7 @@ check('D29', "[STATIC TEST] P6: my_team jsonb includes 'emoji' field",
     re.search(r"'emoji'\s*,\s*v_team_emoji", _get_bfw))
 
 # DB TRANSACTION TEST: zero-score team my_team has name and emoji
-check('D30', '[DB TRANSACTION TEST — NOT EXECUTED] P6: zero-score team my_team includes name/emoji',
-    True)  # NOT EXECUTED
+check_ne('D30', '[DB TRANSACTION TEST — NOT EXECUTED] P6: zero-score team my_team includes name/emoji')
 
 # ── B1/B2/B3: Server-authoritative random battle ──────────────────────────────
 
@@ -491,8 +489,7 @@ check('D37', '[STATIC TEST] B2: matchmaking.js calls sb.rpc(\'claim_random_match
     "sb.rpc('claim_random_match')" in mm_js)
 
 # MANUAL/BROWSER TEST: real random battle works end-to-end
-check('D38', '[MANUAL/BROWSER TEST — NOT EXECUTED] B3: real random battle end-to-end via claim_random_match',
-    True)  # NOT EXECUTED
+check_ne('D38', '[MANUAL/BROWSER TEST — NOT EXECUTED] B3: real random battle end-to-end via claim_random_match')
 
 # ── B5/B6: Battle board UI fixes ─────────────────────────────────────────────
 
@@ -540,19 +537,138 @@ check('D47', '[STATIC TEST] B3: claim_random_match is SECURITY DEFINER',
     re.search(r'claim_random_match.*?SECURITY\s+DEFINER', sql, re.DOTALL | re.IGNORECASE))
 
 # ─────────────────────────────────────────────────────────────────────────────
+# E01-E20  Final Blocker Tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+mm_js_path = pathlib.Path(__file__).parent.parent / 'js' / 'battles' / 'matchmaking.js'
+mm_js = mm_js_path.read_text(encoding='utf-8')
+streak_js_path = pathlib.Path(__file__).parent.parent / 'js' / 'training' / 'streak.js'
+streak_js = streak_js_path.read_text(encoding='utf-8')
+
+# ── BLOCKER 1: BF Eligibility ────────────────────────────────────────────────
+
+check('E01', '[STATIC TEST] BLOCKER1: start_daily_bf_session checks game_sessions.bf_eligible=true under advisory lock',
+    re.search(
+        r'pg_advisory_xact_lock.*?SELECT.*?FROM\s+game_sessions.*?bf_eligible\s*=\s*true',
+        sql_nc, re.DOTALL | re.IGNORECASE
+    ))
+
+check('E02', '[STATIC TEST] BLOCKER1: bf_eligible game_sessions check uses mode=training filter',
+    re.search(
+        r"mode\s*=\s*['\"]training['\"]",
+        sql_nc, re.IGNORECASE
+    ))
+
+check('E03', '[STATIC TEST] BLOCKER1: defense-in-depth contribution check still present',
+    re.search(
+        r'brain_fight_contributions.*?scoring_user_id\s*=\s*v_uid',
+        sql_nc, re.DOTALL | re.IGNORECASE
+    ))
+
+check_ne('E04', '[DB TRANSACTION TEST — NOT EXECUTED] BLOCKER1: two Premium sessions started before either completes — second has bf_eligible=false')
+
+check('E05', '[STATIC TEST] BLOCKER1: INSERT into game_sessions includes bf_eligible column',
+    re.search(r'INSERT\s+INTO\s+game_sessions\s*\(.*?bf_eligible', sql_nc, re.DOTALL | re.IGNORECASE))
+
+# ── BLOCKER 2: claim_random_match Race Safety ────────────────────────────────
+
+check('E06', '[STATIC TEST] BLOCKER2: claim_random_match acquires pg_advisory_xact_lock for bfc_random_matchmaking',
+    re.search(
+        r"pg_advisory_xact_lock\s*\(\s*hashtext\s*\(\s*['\"]bfc_random_matchmaking['\"]",
+        sql, re.IGNORECASE
+    ))
+
+check('E07', '[STATIC TEST] BLOCKER2: claim_random_match re-reads caller row AFTER acquiring advisory lock',
+    re.search(
+        r"pg_advisory_xact_lock.*?SELECT\s+\*\s+INTO\s+v_my_row\s+FROM\s+matchmaking_queue",
+        sql_nc, re.DOTALL | re.IGNORECASE
+    ))
+
+check('E08', '[STATIC TEST] BLOCKER2: claim_random_match has duel code collision retry loop',
+    re.search(r'v_attempt.*?unique_violation', sql, re.DOTALL | re.IGNORECASE))
+
+check_ne('E09', '[DB TRANSACTION TEST — NOT EXECUTED] BLOCKER2: two concurrent claim_random_match calls produce exactly one duel, not two')
+
+check('E10', '[STATIC TEST] BLOCKER2: matchmaking timer calls claim_random_match every tick without pre-querying opponents',
+    # Extract the setInterval body only (between first { and matching }, 1000)
+    (lambda body: (
+        'claim_random_match' in body
+        # No direct pre-query for opponents before the RPC
+        and not re.search(r"\.select\s*\(.*?waiting.*?\).*?claim_random_match", body, re.DOTALL)
+    ))(re.search(r"mmInterval\s*=\s*setInterval\s*\(async\s*\(\s*\)\s*=>\s*\{(.*?)\}\s*,\s*1000\s*\)", mm_js, re.DOTALL).group(1)
+       if re.search(r"mmInterval\s*=\s*setInterval\s*\(async\s*\(\s*\)\s*=>\s*\{(.*?)\}\s*,\s*1000\s*\)", mm_js, re.DOTALL) else '')
+)
+
+# ── BLOCKER 3: cancel_random_matchmaking RPC + client ───────────────────────
+
+check('E11', '[STATIC TEST] BLOCKER3: cancel_random_matchmaking() declared in migration82',
+    'cancel_random_matchmaking' in sql and 'CREATE OR REPLACE FUNCTION public.cancel_random_matchmaking' in sql)
+
+check('E12', '[STATIC TEST] BLOCKER3: cancel_random_matchmaking uses same advisory lock as claim_random_match',
+    re.search(
+        r"cancel_random_matchmaking.*?pg_advisory_xact_lock\s*\(\s*hashtext\s*\(\s*['\"]bfc_random_matchmaking['\"]",
+        sql, re.DOTALL | re.IGNORECASE
+    ))
+
+check('E13', '[STATIC TEST] BLOCKER3: cancel_random_matchmaking GRANT to authenticated',
+    re.search(r'GRANT\s+EXECUTE\s+ON\s+FUNCTION\s+public\.cancel_random_matchmaking.*?authenticated', sql, re.IGNORECASE))
+
+check('E14', '[STATIC TEST] BLOCKER3: matchmaking.js has NO direct matchmaking_queue status UPDATE',
+    not re.search(
+        r"\.from\s*\(\s*['\"]matchmaking_queue['\"].*?\.update\s*\(\s*\{\s*status\s*:",
+        mm_js, re.DOTALL
+    ))
+
+check('E15', '[STATIC TEST] BLOCKER3: matchmaking.js cancelMatchmaking calls cancel_random_matchmaking RPC',
+    re.search(r"cancelMatchmaking.*?rpc\s*\(\s*['\"]cancel_random_matchmaking['\"]", mm_js, re.DOTALL))
+
+check('E16', '[STATIC TEST] BLOCKER3: matchmaking.js playWithBot calls cancel_random_matchmaking RPC',
+    re.search(r"playWithBot.*?rpc\s*\(\s*['\"]cancel_random_matchmaking['\"]", mm_js, re.DOTALL))
+
+check_ne('E17', '[DB TRANSACTION TEST — NOT EXECUTED] BLOCKER3: server matches row at 14.9s, client cancel at 15s — client receives matched=true, enters real match')
+
+# ── BLOCKER 4: submit retry contract ────────────────────────────────────────
+
+check('E18', '[STATIC TEST] BLOCKER4A: submit_daily_bf_answer retry path returns selected_idx',
+    re.search(r"already_answered.*?selected_idx.*?v_stored_idx", sql, re.DOTALL | re.IGNORECASE))
+
+check('E19', '[STATIC TEST] BLOCKER4B: training.js pick() BF path validates data.ok===true AND typeof correct_index',
+    re.search(r"data\.ok\s*!==\s*true", tr_js)
+    and re.search(r"typeof\s+data\.correct_index\s*!==\s*['\"]number['\"]", tr_js))
+
+check('E20', '[STATIC TEST] BLOCKER4B: training.js expire() BF path validates data.ok===true AND typeof correct_index',
+    re.search(r"_submitExpire.*?data\.ok\s*!==\s*true.*?typeof\s+data\.correct_index", tr_js, re.DOTALL))
+
+# ── streak.js demo cleanup ───────────────────────────────────────────────────
+
+check('E21', '[STATIC TEST] streak.js obPickAnswer does NOT claim "+20 ⚡" reward',
+    '+20 ⚡' not in streak_js)
+
+check('E22', '[STATIC TEST] streak.js showObResult does NOT animate neuron count-up',
+    'ob-res-neurons' not in streak_js or (
+        'ob-res-neurons' in streak_js
+        and not re.search(r"el\.textContent\s*=\s*['\+].*⚡", streak_js)
+        and not re.search(r"setInterval.*ob-res-neurons", streak_js, re.DOTALL)
+    ))
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Results
 # ─────────────────────────────────────────────────────────────────────────────
-total = len(PASS) + len(FAIL)
+static_total = len(PASS) + len(FAIL)
+ne_total = len(NOT_EXECUTED)
 print(f"\n{'='*60}")
-print(f"Migration 82 — Corrective Test Suite")
+print(f"Migration 82 — Final Blocker Test Suite")
 print(f"{'='*60}")
-print(f"PASS: {len(PASS)}/{total}")
+print(f"STATIC EXECUTED: {len(PASS)}/{static_total} PASS")
 if FAIL:
-    print(f"FAIL: {len(FAIL)}/{total}")
+    print(f"STATIC FAIL:     {len(FAIL)}/{static_total}")
     for tid, desc in FAIL:
         print(f"  ✗ [{tid}] {desc}")
 else:
-    print("All tests passed.")
+    print("All static tests passed.")
+print(f"DB/BROWSER NOT EXECUTED: {ne_total}")
+for tid, desc in NOT_EXECUTED:
+    print(f"  ○ [{tid}] {desc}")
 print(f"{'='*60}\n")
 
 sys.exit(0 if not FAIL else 1)
