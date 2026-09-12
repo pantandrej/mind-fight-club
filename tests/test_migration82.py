@@ -619,11 +619,11 @@ check('E14', '[STATIC TEST] BLOCKER3: matchmaking.js has NO direct matchmaking_q
         mm_js, re.DOTALL
     ))
 
-check('E15', '[STATIC TEST] BLOCKER3: matchmaking.js cancelMatchmaking calls cancel_random_matchmaking RPC',
-    re.search(r"cancelMatchmaking.*?rpc\s*\(\s*['\"]cancel_random_matchmaking['\"]", mm_js, re.DOTALL))
+check('E15', '[STATIC TEST] BLOCKER3: matchmaking.js cancelMatchmaking uses canonical _cancelQueueOrEnterMatched',
+    re.search(r"cancelMatchmaking.*?_cancelQueueOrEnterMatched", mm_js, re.DOTALL))
 
-check('E16', '[STATIC TEST] BLOCKER3: matchmaking.js playWithBot calls cancel_random_matchmaking RPC',
-    re.search(r"playWithBot.*?rpc\s*\(\s*['\"]cancel_random_matchmaking['\"]", mm_js, re.DOTALL))
+check('E16', '[STATIC TEST] BLOCKER3: matchmaking.js playWithBot uses canonical _cancelQueueOrEnterMatched',
+    re.search(r"playWithBot.*?_cancelQueueOrEnterMatched", mm_js, re.DOTALL))
 
 check_ne('E17', '[DB TRANSACTION TEST — NOT EXECUTED] BLOCKER3: server matches row at 14.9s, client cancel at 15s — client receives matched=true, enters real match')
 
@@ -644,12 +644,100 @@ check('E20', '[STATIC TEST] BLOCKER4B: training.js expire() BF path validates da
 check('E21', '[STATIC TEST] streak.js obPickAnswer does NOT claim "+20 ⚡" reward',
     '+20 ⚡' not in streak_js)
 
-check('E22', '[STATIC TEST] streak.js showObResult does NOT animate neuron count-up',
+check('E22', '[STATIC TEST] streak.js showObResult does NOT animate neuron count-up (no setInterval on neurons)',
     'ob-res-neurons' not in streak_js or (
         'ob-res-neurons' in streak_js
         and not re.search(r"el\.textContent\s*=\s*['\+].*⚡", streak_js)
         and not re.search(r"setInterval.*ob-res-neurons", streak_js, re.DOTALL)
     ))
+
+# ─────────────────────────────────────────────────────────────────────────────
+# F01-F19  Random Matchmaking Handoff Fix Tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── SQL: claim_random_match already-matched handling ─────────────────────────
+
+check('F01', "[STATIC TEST] claim_random_match handles caller status='matched' (returns existing duel)",
+    re.search(
+        r"v_my_row\.status\s*=\s*['\"]matched['\"]",
+        sql, re.IGNORECASE
+    ))
+
+check('F02', '[STATIC TEST] matched claim response includes role field',
+    re.search(
+        r"v_my_row\.status\s*=\s*['\"]matched['\"].*?['\"]role['\"].*?v_role",
+        sql, re.DOTALL | re.IGNORECASE
+    ))
+
+check('F03', '[STATIC TEST] matched claim response includes opponent_name field',
+    re.search(
+        r"v_my_row\.status\s*=\s*['\"]matched['\"].*?['\"]opponent_name['\"].*?v_opp_name",
+        sql, re.DOTALL | re.IGNORECASE
+    ))
+
+check('F04', '[STATIC TEST] role derived server-side from duel_rooms host_user_id / guest_user_id',
+    re.search(r"v_duel\.host_user_id\s*=\s*v_uid", sql, re.IGNORECASE)
+    and re.search(r"v_role\s*:=\s*['\"]host['\"]", sql, re.IGNORECASE)
+    and re.search(r"v_role\s*:=\s*['\"]guest['\"]", sql, re.IGNORECASE))
+
+# ── SQL: cancel_random_matchmaking matched response ──────────────────────────
+
+check('F05', '[STATIC TEST] cancel_random_matchmaking matched response includes role field',
+    re.search(
+        r"cancel_random_matchmaking.*?v_row\.status\s*=\s*['\"]matched['\"].*?['\"]role['\"].*?v_role",
+        sql, re.DOTALL | re.IGNORECASE
+    ))
+
+check('F06', '[STATIC TEST] cancel_random_matchmaking matched response includes opponent_name field',
+    re.search(
+        r"cancel_random_matchmaking.*?v_row\.status\s*=\s*['\"]matched['\"].*?['\"]opponent_name['\"].*?v_opp_name",
+        sql, re.DOTALL | re.IGNORECASE
+    ))
+
+# ── JS: matchFound explicit role ─────────────────────────────────────────────
+
+check('F07', '[STATIC TEST] matchFound has explicit role parameter in signature',
+    re.search(r"async\s+function\s+matchFound\s*\(\s*duelCode\s*,\s*myName\s*,\s*oppName\s*,\s*role\s*\)", mm_js))
+
+check('F08', "[STATIC TEST] matchFound does NOT infer role from oppName truthiness (no 'if (oppName)')",
+    not re.search(r"if\s*\(\s*oppName\s*\)", mm_js))
+
+check('F09', '[STATIC TEST] main timer passes claimData.role to matchFound',
+    re.search(r"matchFound\s*\(.*?claimData\.duel_code.*?claimData\.role\s*\)", mm_js, re.DOTALL))
+
+check('F10', '[STATIC TEST] 15s timeout passes cancelData.role via _cancelQueueOrEnterMatched',
+    '_cancelQueueOrEnterMatched' in mm_js
+    and re.search(r"matchFound\s*\(.*?cancelData\.duel_code.*?cancelData\.role", mm_js, re.DOTALL))
+
+# ── JS: all four cancellation flows await and honor matched ──────────────────
+
+check('F11', '[STATIC TEST] playWithBot awaits _cancelQueueOrEnterMatched and stops on matched=true',
+    re.search(r"playWithBot.*?await\s+_cancelQueueOrEnterMatched.*?result\.matched.*?return", mm_js, re.DOTALL))
+
+check('F12', '[STATIC TEST] cancelMatchmaking awaits _cancelQueueOrEnterMatched and enters match on matched=true',
+    re.search(r"async\s+function\s+cancelMatchmaking", mm_js)
+    and re.search(r"cancelMatchmaking.*?await\s+_cancelQueueOrEnterMatched.*?result\.matched.*?return", mm_js, re.DOTALL))
+
+check('F13', '[STATIC TEST] _acceptChallenge awaits _cancelQueueOrEnterMatched and stops on matched=true',
+    re.search(r"_acceptChallenge.*?await\s+_cancelQueueOrEnterMatched.*?result\.matched.*?return", mm_js, re.DOTALL))
+
+check('F14', '[STATIC TEST] no fire-and-forget cancel_random_matchmaking — all calls inside _cancelQueueOrEnterMatched helper',
+    # The only occurrence of the RPC string must be inside _cancelQueueOrEnterMatched
+    (lambda calls, helper_body: calls == 1 and 'cancel_random_matchmaking' in helper_body)(
+        len(re.findall(r"cancel_random_matchmaking", mm_js)),
+        (re.search(r"async\s+function\s+_cancelQueueOrEnterMatched\s*\([^)]*\)\s*\{(.*?)\n\}", mm_js, re.DOTALL) or type('', (), {'group': lambda s,x: ''})()).group(1)
+    ))
+
+check('F15', '[STATIC TEST] real-board flow uses claimData.opponent_name not stale oppDisplayName as canonical opp',
+    re.search(r"claimData\.opponent_name\s*\|\|\s*oppDisplayName", mm_js)
+    and re.search(r"matchFound\s*\(.*?claimData\.duel_code.*?claimData\.role", mm_js, re.DOTALL))
+
+# ── DB/browser NOT EXECUTED ──────────────────────────────────────────────────
+
+check_ne("F16", "[DB TRANSACTION TEST — NOT EXECUTED] A claims B → B's next claim_random_match returns same duel, role='guest'")
+check_ne('F17', '[DB TRANSACTION TEST — NOT EXECUTED] both users enter same duel code end-to-end')
+check_ne('F18', '[DB TRANSACTION TEST — NOT EXECUTED] timeout race: 15s cancel still enters existing real duel')
+check_ne('F19', '[BROWSER TEST — NOT EXECUTED] clicking bot exactly as server matches cannot abandon real match')
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Results

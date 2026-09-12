@@ -1471,8 +1471,11 @@ DECLARE
   v_uid          uuid := auth.uid();
   v_my_row       matchmaking_queue%ROWTYPE;
   v_opp_row      matchmaking_queue%ROWTYPE;
+  v_duel         duel_rooms%ROWTYPE;
   v_duel_code    text;
   v_my_name      text;
+  v_role         text;
+  v_opp_name     text;
   v_attempt      int := 0;
 BEGIN
   IF v_uid IS NULL THEN
@@ -1480,24 +1483,55 @@ BEGIN
   END IF;
 
   -- Serialize all pairing operations under a single advisory lock.
-  -- This is the correct fix for the reciprocal-match race (BLOCKER 2).
   PERFORM pg_advisory_xact_lock(hashtext('bfc_random_matchmaking'));
 
-  -- Re-read caller's own row under lock (status may have changed since client called)
+  -- Re-read caller's latest active queue row under lock.
+  -- Include 'matched' status: guest's row is already 'matched' after host paired them;
+  -- returning the existing duel avoids the guest staying stuck until 15s timeout.
   SELECT * INTO v_my_row
   FROM matchmaking_queue
-  WHERE user_id = v_uid AND status = 'waiting'
+  WHERE user_id = v_uid
+    AND status IN ('waiting', 'matched')
   ORDER BY created_at ASC
   LIMIT 1;
 
   IF NOT FOUND THEN
-    -- Already matched or cancelled by a concurrent call
+    -- No active queue row — cancelled or never queued
     RETURN jsonb_build_object('ok', false, 'reason', 'not_in_queue');
   END IF;
 
+  -- If caller is already matched, return canonical duel state immediately.
+  -- Role is derived server-side from duel_rooms — never inferred by client.
+  IF v_my_row.status = 'matched' THEN
+    SELECT * INTO v_duel
+    FROM duel_rooms
+    WHERE code = v_my_row.matched_duel_id
+    LIMIT 1;
+
+    IF NOT FOUND THEN
+      RETURN jsonb_build_object('ok', false, 'reason', 'duel_not_found');
+    END IF;
+
+    IF v_duel.host_user_id = v_uid THEN
+      v_role     := 'host';
+      v_opp_name := v_duel.guest_name;
+    ELSE
+      v_role     := 'guest';
+      v_opp_name := v_duel.host_name;
+    END IF;
+
+    RETURN jsonb_build_object(
+      'ok',            true,
+      'matched',       true,
+      'role',          v_role,
+      'duel_code',     v_duel.code,
+      'opponent_name', v_opp_name
+    );
+  END IF;
+
+  -- status='waiting': attempt normal atomic pairing
   v_my_name := v_my_row.display_name;
 
-  -- Find one other waiting player (any order under lock — no SKIP LOCKED needed)
   SELECT * INTO v_opp_row
   FROM matchmaking_queue
   WHERE status  = 'waiting'
@@ -1506,16 +1540,15 @@ BEGIN
   LIMIT 1;
 
   IF NOT FOUND THEN
-    -- No opponent yet — caller stays in queue
+    -- No opponent yet — caller stays waiting
     RETURN jsonb_build_object('ok', true, 'matched', false);
   END IF;
 
-  -- Generate duel code, retry on collision (handles 6-char space exhaustion)
+  -- Generate duel code, retry on collision
   LOOP
     v_duel_code := upper(substring(md5(random()::text || clock_timestamp()::text), 1, 6));
     v_attempt   := v_attempt + 1;
     BEGIN
-      -- Create canonical duel room (both identities known → status='ready')
       INSERT INTO duel_rooms (
         code, host_user_id, guest_user_id,
         host_name, guest_name,
@@ -1527,20 +1560,19 @@ BEGIN
         0, 0,
         'ready', now()
       );
-      EXIT;  -- INSERT succeeded → exit retry loop
+      EXIT;
     EXCEPTION WHEN unique_violation THEN
       IF v_attempt >= 5 THEN
         RETURN jsonb_build_object('ok', false, 'reason', 'code_collision_exhausted');
       END IF;
-      -- retry with new code
     END;
   END LOOP;
 
-  -- Mark both queue rows matched
   UPDATE matchmaking_queue
   SET status = 'matched', matched_duel_id = v_duel_code
   WHERE id IN (v_my_row.id, v_opp_row.id);
 
+  -- Caller is host (created the duel); opponent will receive role='guest' on its next tick
   RETURN jsonb_build_object(
     'ok',            true,
     'matched',       true,
@@ -1583,6 +1615,9 @@ AS $$
 DECLARE
   v_uid      uuid := auth.uid();
   v_row      matchmaking_queue%ROWTYPE;
+  v_duel     duel_rooms%ROWTYPE;
+  v_role     text;
+  v_opp_name text;
 BEGIN
   IF v_uid IS NULL THEN
     RETURN jsonb_build_object('ok', false, 'reason', 'unauthenticated');
@@ -1604,12 +1639,32 @@ BEGIN
   END IF;
 
   IF v_row.status = 'matched' THEN
-    -- Server already matched this player — do NOT cancel, return duel info
+    -- Server already matched this player — do NOT cancel.
+    -- Resolve role and opponent_name from canonical duel_rooms row.
+    SELECT * INTO v_duel
+    FROM duel_rooms
+    WHERE code = v_row.matched_duel_id
+    LIMIT 1;
+
+    IF NOT FOUND THEN
+      RETURN jsonb_build_object('ok', false, 'reason', 'duel_not_found');
+    END IF;
+
+    IF v_duel.host_user_id = v_uid THEN
+      v_role     := 'host';
+      v_opp_name := v_duel.guest_name;
+    ELSE
+      v_role     := 'guest';
+      v_opp_name := v_duel.host_name;
+    END IF;
+
     RETURN jsonb_build_object(
       'ok',            true,
       'cancelled',     false,
       'matched',       true,
-      'duel_code',     v_row.matched_duel_id
+      'role',          v_role,
+      'duel_code',     v_duel.code,
+      'opponent_name', v_opp_name
     );
   END IF;
 

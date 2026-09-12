@@ -119,35 +119,52 @@ async function startMatchmaking(){
       document.getElementById('mm-sub').textContent = (lang==='ru'?'Осталось ':'Up to ')+remaining+'s';
 
     // Every tick: attempt atomic server-side claim (BLOCKER 2/3 fix).
-    // No pre-query for opponents — claim_random_match handles that under advisory lock.
+    // Handles both 'waiting' (new pair) and 'matched' (guest already paired by host).
     const { data: claimData, error: claimErr } = await sb.rpc('claim_random_match');
     if(!claimErr && claimData?.ok && claimData?.matched) {
       clearInterval(mmInterval); mmInterval = null;
       clearInterval(_boardInterval); _boardInterval = null;
-      const duelCode   = claimData.duel_code;
-      const oppName    = claimData.opponent_name;
-      await matchFound(duelCode, myName, oppName);
+      await matchFound(claimData.duel_code, myName, claimData.opponent_name, claimData.role);
       return;
     }
 
-    // Timer expired — call canonical cancel RPC then offer virtual opponents
+    // Timer expired — canonical cancel then offer virtual opponents if not matched
     if(elapsed >= 15){
       clearInterval(mmInterval); mmInterval = null;
       clearInterval(_boardInterval); _boardInterval = null;
-      // cancel_random_matchmaking: under advisory lock, safe against claim race
-      const { data: cancelData } = await sb.rpc('cancel_random_matchmaking').catch(()=>({data:null}));
-      if(cancelData?.matched) {
-        // Server matched us just before we tried to cancel — enter real match
-        await matchFound(cancelData.duel_code, myName, cancelData.opponent_name || '?');
-        return;
-      }
-      mmQueueId = null;
-      _showBotOffer(window._pendingBot || pickRandomBot());
+      const result = await _cancelQueueOrEnterMatched(myName);
+      if(!result.matched) _showBotOffer(window._pendingBot || pickRandomBot());
     }
   }, 1000);
 }
 
-async function matchFound(duelCode, myName, oppName){
+// Canonical cancel helper: awaits RPC, enters real match if server already paired caller.
+// Returns {matched:true} if a real match was entered, {matched:false} if cancelled/failed.
+// On network failure: does NOT silently start a bot — returns {matched:false, error:true}.
+async function _cancelQueueOrEnterMatched(myName){
+  let cancelData = null;
+  try {
+    const { data } = await sb.rpc('cancel_random_matchmaking');
+    cancelData = data;
+  } catch(e) {
+    // Network failure — fail safe: do not silently discard a possible real match
+    return { matched: false, error: true };
+  }
+
+  if(cancelData?.matched === true) {
+    // Server had already paired this player — enter real duel, do NOT show bots
+    mmQueueId = null;
+    await matchFound(cancelData.duel_code, myName, cancelData.opponent_name, cancelData.role);
+    return { matched: true };
+  }
+
+  mmQueueId = null;
+  return { matched: false };
+}
+
+// Canonical entry point for a confirmed real match.
+// role MUST be server-derived ('host'|'guest'). Never infer from oppName truthiness.
+async function matchFound(duelCode, myName, oppName, role){
   clearInterval(_boardInterval); _boardInterval = null;
   const boardWrap = document.getElementById('mm-board-wrap');
   if (boardWrap) boardWrap.style.display = 'none';
@@ -176,6 +193,13 @@ async function matchFound(duelCode, myName, oppName){
     window._battleSessionStarted = true;
   }
 
+  if (!role || (role !== 'host' && role !== 'guest')) {
+    // Unknown role — hard fail, do not guess
+    toast(lang === 'ru' ? 'Ошибка: неизвестная роль в дуэли.' : 'Error: unknown duel role.');
+    showPlayMenu();
+    return;
+  }
+
   const opp = oppName || '?';
   const initial = opp[0].toUpperCase();
   document.getElementById('mm-av-opp').textContent = initial;
@@ -186,22 +210,18 @@ async function matchFound(duelCode, myName, oppName){
   document.getElementById('mm-sub').style.display = 'none';
   document.getElementById('mm-bot-wrap').style.display = 'none';
   document.getElementById('mm-cancel-btn').style.display = 'none';
-  track('matchmaking_matched', {code: duelCode});
+  track('matchmaking_matched', {code: duelCode, role});
 
-  if (oppName) {
-    // This player found the match — act as host: load questions and start game
+  if (role === 'host') {
     showScreen('duel');
     showDuelSection('d-battle');
-    // Set module-level duel state via the input (joinDuel reads it)
     document.getElementById('join-code-input').value = duelCode;
-    // Set global duel vars directly so startDuelGame uses the right code
-    window._mmDuelCode = duelCode;
-    window._mmDuelRole = 'host';
+    window._mmDuelCode   = duelCode;
+    window._mmDuelRole   = 'host';
     window._mmDuelMyName = myName;
-    // Initialise state and start as host
     window.mmStartAsHost?.(duelCode, myName);
   } else {
-    // This player was waiting — act as guest: poll for questions from host
+    // guest: poll for questions from host
     if(typeof window !== 'undefined') window._isRandomBattle = true;
     document.getElementById('join-code-input').value = duelCode;
     showScreen('duel');
@@ -216,14 +236,15 @@ async function playWithBot(){
 
   // Reuse the bot already shown on screen; fall back to a fresh pick if needed
   const bot = window._pendingBot || pickRandomBot();
-  window._pendingBot = bot;   // keep consistent for the rest of the flow
+  window._pendingBot = bot;
   window._botPlayer  = bot;
   window._botName    = bot.name;
   window._isBotDuel  = true;
 
   if(mmQueueId){
-    sb.rpc('cancel_random_matchmaking').catch(()=>{});
-    mmQueueId = null;
+    const myName = currentUser?.user_metadata?.full_name?.split(' ')[0] || currentUser?.email?.split('@')[0] || 'You';
+    const result = await _cancelQueueOrEnterMatched(myName);
+    if(result.matched) return; // entered real match — stop bot flow
   }
 
   // ── Pre-check: limit BEFORE showing "bot accepted" and before startBotDuel ──
@@ -327,14 +348,15 @@ async function startBotDuel(botName){
   window.startDuelBattle({ chargeSession: false, questions: botBattleQs });
 }
 
-function cancelMatchmaking(){
+async function cancelMatchmaking(){
   clearInterval(mmInterval); mmInterval = null;
   clearTimeout(mmTimeout);   mmTimeout  = null;
   clearInterval(_boardInterval); _boardInterval = null;
   window._pendingBot = null;
   if(mmQueueId){
-    sb.rpc('cancel_random_matchmaking').catch(()=>{});
-    mmQueueId = null;
+    const myName = currentUser?.user_metadata?.full_name?.split(' ')[0] || currentUser?.email?.split('@')[0] || 'You';
+    const result = await _cancelQueueOrEnterMatched(myName);
+    if(result.matched) return; // entered real match — do not go back to play menu
   }
   window._isBotDuel = false;
   showPlayMenu();
@@ -530,9 +552,13 @@ window._acceptBoardRow = function(idx) {
 window._acceptChallenge = async function(rowId, oppDisplayName, isBot, botData) {
   clearInterval(_boardInterval); _boardInterval = null;
   clearInterval(mmInterval); mmInterval = null;
+
+  const myName = currentUser?.user_metadata?.full_name?.split(' ')[0] || currentUser?.email?.split('@')[0] || 'You';
+
   if (mmQueueId) {
-    sb.rpc('cancel_random_matchmaking').catch(()=>{});
-    mmQueueId = null;
+    // Await canonical cancel — if server already matched us, enter that real duel and stop
+    const result = await _cancelQueueOrEnterMatched(myName);
+    if(result.matched) return;
   }
 
   if (isBot) {
@@ -554,16 +580,15 @@ window._acceptChallenge = async function(rowId, oppDisplayName, isBot, botData) 
     return;
   }
 
-  // Real player: atomic server-side match claim (B1, B2)
-  const myName = currentUser?.user_metadata?.full_name?.split(' ')[0] || currentUser?.email?.split('@')[0] || 'You';
+  // Real player: atomic server-side match claim.
+  // Use server-returned opponent_name, role, duel_code — never stale oppDisplayName.
   const { data: claimData, error: claimErr } = await sb.rpc('claim_random_match');
   if(claimErr || !claimData?.ok || !claimData?.matched) {
     window.toast?.(lang==='ru' ? 'Не удалось принять вызов. Попробуй ещё раз.' : 'Could not accept challenge. Try again.');
     return;
   }
-  const duelCode = claimData.duel_code;
 
-  const opp = oppDisplayName;
+  const opp = claimData.opponent_name || oppDisplayName;
   document.getElementById('mm-av-opp').textContent = opp[0].toUpperCase();
   document.getElementById('mm-av-opp').className = 'mm-av found';
   document.getElementById('mm-name-opp').textContent = opp;
@@ -575,10 +600,7 @@ window._acceptChallenge = async function(rowId, oppDisplayName, isBot, botData) 
   const _preLC = await checkBattleLimitBeforeQueue();
   if (!_preLC.allowed) { window.showDailyLimitScreen?.('battle'); return; }
 
-  window._mmDuelCode = duelCode;
-  window._mmDuelRole = 'host';
-  window._mmDuelMyName = myName;
-  window.mmStartAsHost?.(duelCode, myName);
+  await matchFound(claimData.duel_code, myName, opp, claimData.role);
 };
 
 // Also update showProfile to translate new elements
