@@ -86,7 +86,7 @@ async function startMatchmaking(){
   document.getElementById('mm-av-opp').textContent = '?';
   document.getElementById('mm-av-opp').className = 'mm-av searching';
   document.getElementById('mm-name-opp').textContent = '...';
-  document.getElementById('mm-status').textContent = lang==='ru'?'Ищем соперника...':'Ищем соперника...';
+  document.getElementById('mm-status').textContent = lang==='ru'?'Ищем соперника...':'Looking for an opponent...';
   document.getElementById('mm-ring').style.display = '';
   document.getElementById('mm-bot-wrap').style.display = 'none';
   document.getElementById('mm-bot-offer').style.display = 'none';
@@ -134,17 +134,18 @@ async function startMatchmaking(){
       .limit(1);
 
     if(opponents && opponents.length > 0){
+      // Atomic server-side claim: prevents race conditions (B1, B2)
+      const { data: claimData, error: claimErr } = await sb.rpc('claim_random_match');
+      if(claimErr || !claimData?.ok) {
+        // RPC not yet deployed or error — skip this tick, retry next interval
+        return;
+      }
+      if(!claimData.matched) {
+        // Another caller claimed the opponent first — stay waiting
+        return;
+      }
+      const duelCode = claimData.duel_code;
       const opp = opponents[0];
-      // Create duel and match both
-      const duelCode = randCode();
-      await sb.from('duel_rooms').insert({
-        code: duelCode, host_score:0, guest_score:0,
-        status:'waiting', created_at:new Date().toISOString(),
-        host_name: myName, guest_name: opp.display_name
-      });
-      // Match both players
-      await sb.from('matchmaking_queue').update({status:'matched', matched_duel_id:duelCode}).eq('id',mmQueueId);
-      await sb.from('matchmaking_queue').update({status:'matched', matched_duel_id:duelCode}).eq('id',opp.id);
       clearInterval(mmInterval);
       // Push notify opponent (fire-and-forget, don't block on failure)
       if (window.sendPushToUser) {
@@ -534,7 +535,7 @@ async function _renderBattleBoard() {
           </div>
           <div>
             <div style="font-size:13px;font-weight:700;color:var(--text)">${r.display_name}</div>
-            <div style="font-size:11px;color:var(--muted)">🟢 Онлайн</div>
+            <div style="font-size:11px;color:var(--muted)">${r.isBot ? '🤖 виртуальный игрок' : '🟢 Онлайн'}</div>
           </div>
         </div>
         <button onclick="window._acceptBoardRow(${idx})"
@@ -579,14 +580,14 @@ window._acceptChallenge = async function(rowId, oppDisplayName, isBot, botData) 
     return;
   }
 
-  // Real player: create duel room and match
+  // Real player: atomic server-side match claim (B1, B2)
   const myName = currentUser?.user_metadata?.full_name?.split(' ')[0] || currentUser?.email?.split('@')[0] || 'You';
-  const duelCode = randCode();
-  await sb.from('duel_rooms').insert({
-    code: duelCode, host_score:0, guest_score:0, status:'waiting',
-    created_at: new Date().toISOString(), host_name: myName, guest_name: oppDisplayName
-  });
-  await sb.from('matchmaking_queue').update({status:'matched', matched_duel_id:duelCode}).eq('id',rowId);
+  const { data: claimData, error: claimErr } = await sb.rpc('claim_random_match');
+  if(claimErr || !claimData?.ok || !claimData?.matched) {
+    window.toast?.(lang==='ru' ? 'Не удалось принять вызов. Попробуй ещё раз.' : 'Could not accept challenge. Try again.');
+    return;
+  }
+  const duelCode = claimData.duel_code;
 
   const opp = oppDisplayName;
   document.getElementById('mm-av-opp').textContent = opp[0].toUpperCase();

@@ -480,17 +480,12 @@ function skipOnboarding(){ finishOnboarding(); }
 function finishOnboarding(){
   localStorage.setItem('mfc_onboarding_done','1');
   localStorage.setItem('mfc_onboarded','1');
-  // Credit demo neurons as a welcome bonus
-  if(_obScore > 0){
-    // Onboarding reward — does not give XP (demo only)
-    neurons += _obScore; xp += _obScore; updNeurons();
-    awardNeurons(_obScore, 'onboarding_reward', 'onboarding:' + (currentUser?.id||'guest'));
-  }
+  // C5: _obScore reward removed — exploit path eliminated.
+  // Demo questions have no real-economy effect.
   if(currentUser){
     sb.from('profiles').update({onboarded:true}).eq('id',currentUser.id).then(()=>{}).catch(()=>{});
   }
   showScreen('home');
-  if(_obScore > 0) setTimeout(()=>toast(`🎁 Добро пожаловать! +${_obScore} ⚡ за демо`, 3000), 400);
 }
 
 // ═══════════════════════════════════════════

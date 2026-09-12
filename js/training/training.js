@@ -342,15 +342,15 @@ async function startQuickPlay(){
     // Fallback path: use locally-built standard set.
     if (bfData?.questions?.length) {
       // Normalize server question payload to training.js format.
-      // Server returns: {sq_id, q_id, pos, q, a, cat, t} — no correct_index.
-      const serverQs = bfData.questions.map(sq => ({
-        id:            sq.q_id,
-        sq_id:         sq.sq_id,
-        q:             sq.q,
-        a:             sq.a,
-        c:             undefined,  // no correct_index sent to client
-        cat:           sq.cat,
-        t:             sq.t,
+      // Server returns: {sq_id, pos, q, a, cat, t} — no correct_index, no q_id.
+      const serverQs = bfData.questions.map((sq, idx) => ({
+        id:    sq.sq_id,   // use sq_id as local identity token
+        sq_id: sq.sq_id,
+        q:     sq.q,
+        a:     sq.a,
+        c:     undefined,  // no correct_index sent to client
+        cat:   sq.cat,
+        t:     sq.t,
       }));
       window._preparedQuickPlaySet = serverQs;
     } else {
@@ -1246,16 +1246,52 @@ function expire(){
 
   // BF session: submit timeout sentinel to server (A2)
   if(_bfSession?.session_id && q.sq_id){
-    sb.rpc('submit_daily_bf_answer', {
+    const _submitExpire = () => sb.rpc('submit_daily_bf_answer', {
       p_session_id:   _bfSession.session_id,
       p_sq_id:        q.sq_id,
       p_selected_idx: -1,
-    }).then(({ data }) => {
-      _applyExpire(data?.correct_index ?? q.c ?? 0);
-    }).catch(() => { _applyExpire(q.c ?? 0); });
+    }).then(({ data, error }) => {
+      if(error || !data) {
+        _showBfRetry(() => _submitExpire());
+        return;
+      }
+      _applyExpire(data.correct_index ?? 0);
+    }).catch(() => { _showBfRetry(() => _submitExpire()); });
+    _submitExpire();
     return;
   }
   _applyExpire(q.c ?? 0);
+}
+
+// ── BF network failure retry UI (P2) ─────────────────────────────
+// On submit_daily_bf_answer network failure: show retry button, no reveal.
+// Next button stays hidden until server confirms. Retry calls same RPC.
+function _showBfRetry(retryFn){
+  const nextBtn = document.getElementById('next-btn');
+  if(nextBtn) nextBtn.className = 'next-btn'; // hide Next
+
+  let retryBar = document.getElementById('bf-retry-bar');
+  if(!retryBar){
+    retryBar = document.createElement('div');
+    retryBar.id = 'bf-retry-bar';
+    retryBar.style.cssText = 'display:flex;align-items:center;justify-content:space-between;background:rgba(255,80,80,.12);border:0.5px solid rgba(255,80,80,.3);border-radius:12px;padding:10px 14px;margin:10px 0;font-size:13px;gap:10px';
+    const answersEl = document.getElementById('answers');
+    if(answersEl) answersEl.insertAdjacentElement('afterend', retryBar);
+    else document.getElementById('question-card')?.appendChild(retryBar);
+  }
+  retryBar.innerHTML = `
+    <span style="color:var(--text)">⚠️ ${lang==='ru'?'Не удалось отправить ответ':'Failed to submit answer'}</span>
+    <button id="bf-retry-btn" style="background:rgba(0,237,181,.2);border:0.5px solid rgba(0,237,181,.4);border-radius:8px;padding:6px 14px;font-size:12px;font-weight:800;color:var(--accent2);cursor:pointer;font-family:inherit;white-space:nowrap">
+      ${lang==='ru'?'Повторить':'Retry'}
+    </button>`;
+  document.getElementById('bf-retry-btn')?.addEventListener('click', () => {
+    retryBar.innerHTML = `<span style="color:var(--muted)">${lang==='ru'?'Отправляем...':'Sending...'}</span>`;
+    retryFn();
+  });
+}
+
+function _hideBfRetry(){
+  document.getElementById('bf-retry-bar')?.remove();
 }
 
 // ── State sync helper ─────────────────────────────────────────────
@@ -1280,21 +1316,20 @@ function pick(i){
 
   // BF session: submit to server first; derive correctness from authoritative response (A1)
   if(_bfSession?.session_id && q.sq_id){
-    sb.rpc('submit_daily_bf_answer', {
+    const _submitPick = () => sb.rpc('submit_daily_bf_answer', {
       p_session_id:  _bfSession.session_id,
       p_sq_id:       q.sq_id,
       p_selected_idx: i,
-    }).then(({ data }) => {
-      const correct_index = data?.correct_index ?? q.c;
-      const isCorrect = data?.is_correct ?? (i === q.c);
-      _applyPickFeedback(i, correct_index, isCorrect, q, pts, responseMs);
+    }).then(({ data, error }) => {
+      if(error || !data) {
+        _showBfRetry(() => _submitPick());
+        return;
+      }
+      _hideBfRetry();
+      _applyPickFeedback(i, data.correct_index, data.is_correct, q, pts, responseMs);
       _roundAnswers[qIdx] = i;
-    }).catch(() => {
-      // Network failure: fall back to local q.c if available
-      const isCorrect = i === q.c;
-      _applyPickFeedback(i, q.c, isCorrect, q, pts, responseMs);
-      _roundAnswers[qIdx] = i;
-    });
+    }).catch(() => { _showBfRetry(() => _submitPick()); });
+    _submitPick();
     return;
   }
 

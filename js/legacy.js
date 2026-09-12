@@ -1455,7 +1455,7 @@ function showProfile(){
   const rankBadgeEl = document.getElementById('profile-rank-badge');
   if (rankBadgeEl) {
     const rank = getRank(xp);
-    rankBadgeEl.textContent = rank.icon + ' ' + rank.name;
+    rankBadgeEl.textContent = 'Ранг: ' + rank.icon + ' ' + rank.name;
   } else {
     // Fallback for old profile layout
     const afterEl = document.getElementById('profile-email');
@@ -10567,7 +10567,7 @@ function renderHomeNextGoal(){
     goals.push({icon:'⚔️', text:'Сыграй первую дуэль', action:()=>showScreen('duel')});
   if(!earnedBadges.has('neurons100')){
     const needed = Math.max(0, 100 - neurons);
-    goals.push({icon:'🧠', text:`Набери 100 нейронов (ещё ${needed})`, action:null});
+    goals.push({icon:'🧠', text:`До 100 нейронов: осталось ${needed} ⚡`, action:null});
   }
   if(!earnedBadges.has('author'))
     goals.push({icon:'✍️', text:'Предложи вопрос (стань автором)', action:()=>{openAuthorBuilder()}});

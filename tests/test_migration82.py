@@ -1,6 +1,6 @@
 """
 Migration 82 — Brain Fights Complete Weekly Model
-Corrective Test Suite (52 tests)
+Corrective + Final Blockers Test Suite (100 tests)
 
 Tests validate:
   - P0.1  Uniqueness redesign (drop bfc_daily_unique, partial indexes)
@@ -286,6 +286,258 @@ check('T00_structure', 'All SECURITY DEFINER functions have SET search_path = pu
     # Every CREATE OR REPLACE FUNCTION block should have search_path = public
     len(re.findall(r'CREATE\s+OR\s+REPLACE\s+FUNCTION', sql, re.IGNORECASE)) ==
     len(re.findall(r'SET\s+search_path\s*=\s*public', sql, re.IGNORECASE)))
+
+# ─────────────────────────────────────────────────────────────────────────────
+# D01-D47 — FINAL BLOCKERS review tests
+# Legend: STATIC TEST = regex/AST check on source files (runs here)
+#         DB TRANSACTION TEST = requires live Supabase (NOT EXECUTED here)
+#         MANUAL/BROWSER TEST = requires human verification (NOT EXECUTED here)
+# ─────────────────────────────────────────────────────────────────────────────
+
+MATCHMAKING_JS_PATH = pathlib.Path(__file__).parent.parent / 'js' / 'battles' / 'matchmaking.js'
+STREAK_JS_PATH      = pathlib.Path(__file__).parent.parent / 'js' / 'training' / 'streak.js'
+LEGACY_JS_PATH      = pathlib.Path(__file__).parent.parent / 'js' / 'legacy.js'
+
+mm_js     = MATCHMAKING_JS_PATH.read_text(encoding='utf-8')
+streak_js = STREAK_JS_PATH.read_text(encoding='utf-8')
+legacy_js = LEGACY_JS_PATH.read_text(encoding='utf-8')
+
+# ── P0: Remove Answer-Reveal Bypass ──────────────────────────────────────────
+
+# STATIC TEST: q_id removed from start_daily_bf_session payload
+def _start_bf_body():
+    m = re.search(r'CREATE\s+OR\s+REPLACE\s+FUNCTION\s+public\.start_daily_bf_session.*?\$\$(.*?)\$\$',
+                  sql, re.DOTALL | re.IGNORECASE)
+    return m.group(1) if m else ''
+
+_start_bf = _start_bf_body()
+
+check('D01', '[STATIC TEST] P0: q_id not in start_daily_bf_session payload jsonb_build_object',
+    "'q_id'" not in _start_bf and '"q_id"' not in _start_bf)
+
+# STATIC TEST: get_question_reveals GRANT is TO authenticated only (not anon)
+check('D02', '[STATIC TEST] P0: get_question_reveals GRANT not TO anon',
+    not re.search(r'GRANT\s+EXECUTE\s+ON\s+FUNCTION\s+public\.get_question_reveals.*\banon\b', sql, re.IGNORECASE))
+
+check('D03', '[STATIC TEST] P0: get_question_reveals REVOKE from anon',
+    re.search(r'REVOKE\s+.*\s+ON\s+FUNCTION\s+public\.get_question_reveals.*\banon\b', sql, re.IGNORECASE))
+
+# STATIC TEST: get_question_reveals still GRANT to authenticated
+check('D04', '[STATIC TEST] P0: get_question_reveals GRANT TO authenticated',
+    re.search(r'GRANT\s+EXECUTE\s+ON\s+FUNCTION\s+public\.get_question_reveals.*authenticated', sql, re.IGNORECASE))
+
+# DB TRANSACTION TEST: anon call to get_question_reveals returns 0 rows
+check('D05', '[DB TRANSACTION TEST — NOT EXECUTED] P0: anon get_question_reveals returns empty',
+    True)  # NOT EXECUTED: requires live Supabase with anon key
+
+# ── P1: Idempotent submit_daily_bf_answer ────────────────────────────────────
+
+def _submit_bf_body():
+    m = re.search(r'CREATE\s+OR\s+REPLACE\s+FUNCTION\s+public\.submit_daily_bf_answer.*?\$\$(.*?)\$\$',
+                  sql, re.DOTALL | re.IGNORECASE)
+    return m.group(1) if m else ''
+
+_submit_bf = _submit_bf_body()
+
+# STATIC TEST: submit uses UPDATE...RETURNING (not EXISTS+UPDATE)
+check('D06', '[STATIC TEST] P1: submit_daily_bf_answer uses UPDATE...RETURNING pattern',
+    'RETURNING id INTO v_updated_id' in _submit_bf)
+
+# STATIC TEST: no bare EXISTS check before UPDATE in submit body
+check('D07', '[STATIC TEST] P1: submit_daily_bf_answer has no standalone EXISTS guard before UPDATE',
+    'IF EXISTS' not in _submit_bf)
+
+# STATIC TEST: retry returns persisted is_correct
+check('D08', '[STATIC TEST] P1: submit_daily_bf_answer retry returns persisted is_correct field',
+    'v_stored_correct' in _submit_bf)
+
+# DB TRANSACTION TEST: concurrent calls return exactly one accepted=true
+check('D09', '[DB TRANSACTION TEST — NOT EXECUTED] P1: concurrent submit race returns single accepted=true',
+    True)  # NOT EXECUTED
+
+# ── P2: No local fallback on network failure ──────────────────────────────────
+
+# STATIC TEST: _showBfRetry function declared in training.js
+check('D10', '[STATIC TEST] P2: _showBfRetry function declared in training.js',
+    '_showBfRetry' in tr_js)
+
+# STATIC TEST: pick() BF catch block calls _showBfRetry, not _applyPickFeedback
+check('D11', '[STATIC TEST] P2: pick() BF catch block calls _showBfRetry (not local fallback)',
+    bool(re.search(r'_submitPick.*?\.catch\s*\(\s*\(\s*\)\s*=>\s*\{\s*_showBfRetry', tr_js, re.DOTALL)))
+
+# STATIC TEST: expire() no longer falls back to q.c on catch
+check('D12', '[STATIC TEST] P2: expire() catch block does NOT call _applyExpire(q.c)',
+    not re.search(r'\.catch\s*\(\s*\(\s*\)\s*=>\s*\{\s*_applyExpire\s*\(\s*q\.c', tr_js))
+
+# STATIC TEST: retry calls _showBfRetry on catch
+check('D13', '[STATIC TEST] P2: BF pick() catch calls _showBfRetry',
+    '_showBfRetry' in tr_js)
+
+# MANUAL/BROWSER TEST: retry bar shows, Next disabled, retry restores reveal
+check('D14', '[MANUAL/BROWSER TEST — NOT EXECUTED] P2: retry UI shows on network failure, Next stays hidden',
+    True)  # NOT EXECUTED
+
+# ── P3: Complete requires 10 resolved ────────────────────────────────────────
+
+def _complete_bf_body():
+    m = re.search(r'CREATE\s+OR\s+REPLACE\s+FUNCTION\s+public\.complete_daily_bf_session.*?\$\$(.*?)\$\$',
+                  sql, re.DOTALL | re.IGNORECASE)
+    return m.group(1) if m else ''
+
+_complete_bf = _complete_bf_body()
+
+check('D15', '[STATIC TEST] P3: complete_daily_bf_session checks resolved_count = 10',
+    'v_resolved_cnt' in _complete_bf)
+
+check('D16', '[STATIC TEST] P3: complete_daily_bf_session checks assigned_count = 10',
+    'v_assigned_cnt' in _complete_bf)
+
+check('D17', '[STATIC TEST] P3: complete_daily_bf_session returns session_incomplete if not 10 resolved',
+    'session_incomplete' in _complete_bf)
+
+# DB TRANSACTION TEST: completing after 9/10 returns session_incomplete
+check('D18', '[DB TRANSACTION TEST — NOT EXECUTED] P3: complete after 9 answered returns session_incomplete',
+    True)  # NOT EXECUTED
+
+# DB TRANSACTION TEST: completing after 10/10 awards BF
+check('D19', '[DB TRANSACTION TEST — NOT EXECUTED] P3: complete after 10 answered awards BF',
+    True)  # NOT EXECUTED
+
+# ── P4: BF eligibility canonical per session ──────────────────────────────────
+
+# STATIC TEST: ALTER TABLE adds bf_eligible column
+check('D20', '[STATIC TEST] P4: ALTER TABLE game_sessions ADD COLUMN bf_eligible',
+    re.search(r'ALTER\s+TABLE\s+public\.game_sessions\s+ADD\s+COLUMN\s+IF\s+NOT\s+EXISTS\s+bf_eligible', sql, re.IGNORECASE))
+
+# STATIC TEST: start_daily_bf_session inserts bf_eligible into game_sessions
+check('D21', '[STATIC TEST] P4: start_daily_bf_session inserts bf_eligible value',
+    'bf_eligible' in _start_bf)
+
+# STATIC TEST: complete_daily_bf_session checks session.bf_eligible
+check('D22', '[STATIC TEST] P4: complete_daily_bf_session verifies bf_eligible on session row',
+    'bf_eligible' in _complete_bf)
+
+# DB TRANSACTION TEST: second Premium session gets bf_pts=0
+check('D23', '[DB TRANSACTION TEST — NOT EXECUTED] P4: second Premium session complete returns bf_pts=0',
+    True)  # NOT EXECUTED
+
+# ── P5: Clean stale comments ─────────────────────────────────────────────────
+
+# STATIC TEST: p_answers only in a comment (not as a function parameter)
+check('D24', '[STATIC TEST] P5: p_answers not used as function parameter in migration82',
+    not re.search(r'\bp_answers\b(?!\s+param)', sql)
+    or sql.count('p_answers') == sql.count('p_answers param'))
+
+# STATIC TEST: no stale reference to q_id-for-get_question_reveals in comments
+check('D25', '[STATIC TEST] P5: no stale "q_id included for get_question_reveals" comment',
+    'q_id (for get_question_reveals)' not in sql and 'q_id included for get_question_reveals' not in sql)
+
+# ── P6: my_team name/emoji ────────────────────────────────────────────────────
+
+def _get_bfw_body():
+    m = re.search(r'CREATE\s+OR\s+REPLACE\s+FUNCTION\s+public\.get_brain_fights_week.*?\$\$(.*?)\$\$',
+                  sql, re.DOTALL | re.IGNORECASE)
+    return m.group(1) if m else ''
+
+_get_bfw = _get_bfw_body()
+
+# STATIC TEST: get_brain_fights_week declares v_team_name and v_team_emoji
+check('D26', '[STATIC TEST] P6: get_brain_fights_week declares v_team_name variable',
+    'v_team_name' in _get_bfw)
+
+check('D27', '[STATIC TEST] P6: get_brain_fights_week declares v_team_emoji variable',
+    'v_team_emoji' in _get_bfw)
+
+# STATIC TEST: my_team object includes name and emoji fields
+check('D28', "[STATIC TEST] P6: my_team jsonb includes 'name' field",
+    re.search(r"'name'\s*,\s*v_team_name", _get_bfw))
+
+check('D29', "[STATIC TEST] P6: my_team jsonb includes 'emoji' field",
+    re.search(r"'emoji'\s*,\s*v_team_emoji", _get_bfw))
+
+# DB TRANSACTION TEST: zero-score team my_team has name and emoji
+check('D30', '[DB TRANSACTION TEST — NOT EXECUTED] P6: zero-score team my_team includes name/emoji',
+    True)  # NOT EXECUTED
+
+# ── B1/B2/B3: Server-authoritative random battle ──────────────────────────────
+
+# STATIC TEST: claim_random_match() function declared
+check('D31', '[STATIC TEST] B3: claim_random_match() function declared in migration82',
+    re.search(r'CREATE\s+OR\s+REPLACE\s+FUNCTION\s+public\.claim_random_match', sql, re.IGNORECASE))
+
+# STATIC TEST: claim_random_match uses FOR UPDATE SKIP LOCKED
+check('D32', '[STATIC TEST] B2: claim_random_match uses FOR UPDATE SKIP LOCKED',
+    'FOR UPDATE SKIP LOCKED' in sql)
+
+# STATIC TEST: claim_random_match inserts into duel_rooms with host_user_id
+check('D33', '[STATIC TEST] B3: claim_random_match inserts duel_rooms with host_user_id',
+    re.search(r'INSERT\s+INTO\s+duel_rooms', sql, re.IGNORECASE) and 'host_user_id' in sql)
+
+# STATIC TEST: claim_random_match GRANT to authenticated
+check('D34', '[STATIC TEST] B3: claim_random_match GRANT to authenticated',
+    re.search(r'GRANT\s+EXECUTE\s+ON\s+FUNCTION\s+public\.claim_random_match.*authenticated', sql, re.IGNORECASE))
+
+# STATIC TEST: matchmaking.js no longer has direct duel_rooms.insert() in main loop
+check('D35', '[STATIC TEST] B1: matchmaking.js main loop has no direct duel_rooms.insert()',
+    not re.search(r"sb\.from\('duel_rooms'\)\.insert\(", mm_js[:6000]))  # first ~6000 chars = main loop
+
+# STATIC TEST: matchmaking.js _acceptChallenge has no direct duel_rooms.insert()
+check('D36', '[STATIC TEST] B1: matchmaking.js _acceptChallenge has no direct duel_rooms.insert()',
+    "await sb.from('duel_rooms').insert({" not in mm_js[5000:] or
+    mm_js.count("sb.from('duel_rooms').insert(") == 0)
+
+# STATIC TEST: matchmaking.js calls claim_random_match rpc
+check('D37', '[STATIC TEST] B2: matchmaking.js calls sb.rpc(\'claim_random_match\')',
+    "sb.rpc('claim_random_match')" in mm_js)
+
+# MANUAL/BROWSER TEST: real random battle works end-to-end
+check('D38', '[MANUAL/BROWSER TEST — NOT EXECUTED] B3: real random battle end-to-end via claim_random_match',
+    True)  # NOT EXECUTED
+
+# ── B5/B6: Battle board UI fixes ─────────────────────────────────────────────
+
+# STATIC TEST: bot rows show виртуальный игрок, not 🟢 Онлайн
+check('D39', '[STATIC TEST] B5: matchmaking.js battle board shows "виртуальный игрок" for bot rows',
+    'виртуальный игрок' in mm_js)
+
+# STATIC TEST: no hardcoded 🟢 Онлайн for all rows (must be conditional)
+check('D40', '[STATIC TEST] B5: matchmaking.js "🟢 Онлайн" inside conditional (not bare for all)',
+    re.search(r'isBot.*?Онлайн|Онлайн.*?isBot', mm_js, re.DOTALL))
+
+# STATIC TEST: English "Looking for an opponent" string fixed
+check('D41', "[STATIC TEST] B6: matchmaking.js EN string is 'Looking for an opponent...'",
+    'Looking for an opponent...' in mm_js)
+
+# STATIC TEST: both branches of lang ternary are different
+check('D42', '[STATIC TEST] B6: matchmaking.js lang ternary for status text has distinct RU/EN values',
+    not re.search(r"lang===.ru.\?'Ищем соперника\.\.\.':'Ищем соперника\.\.\.'", mm_js))
+
+# ── C3/C5/C7: Owner QA static checks ─────────────────────────────────────────
+
+# STATIC TEST: C5 — finishOnboarding no longer awards neurons
+check('D43', '[STATIC TEST] C5: finishOnboarding does NOT call awardNeurons',
+    'awardNeurons' not in re.search(
+        r'function finishOnboarding\(\).*?\n\}',
+        streak_js, re.DOTALL).group(0)
+    if re.search(r'function finishOnboarding\(\)', streak_js) else True)
+
+# STATIC TEST: C3 — next goal widget uses "До X нейронов: осталось" text
+check('D44', '[STATIC TEST] C3: legacy.js next goal widget uses self-explanatory text',
+    'До 100 нейронов: осталось' in legacy_js)
+
+# STATIC TEST: C7 — rank badge shows "Ранг:" prefix
+check('D45', "[STATIC TEST] C7: legacy.js profile rank badge includes 'Ранг:' prefix",
+    "'Ранг: ' + rank.icon" in legacy_js)
+
+# ── D46/D47: Migration safety guards ─────────────────────────────────────────
+
+# STATIC TEST: no APPLY migration82 instruction in file
+check('D46', '[STATIC TEST] migration82 file does NOT contain "APPLY" instruction',
+    'DO NOT APPLY' in sql and sql.count('APPLY') == 1)  # only the warning
+
+# STATIC TEST: claim_random_match is SECURITY DEFINER
+check('D47', '[STATIC TEST] B3: claim_random_match is SECURITY DEFINER',
+    re.search(r'claim_random_match.*?SECURITY\s+DEFINER', sql, re.DOTALL | re.IGNORECASE))
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Results

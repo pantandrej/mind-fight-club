@@ -20,7 +20,7 @@
 --         explicit week targeting; safe Monday-boundary rule.
 --   P0.10 Daily Game BF is ACTIVE (not future-gated).
 --   P0.11 start_daily_bf_session() assigns questions server-side; payload
---         contains q_id (for get_question_reveals) but never correct_index.
+--         contains sq_id tokens but never correct_index and never q_id.
 --   P0.12 Only first BF-eligible Daily Game session earns BF; Premium extra
 --         sessions earn 0 BF. Free/Premium game quota unchanged.
 --   P0.13 Team attribution captured at award time (not current team).
@@ -107,14 +107,15 @@ ALTER TABLE public.brain_fight_contributions
 -- §2  session_questions — server-authoritative Daily Game answer ledger
 --
 -- Populated by start_daily_bf_session() (§7).
--- Selected_idx and is_correct are set by complete_daily_bf_session() (§8).
+-- Selected_idx and is_correct are set atomically by submit_daily_bf_answer() (§7.5).
 -- No client SELECT policy — all reads/writes via SECURITY DEFINER functions.
 --
 -- Architecture for Daily Game authority:
 --   start_daily_bf_session() → assigns 10 canonical questions → returns
---     payload WITHOUT correct_index (q_id included for get_question_reveals).
---   complete_daily_bf_session(session_id, answers_json) →
---     server derives correctness from questions.correct_index →
+--     payload WITHOUT correct_index and WITHOUT q_id.
+--   submit_daily_bf_answer(session_id, sq_id, selected_idx) → atomic
+--     UPDATE...RETURNING; returns persisted is_correct + correct_index after write.
+--   complete_daily_bf_session(session_id) → verifies 10 assigned + 10 resolved;
 --     awards BF (1 per correct, max 10) via single training contribution row.
 -- ──────────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.session_questions (
@@ -532,9 +533,9 @@ REVOKE ALL ON FUNCTION public.finalize_weekly_arena_bf(uuid)
 --
 -- AUTHORITY:
 --   Server assigns 10 canonical questions (2 each of 2,3,4,5,6 options).
---   Payload: sq_id (session_questions.id token) + q_id (for get_question_reveals)
---             + question text/answers — NO correct_index.
---   Client may call get_question_reveals({p_ids}) for per-question feedback.
+--   Payload: sq_id (session_questions.id token) + question text/answers.
+--   NO correct_index. NO q_id (prevents anon get_question_reveals bypass).
+--   Correctness revealed only through submit_daily_bf_answer() response.
 --   BF is derived by complete_daily_bf_session() from session_questions, not
 --   from any client-supplied correctness claim.
 --
@@ -543,11 +544,11 @@ REVOKE ALL ON FUNCTION public.finalize_weekly_arena_bf(uuid)
 --   Checks plan limits (free=1, premium=5 training sessions/day).
 --   Inserts game_sessions row (counts toward plan quota).
 --
--- BF ELIGIBILITY:
+-- BF ELIGIBILITY (P4):
 --   If training BF already exists for today (via bfc_training_daily_uidx),
---   returns {ok:true, bf_eligible:false}. Session still created + questions
---   returned so the user can play without BF.
---   This means Premium users who play a second session do NOT earn extra BF.
+--   bf_eligible=false. Session still created + questions returned so the user
+--   can play without BF. bf_eligible persisted on game_sessions row.
+--   complete_daily_bf_session() verifies session.bf_eligible=true before award.
 --
 -- QUESTION BANK:
 --   Same public curated bank as Friend Duel (m81):
@@ -665,11 +666,10 @@ BEGIN
     v_used_ids := v_used_ids || ARRAY[v_q_id];
     v_pos      := v_pos + 1;
 
-    -- Build payload entry: no correct_index.
-    -- q_id included so client can call get_question_reveals for feedback.
+    -- Build payload entry: no correct_index, no q_id (P0 security).
+    -- sq_id is the only client token for submitting answers.
     v_questions := v_questions || jsonb_build_array(jsonb_build_object(
       'sq_id', null::uuid,  -- placeholder; real sq_id set after INSERT below
-      'q_id',  v_q_id,
       'pos',   v_pos,
       'q',     v_q_text,
       'a',     v_answers,
@@ -679,8 +679,9 @@ BEGIN
   END LOOP;
 
   -- All 10 questions staged — now create session + session_questions.
-  INSERT INTO game_sessions (user_id, mode, day_utc)
-  VALUES (v_uid, 'training', v_today)
+  -- Persist bf_eligible on the session row (P4: canonical per-session eligibility).
+  INSERT INTO game_sessions (user_id, mode, day_utc, bf_eligible)
+  VALUES (v_uid, 'training', v_today, v_bf_eligible)
   RETURNING id INTO v_session_id;
 
   -- Insert session_questions and patch sq_ids into payload.
@@ -704,7 +705,6 @@ BEGIN
 
     v_questions := v_questions || jsonb_build_array(jsonb_build_object(
       'sq_id', v_sq_id,
-      'q_id',  v_q_id,
       'pos',   _i + 1,
       'q',     v_q_text,
       'a',     v_answers,
@@ -730,15 +730,18 @@ GRANT  EXECUTE ON FUNCTION public.start_daily_bf_session() TO authenticated;
 
 -- ──────────────────────────────────────────────────────────────────────────
 -- §7.5  submit_daily_bf_answer(p_session_id, p_sq_id, p_selected_idx)
---       Per-answer server authority  (A1, A2)
+--       Per-answer server authority  (A1, A2, P1)
 --
 -- Called by client for EACH answer (including timeout: p_selected_idx = -1).
 -- Server derives is_correct from questions.correct_index, never trusts client.
--- Already-answered questions are rejected (immutable ledger).
+--
+-- ATOMICITY (P1): Uses UPDATE...RETURNING instead of EXISTS + UPDATE.
+--   Two concurrent requests cannot both return accepted=true:
+--   only the request that wins the UPDATE (is_correct IS NULL guard) gets RETURNING rows.
+--   The loser reads PERSISTED values and returns accepted=false with canonical result.
 --
 -- Returns: {ok, accepted, is_correct, correct_index}
---   accepted=false when already answered or sq_id invalid (not an error)
---   is_correct / correct_index returned AFTER immutable record committed
+--   accepted=true on first write; accepted=false on retry (with persisted values)
 -- ──────────────────────────────────────────────────────────────────────────
 CREATE OR REPLACE FUNCTION public.submit_daily_bf_answer(
   p_session_id  uuid,
@@ -751,12 +754,15 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_uid         uuid := auth.uid();
-  v_session     game_sessions%ROWTYPE;
-  v_question_id uuid;
-  v_correct_idx int;
-  v_ans_count   int;
-  v_is_correct  boolean;
+  v_uid           uuid := auth.uid();
+  v_session       game_sessions%ROWTYPE;
+  v_question_id   uuid;
+  v_correct_idx   int;
+  v_ans_count     int;
+  v_is_correct    boolean;
+  v_updated_id    uuid;
+  v_stored_idx    int;
+  v_stored_correct boolean;
 BEGIN
   IF v_uid IS NULL THEN
     RETURN jsonb_build_object('ok', false, 'reason', 'unauthenticated');
@@ -782,17 +788,6 @@ BEGIN
     RETURN jsonb_build_object('ok', false, 'reason', 'invalid_sq_id');
   END IF;
 
-  -- Check already answered (immutable ledger)
-  IF EXISTS (
-    SELECT 1 FROM session_questions
-    WHERE id = p_sq_id AND is_correct IS NOT NULL
-  ) THEN
-    RETURN jsonb_build_object(
-      'ok', true, 'accepted', false, 'reason', 'already_answered',
-      'correct_index', v_correct_idx
-    );
-  END IF;
-
   -- Validate selected_idx range: -1 = timeout, 0..n-1 = valid choice
   IF p_selected_idx <> -1 AND (p_selected_idx < 0 OR p_selected_idx >= v_ans_count) THEN
     RETURN jsonb_build_object('ok', false, 'reason', 'invalid_selected_idx');
@@ -801,12 +796,30 @@ BEGIN
   -- Derive correctness server-side; timeout always wrong
   v_is_correct := (p_selected_idx >= 0) AND (p_selected_idx = v_correct_idx);
 
-  -- Commit immutable answer record
+  -- Atomic commit: UPDATE...RETURNING guards against race condition (P1).
+  -- Only the request that wins the race (is_correct IS NULL) gets a returned id.
   UPDATE session_questions
   SET selected_idx = p_selected_idx,
       is_correct   = v_is_correct,
       answered_at  = now()
-  WHERE id = p_sq_id AND session_id = p_session_id AND is_correct IS NULL;
+  WHERE id = p_sq_id AND session_id = p_session_id AND is_correct IS NULL
+  RETURNING id INTO v_updated_id;
+
+  IF v_updated_id IS NULL THEN
+    -- Race lost or duplicate call: read PERSISTED canonical values and return them.
+    SELECT sq.selected_idx, sq.is_correct
+    INTO v_stored_idx, v_stored_correct
+    FROM session_questions sq
+    WHERE sq.id = p_sq_id;
+
+    RETURN jsonb_build_object(
+      'ok',           true,
+      'accepted',     false,
+      'reason',       'already_answered',
+      'is_correct',   v_stored_correct,
+      'correct_index', v_correct_idx
+    );
+  END IF;
 
   RETURN jsonb_build_object(
     'ok',           true,
@@ -823,16 +836,19 @@ GRANT  EXECUTE ON FUNCTION public.submit_daily_bf_answer(uuid, uuid, int) TO aut
 
 -- ──────────────────────────────────────────────────────────────────────────
 -- §8  complete_daily_bf_session(p_session_id)
---     Awards Daily Game BF — counts from per-answer ledger  (A3, P0.11, P0.12)
+--     Awards Daily Game BF — counts from per-answer ledger  (A3, P0.11, P0.12, P3, P4)
 --
--- No p_answers: correctness was recorded per-answer via submit_daily_bf_answer.
+-- No p_answers param: correctness was recorded per-answer via submit_daily_bf_answer.
 -- Server counts is_correct=true rows from session_questions.
 --
 -- FLOW:
 --   1. Verify session ownership (mode='training', user = caller).
---   2. COUNT is_correct=true across all session_questions for this session.
---   3. BF = MIN(correct_count, 10). Award as single 'training' contribution.
---   4. Idempotent: ON CONFLICT on bfc_source_unique (session_id as source_id)
+--   2. Verify bf_eligible=true on session row (P4: canonical per-session flag).
+--   3. Verify assigned_count=10 AND resolved_count=10 (P3: all 10 must be answered).
+--      Returns {session_incomplete} if resolved_count < assigned_count.
+--   4. COUNT is_correct=true across all session_questions for this session.
+--   5. BF = MIN(correct_count, 10). Award as single 'training' contribution.
+--   6. Idempotent: ON CONFLICT on bfc_source_unique (session_id as source_id)
 --      + bfc_training_daily_uidx (one training row per day).
 --      Re-running returns {ok:true, already_completed:true, bf_pts:0}.
 -- ──────────────────────────────────────────────────────────────────────────
@@ -845,15 +861,17 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_uid         uuid := auth.uid();
-  v_today       date := (now() AT TIME ZONE 'UTC')::date;
-  v_week_start  date := v_today - ((EXTRACT(DOW FROM v_today)::int + 6) % 7);
-  v_session     game_sessions%ROWTYPE;
-  v_correct_cnt int;
-  v_bf_pts      int;
-  v_team_id     uuid;
-  v_source_id   uuid;
-  v_rows        int;
+  v_uid           uuid := auth.uid();
+  v_today         date := (now() AT TIME ZONE 'UTC')::date;
+  v_week_start    date := v_today - ((EXTRACT(DOW FROM v_today)::int + 6) % 7);
+  v_session       game_sessions%ROWTYPE;
+  v_assigned_cnt  int;
+  v_resolved_cnt  int;
+  v_correct_cnt   int;
+  v_bf_pts        int;
+  v_team_id       uuid;
+  v_source_id     uuid;
+  v_rows          int;
 BEGIN
   IF v_uid IS NULL THEN
     RETURN jsonb_build_object('ok', false, 'reason', 'unauthenticated');
@@ -867,7 +885,33 @@ BEGIN
     RETURN jsonb_build_object('ok', false, 'reason', 'invalid_session');
   END IF;
 
-  -- Count correct answers from per-answer ledger (recorded by submit_daily_bf_answer)
+  -- P4: verify BF eligibility persisted on session row
+  IF NOT COALESCE(v_session.bf_eligible, false) THEN
+    RETURN jsonb_build_object(
+      'ok',          true,
+      'bf_pts',      0,
+      'bf_eligible', false,
+      'reason',      'session_not_bf_eligible'
+    );
+  END IF;
+
+  -- P3: require exactly 10 assigned AND 10 resolved questions
+  SELECT COUNT(*),
+         COUNT(*) FILTER (WHERE is_correct IS NOT NULL)
+  INTO v_assigned_cnt, v_resolved_cnt
+  FROM session_questions
+  WHERE session_id = p_session_id;
+
+  IF v_assigned_cnt <> 10 OR v_resolved_cnt <> 10 THEN
+    RETURN jsonb_build_object(
+      'ok',             false,
+      'reason',         'session_incomplete',
+      'assigned_count', v_assigned_cnt,
+      'resolved_count', v_resolved_cnt
+    );
+  END IF;
+
+  -- Count correct answers from per-answer ledger
   SELECT COUNT(*) INTO v_correct_cnt
   FROM session_questions
   WHERE session_id = p_session_id AND is_correct = true;
@@ -941,6 +985,8 @@ DECLARE
   v_week_end       date;
   v_team_id        uuid;
   v_team_city      text;
+  v_team_name      text;
+  v_team_emoji     text;
   v_disbanded_at   timestamptz;  -- P0.7: proper variable
 BEGIN
   v_week_end := v_week_start + 7;
@@ -955,9 +1001,9 @@ BEGIN
     RETURN jsonb_build_object('ok', false, 'reason', 'no_team');
   END IF;
 
-  -- P0.7: proper SELECT INTO with real variable for disbanded_at
-  SELECT t.city, t.disbanded_at
-  INTO v_team_city, v_disbanded_at
+  -- P0.7: proper SELECT INTO; also fetch name/emoji for P6 (always available)
+  SELECT t.city, t.name, t.emoji, t.disbanded_at
+  INTO v_team_city, v_team_name, v_team_emoji, v_disbanded_at
   FROM teams t WHERE t.id = v_team_id;
 
   IF NOT FOUND THEN
@@ -1097,6 +1143,8 @@ BEGIN
       'my_team', (
         SELECT jsonb_build_object(
           'id',                  v_team_id,
+          'name',                v_team_name,
+          'emoji',               v_team_emoji,
           'city',                v_team_city,
           'points',              COALESCE(mtr.points, 0),
           'global_rank',         mtr.global_rank,
@@ -1304,12 +1352,16 @@ $$;
 
 
 -- ──────────────────────────────────────────────────────────────────────────
--- §11  get_question_reveals — extend to block unresolved Daily BF questions (A4)
+-- §11  get_question_reveals — block unresolved Daily BF questions; anon revoked (A4, P0)
 --
 -- Adds exclusion of questions currently assigned to the caller's open Daily BF
 -- sessions (session_questions rows where is_correct IS NULL). Defense-in-depth:
--- start_daily_bf_session already omits correct_index from payload, but this
+-- start_daily_bf_session omits correct_index AND q_id from payload, but this
 -- prevents reveals via get_question_reveals during an active session.
+--
+-- SECURITY (P0): GRANT restricted to authenticated only.
+-- An authenticated player calling as anon (auth.uid()=NULL) cannot bypass:
+-- anon is no longer granted EXECUTE on this function.
 -- ──────────────────────────────────────────────────────────────────────────
 CREATE OR REPLACE FUNCTION public.get_question_reveals(p_ids uuid[])
 RETURNS TABLE(id uuid, correct_index int)
@@ -1346,8 +1398,121 @@ AS $$
     );
 $$;
 
-REVOKE ALL ON FUNCTION public.get_question_reveals(uuid[]) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.get_question_reveals(uuid[]) TO authenticated, anon;
+REVOKE ALL ON FUNCTION public.get_question_reveals(uuid[]) FROM PUBLIC, anon;
+GRANT  EXECUTE ON FUNCTION public.get_question_reveals(uuid[]) TO authenticated;
+
+
+-- ──────────────────────────────────────────────────────────────────────────
+-- §12  game_sessions.bf_eligible column  (P4)
+--
+-- Persists BF eligibility at session creation time.
+-- complete_daily_bf_session() reads this column — concurrent Premium sessions
+-- that both start before either completes both get bf_eligible=true ONLY for
+-- the first one (bfc_training_daily_uidx will reject the second INSERT).
+-- This column locks in the flag at start time, not at completion time.
+-- ──────────────────────────────────────────────────────────────────────────
+ALTER TABLE public.game_sessions
+  ADD COLUMN IF NOT EXISTS bf_eligible boolean DEFAULT false;
+
+
+-- ──────────────────────────────────────────────────────────────────────────
+-- §13  claim_random_match()  (B1, B2, B3)
+--      Atomic server-side random battle matchmaking
+--
+-- Replaces client-side duel_rooms.insert() + matchmaking_queue.update().
+-- Uses FOR UPDATE SKIP LOCKED to atomically claim an opponent row.
+--
+-- FLOW:
+--   1. Caller must be authenticated and have a waiting matchmaking_queue row.
+--   2. Try to claim one other waiting row (FOR UPDATE SKIP LOCKED).
+--   3. If found: create duel_rooms with canonical fields (host_user_id,
+--      guest_user_id, status='ready'); update both queue rows to matched.
+--      Return {ok:true, matched:true, role:'host', duel_code, opponent_name}.
+--   4. If not found: return {ok:true, matched:false} — caller stays waiting.
+--
+-- CLIENT FLOW after matched=true:
+--   role='host': call start_duel(duel_code) via canonical m78 RPC.
+--   role='guest': poll matchmaking_queue for matched_duel_id, then joinDuel.
+--
+-- SECURITY: SECURITY DEFINER — bypasses RLS for duel_rooms and matchmaking_queue.
+-- ──────────────────────────────────────────────────────────────────────────
+CREATE OR REPLACE FUNCTION public.claim_random_match()
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_uid          uuid := auth.uid();
+  v_my_row       matchmaking_queue%ROWTYPE;
+  v_opp_row      matchmaking_queue%ROWTYPE;
+  v_duel_code    text;
+  v_my_name      text;
+BEGIN
+  IF v_uid IS NULL THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'unauthenticated');
+  END IF;
+
+  -- Find caller's own waiting queue row
+  SELECT * INTO v_my_row
+  FROM matchmaking_queue
+  WHERE user_id = v_uid AND status = 'waiting'
+  ORDER BY created_at ASC
+  LIMIT 1;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'not_in_queue');
+  END IF;
+
+  v_my_name := v_my_row.display_name;
+
+  -- Atomically claim one other waiting player (SKIP LOCKED = skip rows locked by concurrent calls)
+  SELECT * INTO v_opp_row
+  FROM matchmaking_queue
+  WHERE status = 'waiting'
+    AND user_id <> v_uid
+  ORDER BY created_at ASC
+  LIMIT 1
+  FOR UPDATE SKIP LOCKED;
+
+  IF NOT FOUND THEN
+    -- No opponent yet — caller stays in queue
+    RETURN jsonb_build_object('ok', true, 'matched', false);
+  END IF;
+
+  -- Generate duel code
+  v_duel_code := upper(substring(md5(random()::text || clock_timestamp()::text), 1, 6));
+
+  -- Create canonical duel room (both identities known → status='ready')
+  INSERT INTO duel_rooms (
+    code, host_user_id, guest_user_id,
+    host_name, guest_name,
+    host_score, guest_score,
+    status, created_at
+  ) VALUES (
+    v_duel_code, v_uid, v_opp_row.user_id,
+    v_my_name, v_opp_row.display_name,
+    0, 0,
+    'ready', now()
+  );
+
+  -- Mark both queue rows matched
+  UPDATE matchmaking_queue
+  SET status = 'matched', matched_duel_id = v_duel_code
+  WHERE id IN (v_my_row.id, v_opp_row.id);
+
+  RETURN jsonb_build_object(
+    'ok',           true,
+    'matched',      true,
+    'role',         'host',
+    'duel_code',    v_duel_code,
+    'opponent_name', v_opp_row.display_name
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.claim_random_match() FROM PUBLIC, anon;
+GRANT  EXECUTE ON FUNCTION public.claim_random_match() TO authenticated;
 
 
 COMMIT;
