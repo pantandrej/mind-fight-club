@@ -1457,7 +1457,8 @@ ALTER TABLE public.game_sessions
 --
 -- CLIENT FLOW after matched=true:
 --   role='host': call start_duel(duel_code) via canonical m78 RPC.
---   Opponent polls matchmaking_queue for matched_duel_id, then joinDuel.
+--   Opponent's next claim_random_match() tick finds its row status='matched'
+--   and returns role='guest' + canonical duel fields immediately.
 --
 -- SECURITY: SECURITY DEFINER — bypasses RLS for duel_rooms and matchmaking_queue.
 -- ──────────────────────────────────────────────────────────────────────────
@@ -1485,14 +1486,15 @@ BEGIN
   -- Serialize all pairing operations under a single advisory lock.
   PERFORM pg_advisory_xact_lock(hashtext('bfc_random_matchmaking'));
 
-  -- Re-read caller's latest active queue row under lock.
-  -- Include 'matched' status: guest's row is already 'matched' after host paired them;
-  -- returning the existing duel avoids the guest staying stuck until 15s timeout.
+  -- Re-read caller's LATEST active queue row under lock (DESC = newest wins).
+  -- Include 'matched': guest's row is already 'matched' after host paired them;
+  -- returning the existing duel avoids guest staying stuck until 15s timeout.
+  -- DESC ensures a new 'waiting' row beats any old 'matched' row from a prior battle.
   SELECT * INTO v_my_row
   FROM matchmaking_queue
   WHERE user_id = v_uid
     AND status IN ('waiting', 'matched')
-  ORDER BY created_at ASC
+  ORDER BY created_at DESC
   LIMIT 1;
 
   IF NOT FOUND THEN

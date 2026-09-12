@@ -133,9 +133,33 @@ async function startMatchmaking(){
       clearInterval(mmInterval); mmInterval = null;
       clearInterval(_boardInterval); _boardInterval = null;
       const result = await _cancelQueueOrEnterMatched(myName);
-      if(!result.matched) _showBotOffer(window._pendingBot || pickRandomBot());
+      if(result.matched) return;
+      if(result.error){
+        // Cancel RPC failed — state unknown, may be matched. Stay on screen with retry.
+        _showCancelError(async () => {
+          const r2 = await _cancelQueueOrEnterMatched(myName);
+          if(!r2.matched && !r2.error) _showBotOffer(window._pendingBot || pickRandomBot());
+        });
+        return;
+      }
+      _showBotOffer(window._pendingBot || pickRandomBot());
     }
   }, 1000);
+}
+
+// Shows a retry prompt on the matchmaking screen when the cancel RPC fails.
+// Keeps the user on the matchmaking screen — does NOT show bots or navigate away.
+function _showCancelError(retryFn){
+  const statusEl = document.getElementById('mm-status');
+  const subEl    = document.getElementById('mm-sub');
+  const cancelEl = document.getElementById('mm-cancel-btn');
+  if(statusEl){ statusEl.style.display = ''; statusEl.textContent = lang === 'ru'
+    ? '⚠️ Не удалось проверить статус матча.'
+    : '⚠️ Could not check match status.'; }
+  if(subEl){ subEl.style.display = ''; subEl.innerHTML =
+    `<button id="mm-cancel-retry-btn" style="background:rgba(0,237,181,.2);border:0.5px solid rgba(0,237,181,.4);border-radius:8px;padding:6px 18px;font-size:13px;font-weight:800;color:var(--accent2);cursor:pointer;font-family:inherit">${lang==='ru'?'Повторить':'Retry'}</button>`; }
+  if(cancelEl) cancelEl.style.display = '';
+  document.getElementById('mm-cancel-retry-btn')?.addEventListener('click', retryFn, { once: true });
 }
 
 // Canonical cancel helper: awaits RPC, enters real match if server already paired caller.
@@ -245,6 +269,11 @@ async function playWithBot(){
     const myName = currentUser?.user_metadata?.full_name?.split(' ')[0] || currentUser?.email?.split('@')[0] || 'You';
     const result = await _cancelQueueOrEnterMatched(myName);
     if(result.matched) return; // entered real match — stop bot flow
+    if(result.error){
+      // Cancel state unknown — do NOT start bot, show toast and stay
+      toast(lang === 'ru' ? '⚠️ Не удалось проверить статус. Попробуй ещё раз.' : '⚠️ Could not check status. Try again.');
+      return;
+    }
   }
 
   // ── Pre-check: limit BEFORE showing "bot accepted" and before startBotDuel ──
@@ -357,6 +386,11 @@ async function cancelMatchmaking(){
     const myName = currentUser?.user_metadata?.full_name?.split(' ')[0] || currentUser?.email?.split('@')[0] || 'You';
     const result = await _cancelQueueOrEnterMatched(myName);
     if(result.matched) return; // entered real match — do not go back to play menu
+    if(result.error){
+      // Cancel state unknown — do NOT navigate away, show toast
+      toast(lang === 'ru' ? '⚠️ Не удалось отменить. Попробуй ещё раз.' : '⚠️ Could not cancel. Try again.');
+      return;
+    }
   }
   window._isBotDuel = false;
   showPlayMenu();
@@ -559,6 +593,11 @@ window._acceptChallenge = async function(rowId, oppDisplayName, isBot, botData) 
     // Await canonical cancel — if server already matched us, enter that real duel and stop
     const result = await _cancelQueueOrEnterMatched(myName);
     if(result.matched) return;
+    if(result.error){
+      // Cancel state unknown — do NOT accept another challenge
+      toast(lang === 'ru' ? '⚠️ Не удалось проверить статус. Попробуй ещё раз.' : '⚠️ Could not check status. Try again.');
+      return;
+    }
   }
 
   if (isBot) {

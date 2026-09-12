@@ -740,6 +740,64 @@ check_ne('F18', '[DB TRANSACTION TEST — NOT EXECUTED] timeout race: 15s cancel
 check_ne('F19', '[BROWSER TEST — NOT EXECUTED] clicking bot exactly as server matches cannot abandon real match')
 
 # ─────────────────────────────────────────────────────────────────────────────
+# G01-G12  Last Two Blockers: row-selection order + error-handling
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── SQL: active-row selection order ─────────────────────────────────────────
+
+# Extract only the claim_random_match function body for scoped checks
+_claim_body = re.search(
+    r'CREATE OR REPLACE FUNCTION public\.claim_random_match\(\)(.*?)^\$\$;',
+    sql, re.DOTALL | re.MULTILINE
+)
+_claim_body = _claim_body.group(1) if _claim_body else ''
+
+check('G01', "[STATIC TEST] claim_random_match active-row SELECT uses ORDER BY created_at DESC",
+    re.search(r"ORDER\s+BY\s+created_at\s+DESC", _claim_body, re.IGNORECASE))
+
+check('G02', "[STATIC TEST] claim_random_match caller-row lookup (status IN waiting/matched) uses DESC not ASC",
+    # The first ORDER BY in the function (caller's own row) must be DESC.
+    # The second ORDER BY (opponent row, ASC for fairness) is acceptable.
+    (lambda orders: len(orders) >= 1 and orders[0].upper().endswith('DESC'))(
+        re.findall(r'ORDER\s+BY\s+created_at\s+(\w+)', _claim_body, re.IGNORECASE)
+    ))
+
+_cancel_body = re.search(
+    r'CREATE OR REPLACE FUNCTION public\.cancel_random_matchmaking\(\)(.*?)^\$\$;',
+    sql, re.DOTALL | re.MULTILINE
+)
+_cancel_body = _cancel_body.group(1) if _cancel_body else ''
+
+check('G03', "[STATIC TEST] cancel_random_matchmaking also uses ORDER BY created_at DESC (same latest-row policy)",
+    re.search(r"ORDER\s+BY\s+created_at\s+DESC", _cancel_body, re.IGNORECASE))
+
+# ── JS: error handling in all four callers ───────────────────────────────────
+
+check('G04', '[STATIC TEST] 15s timeout handles result.error before showing bot offer',
+    re.search(r"elapsed\s*>=\s*15.*?result\.error.*?return", mm_js, re.DOTALL))
+
+check('G05', '[STATIC TEST] playWithBot handles result.error before bot start',
+    re.search(r"playWithBot.*?result\.error.*?return", mm_js, re.DOTALL))
+
+check('G06', '[STATIC TEST] cancelMatchmaking handles result.error before showPlayMenu',
+    re.search(r"cancelMatchmaking.*?result\.error.*?return.*?showPlayMenu", mm_js, re.DOTALL))
+
+check('G07', '[STATIC TEST] _acceptChallenge handles result.error before switching challenge',
+    re.search(r"_acceptChallenge.*?result\.error.*?return", mm_js, re.DOTALL))
+
+check('G08', '[STATIC TEST] all four call sites of _cancelQueueOrEnterMatched check result.error before continuing',
+    # Four call sites (15s timeout, playWithBot, cancelMatchmaking, _acceptChallenge).
+    # Each must have result.error guard. Count distinct result.error checks = 4.
+    len(re.findall(r'result\.error', mm_js)) == 4)
+
+# ── DB/browser NOT EXECUTED ──────────────────────────────────────────────────
+
+check_ne('G09', '[DB TRANSACTION TEST — NOT EXECUTED] old matched row + new waiting row → claim selects new waiting row')
+check_ne('G10', '[DB TRANSACTION TEST — NOT EXECUTED] current waiting row becomes matched → next claim returns current duel, not historical row')
+check_ne('G11', '[BROWSER TEST — NOT EXECUTED] cancellation RPC network failure at second 15 → no virtual fallback starts, retry shown')
+check_ne('G12', '[BROWSER TEST — NOT EXECUTED] bot click during cancellation network failure → bot battle does not start')
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Results
 # ─────────────────────────────────────────────────────────────────────────────
 static_total = len(PASS) + len(FAIL)
