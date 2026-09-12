@@ -470,11 +470,9 @@ function shouldShowOnboarding(){
 }
 
 function showOnboarding(){
-  _obQIdx = 0; _obScore = 0; _obAnswered = false;
-  document.getElementById('ob-slide-welcome').style.display = '';
-  document.getElementById('ob-slide-demo').style.display = 'none';
-  document.getElementById('ob-slide-result').style.display = 'none';
-  showScreen('onboarding');
+  // Skip 3-question demo: mark onboarding done and navigate home (C5)
+  localStorage.setItem('mfc_onboarding_done', '1');
+  if(typeof showScreen === 'function') showScreen('home');
 }
 
 function skipOnboarding(){ finishOnboarding(); }

@@ -32,7 +32,7 @@ let _dailyCountedGameId = null;
 let _currentGameCountsDailyLimit = false;
 
 function getRemainingFreeQuestions(){
-  if(_isLimitExempt()) return Infinity;
+  if(_isLimitExempt()) return null; // admin/exempt: no limit — caller treats null as "no badge"
   return Math.max(0, FREE_QUESTIONS_PER_DAY - getDailyQuestionsUsed());
 }
 

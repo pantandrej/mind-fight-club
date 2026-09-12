@@ -1115,7 +1115,8 @@ function loadQ(){
   hideExplanation();
   // Normalize before rendering
   let q=toPlayableQuestion(curQ[qIdx]);
-  q=normalizeAndShuffleQuestion(q); // shuffle answers so correct isn't always A
+  // BF sessions: server order is canonical (correct_index maps 1:1); no shuffle (A5)
+  if(!_bfSession?.session_id) q=normalizeAndShuffleQuestion(q);
   curQ[qIdx]=q;
 
   // Info slide (organizational — round header, rules, etc.) — just show image + Next
@@ -1227,14 +1228,34 @@ function expire(){
   if(answered)return;answered=true;streak=0;updStreak();
   incrementDailyQuestion(); // count timed-out question too
   const q=curQ[qIdx];
-  document.querySelectorAll('#answers .ans').forEach((b,i)=>{b.disabled=true;if(i===q.c)b.className='ans correct';});
-  showFb('fb',"⏱ "+q.a[q.c],false);
-  setDot('prog-dots',qIdx,'miss');
-  document.getElementById('next-btn').className='next-btn show';
-  _updateNextBtnLabel();
-  saveAnswerRow(-1, q, 0, false, maxT*1000, true);
+  document.querySelectorAll('#answers .ans').forEach(b=>b.disabled=true);
   track('question_answered', {correct: false, cat: q.cat, q_idx: qIdx, timeout: true});
-  showExplanation(q, false);
+  _roundAnswers[qIdx] = -1;
+
+  const _applyExpire = (correctIdx) => {
+    document.querySelectorAll('#answers .ans').forEach((b,i)=>{
+      if(i===correctIdx) b.className='ans correct';
+    });
+    showFb('fb',"⏱ "+(q.a[correctIdx]||''),false);
+    setDot('prog-dots',qIdx,'miss');
+    document.getElementById('next-btn').className='next-btn show';
+    _updateNextBtnLabel();
+    saveAnswerRow(-1, q, 0, false, maxT*1000, true);
+    showExplanation(q, false);
+  };
+
+  // BF session: submit timeout sentinel to server (A2)
+  if(_bfSession?.session_id && q.sq_id){
+    sb.rpc('submit_daily_bf_answer', {
+      p_session_id:   _bfSession.session_id,
+      p_sq_id:        q.sq_id,
+      p_selected_idx: -1,
+    }).then(({ data }) => {
+      _applyExpire(data?.correct_index ?? q.c ?? 0);
+    }).catch(() => { _applyExpire(q.c ?? 0); });
+    return;
+  }
+  _applyExpire(q.c ?? 0);
 }
 
 // ── State sync helper ─────────────────────────────────────────────
@@ -1256,7 +1277,33 @@ function pick(i){
   document.querySelectorAll('#answers .ans').forEach(b=>b.disabled=true);
   const pts=getTimedPoints(q.a.length, timeLeft, maxT);
   const responseMs = _qStartTime ? Date.now()-_qStartTime : null;
+
+  // BF session: submit to server first; derive correctness from authoritative response (A1)
+  if(_bfSession?.session_id && q.sq_id){
+    sb.rpc('submit_daily_bf_answer', {
+      p_session_id:  _bfSession.session_id,
+      p_sq_id:       q.sq_id,
+      p_selected_idx: i,
+    }).then(({ data }) => {
+      const correct_index = data?.correct_index ?? q.c;
+      const isCorrect = data?.is_correct ?? (i === q.c);
+      _applyPickFeedback(i, correct_index, isCorrect, q, pts, responseMs);
+      _roundAnswers[qIdx] = i;
+    }).catch(() => {
+      // Network failure: fall back to local q.c if available
+      const isCorrect = i === q.c;
+      _applyPickFeedback(i, q.c, isCorrect, q, pts, responseMs);
+      _roundAnswers[qIdx] = i;
+    });
+    return;
+  }
+
   const isCorrect = i===q.c;
+  _applyPickFeedback(i, q.c, isCorrect, q, pts, responseMs);
+  _roundAnswers[qIdx] = i;
+}
+
+function _applyPickFeedback(i, correctIdx, isCorrect, q, pts, responseMs){
   track('question_answered', {correct: isCorrect, cat: q.cat, q_idx: qIdx, time_ms: responseMs});
   if(isCorrect){
     const correctBtn = document.querySelectorAll('#answers .ans')[i];
@@ -1288,14 +1335,14 @@ function pick(i){
     setDot('prog-dots',qIdx,'done');
   } else {
     document.querySelectorAll('#answers .ans')[i].className='ans wrong';
-    document.querySelectorAll('#answers .ans')[q.c].className='ans correct';
+    const corrBtn = document.querySelectorAll('#answers .ans')[correctIdx];
+    if(corrBtn) corrBtn.className='ans correct';
     streak=0;
     _syncQuizStateToStore();
-    showFb('fb','✗ '+q.a[q.c],false);
+    showFb('fb','✗ '+(q.a[correctIdx]||''),false);
     setDot('prog-dots',qIdx,'miss');
   }
   updStreak();
-  _roundAnswers[qIdx] = i;
   saveAnswerRow(i, q, pts, isCorrect, responseMs, false);
   document.getElementById('next-btn').className='next-btn show';
   _updateNextBtnLabel();
@@ -1492,28 +1539,21 @@ function showScore(){
     const { currentUser } = getState();
     if(currentUser && currentGameType === 'quick' && window._quickPlaySessionId){
       if (_bfSession?.session_id) {
-        // BF session: submit server-authoritative answers for BF award.
-        // Collect {sq_id, selected_idx} from curQ (which carries sq_id from start_daily_bf_session)
-        // and _roundAnswers (module-level array: _roundAnswers[qIdx] = selectedOptionIndex).
-        const curQ = getState().curQ || [];
-        const answers = curQ
-          .map((q, i) => ({ sq_id: q.sq_id, selected_idx: _roundAnswers[i] ?? null }))
-          .filter(a => a.sq_id != null && a.selected_idx != null);
-        if (answers.length > 0) {
-          sb.rpc('complete_daily_bf_session', {
-            p_session_id: _bfSession.session_id,
-            p_answers: answers
-          }).then(({ data }) => {
-            if (data?.ok && data.bf_pts > 0) {
-              window.toast?.(`⚡ +${data.bf_pts} BF`, 2500);
-            }
-          }).catch(() => {});
-        }
+        // BF session: answers were submitted per-question via submit_daily_bf_answer.
+        // Just finalize — server counts correct from session_questions ledger (A3).
+        const _bfSessionId = _bfSession.session_id;
+        _bfSession = null;
+        sb.rpc('complete_daily_bf_session', {
+          p_session_id: _bfSessionId,
+        }).then(({ data }) => {
+          if (data?.ok && data.bf_pts > 0) {
+            window.toast?.(`⚡ +${data.bf_pts} BF`, 2500);
+          }
+        }).catch(() => {});
         // Also complete training session for streak tracking.
         sb.rpc('complete_training_session', {
           p_session_id: window._quickPlaySessionId,
         }).catch(() => {});
-        _bfSession = null;
       } else {
         // No BF session (fallback path): mark complete for daily_goal.
         sb.rpc('complete_training_session', {

@@ -224,14 +224,21 @@ check('T41', 'P0.10: start_daily_bf_session function declared',
     re.search(r'CREATE\s+OR\s+REPLACE\s+FUNCTION\s+public\.start_daily_bf_session', sql, re.IGNORECASE))
 
 check('T42', 'P0.11: start_daily_bf_session payload does NOT include correct_index key',
-    # The returned jsonb payload should not contain the string 'correct_index' as a key.
-    # The function uses correct_index internally (filter/validation) — strip those
-    # occurrences by checking the payload-building section only.
-    # Simplest safe check: the word 'correct_index' does not appear in the RETURN
-    # jsonb_build_object(...) call inside start_daily_bf_session.
-    not re.search(
+    # Extract the body of start_daily_bf_session (between its $$ delimiters)
+    # and verify correct_index does not appear in any jsonb_build_object(...) payload.
+    # submit_daily_bf_answer legitimately returns correct_index (after answer recorded),
+    # so we scope this check to start_daily_bf_session only.
+    (lambda body: body is not None and not re.search(
         r"jsonb_build_object\s*\([^)]*'correct_index'",
-        sql_nc, re.IGNORECASE
+        body, re.IGNORECASE
+    ))(
+        # Extract first $$ ... $$ block after start_daily_bf_session declaration
+        (lambda m: m.group(1) if m else None)(
+            re.search(
+                r'CREATE\s+OR\s+REPLACE\s+FUNCTION\s+public\.start_daily_bf_session.*?\$\$(.*?)\$\$',
+                sql_nc, re.DOTALL | re.IGNORECASE
+            )
+        )
     ))
 
 check('T43', 'P0.11: start_daily_bf_session returns session_id in payload',

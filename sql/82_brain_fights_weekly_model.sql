@@ -729,34 +729,115 @@ GRANT  EXECUTE ON FUNCTION public.start_daily_bf_session() TO authenticated;
 
 
 -- ──────────────────────────────────────────────────────────────────────────
--- §8  complete_daily_bf_session(p_session_id, p_answers)
---     Awards Daily Game BF — server derives correctness  (P0.11, P0.12)
+-- §7.5  submit_daily_bf_answer(p_session_id, p_sq_id, p_selected_idx)
+--       Per-answer server authority  (A1, A2)
 --
--- p_answers: JSON array of {sq_id: uuid, selected_idx: int}
+-- Called by client for EACH answer (including timeout: p_selected_idx = -1).
+-- Server derives is_correct from questions.correct_index, never trusts client.
+-- Already-answered questions are rejected (immutable ledger).
+--
+-- Returns: {ok, accepted, is_correct, correct_index}
+--   accepted=false when already answered or sq_id invalid (not an error)
+--   is_correct / correct_index returned AFTER immutable record committed
+-- ──────────────────────────────────────────────────────────────────────────
+CREATE OR REPLACE FUNCTION public.submit_daily_bf_answer(
+  p_session_id  uuid,
+  p_sq_id       uuid,
+  p_selected_idx int   -- 0-based index into answers array, or -1 for timeout
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_uid         uuid := auth.uid();
+  v_session     game_sessions%ROWTYPE;
+  v_question_id uuid;
+  v_correct_idx int;
+  v_ans_count   int;
+  v_is_correct  boolean;
+BEGIN
+  IF v_uid IS NULL THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'unauthenticated');
+  END IF;
+
+  -- Verify session ownership and mode
+  SELECT * INTO v_session
+  FROM game_sessions
+  WHERE id = p_session_id AND user_id = v_uid AND mode = 'training';
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'invalid_session');
+  END IF;
+
+  -- Validate sq_id belongs to this session and get question data
+  SELECT sq.question_id, q.correct_index,
+         jsonb_array_length(COALESCE(q.answers_ru, q.answers_json, '[]'::jsonb))
+  INTO v_question_id, v_correct_idx, v_ans_count
+  FROM session_questions sq
+  JOIN questions q ON q.id = sq.question_id
+  WHERE sq.id = p_sq_id AND sq.session_id = p_session_id;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'invalid_sq_id');
+  END IF;
+
+  -- Check already answered (immutable ledger)
+  IF EXISTS (
+    SELECT 1 FROM session_questions
+    WHERE id = p_sq_id AND is_correct IS NOT NULL
+  ) THEN
+    RETURN jsonb_build_object(
+      'ok', true, 'accepted', false, 'reason', 'already_answered',
+      'correct_index', v_correct_idx
+    );
+  END IF;
+
+  -- Validate selected_idx range: -1 = timeout, 0..n-1 = valid choice
+  IF p_selected_idx <> -1 AND (p_selected_idx < 0 OR p_selected_idx >= v_ans_count) THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'invalid_selected_idx');
+  END IF;
+
+  -- Derive correctness server-side; timeout always wrong
+  v_is_correct := (p_selected_idx >= 0) AND (p_selected_idx = v_correct_idx);
+
+  -- Commit immutable answer record
+  UPDATE session_questions
+  SET selected_idx = p_selected_idx,
+      is_correct   = v_is_correct,
+      answered_at  = now()
+  WHERE id = p_sq_id AND session_id = p_session_id AND is_correct IS NULL;
+
+  RETURN jsonb_build_object(
+    'ok',           true,
+    'accepted',     true,
+    'is_correct',   v_is_correct,
+    'correct_index', v_correct_idx
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.submit_daily_bf_answer(uuid, uuid, int) FROM PUBLIC, anon;
+GRANT  EXECUTE ON FUNCTION public.submit_daily_bf_answer(uuid, uuid, int) TO authenticated;
+
+
+-- ──────────────────────────────────────────────────────────────────────────
+-- §8  complete_daily_bf_session(p_session_id)
+--     Awards Daily Game BF — counts from per-answer ledger  (A3, P0.11, P0.12)
+--
+-- No p_answers: correctness was recorded per-answer via submit_daily_bf_answer.
+-- Server counts is_correct=true rows from session_questions.
 --
 -- FLOW:
 --   1. Verify session ownership (mode='training', user = caller).
---   2. For each answer: UPDATE session_questions SET selected_idx, is_correct
---      WHERE id=sq_id AND session_id=p_session_id AND is_correct IS NULL.
---      is_correct = (q.correct_index = selected_idx) — server-derived.
---      Already-answered rows are skipped (idempotent).
---   3. COUNT is_correct=true across all session_questions for this session.
---   4. BF = MIN(correct_count, 10). Award as single 'training' contribution.
---   5. Idempotent: ON CONFLICT on bfc_source_unique (session_id as source_id)
+--   2. COUNT is_correct=true across all session_questions for this session.
+--   3. BF = MIN(correct_count, 10). Award as single 'training' contribution.
+--   4. Idempotent: ON CONFLICT on bfc_source_unique (session_id as source_id)
 --      + bfc_training_daily_uidx (one training row per day).
 --      Re-running returns {ok:true, already_completed:true, bf_pts:0}.
---
--- CLIENT CANNOT:
---   - Send correct_count directly (derived from session_questions, not p_answers)
---   - Send arbitrary sq_ids (validated against session ownership)
---   - Submit to a session belonging to another user
---   - Re-submit and change answers (is_correct IS NULL guard)
---   - Earn more than 10 BF from one session (MIN cap)
---   - Earn training BF twice in one day (bfc_training_daily_uidx)
 -- ──────────────────────────────────────────────────────────────────────────
 CREATE OR REPLACE FUNCTION public.complete_daily_bf_session(
-  p_session_id uuid,
-  p_answers    jsonb   -- [{sq_id: uuid, selected_idx: int}, ...]
+  p_session_id uuid
 )
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -768,10 +849,6 @@ DECLARE
   v_today       date := (now() AT TIME ZONE 'UTC')::date;
   v_week_start  date := v_today - ((EXTRACT(DOW FROM v_today)::int + 6) % 7);
   v_session     game_sessions%ROWTYPE;
-  v_ans_item    jsonb;
-  v_sq_id       uuid;
-  v_sel_idx     int;
-  v_correct_idx int;
   v_correct_cnt int;
   v_bf_pts      int;
   v_team_id     uuid;
@@ -790,31 +867,7 @@ BEGIN
     RETURN jsonb_build_object('ok', false, 'reason', 'invalid_session');
   END IF;
 
-  -- Process each submitted answer (server derives correctness)
-  FOR v_ans_item IN SELECT * FROM jsonb_array_elements(p_answers)
-  LOOP
-    v_sq_id   := (v_ans_item->>'sq_id')::uuid;
-    v_sel_idx := (v_ans_item->>'selected_idx')::int;
-
-    -- Validate sq_id belongs to this session; get question_id
-    SELECT q.correct_index INTO v_correct_idx
-    FROM session_questions sq
-    JOIN questions q ON q.id = sq.question_id
-    WHERE sq.id = v_sq_id AND sq.session_id = p_session_id
-      AND sq.is_correct IS NULL;  -- skip already-answered (idempotent)
-
-    IF NOT FOUND THEN CONTINUE; END IF;
-
-    -- Server derives correctness; update record
-    UPDATE session_questions
-    SET selected_idx = v_sel_idx,
-        is_correct   = (v_sel_idx = v_correct_idx),
-        answered_at  = now()
-    WHERE id = v_sq_id AND session_id = p_session_id
-      AND is_correct IS NULL;
-  END LOOP;
-
-  -- Count correct answers from session_questions (server-derived, not client)
+  -- Count correct answers from per-answer ledger (recorded by submit_daily_bf_answer)
   SELECT COUNT(*) INTO v_correct_cnt
   FROM session_questions
   WHERE session_id = p_session_id AND is_correct = true;
@@ -859,8 +912,8 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.complete_daily_bf_session(uuid, jsonb) FROM PUBLIC, anon;
-GRANT  EXECUTE ON FUNCTION public.complete_daily_bf_session(uuid, jsonb) TO authenticated;
+REVOKE ALL ON FUNCTION public.complete_daily_bf_session(uuid) FROM PUBLIC, anon;
+GRANT  EXECUTE ON FUNCTION public.complete_daily_bf_session(uuid) TO authenticated;
 
 
 -- ──────────────────────────────────────────────────────────────────────────
@@ -938,6 +991,8 @@ BEGIN
     team_totals AS (
       SELECT
         ranked.team_id,
+        SUM(CASE WHEN ranked.rn <= 3 THEN ranked.total ELSE 0 END) AS top3_pts,
+        COUNT(CASE WHEN ranked.rn > 3 AND ranked.total > 0 THEN 1 END)::int AS active_beyond,
         SUM(CASE WHEN ranked.rn <= 3 THEN ranked.total ELSE 0 END)
           + COUNT(CASE WHEN ranked.rn > 3 AND ranked.total > 0 THEN 1 END)::int * 5
           AS team_pts
@@ -977,8 +1032,11 @@ BEGIN
     ),
     my_team_row AS (
       SELECT rl.points, rl.global_rank, rl.city_rank,
-             rl.total_global_teams, rl.total_city_teams
-      FROM ranked_lb rl WHERE rl.team_id = v_team_id
+             rl.total_global_teams, rl.total_city_teams,
+             tt.top3_pts, tt.active_beyond
+      FROM ranked_lb rl
+      LEFT JOIN team_totals tt ON tt.team_id = rl.team_id
+      WHERE rl.team_id = v_team_id
     ),
     -- My personal contribution: per-source breakdown
     my_contrib AS (
@@ -1044,9 +1102,16 @@ BEGIN
           'global_rank',         mtr.global_rank,
           'city_rank',           mtr.city_rank,
           'total_global_teams',  mtr.total_global_teams,
-          'total_city_teams',    mtr.total_city_teams
+          'total_city_teams',    mtr.total_city_teams,
+          'top3_pts',            COALESCE(mtr.top3_pts, 0),
+          'active_beyond',       COALESCE(mtr.active_beyond, 0),
+          'participation_bonus', COALESCE(mtr.active_beyond, 0) * 5
         )
-        FROM my_team_row mtr
+        FROM (SELECT * FROM my_team_row UNION ALL
+              SELECT 0, NULL, NULL, NULL, NULL, 0, 0
+              WHERE NOT EXISTS (SELECT 1 FROM my_team_row)
+             ) mtr
+        LIMIT 1
       ),
       'my_contrib', (
         SELECT jsonb_build_object(
@@ -1236,6 +1301,53 @@ BEGIN
   END LOOP;
 END;
 $$;
+
+
+-- ──────────────────────────────────────────────────────────────────────────
+-- §11  get_question_reveals — extend to block unresolved Daily BF questions (A4)
+--
+-- Adds exclusion of questions currently assigned to the caller's open Daily BF
+-- sessions (session_questions rows where is_correct IS NULL). Defense-in-depth:
+-- start_daily_bf_session already omits correct_index from payload, but this
+-- prevents reveals via get_question_reveals during an active session.
+-- ──────────────────────────────────────────────────────────────────────────
+CREATE OR REPLACE FUNCTION public.get_question_reveals(p_ids uuid[])
+RETURNS TABLE(id uuid, correct_index int)
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT q.id, q.correct_index
+  FROM questions q
+  WHERE q.id = ANY(p_ids)
+    AND q.is_competitive_secret = false
+    -- Block questions in live Weekly Arena
+    AND q.id NOT IN (
+      SELECT waq.question_id
+      FROM weekly_arena_questions waq
+      JOIN weekly_arenas wa ON wa.id = waq.arena_id
+      WHERE now() < wa.ends_at
+    )
+    -- Block questions assigned to active duels
+    AND q.id NOT IN (
+      SELECT dqa.question_id
+      FROM duel_question_assignments dqa
+      JOIN duel_rooms dr ON dr.code = dqa.duel_code
+      WHERE dr.status = 'started'
+    )
+    -- Block questions in caller's unresolved Daily BF sessions (A4)
+    AND q.id NOT IN (
+      SELECT sq.question_id
+      FROM session_questions sq
+      JOIN game_sessions gs ON gs.id = sq.session_id
+      WHERE gs.user_id = auth.uid()
+        AND gs.mode    = 'training'
+        AND sq.is_correct IS NULL
+    );
+$$;
+
+REVOKE ALL ON FUNCTION public.get_question_reveals(uuid[]) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_question_reveals(uuid[]) TO authenticated, anon;
 
 
 COMMIT;

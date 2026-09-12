@@ -7,68 +7,11 @@ let mmInterval = null;
 let mmQueueId = null;
 let mmTimeout = null;
 
+// Canonical virtual opponents — exactly 3, structurally isolated from real duels
 const BOT_PLAYERS = [
-  // 🇷🇺 Russia
-  { name:'Алексей М.',    city:'Москва',              flag:'🇷🇺', avatar:'🧠', skill:0.72 },
-  { name:'Катя В.',       city:'Санкт-Петербург',     flag:'🇷🇺', avatar:'🎯', skill:0.65 },
-  { name:'Тимур Р.',      city:'Казань',              flag:'🇷🇺', avatar:'⚡', skill:0.80 },
-  { name:'Ника З.',       city:'Новосибирск',         flag:'🇷🇺', avatar:'🦊', skill:0.60 },
-  // 🇺🇸 USA
-  { name:'James T.',      city:'New York',            flag:'🇺🇸', avatar:'🏆', skill:0.78 },
-  { name:'Sofia R.',      city:'Los Angeles',         flag:'🇺🇸', avatar:'🌟', skill:0.70 },
-  { name:'Marcus L.',     city:'Chicago',             flag:'🇺🇸', avatar:'🔥', skill:0.66 },
-  { name:'Emma K.',       city:'Austin',              flag:'🇺🇸', avatar:'💡', skill:0.74 },
-  // 🇬🇧 UK
-  { name:'Oliver B.',     city:'London',              flag:'🇬🇧', avatar:'👑', skill:0.82 },
-  { name:'Chloe W.',      city:'Manchester',          flag:'🇬🇧', avatar:'🎭', skill:0.67 },
-  // 🇩🇪 Germany
-  { name:'Lukas F.',      city:'Berlin',              flag:'🇩🇪', avatar:'⚙️', skill:0.77 },
-  { name:'Anna S.',       city:'Munich',              flag:'🇩🇪', avatar:'🧪', skill:0.71 },
-  // 🇫🇷 France
-  { name:'Léa M.',        city:'Paris',               flag:'🇫🇷', avatar:'🗼', skill:0.69 },
-  { name:'Hugo D.',       city:'Lyon',                flag:'🇫🇷', avatar:'🍷', skill:0.62 },
-  // 🇪🇸 Spain
-  { name:'Pablo G.',      city:'Madrid',              flag:'🇪🇸', avatar:'⚽', skill:0.75 },
-  { name:'María C.',      city:'Barcelona',           flag:'🇪🇸', avatar:'🎨', skill:0.68 },
-  // 🇮🇹 Italy
-  { name:'Marco R.',      city:'Rome',                flag:'🇮🇹', avatar:'🏛️', skill:0.73 },
-  { name:'Giulia F.',     city:'Milan',               flag:'🇮🇹', avatar:'👗', skill:0.64 },
-  // 🇧🇷 Brazil
-  { name:'Lucas O.',      city:'São Paulo',           flag:'🇧🇷', avatar:'🎸', skill:0.76 },
-  { name:'Ana B.',        city:'Rio de Janeiro',      flag:'🇧🇷', avatar:'🌴', skill:0.61 },
-  // 🇯🇵 Japan
-  { name:'Yuki T.',       city:'Tokyo',               flag:'🇯🇵', avatar:'🌸', skill:0.85 },
-  { name:'Kenji M.',      city:'Osaka',               flag:'🇯🇵', avatar:'⛩️', skill:0.79 },
-  // 🇰🇷 South Korea
-  { name:'Jimin P.',      city:'Seoul',               flag:'🇰🇷', avatar:'🎮', skill:0.83 },
-  { name:'Soyeon K.',     city:'Busan',               flag:'🇰🇷', avatar:'🎵', skill:0.70 },
-  // 🇨🇳 China
-  { name:'Wei Zhang',     city:'Shanghai',            flag:'🇨🇳', avatar:'🐉', skill:0.81 },
-  { name:'Mei Lin',       city:'Beijing',             flag:'🇨🇳', avatar:'🏮', skill:0.74 },
-  // 🇮🇳 India
-  { name:'Arjun S.',      city:'Mumbai',              flag:'🇮🇳', avatar:'🎯', skill:0.77 },
-  { name:'Priya N.',      city:'Bangalore',           flag:'🇮🇳', avatar:'💻', skill:0.80 },
-  // 🇦🇺 Australia
-  { name:'Liam C.',       city:'Sydney',              flag:'🇦🇺', avatar:'🦘', skill:0.66 },
-  { name:'Olivia H.',     city:'Melbourne',           flag:'🇦🇺', avatar:'🌊', skill:0.72 },
-  // 🇨🇦 Canada
-  { name:'Noah M.',       city:'Toronto',             flag:'🇨🇦', avatar:'🍁', skill:0.69 },
-  { name:'Emma T.',       city:'Vancouver',           flag:'🇨🇦', avatar:'🏔️', skill:0.63 },
-  // 🇹🇷 Turkey
-  { name:'Emre A.',       city:'Istanbul',            flag:'🇹🇷', avatar:'🕌', skill:0.74 },
-  { name:'Ayşe K.',       city:'Ankara',              flag:'🇹🇷', avatar:'🌙', skill:0.67 },
-  // 🇦🇷 Argentina
-  { name:'Matías L.',     city:'Buenos Aires',        flag:'🇦🇷', avatar:'🥩', skill:0.71 },
-  // 🇳🇬 Nigeria
-  { name:'Chidi O.',      city:'Lagos',               flag:'🇳🇬', avatar:'🦁', skill:0.76 },
-  // 🇿🇦 South Africa
-  { name:'Thabo M.',      city:'Johannesburg',        flag:'🇿🇦', avatar:'🌍', skill:0.68 },
-  // 🇸🇦 Saudi Arabia
-  { name:'Faisal A.',     city:'Riyadh',              flag:'🇸🇦', avatar:'🌴', skill:0.70 },
-  // 🇲🇽 Mexico
-  { name:'Carlos H.',     city:'Mexico City',         flag:'🇲🇽', avatar:'🌮', skill:0.65 },
-  // 🇵🇱 Poland
-  { name:'Piotr W.',      city:'Warsaw',              flag:'🇵🇱', avatar:'🦅', skill:0.73 },
+  { name:'Макс',   city:'Казань',   flag:'🇷🇺', avatar:'⚡', skill:0.575, minDelay:4000, maxDelay:14000 },
+  { name:'София',  city:'Алматы',   flag:'🇰🇿', avatar:'🌸', skill:0.705, minDelay:3000, maxDelay:12000 },
+  { name:'Даниил', city:'Тбилиси',  flag:'🇬🇪', avatar:'🧠', skill:0.84,  minDelay:2000, maxDelay:10000 },
 ];
 
 function pickRandomBot(){
@@ -124,10 +67,6 @@ async function checkBattleLimitBeforeQueue() {
 }
 
 async function startMatchmaking(){
-  // P1: Random Duel disabled until it uses the same server-authoritative duel core
-  window.toast?.('🔜 Случайный бой — скоро! Пока выбери «Дуэль с другом».');
-  return;
-
   if(!currentUser){ _showSignInToPlay(); return; }
 
   // ── Pre-check: limit BEFORE opening matchmaking screen or inserting to queue ──
@@ -175,7 +114,7 @@ async function startMatchmaking(){
   mmInterval = setInterval(async()=>{
     elapsed++;
     // Update countdown
-    const remaining = 30 - elapsed;
+    const remaining = 15 - elapsed;
     if(remaining > 0)
       document.getElementById('mm-sub').textContent = (lang==='ru'?'Осталось ':'Up to ')+remaining+'s';
 
@@ -220,15 +159,8 @@ async function startMatchmaking(){
       return;
     }
 
-    // Show board after 15s (give real match time to form)
-    if(elapsed === 15){
-      const boardWrap = document.getElementById('mm-board-wrap');
-      if (boardWrap) boardWrap.style.display = '';
-      _renderBattleBoard();
-      _boardInterval = setInterval(_renderBattleBoard, 5000);
-    }
-    // Timer expired — offer bot, do NOT auto-start
-    if(elapsed >= 30){
+    // Timer expired — offer virtual opponents, do NOT auto-start
+    if(elapsed >= 15){
       clearInterval(mmInterval); mmInterval = null;
       clearInterval(_boardInterval); _boardInterval = null;
       if(mmQueueId){
@@ -451,13 +383,12 @@ function toggleRulesSection(id){
   }
 }
 
-// ── Bot offer screen ─────────────────────────────────────────────
-// Called when timer expires with no live opponent. Shows "play vs bot?"
-// and waits for explicit user confirmation. Never auto-starts.
-function _showBotOffer(bot) {
-  window._pendingBot = bot;
-  window._botPlayer  = bot;
-  window._isBotDuel  = true;
+// ── Virtual opponent selection screen ────────────────────────────
+// Called when live search timer expires. Shows all 3 virtual personas
+// for user to choose from. Subtle "виртуальный игрок" disclosure.
+// Never auto-starts — waits for explicit user choice.
+function _showBotOffer(_ignored) {
+  window._isBotDuel = true;
 
   // Hide search UI
   document.getElementById('mm-ring').style.display        = 'none';
@@ -468,33 +399,58 @@ function _showBotOffer(bot) {
   document.getElementById('mm-board-wrap').style.display  = 'none';
   document.getElementById('mm-confirm-wrap').style.display= 'none';
 
-  // Show bot avatar in VS row
-  document.getElementById('mm-av-opp').textContent  = bot.avatar;
-  document.getElementById('mm-av-opp').className    = 'mm-av found';
-  document.getElementById('mm-name-opp').textContent= `${bot.flag} ${bot.name}`;
+  // Reset VS row to generic
+  document.getElementById('mm-av-opp').textContent  = '🤖';
+  document.getElementById('mm-av-opp').className    = 'mm-av';
+  document.getElementById('mm-name-opp').textContent= lang === 'ru' ? 'виртуальный игрок' : 'virtual player';
 
-  // Update offer label
+  // Build persona selection list inside mm-bot-offer
+  const offerEl = document.getElementById('mm-bot-offer');
+  offerEl.style.display = 'block';
+
   const label = document.getElementById('mm-bot-offer-label');
   if (label) label.textContent = lang === 'ru'
-    ? `${bot.flag} ${bot.name} из ${bot.city} готов к бою!`
-    : `${bot.flag} ${bot.name} from ${bot.city} is ready!`;
+    ? 'Живых соперников не нашли. Выбери виртуального:'
+    : 'No live opponents found. Choose a virtual player:';
 
-  // Show offer, wiring confirm button
-  document.getElementById('mm-bot-offer').style.display = 'block';
+  // Render persona cards (replace any previously rendered ones)
+  let cardWrap = document.getElementById('mm-persona-cards');
+  if (!cardWrap) {
+    cardWrap = document.createElement('div');
+    cardWrap.id = 'mm-persona-cards';
+    cardWrap.style.cssText = 'display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;justify-content:center';
+    offerEl.appendChild(cardWrap);
+  }
+  cardWrap.innerHTML = '';
 
-  window._confirmBotMatch = async function() {
-    document.getElementById('mm-bot-offer').style.display = 'none';
-    window._confirmBotMatch = null;
+  BOT_PLAYERS.forEach(bot => {
+    const card = document.createElement('button');
+    card.style.cssText = 'flex:1;min-width:90px;max-width:120px;padding:12px 8px;border-radius:12px;border:1px solid var(--border);background:var(--bg2);cursor:pointer;font-family:inherit;text-align:center';
+    const skillLabel = bot.skill >= 0.8 ? '★★★' : bot.skill >= 0.65 ? '★★☆' : '★☆☆';
+    card.innerHTML = `<div style="font-size:22px">${bot.avatar}</div>
+      <div style="font-weight:700;font-size:14px;margin:4px 0">${bot.name}</div>
+      <div style="font-size:11px;color:var(--muted)">${bot.flag} ${bot.city}</div>
+      <div style="font-size:11px;margin-top:4px">${skillLabel}</div>`;
+    card.onclick = async () => {
+      window._pendingBot = bot;
+      window._botPlayer  = bot;
+      offerEl.style.display = 'none';
 
-    const lc = await checkBattleLimitBeforeQueue();
-    if (!lc.allowed) {
-      track('battle_limit_reached', { used: lc.used, limit: lc.limit, plan: lc.plan, trigger: 'bot_offer' });
-      window.showDailyLimitScreen?.('battle');
-      return;
-    }
-    track('bot_battle_started', { bot: bot.name, city: bot.city, via: 'offer' });
-    startBotDuel(bot.name);
-  };
+      const lc = await checkBattleLimitBeforeQueue();
+      if (!lc.allowed) {
+        track('battle_limit_reached', { used: lc.used, limit: lc.limit, plan: lc.plan, trigger: 'bot_offer' });
+        window.showDailyLimitScreen?.('battle');
+        return;
+      }
+      // Update VS row with chosen persona
+      document.getElementById('mm-av-opp').textContent  = bot.avatar;
+      document.getElementById('mm-av-opp').className    = 'mm-av found';
+      document.getElementById('mm-name-opp').textContent= `${bot.flag} ${bot.name}`;
+      track('bot_battle_started', { bot: bot.name, city: bot.city, via: 'offer' });
+      startBotDuel(bot.name);
+    };
+    cardWrap.appendChild(card);
+  });
 }
 
 // ── Shared confirmation screen ────────────────────────────────────
