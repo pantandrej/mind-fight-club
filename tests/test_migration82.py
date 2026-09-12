@@ -857,6 +857,51 @@ check_ne('H15', '[BROWSER/NETWORK TEST — NOT EXECUTED] later successful retry 
 check_ne('H16', '[BROWSER/NETWORK TEST — NOT EXECUTED] later successful retry with matched=true → real duel opens')
 
 # ─────────────────────────────────────────────────────────────────────────────
+# I01-I16  Overlapping async poll tick race — concurrency guard
+# ─────────────────────────────────────────────────────────────────────────────
+
+check('I01', '[STATIC TEST] matchmaking has explicit claim-in-flight guard (mmClaimFlight)',
+    'mmClaimFlight' in mm_js and re.search(r'let\s+mmClaimFlight\b', mm_js))
+
+check('I02', '[STATIC TEST] new claim is skipped while previous claim RPC is pending',
+    re.search(r'if\s*\(\s*mmClaimFlight\b.*?return', mm_js, re.DOTALL))
+
+check('I03', '[STATIC TEST] matchmaking has terminal/attempt guard (mmAttemptId)',
+    'mmAttemptId' in mm_js and re.search(r'let\s+mmAttemptId\b', mm_js))
+
+check('I04', '[STATIC TEST] mmAttemptId and mmClaimFlight reset on new startMatchmaking',
+    re.search(r'startMatchmaking.*?mmAttemptId\+\+.*?mmClaimFlight\s*=\s*false', mm_js, re.DOTALL)
+    or re.search(r'startMatchmaking.*?myAttemptId\s*=\s*\+\+mmAttemptId.*?mmClaimFlight\s*=\s*false', mm_js, re.DOTALL))
+
+check('I05', '[STATIC TEST] matched response calls matchFound only once — guarded by _transition()',
+    re.search(r'_transition\(\).*?matchFound', mm_js, re.DOTALL))
+
+check('I06', '[STATIC TEST] stale/overlapping matched response discarded via mmAttemptId check after RPC returns',
+    re.search(r'mmAttemptId\s*!==\s*myAttemptId.*?return', mm_js, re.DOTALL))
+
+check('I07', '[STATIC TEST] 15s cancel path uses _transition() so it cannot race a concurrent claim into two transitions',
+    re.search(r'elapsed\s*>=\s*15.*?_transition\(\)', mm_js, re.DOTALL))
+
+check('I08', '[STATIC TEST] playWithBot increments mmAttemptId to invalidate in-flight claim',
+    re.search(r'playWithBot.*?mmAttemptId\+\+', mm_js, re.DOTALL))
+
+check('I09', '[STATIC TEST] cancelMatchmaking increments mmAttemptId to invalidate in-flight claim',
+    re.search(r'cancelMatchmaking.*?mmAttemptId\+\+', mm_js, re.DOTALL))
+
+check('I10', '[STATIC TEST] _acceptChallenge increments mmAttemptId to invalidate in-flight claim',
+    re.search(r'_acceptChallenge.*?mmAttemptId\+\+', mm_js, re.DOTALL))
+
+check('I11', '[STATIC TEST] matchFound (which calls start_game_session random_battle) is reached only through _transition() in poll loop',
+    # _transition() must appear before every matchFound call inside the interval body
+    re.search(r'_transition\(\).*?matchFound\b', mm_js, re.DOTALL))
+
+check_ne('I12', '[BROWSER TEST — NOT EXECUTED] artificial 2.5s claim latency with 1s poll → only one claim in flight at a time')
+check_ne('I13', '[BROWSER TEST — NOT EXECUTED] two matched responses for same duel → matchFound executes exactly once')
+check_ne('I14', '[BROWSER TEST — NOT EXECUTED] match response arrives while 15s cancel executes → exactly one terminal path')
+check_ne('I15', '[BROWSER TEST — NOT EXECUTED] user clicks Cancel during slow claim → stale claim cannot reopen duel')
+check_ne('I16', '[BROWSER TEST — NOT EXECUTED] user clicks virtual opponent during slow claim boundary → no duplicate real+virtual start')
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Results
 # ─────────────────────────────────────────────────────────────────────────────
 static_total = len(PASS) + len(FAIL)

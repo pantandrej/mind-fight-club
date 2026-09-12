@@ -3,9 +3,14 @@
 
 // MATCHMAKING / RANDOM BATTLE
 // ═══════════════════════════════════════════
-let mmInterval = null;
-let mmQueueId = null;
-let mmTimeout = null;
+let mmInterval     = null;
+let mmQueueId      = null;
+let mmTimeout      = null;
+// Concurrency guards — incremented on every new attempt or terminal transition.
+// Every async callback checks its captured attemptId against mmAttemptId on return;
+// stale callbacks (from overlapping ticks or aborted attempts) silently discard.
+let mmAttemptId    = 0;   // monotonic generation counter
+let mmClaimFlight  = false; // true while a claim_random_match RPC is in-flight
 
 // Canonical virtual opponents — exactly 3, structurally isolated from real duels
 const BOT_PLAYERS = [
@@ -110,39 +115,64 @@ async function startMatchmaking(){
   mmQueueId = qRow.id;
   track('matchmaking_started', {});
 
+  // Reset concurrency guards for this new attempt.
+  const myAttemptId = ++mmAttemptId;
+  mmClaimFlight = false;
+
+  // Terminal transition: invalidates all in-flight callbacks for this attempt.
+  // Returns false if this callback is already stale (a different terminal path fired first).
+  const _transition = () => {
+    if (mmAttemptId !== myAttemptId) return false;
+    mmAttemptId++; // invalidate any concurrent in-flight callbacks
+    clearInterval(mmInterval);  mmInterval    = null;
+    clearInterval(_boardInterval); _boardInterval = null;
+    mmClaimFlight = false;
+    return true;
+  };
+
   let elapsed = 0;
   mmInterval = setInterval(async()=>{
     elapsed++;
-    // Update countdown
     const remaining = 15 - elapsed;
     if(remaining > 0)
       document.getElementById('mm-sub').textContent = (lang==='ru'?'Осталось ':'Up to ')+remaining+'s';
 
-    // Every tick: attempt atomic server-side claim (BLOCKER 2/3 fix).
-    // Handles both 'waiting' (new pair) and 'matched' (guest already paired by host).
-    const { data: claimData, error: claimErr } = await sb.rpc('claim_random_match');
-    if(!claimErr && claimData?.ok && claimData?.matched) {
-      clearInterval(mmInterval); mmInterval = null;
-      clearInterval(_boardInterval); _boardInterval = null;
-      await matchFound(claimData.duel_code, myName, claimData.opponent_name, claimData.role);
-      return;
-    }
+    // Serialize claim RPCs: only one in-flight at a time; skip tick if busy.
+    if(mmClaimFlight || mmAttemptId !== myAttemptId) return;
 
-    // Timer expired — canonical cancel then offer virtual opponents only on confirmed cancel
-    if(elapsed >= 15){
-      clearInterval(mmInterval); mmInterval = null;
-      clearInterval(_boardInterval); _boardInterval = null;
+    // At 15s stop queuing new claims; let any in-flight claim settle first,
+    // then the cancel path below will run on the next tick check.
+    if(elapsed >= 15 && !mmClaimFlight) {
+      if(!_transition()) return;
       const result = await _cancelQueueOrEnterMatched(myName);
       if(result.matched) return;
       if(result.cancelled) { _showBotOffer(window._pendingBot || pickRandomBot()); return; }
-      // error: state unknown — show retry; re-arms itself on repeated failure
+      // error: show repeatable retry
       const _retryCancel = async () => {
         const r = await _cancelQueueOrEnterMatched(myName);
         if(r.matched) return;
         if(r.cancelled) { _showBotOffer(window._pendingBot || pickRandomBot()); return; }
-        _showCancelError(_retryCancel); // re-arm for another attempt
+        _showCancelError(_retryCancel);
       };
       _showCancelError(_retryCancel);
+      return;
+    }
+
+    // Claim tick: single in-flight guard
+    mmClaimFlight = true;
+    let claimData = null, claimErr = null;
+    try {
+      ({ data: claimData, error: claimErr } = await sb.rpc('claim_random_match'));
+    } finally {
+      mmClaimFlight = false;
+    }
+
+    // Stale check: another path may have transitioned while RPC was in-flight
+    if(mmAttemptId !== myAttemptId) return;
+
+    if(!claimErr && claimData?.ok && claimData?.matched) {
+      if(!_transition()) return; // already transitioned by a concurrent callback
+      await matchFound(claimData.duel_code, myName, claimData.opponent_name, claimData.role);
     }
   }, 1000);
 }
@@ -278,6 +308,7 @@ async function playWithBot(){
 
   clearInterval(mmInterval); mmInterval = null;
   clearTimeout(mmTimeout);   mmTimeout  = null;
+  mmAttemptId++;             // invalidate any in-flight claim callback
 
   // Reuse the bot already shown on screen; fall back to a fresh pick if needed
   const bot = window._pendingBot || pickRandomBot();
@@ -402,6 +433,7 @@ async function cancelMatchmaking(){
   clearInterval(mmInterval); mmInterval = null;
   clearTimeout(mmTimeout);   mmTimeout  = null;
   clearInterval(_boardInterval); _boardInterval = null;
+  mmAttemptId++;             // invalidate any in-flight claim callback
   window._pendingBot = null;
   if(mmQueueId){
     const myName = currentUser?.user_metadata?.full_name?.split(' ')[0] || currentUser?.email?.split('@')[0] || 'You';
@@ -607,6 +639,7 @@ window._acceptBoardRow = function(idx) {
 window._acceptChallenge = async function(rowId, oppDisplayName, isBot, botData) {
   clearInterval(_boardInterval); _boardInterval = null;
   clearInterval(mmInterval); mmInterval = null;
+  mmAttemptId++;             // invalidate any in-flight claim callback
 
   const myName = currentUser?.user_metadata?.full_name?.split(' ')[0] || currentUser?.email?.split('@')[0] || 'You';
 
