@@ -14,9 +14,9 @@ let mmClaimFlight  = false; // true while a claim_random_match RPC is in-flight
 
 // Canonical virtual opponents — exactly 3, structurally isolated from real duels
 const BOT_PLAYERS = [
-  { name:'Макс',   city:'Берлин',       flag:'🇩🇪', avatar:'⚡', skill:0.575, minDelay:4000, maxDelay:14000 },
-  { name:'София',  city:'Буэнос-Айрес', flag:'🇦🇷', avatar:'🌸', skill:0.705, minDelay:3000, maxDelay:12000 },
-  { name:'Даниил', city:'Сингапур',     flag:'🇸🇬', avatar:'🧠', skill:0.84,  minDelay:2000, maxDelay:10000 },
+  { name:'Макс',   city:'Казань',   flag:'🇷🇺', avatar:'⚡', skill:0.575, minDelay:4000, maxDelay:14000 },
+  { name:'София',  city:'Алматы',   flag:'🇰🇿', avatar:'🌸', skill:0.705, minDelay:3000, maxDelay:12000 },
+  { name:'Даниил', city:'Тбилиси',  flag:'🇬🇪', avatar:'🧠', skill:0.84,  minDelay:2000, maxDelay:10000 },
 ];
 
 function pickRandomBot(){

@@ -1054,18 +1054,21 @@ check('V13', '[STATIC TEST] Migration85 question filter: active + multiple_choic
 check('V14', '[STATIC TEST] Migration85 progression = ARRAY[2, 3, 4, 5, 6]',
     'ARRAY[2, 3, 4, 5, 6]' in sql85)
 
-# V15: Макс actual simulated delay uses 4000–14000
-check('V15', '[STATIC TEST] Макс / Berlin actual delay uses minDelay=4000 / maxDelay=14000',
+# V15: Макс / Казань actual simulated delay uses 4000–14000
+check('V15', '[STATIC TEST] Макс / Казань actual delay uses minDelay=4000 / maxDelay=14000',
     'minDelay:4000' in mm_js and 'maxDelay:14000' in mm_js and
-    bool(re.search(r'minDelay\s*\+\s*Math\.random\(\)\s*\*\s*\(maxDelay\s*-\s*minDelay\)', fb_js)))
+    bool(re.search(r'minDelay\s*\+\s*Math\.random\(\)\s*\*\s*\(maxDelay\s*-\s*minDelay\)', fb_js)) and
+    'Казань' in mm_js)
 
-# V16: Sofia actual simulated delay uses 3000–12000
-check('V16', '[STATIC TEST] Sofia / Buenos Aires actual delay uses minDelay=3000 / maxDelay=12000',
-    'minDelay:3000' in mm_js and 'maxDelay:12000' in mm_js)
+# V16: Sofia / Алматы actual simulated delay uses 3000–12000
+check('V16', '[STATIC TEST] София / Алматы actual delay uses minDelay=3000 / maxDelay=12000',
+    'minDelay:3000' in mm_js and 'maxDelay:12000' in mm_js and
+    'Алматы' in mm_js)
 
-# V17: Даниил actual simulated delay uses 2000–10000
-check('V17', '[STATIC TEST] Даниил / Singapore actual delay uses minDelay=2000 / maxDelay=10000',
-    'minDelay:2000' in mm_js and 'maxDelay:10000' in mm_js)
+# V17: Даниил / Тбилиси actual simulated delay uses 2000–10000
+check('V17', '[STATIC TEST] Даниил / Тбилиси actual delay uses minDelay=2000 / maxDelay=10000',
+    'minDelay:2000' in mm_js and 'maxDelay:10000' in mm_js and
+    'Тбилиси' in mm_js)
 
 # V18: virtual battle charges virtual_battle mode → 0 BF
 check('V18', '[STATIC TEST] startBotDuel charges start_game_session with mode virtual_battle (0 BF)',
