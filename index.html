@@ -2545,7 +2545,7 @@
     <div class="mm-status-txt" id="mm-status">Ищем соперника...</div>
     <div class="mm-sub-txt" id="mm-sub">До 30 секунд</div>
     <div id="mm-bot-wrap" style="display:none;width:100%">
-      <button class="mm-bot-btn" onclick="playWithBot()" id="mm-bot-btn">🤖 Никого нет онлайн — сыграть с ботом</button>
+      <button class="mm-bot-btn" onclick="playWithBot()" id="mm-bot-btn" style="display:none"></button>
     </div>
     <button onclick="cancelMatchmaking()" class="score-sec-btn" style="margin-top:4px" id="mm-cancel-btn">Отмена</button>
 
@@ -2562,15 +2562,13 @@
       </button>
     </div>
 
-    <!-- Bot offer: shown when timer expires, no live opponent found -->
+    <!-- Virtual opponent offer: shown when timer expires, no live opponent found -->
     <div id="mm-bot-offer" style="display:none;width:100%;text-align:center;margin-top:8px">
-      <div style="font-size:13px;color:var(--muted);margin-bottom:4px">Живых игроков нет — бот готов к бою</div>
-      <div style="font-size:14px;font-weight:800;color:var(--text);margin-bottom:16px" id="mm-bot-offer-label"></div>
-      <button onclick="window._confirmBotMatch?.()" style="width:100%;max-width:280px;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:16px;padding:16px;font-size:16px;font-weight:900;color:#fff;cursor:pointer;font-family:inherit;margin-bottom:10px">
-        ⚔️ Играть с ботом
-      </button>
-      <br>
-      <button onclick="cancelMatchmaking()" style="width:100%;max-width:280px;background:transparent;border:1px solid var(--border);border-radius:16px;padding:12px;font-size:14px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit">
+      <div style="font-size:13px;color:rgba(255,255,255,0.55);margin-bottom:4px">Сейчас нет свободных соперников.</div>
+      <div style="font-size:14px;font-weight:800;color:var(--text);margin-bottom:12px" id="mm-bot-offer-label"></div>
+      <!-- Legacy "play with bot" button hidden — persona cards rendered by JS -->
+      <button onclick="window._confirmBotMatch?.()" style="display:none"></button>
+      <button onclick="cancelMatchmaking()" style="width:100%;max-width:280px;background:transparent;border:1px solid var(--border);border-radius:16px;padding:12px;font-size:14px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit;margin-top:8px">
         ← Назад
       </button>
     </div>

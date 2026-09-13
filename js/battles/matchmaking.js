@@ -26,6 +26,23 @@ function pickRandomBot(){
 // Legacy: keep BOT_NAMES for any old references
 const BOT_NAMES = BOT_PLAYERS.map(b => `${b.flag} ${b.name} (${b.city})`);
 
+// ── resolveMyDisplayName ──────────────────────────────────────────
+// Canonical priority: profiles.display_name → user_metadata → email prefix → 'Игрок'
+async function resolveMyDisplayName() {
+  if (window.sb && currentUser) {
+    try {
+      const { data } = await window.sb
+        .from('profiles')
+        .select('display_name')
+        .eq('id', currentUser.id)
+        .single();
+      if (data?.display_name) return data.display_name;
+    } catch(e) { /* fallback */ }
+  }
+  const meta = currentUser?.user_metadata;
+  return meta?.full_name?.split(' ')[0] || meta?.name || currentUser?.email?.split('@')[0] || 'Игрок';
+}
+
 
 // ── checkBattleLimitBeforeQueue ───────────────────────────────────
 // Reads today's battle count from game_sessions + checks subscription.
@@ -84,7 +101,7 @@ async function startMatchmaking(){
 
   showScreen('matchmaking');
   document.getElementById('n-mm').textContent = neurons;
-  const myName = currentUser.user_metadata?.full_name?.split(' ')[0]||currentUser.email?.split('@')[0]||'You';
+  const myName = await resolveMyDisplayName();
   const myInitial = myName[0].toUpperCase();
   document.getElementById('mm-av-me').textContent = myInitial;
   document.getElementById('mm-name-me').textContent = myName;
@@ -318,7 +335,7 @@ async function playWithBot(){
   window._isBotDuel  = true;
 
   if(mmQueueId){
-    const myName = currentUser?.user_metadata?.full_name?.split(' ')[0] || currentUser?.email?.split('@')[0] || 'You';
+    const myName = await resolveMyDisplayName();
     const result = await _cancelQueueOrEnterMatched(myName);
     if(result.matched) return; // entered real match — stop bot flow
     if(!result.cancelled){
@@ -386,10 +403,7 @@ async function startBotDuel(botName){
   // State
   duelRole     = 'host';
   duelCode     = 'BOT-' + Date.now(); // local-only, never sent to Supabase
-  duelMyName   = currentUser?.user_metadata?.full_name?.split(' ')[0]
-                 || currentUser?.user_metadata?.name
-                 || currentUser?.email?.split('@')[0]
-                 || 'Вы';
+  duelMyName   = await resolveMyDisplayName();
   duelMyScore  = 0;
   duelOppScore = 0;
   duelIdx      = 0;
@@ -456,7 +470,7 @@ async function cancelMatchmaking(){
   mmAttemptId++;             // invalidate any in-flight claim callback
   window._pendingBot = null;
   if(mmQueueId){
-    const myName = currentUser?.user_metadata?.full_name?.split(' ')[0] || currentUser?.email?.split('@')[0] || 'You';
+    const myName = await resolveMyDisplayName();
     const result = await _cancelQueueOrEnterMatched(myName);
     if(result.matched) return; // entered real match — do not go back to play menu
     if(!result.cancelled){
@@ -529,12 +543,23 @@ function _showBotOffer(_ignored) {
 
   BOT_PLAYERS.forEach(bot => {
     const card = document.createElement('button');
-    card.style.cssText = 'flex:1;min-width:90px;max-width:120px;padding:12px 8px;border-radius:12px;border:1px solid var(--border);background:var(--bg2);cursor:pointer;font-family:inherit;text-align:center';
-    const skillLabel = bot.skill >= 0.8 ? '★★★★☆' : bot.skill >= 0.65 ? '★★★☆☆' : '★★☆☆☆';
-    card.innerHTML = `<div style="font-size:22px">${bot.avatar}</div>
-      <div style="font-weight:700;font-size:14px;margin:4px 0">${bot.name}</div>
-      <div style="font-size:11px;color:var(--muted)">${bot.flag} ${bot.city}</div>
-      <div style="font-size:11px;margin-top:4px">${skillLabel}</div>`;
+    card.style.cssText = [
+      'flex:1;min-width:90px;max-width:120px;padding:14px 8px',
+      'border-radius:14px;border:1px solid rgba(255,255,255,0.18)',
+      'background:rgba(255,255,255,0.09);cursor:pointer',
+      'font-family:inherit;text-align:center;transition:background .15s',
+    ].join(';');
+    card.onmouseover = () => { card.style.background = 'rgba(255,255,255,0.16)'; };
+    card.onmouseout  = () => { card.style.background = 'rgba(255,255,255,0.09)'; };
+    // Stars: filled ★ gold, unfilled ☆ dimmed
+    const filled  = bot.skill >= 0.8 ? 4 : bot.skill >= 0.65 ? 3 : 2;
+    const starHTML = `<span style="color:#fbbf24">${'★'.repeat(filled)}</span>`
+                   + `<span style="color:rgba(255,255,255,0.22)">${'☆'.repeat(5 - filled)}</span>`;
+    card.innerHTML = `<div style="font-size:24px;margin-bottom:4px">${bot.avatar}</div>
+      <div style="font-weight:800;font-size:14px;margin:4px 0;color:#fff">${bot.name}</div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.55);margin-bottom:6px">${bot.flag} ${bot.city}</div>
+      <div style="font-size:13px;margin-top:2px">${starHTML}</div>
+      <div style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:4px;letter-spacing:.5px">виртуальный игрок</div>`;
     card.onclick = async () => {
       window._pendingBot = bot;
       window._botPlayer  = bot;
@@ -661,7 +686,7 @@ window._acceptChallenge = async function(rowId, oppDisplayName, isBot, botData) 
   clearInterval(mmInterval); mmInterval = null;
   mmAttemptId++;             // invalidate any in-flight claim callback
 
-  const myName = currentUser?.user_metadata?.full_name?.split(' ')[0] || currentUser?.email?.split('@')[0] || 'You';
+  const myName = await resolveMyDisplayName();
 
   if (mmQueueId) {
     // Await canonical cancel — if server already matched us, enter that real duel and stop

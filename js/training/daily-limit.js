@@ -109,10 +109,10 @@ function showDailyLimitScreen(type){
   if(sub) sub.textContent = L
     ? (isBattle
         ? 'Ты провёл 3 бесплатных баттла сегодня. Возвращайся завтра — лимит обновится в полночь.'
-        : 'Ты ответил на 10 бесплатных вопросов сегодня. Возвращайся завтра — лимит обновится в полночь.')
+        : 'Бесплатная тренировка на сегодня уже использована. Возвращайся завтра — лимит обновится в полночь.')
     : (isBattle
         ? 'You played 3 free battles today. Come back tomorrow — limit resets at midnight.'
-        : 'You answered 10 free questions today. Come back tomorrow — limit resets at midnight.');
+        : 'Your free training for today is used. Come back tomorrow — limit resets at midnight.');
   if(pro) pro.textContent = L
     ? (isBattle
         ? '10 баттлов в день, 50 вопросов тренировки и ранний доступ к турнирам'
