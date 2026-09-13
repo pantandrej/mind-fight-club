@@ -444,26 +444,37 @@ async function duelExpire(){
   document.querySelectorAll('#d-answers .ans').forEach(b=>b.disabled=true);
 
   if(window._isBotDuel){
-    // Virtual battle: server records timeout (-1) and returns correct_index
+    // Virtual battle: server records timeout (-1) and returns correct_index.
+    // Must NOT advance until server confirms. Retry is safe via already_answered contract.
     const q = duelQs[duelIdx];
-    try {
-      const { data: expRes, error: expErr } = await sb.rpc('submit_virtual_battle_answer', {
-        p_sq_id:        q.sq_id,
-        p_selected_idx: -1,
-      });
-      if (!expErr && expRes?.ok) {
-        const ci = expRes.correct_index;
-        const answerBtns = document.querySelectorAll('#d-answers .ans');
-        if (ci != null && answerBtns[ci]) answerBtns[ci].className = 'ans correct';
-        showFb('d-fb', '⏱ ' + (q.a?.[ci] || 'Время вышло'), false);
-      } else {
-        showFb('d-fb', '⏱ Время вышло', false);
+    async function _submitVirtualTimeout() {
+      try {
+        const { data: res, error: rpcErr } = await sb.rpc('submit_virtual_battle_answer', {
+          p_sq_id:        q.sq_id,
+          p_selected_idx: -1,
+        });
+        // Canonical success: accepted:true OR accepted:false+already_answered — both have ok:true
+        if (!rpcErr && res?.ok) {
+          const ci = res.correct_index;
+          const answerBtns = document.querySelectorAll('#d-answers .ans');
+          if (ci != null && answerBtns[ci]) answerBtns[ci].className = 'ans correct';
+          showFb('d-fb', '⏱ ' + (q.a?.[ci] || 'Время вышло'), false);
+          setMyDot(duelIdx, 0, false);
+          document.getElementById('d-next-btn').className = 'next-btn show';
+          return;
+        }
+        // RPC returned error or !ok — show retry, do NOT advance
+        _showVirtualTimeoutRetry();
+      } catch(e) {
+        _showVirtualTimeoutRetry();
       }
-    } catch(e) {
-      showFb('d-fb', '⏱ Время вышло', false);
     }
-    setMyDot(duelIdx, 0, false);
-    document.getElementById('d-next-btn').className='next-btn show';
+    function _showVirtualTimeoutRetry() {
+      showFb('d-fb', '⚠️ Не удалось сохранить таймаут. <button id="vt-retry-btn" style="background:var(--accent);border:none;border-radius:8px;padding:4px 12px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-left:6px">Повторить</button>', false);
+      const retryBtn = document.getElementById('vt-retry-btn');
+      if (retryBtn) retryBtn.onclick = () => _submitVirtualTimeout();
+    }
+    await _submitVirtualTimeout();
     return;
   }
 

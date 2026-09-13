@@ -1082,6 +1082,53 @@ check('V20', '[STATIC TEST] startBotDuel contains no get_question_reveals or _me
         mm_js
     )))
 
+# V27: sign-in modal has no direct startBotDuel guest button
+check('V27', '[STATIC TEST] sign-in modal contains NO direct startBotDuel/virtual guest action',
+    not bool(re.search(r'_showSignInToPlay[\s\S]{0,2000}startBotDuel', mm_js)))
+
+# V28: sign-in modal has no "без регистрации" / "no sign-in" virtual-play promise
+check('V28', '[STATIC TEST] sign-in modal contains no "без регистрации" / "no sign-in" virtual-play promise',
+    not bool(re.search(r'_showSignInToPlay[\s\S]{0,2000}(?:без регистрации|no sign-in)', mm_js)))
+
+# V29: virtual duelExpire does NOT show Next button on RPC error
+check('V29', '[STATIC TEST] virtual duelExpire does NOT show Next on RPC error path',
+    not bool(re.search(
+        r'_showVirtualTimeoutRetry[\s\S]{0,200}next-btn show',
+        fb_js
+    )) and bool(re.search(r'_showVirtualTimeoutRetry', fb_js)))
+
+# V30: virtual duelExpire does NOT call setMyDot before canonical server success
+check('V30', '[STATIC TEST] virtual duelExpire does NOT setMyDot before canonical success',
+    not bool(re.search(
+        r'_showVirtualTimeoutRetry[\s\S]{0,500}setMyDot',
+        fb_js
+    )))
+
+# V31: virtual timeout error exposes repeatable retry control
+check('V31', '[STATIC TEST] virtual timeout error shows retry button / repeatable retry function',
+    bool(re.search(r'vt-retry-btn', fb_js)) and
+    bool(re.search(r'_submitVirtualTimeout', fb_js)))
+
+# V32: retry uses same sq_id and selected_idx=-1
+check('V32', '[STATIC TEST] timeout retry uses same q.sq_id and p_selected_idx:-1',
+    bool(re.search(
+        r'_submitVirtualTimeout[\s\S]{0,600}p_sq_id.*q\.sq_id[\s\S]{0,200}p_selected_idx.*-1',
+        fb_js, re.DOTALL
+    )))
+
+# V33: accepted:false+already_answered treated as canonical success (ok:true path)
+# Scoped to _submitVirtualTimeout which handles both accepted:true and accepted:false+already_answered
+check('V33', '[STATIC TEST] accepted:false/already_answered is treated as resolved (ok:true branch)',
+    bool(re.search(
+        r'_submitVirtualTimeout[\s\S]{0,1500}res\?\.ok[\s\S]{0,400}correct_index[\s\S]{0,400}setMyDot',
+        fb_js
+    )) and bool(re.search(r'already_answered', sql85)))
+
+# V34: no q.c / local correctness in timeout retry path (scoped to _submitVirtualTimeout block)
+_v34_timeout_match = re.search(r'async function _submitVirtualTimeout\(\)([\s\S]{0,1500}?)function _showVirtualTimeoutRetry', fb_js)
+check('V34', '[STATIC TEST] no q.c/local correctness in virtual timeout retry path',
+    bool(_v34_timeout_match) and not bool(re.search(r'q\?\.c|q\.c\b', _v34_timeout_match.group(1))))
+
 check_ne('V21', '[DB TEST — NOT EXECUTED] start RPC returns 5 sanitized questions, no correct_index in response')
 check_ne('V22', '[DB TEST — NOT EXECUTED] concurrent duplicate submit → only first accepted=true, second accepted=false with same values')
 check_ne('V23', '[DB TEST — NOT EXECUTED] timeout -1 persists is_correct=false and returns correct_index only after write')
