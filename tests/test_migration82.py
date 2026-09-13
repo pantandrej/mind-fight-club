@@ -1140,6 +1140,146 @@ check_ne('V25', '[BROWSER TEST — NOT EXECUTED] inspect Network before answerin
 check_ne('V26', '[BROWSER TEST — NOT EXECUTED] persona visible delay falls within each configured range (4-14s/3-12s/2-10s)')
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Q01-Q11: Quick Play canonical flow
+# ─────────────────────────────────────────────────────────────────────────────
+DAILY_JS_PATH  = pathlib.Path(__file__).parent.parent / 'js' / 'daily-question.js'
+INDEX_HTML_PATH = pathlib.Path(__file__).parent.parent / 'index.html'
+TRAINING_JS_PATH = pathlib.Path(__file__).parent.parent / 'js' / 'training' / 'training.js'
+
+daily_js  = DAILY_JS_PATH.read_text(encoding='utf-8')
+index_html = INDEX_HTML_PATH.read_text(encoding='utf-8')
+training_js = TRAINING_JS_PATH.read_text(encoding='utf-8')
+legacy_qp   = legacy_js  # already loaded above
+
+# Q01: daily-question.js select does NOT include correct_index at load time
+check('Q01', '[STATIC TEST] daily-question.js initial select does NOT contain correct_index',
+    not bool(re.search(r"\.select\(.*correct_index", daily_js))
+)
+
+# Q02: daily-question.js fetches correct_index via get_question_reveals at answer time
+check('Q02', '[STATIC TEST] daily-question.js calls get_question_reveals at answer time',
+    bool(re.search(r'get_question_reveals', daily_js))
+)
+
+# Q03: _dailyPick is async (waits for RPC before rendering result)
+check('Q03', '[STATIC TEST] _dailyPick is async function',
+    bool(re.search(r'_dailyPick\s*=\s*async\s+function', daily_js))
+)
+
+# Q04: _dailyPick does NOT reference q.correct_index directly
+check('Q04', '[STATIC TEST] _dailyPick does NOT reference q.correct_index directly',
+    not bool(re.search(r'q\.correct_index', daily_js))
+)
+
+# Q05: training.js exports _quickPlayStartInProgress to window
+check('Q05', '[STATIC TEST] training.js sets window._quickPlayStartInProgress = true in startQuickPlay',
+    bool(re.search(r'window\._quickPlayStartInProgress\s*=\s*true', training_js))
+)
+
+# Q06: training.js clears window._quickPlayStartInProgress in finally block
+check('Q06', '[STATIC TEST] training.js sets window._quickPlayStartInProgress = false in finally',
+    bool(re.search(r'window\._quickPlayStartInProgress\s*=\s*false', training_js))
+)
+
+# Q07: legacy.js limit guard uses window._quickPlayStartInProgress (not dead local var)
+check('Q07', '[STATIC TEST] legacy.js limit guard reads window._quickPlayStartInProgress',
+    bool(re.search(r'window\._quickPlayStartInProgress', legacy_qp))
+)
+
+# Q08: legacy.js limit guard skips lock check when _inProgress is true
+check('Q08', '[STATIC TEST] legacy.js isQuickPlayLocked guard is conditioned on !_inProgress',
+    bool(re.search(r'isQuickPlayLocked\(\)\s*&&\s*!_inProgress', legacy_qp))
+)
+
+# Q09: training.js Quick Play uses start_daily_bf_session RPC (server-authoritative)
+check('Q09', '[STATIC TEST] training.js calls start_daily_bf_session RPC',
+    bool(re.search(r'start_daily_bf_session', training_js))
+)
+
+# Q10: training.js does NOT directly select correct_index from questions table in Quick Play
+# (ok to use get_question_reveals to fetch correct_index after questions are known)
+check('Q10', '[STATIC TEST] training.js Quick Play does not directly select correct_index from questions',
+    not bool(re.search(
+        r"from\s*\(\s*['\"]questions['\"][\s\S]{0,200}correct_index",
+        training_js
+    ))
+)
+
+# Q11: training.js Quick Play flow checks training_limit_reached flag from RPC response
+check('Q11', '[STATIC TEST] training.js handles training_limit_reached from start_daily_bf_session',
+    bool(re.search(r'training_limit_reached', training_js))
+)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# RB01-RB09: Random Battle card active
+# ─────────────────────────────────────────────────────────────────────────────
+
+# RB01: play-menu Random Battle card has no opacity:.45 disabled style
+check('RB01', '[STATIC TEST] play-menu Random Battle card has no opacity:.45 dim',
+    not bool(re.search(
+        r'play-menu-item[^>]*opacity:\s*\.45',
+        index_html
+    ))
+)
+
+# RB02: play-menu Random Battle card has no pointer-events:none
+check('RB02', '[STATIC TEST] play-menu Random Battle card has no pointer-events:none',
+    not bool(re.search(
+        r'play-menu-item[^>]*pointer-events\s*:\s*none',
+        index_html
+    ))
+)
+
+# RB03: play-menu Random Battle card calls startMatchmaking()
+check('RB03', '[STATIC TEST] play-menu Случайный бой card calls startMatchmaking()',
+    bool(re.search(
+        r'play-menu-item[^>]*startMatchmaking\(\)',
+        index_html
+    ))
+)
+
+# RB04: duel screen grid Random Battle button calls startMatchmaking()
+# The button tag has onclick="startMatchmaking()" and nearby child divs contain 🔍 / Случайный бой
+_rb04_match = re.search(r'<button[^>]*startMatchmaking\(\)[^>]*>[\s\S]{0,300}Случайный бой', index_html)
+check('RB04', '[STATIC TEST] duel screen grid Случайный бой button calls startMatchmaking()',
+    bool(_rb04_match)
+)
+
+# RB05: duel screen Random Battle has no opacity:.5 cursor:default disabled block
+check('RB05', '[STATIC TEST] duel screen Random Battle has no opacity:.5;cursor:default disabled block',
+    not bool(re.search(
+        r'opacity:\s*\.5\s*;[^"]*cursor\s*:\s*default[^"]*>[^<]*(?:Случайный бой|🔍)',
+        index_html
+    ))
+)
+
+# RB06: matchmaking.js contains startMatchmaking function
+check('RB06', '[STATIC TEST] matchmaking.js defines startMatchmaking function',
+    bool(re.search(r'function\s+startMatchmaking\b', mm_js))
+)
+
+# RB07: matchmaking.js startMatchmaking is exposed on window or called directly
+check('RB07', '[STATIC TEST] startMatchmaking is globally accessible (window.startMatchmaking or declared at top level)',
+    bool(re.search(r'window\.startMatchmaking\s*=|^function\s+startMatchmaking\b', mm_js, re.MULTILINE))
+)
+
+# RB08: no "Скоро" badge on Random Battle in play-menu
+check('RB08', '[STATIC TEST] play-menu Random Battle has no Скоро badge',
+    not bool(re.search(
+        r'pm-random[\s\S]{0,300}Скоро',
+        index_html
+    ))
+)
+
+# RB09: rules section no longer says Random Battle is "готовится к запуску"
+check('RB09', '[STATIC TEST] rules section does not say Random Battle "готовится к запуску"',
+    not bool(re.search(r'готовится к запуску', index_html))
+)
+
+check_ne('RB_B1', '[BROWSER TEST — NOT EXECUTED] clicking Случайный бой in play-menu opens matchmaking screen')
+check_ne('RB_B2', '[BROWSER TEST — NOT EXECUTED] clicking Случайный бой in duel grid opens matchmaking screen')
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Results
 # ─────────────────────────────────────────────────────────────────────────────
 static_total = len(PASS) + len(FAIL)

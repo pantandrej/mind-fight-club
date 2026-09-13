@@ -6918,13 +6918,16 @@ function toggleCat(el){
 async function startQuiz(packId, skipLimitCheck){
   // ── Daily limit: quick play only (not packs, tester, duel, tournament) ──
   if(!skipLimitCheck && !packId){
-    // Hard daily lock check — skip only when startQuickPlay is in progress
-    if(isQuickPlayLocked() && !_quickPlayStartInProgress){
+    // Hard daily lock check — skip only when startQuickPlay is in progress.
+    // window._quickPlayStartInProgress is set by training.js (ES module);
+    // the local _quickPlayStartInProgress is a dead variable kept for reference only.
+    const _inProgress = window._quickPlayStartInProgress || false;
+    if(isQuickPlayLocked() && !_inProgress){
       showDailyLimitScreen('training');
       return;
     }
     const remaining = getRemainingFreeQuestions();
-    if(remaining <= 0 && !_quickPlayStartInProgress){
+    if(remaining <= 0 && !_inProgress){
       showDailyLimitScreen('training');
       return;
     }

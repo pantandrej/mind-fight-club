@@ -21,7 +21,8 @@ export async function loadDailyQuestion() {
     return;
   }
 
-  // Count active questions first, then pick by date seed
+  // Count questions first, pick by date seed. No correct_index at load time —
+  // it is fetched server-side at answer time via get_question_reveals.
   const { count } = await sb
     .from('questions')
     .select('id', { count: 'exact', head: true })
@@ -34,7 +35,7 @@ export async function loadDailyQuestion() {
 
   const { data: questions } = await sb
     .from('questions')
-    .select('id, question_ru, question_text, answers_json, correct_index')
+    .select('id, question_ru, question_text, answers_json')
     .eq('status', 'active')
     .range(offset, offset)
     .limit(1);
@@ -42,9 +43,9 @@ export async function loadDailyQuestion() {
   if (!questions?.length) return;
   const raw = questions[0];
   const q = {
-    ...raw,
-    q: raw.question_ru || raw.question_text || '',
-    a: raw.answers_json || [],
+    id: raw.id,
+    q:  raw.question_ru || raw.question_text || '',
+    a:  raw.answers_json || [],
   };
 
   // Show the teaser card
@@ -94,16 +95,26 @@ function _showDailyModal(q) {
   document.body.appendChild(modal);
 
   let _answered = false;
-  window._dailyPick = function(idx) {
+  window._dailyPick = async function(idx) {
     if (_answered) return;
     _answered = true;
 
-    const correct = idx === q.correct_index;
+    // Disable buttons immediately so user can't pick again
     const btns = modal.querySelectorAll('[id^=dq-btn-]');
+    btns.forEach(btn => { btn.disabled = true; });
+
+    // Fetch correct_index server-side — never stored on client at load time
+    let correctIdx = null;
+    try {
+      const { data: reveals } = await sb.rpc('get_question_reveals', { p_question_ids: [q.id] });
+      if (Array.isArray(reveals) && reveals.length) correctIdx = reveals[0].correct_index ?? null;
+    } catch(_) {}
+
+    const correct = correctIdx !== null && idx === correctIdx;
+
     btns.forEach((btn, i) => {
-      btn.disabled = true;
       btn.style.opacity = i === idx ? '1' : '0.4';
-      if (i === q.correct_index) {
+      if (correctIdx !== null && i === correctIdx) {
         btn.style.background = 'rgba(74,222,128,.2)';
         btn.style.borderColor = 'rgba(74,222,128,.5)';
         btn.style.color = '#4ade80';
@@ -122,7 +133,8 @@ function _showDailyModal(q) {
       const { currentUser } = getState();
       if (currentUser) awardNeurons(25, 'daily_question', q.id);
     } else {
-      resultEl.innerHTML = `<div style="font-size:22px;margin-bottom:6px">😬</div><div style="font-size:14px;font-weight:700;color:var(--muted)">Правильный: ${q.a[q.correct_index]}</div>`;
+      const correctAns = correctIdx !== null ? (q.a[correctIdx] || '') : '';
+      resultEl.innerHTML = `<div style="font-size:22px;margin-bottom:6px">😬</div><div style="font-size:14px;font-weight:700;color:var(--muted)">${correctAns ? 'Правильный: ' + correctAns : 'Неверно'}</div>`;
     }
 
     localStorage.setItem(TODAY_KEY(), '1');

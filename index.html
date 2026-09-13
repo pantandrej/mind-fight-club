@@ -424,11 +424,11 @@
             <div style="font-size:14px;font-weight:800;color:var(--text)">С другом</div>
             <div style="font-size:11px;color:var(--muted);text-align:center">Отправь ссылку или код</div>
           </button>
-          <div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:16px;padding:20px 14px;display:flex;flex-direction:column;align-items:center;gap:8px;opacity:.5;cursor:default">
+          <button onclick="startMatchmaking()" style="background:var(--bg2);border:0.5px solid var(--border);border-radius:16px;padding:20px 14px;display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;font-family:inherit">
             <div style="font-size:32px">🔍</div>
             <div style="font-size:14px;font-weight:800;color:var(--text)">Случайный бой</div>
-            <div style="font-size:11px;color:var(--muted);text-align:center">Скоро</div>
-          </div>
+            <div style="font-size:11px;color:var(--muted);text-align:center">Поиск соперника</div>
+          </button>
         </div>
       </div>
       <!-- Форма "с другом" (скрыта по умолчанию) -->
@@ -2242,13 +2242,12 @@
     </div>
 
     <!-- БАТТЛЫ -->
-    <div class="play-menu-item" style="opacity:.45;pointer-events:none">
+    <div class="play-menu-item" onclick="startMatchmaking()">
       <div class="play-menu-icon">🔍</div>
       <div class="play-menu-info">
         <div class="play-menu-title" id="pm-random">Случайный бой</div>
         <div class="play-menu-sub" id="pm-random-sub">Поиск соперника онлайн</div>
       </div>
-      <div class="play-menu-badge" style="background:var(--muted)" id="pm-random-badge">Скоро</div>
     </div>
     <!-- ДУЭЛЬ С ДРУГОМ -->
     <div class="play-menu-item" onclick="showScreen('duel')">
@@ -2359,7 +2358,7 @@
       <div class="rules-hdr"><div class="rules-hdr-icon">⚔️</div><div class="rules-hdr-title" id="r-duels-title">Дуэли</div><div class="rules-arrow" id="r-duels-arr">▼</div></div>
       <div class="rules-body" id="r-duels">
         Вызови друга на дуэль — оба получите <span class="rules-hl">одинаковые вопросы</span> и видите счёт в реальном времени.<br><br>
-        Случайный бой (поиск случайного соперника онлайн) — готовится к запуску.
+        Случайный бой — выбери соперника случайным образом и сыграйте на одинаковых вопросах.
       </div>
     </div>
 

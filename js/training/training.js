@@ -263,6 +263,7 @@ async function startQuickPlay(){
   // ── In-flight guard: prevents double-tap race ──
   if(_quickPlayStartInProgress) return;
   _quickPlayStartInProgress = true;
+  window._quickPlayStartInProgress = true; // shared with legacy.js limit guards
   _quickPlayServerRemaining = 0;
 
   try{
@@ -376,6 +377,7 @@ async function startQuickPlay(){
 
   }finally{
     _quickPlayStartInProgress = false;
+    window._quickPlayStartInProgress = false;
   }
 }
 
