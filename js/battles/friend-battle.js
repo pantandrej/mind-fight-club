@@ -29,9 +29,11 @@ let _duelChannel = null; // Supabase Realtime broadcast channel for reactions/ph
 // Uses qIndex to ignore stale timeouts that fired after "Next" was pressed.
 function simulateBotAnswer(q, qIndex){
   if(!window._isBotDuel) return;
-  const bot   = window._botPlayer;
-  const skill = (bot && typeof bot.skill === 'number') ? bot.skill : 0.65;
-  const delay = 2000 + Math.random() * 6000; // 2–8 s
+  const bot      = window._botPlayer;
+  const skill    = (bot && typeof bot.skill    === 'number') ? bot.skill    : 0.65;
+  const minDelay = (bot && typeof bot.minDelay === 'number') ? bot.minDelay : 4000;
+  const maxDelay = (bot && typeof bot.maxDelay === 'number') ? bot.maxDelay : 14000;
+  const delay    = minDelay + Math.random() * (maxDelay - minDelay);
   if(window._botAnswerTimeout) clearTimeout(window._botAnswerTimeout);
   window._botAnswerTimeout = setTimeout(()=>{
     // Guards: wrong question, already answered by bot, duel no longer active
@@ -442,11 +444,24 @@ async function duelExpire(){
   document.querySelectorAll('#d-answers .ans').forEach(b=>b.disabled=true);
 
   if(window._isBotDuel){
+    // Virtual battle: server records timeout (-1) and returns correct_index
     const q = duelQs[duelIdx];
-    if(q?.c != null && document.querySelectorAll('#d-answers .ans')[q.c]){
-      document.querySelectorAll('#d-answers .ans')[q.c].className='ans correct';
+    try {
+      const { data: expRes, error: expErr } = await sb.rpc('submit_virtual_battle_answer', {
+        p_sq_id:        q.sq_id,
+        p_selected_idx: -1,
+      });
+      if (!expErr && expRes?.ok) {
+        const ci = expRes.correct_index;
+        const answerBtns = document.querySelectorAll('#d-answers .ans');
+        if (ci != null && answerBtns[ci]) answerBtns[ci].className = 'ans correct';
+        showFb('d-fb', '⏱ ' + (q.a?.[ci] || 'Время вышло'), false);
+      } else {
+        showFb('d-fb', '⏱ Время вышло', false);
+      }
+    } catch(e) {
+      showFb('d-fb', '⏱ Время вышло', false);
     }
-    showFb('d-fb','⏱ '+(q?.a?.[q?.c]||'Время вышло'),false);
     setMyDot(duelIdx, 0, false);
     document.getElementById('d-next-btn').className='next-btn show';
     return;
@@ -488,18 +503,40 @@ async function pickDuel(i){
   answerBtns.forEach(b=>b.disabled=true);
 
   if(window._isBotDuel){
-    // Bot duels: local correctness check (noncompetitive/unranked, no abuse vector)
-    const localC = q.c;
-    const pts = Math.max(1, duelTimeLeft);
-    if(i === localC){
-      answerBtns[i].className='ans correct';
-      triggerCorrectAnimation(pts, answerBtns[i]);
-      duelMyScore+=pts;duelMyCorrect++;updateDuelScores();
-      showFb('d-fb','✓ +'+pts,true);setMyDot(duelIdx, pts, true);
-    } else {
-      answerBtns[i].className='ans wrong';
-      if(localC != null && answerBtns[localC]) answerBtns[localC].className='ans correct';
-      showFb('d-fb','✗ '+(q.a?.[localC]||''),false);setMyDot(duelIdx, 0, false);
+    // Virtual battle: server decides correctness. Never use q.c/correct_index locally.
+    answerBtns[i].className='ans selected'; // neutral pending state
+    try {
+      const { data: res, error: rpcErr } = await sb.rpc('submit_virtual_battle_answer', {
+        p_sq_id:        q.sq_id,
+        p_selected_idx: i,
+      });
+      if (rpcErr || !res?.ok) {
+        // Network/RPC error — allow retry, do not guess correctness
+        answerBtns[i].className='ans';
+        answerBtns.forEach(b => b.disabled = false);
+        duelAnswered = false;
+        showFb('d-fb', lang === 'ru' ? '⚠️ Ошибка сети. Попробуй ещё раз.' : '⚠️ Network error. Try again.', false);
+        return;
+      }
+      const pts = Math.max(1, duelTimeLeft);
+      const ci  = res.correct_index;
+      if (res.is_correct) {
+        answerBtns[i].className='ans correct';
+        triggerCorrectAnimation(pts, answerBtns[i]);
+        duelMyScore+=pts;duelMyCorrect++;updateDuelScores();
+        showFb('d-fb','✓ +'+pts,true);setMyDot(duelIdx, pts, true);
+      } else {
+        answerBtns[i].className='ans wrong';
+        if (ci != null && answerBtns[ci]) answerBtns[ci].className='ans correct';
+        showFb('d-fb','✗ '+(q.a?.[ci]||''),false);setMyDot(duelIdx, 0, false);
+      }
+    } catch(e) {
+      // Exception — allow retry
+      answerBtns[i].className='ans';
+      answerBtns.forEach(b => b.disabled = false);
+      duelAnswered = false;
+      showFb('d-fb', lang === 'ru' ? '⚠️ Ошибка сети. Попробуй ещё раз.' : '⚠️ Network error. Try again.', false);
+      return;
     }
     document.getElementById('d-next-btn').className='next-btn show';
     return;

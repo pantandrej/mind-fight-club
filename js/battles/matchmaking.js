@@ -397,37 +397,56 @@ async function startBotDuel(botName){
   if(duelPoll)  { clearInterval(duelPoll);  duelPoll  = null; }
   if(duelTimer) { clearInterval(duelTimer); duelTimer = null; }
 
-  // Load canonical 5-question battle [2,3,4,5,6] from DB via loadBattleQuestions
-  // This is the SAME source as friend battle — ensures consistent q/a/c format
-  let botBattleQs = null;
-  if (typeof window.loadBattleQuestions === 'function') {
-    botBattleQs = await window.loadBattleQuestions(lang);
+  // Request server-authoritative question assignment (Migration 85).
+  // Returns sanitized {sq_id, position, q, a, cat, t} — NO correct_index, NO c.
+  // Hard-fail on any error — no local fallback, no client-side correctness.
+  const { data: vbData, error: vbErr } = await window.sb.rpc(
+    'start_virtual_battle_session',
+    { p_game_session_id: window._currentSessionId }
+  );
+  if (vbErr || !vbData?.ok) {
+    console.error('[BFC] start_virtual_battle_session failed:', vbErr?.message || vbData?.reason);
+    window.toast?.(lang === 'ru'
+      ? '⚠️ Не удалось загрузить вопросы. Попробуйте ещё раз.'
+      : '⚠️ Failed to load questions. Try again.');
+    showScreen('home');
+    return;
   }
 
-  console.log('[BFC bot battle questions]', {
-    selected: botBattleQs?.length,
-    optCounts: botBattleQs?.map(q => q.a?.length),
-    first: botBattleQs?.[0],
+  // Map to safe payload: sq_id + position are required for submit_virtual_battle_answer.
+  // No c field. No correct_index. No question_id.
+  const safeQuestions = (vbData.questions || []).map(sq => ({
+    sq_id:    sq.sq_id,
+    position: sq.position,
+    q:        sq.q,
+    a:        sq.a,
+    cat:      sq.cat,
+    t:        sq.t || 30,
+  }));
+
+  console.log('[BFC virtual battle questions]', {
+    count: safeQuestions.length,
+    optCounts: safeQuestions.map(q => q.a?.length),
   });
 
-  if (!botBattleQs || botBattleQs.length < 5) {
+  if (safeQuestions.length < 5) {
     window.toast?.(lang === 'ru'
       ? '⚠️ Недостаточно вопросов для баттла. Попробуйте позже.'
       : '⚠️ Not enough questions. Try again later.');
     showScreen('home');
     return;
   }
-  // Pre-set opponent name so it shows immediately (CSS uppercases it)
+
+  // Pre-set opponent name so it shows immediately
   bot = window._botPlayer;
   if (bot) {
     const oppEl = document.getElementById('ds-opp-name');
     if (oppEl) oppEl.textContent = (bot.flag ? bot.flag + ' ' : '') + bot.name;
-
   }
-  window._pendingDuelQs = botBattleQs;
+  window._pendingDuelQs = safeQuestions;
   showScreen('duel');
   showDuelSection('d-battle');
-  window.startDuelBattle({ chargeSession: false, questions: botBattleQs });
+  window.startDuelBattle({ chargeSession: false, questions: safeQuestions });
 }
 
 async function cancelMatchmaking(){
