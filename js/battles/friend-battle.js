@@ -78,7 +78,7 @@ async function createDuel(){
     return;
   }
   duelCode  = res.code;
-  duelMyName = res.host_name || currentUser?.user_metadata?.full_name?.split(' ')[0] || 'Хост';
+  duelMyName = res.host_name || await window.resolveMyDisplayName?.() || 'Хост';
 
   track('duel_created', {code: duelCode});
 
@@ -119,7 +119,7 @@ async function joinDuel(){
   // No start_game_session call here — quota consumed only when duel transitions READY→STARTED.
 
   duelCode=code; duelRole='guest';
-  duelMyName = res.guest_name || currentUser?.user_metadata?.full_name?.split(' ')[0] || 'Гость';
+  duelMyName = res.guest_name || await window.resolveMyDisplayName?.() || 'Гость';
   duelMyScore=0;duelOppScore=0;duelQs=[];duelIdx=0;duelMyCorrect=0;_duelSpeedNeurons=0;
   track('duel_joined', {code});
 

@@ -781,10 +781,11 @@ function _showSignInToPlay() {
 }
 
 // ── Window exports ────────────────────────────────────────────────
-window.pickRandomBot      = pickRandomBot;
-window.startMatchmaking   = startMatchmaking;
-window.matchFound         = matchFound;
-window.playWithBot        = playWithBot;
-window.startBotDuel       = startBotDuel;
-window.cancelMatchmaking  = cancelMatchmaking;
-window.toggleRulesSection = toggleRulesSection;
+window.pickRandomBot         = pickRandomBot;
+window.startMatchmaking      = startMatchmaking;
+window.matchFound            = matchFound;
+window.playWithBot           = playWithBot;
+window.startBotDuel          = startBotDuel;
+window.cancelMatchmaking     = cancelMatchmaking;
+window.toggleRulesSection    = toggleRulesSection;
+window.resolveMyDisplayName  = resolveMyDisplayName;
