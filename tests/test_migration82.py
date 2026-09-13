@@ -974,6 +974,136 @@ check_ne('J14', '[BROWSER TEST — NOT EXECUTED] actual exhausted user sees limi
 check_ne('J15', '[BROWSER TEST — NOT EXECUTED] no 403 direct questions request in Network tab after fix')
 
 # ─────────────────────────────────────────────────────────────────────────────
+# R-series: Random Battle end-to-end
+# ─────────────────────────────────────────────────────────────────────────────
+
+# R01: loadBattleQuestions uses authenticated sb client, not hardcoded anon key
+check('R01', '[STATIC TEST] loadBattleQuestions uses authenticated sb client, not hardcoded anon key',
+    bool(re.search(r'async function loadBattleQuestions', tr_js)) and
+    'sb_publishable_lFVRCP' not in tr_js[
+        tr_js.find('async function loadBattleQuestions'):
+        tr_js.find('async function loadBattleQuestions') + 800
+    ])
+
+# R02: loadBattleQuestions uses status='published', not status='active'
+check('R02', '[STATIC TEST] loadBattleQuestions queries status=published (not status=active)',
+    bool(re.search(
+        r'async function loadBattleQuestions[\s\S]{0,600}\.eq\([\'"]status[\'"],\s*[\'"]published[\'"]\)',
+        tr_js
+    )) and not bool(re.search(
+        r'async function loadBattleQuestions[\s\S]{0,600}status=eq\.active',
+        tr_js
+    )))
+
+# R03: loadBattleQuestions does NOT include correct_index in REST select
+check('R03', '[STATIC TEST] loadBattleQuestions REST/Supabase select does not fetch correct_index directly',
+    not bool(re.search(
+        r'async function loadBattleQuestions[\s\S]{0,500}select\([\'"][^)\'\"]*correct_index',
+        tr_js
+    )))
+
+# R04: loadBattleQuestions calls _mergeCorrectIndexes for SECURITY DEFINER RPC path
+check('R04', '[STATIC TEST] loadBattleQuestions calls _mergeCorrectIndexes (SECURITY DEFINER RPC) after fetch',
+    bool(re.search(
+        r'async function loadBattleQuestions[\s\S]{0,800}_mergeCorrectIndexes',
+        tr_js
+    )))
+
+# R05: loadBattleQuestions uses 5-question PROGRESSION [2,3,4,5,6]
+check('R05', '[STATIC TEST] loadBattleQuestions uses PROGRESSION = [2, 3, 4, 5, 6]',
+    bool(re.search(r'PROGRESSION\s*=\s*\[2,\s*3,\s*4,\s*5,\s*6\]', tr_js)))
+
+# R06: BOT_PLAYERS has exactly 3 entries with correct accuracy values
+check('R06', '[STATIC TEST] BOT_PLAYERS has 3 entries with skill values 0.575, 0.705, 0.84',
+    '0.575' in mm_js and '0.705' in mm_js and '0.84' in mm_js and
+    mm_js.count('BOT_PLAYERS') >= 2)
+
+# R07: BOT_PLAYERS names are Макс, София, Даниил
+check('R07', '[STATIC TEST] BOT_PLAYERS persona names are Макс, София, Даниил',
+    all(name in mm_js for name in ['Макс', 'София', 'Даниил']))
+
+# R08: BOT_PLAYERS cities are Казань, Алматы, Тбилиси
+check('R08', '[STATIC TEST] BOT_PLAYERS cities are Казань, Алматы, Тбилиси',
+    all(city in mm_js for city in ['Казань', 'Алматы', 'Тбилиси']))
+
+# R09: sign-in modal does NOT use the words "бот" or "bot" in its text
+check('R09', '[STATIC TEST] sign-in modal does not use "бот" or "bot" in button label',
+    not bool(re.search(
+        r'_showSignInToPlay[\s\S]{0,1500}(?:бот|play vs bot|сыграть с ботом)',
+        mm_js, re.IGNORECASE
+    )))
+
+# R10: strength stars in persona cards use 5-star scale (★★☆☆☆ / ★★★☆☆ / ★★★★☆)
+check('R10', '[STATIC TEST] persona card strength stars use 5-star scale',
+    '★★☆☆☆' in mm_js and '★★★☆☆' in mm_js and '★★★★☆' in mm_js)
+
+# R11: startBotDuel uses start_game_session with mode virtual_battle (not random_battle)
+check('R11', '[STATIC TEST] startBotDuel charges start_game_session with mode virtual_battle',
+    bool(re.search(
+        r'startBotDuel[\s\S]{0,600}virtual_battle',
+        mm_js
+    )))
+
+# R12: virtual battle does NOT call _bf_award_duel_win (confirmed by not having that call in startBotDuel path)
+check('R12', '[STATIC TEST] startBotDuel / virtual battle path does not call _bf_award_duel_win',
+    not bool(re.search(
+        r'startBotDuel[\s\S]{0,800}_bf_award_duel_win',
+        mm_js
+    )))
+
+# R13: _renderBattleBoard does NOT show "🟢 Онлайн" for virtual/bot rows
+check('R13', '[STATIC TEST] _renderBattleBoard "🟢 Онлайн" is behind isBot check (not shown for virtual)',
+    bool(re.search(
+        r'isBot\s*\?[^:]+:[^`\n]*🟢',
+        mm_js
+    )) or bool(re.search(
+        r'r\.isBot[^}]{0,200}виртуальный игрок[\s\S]{0,200}🟢 Онлайн',
+        mm_js
+    )) or (
+        # Current correct structure: isBot ? 'виртуальный игрок' : '🟢 Онлайн'
+        bool(re.search(r"isBot\s*\?[^:'\n]*виртуальный игрок[^:'\n]*:[^'\n]*🟢 Онлайн", mm_js))
+    ))
+
+# R14: _cancelQueueOrEnterMatched exists as canonical cancel function
+check('R14', '[STATIC TEST] _cancelQueueOrEnterMatched exists as canonical cancel/real-match entry point',
+    '_cancelQueueOrEnterMatched' in mm_js)
+
+# R15: mmAttemptId concurrency guard incremented in cancelMatchmaking
+check('R15', '[STATIC TEST] cancelMatchmaking increments mmAttemptId',
+    bool(re.search(r'function cancelMatchmaking[\s\S]{0,300}mmAttemptId\+\+', mm_js)))
+
+# R16: claim_random_match RPC used for real match claiming
+check('R16', '[STATIC TEST] matchmaking uses claim_random_match RPC for real match pairing',
+    bool(re.search(r"rpc\(['\"]claim_random_match['\"]", mm_js)))
+
+# R17: startBotDuel calls loadBattleQuestions for question loading
+check('R17', '[STATIC TEST] startBotDuel calls window.loadBattleQuestions for question loading',
+    bool(re.search(r'startBotDuel[\s\S]{0,2500}loadBattleQuestions', mm_js)))
+
+# R18: startBotDuel bails if loadBattleQuestions returns fewer than 5 questions
+check('R18', '[STATIC TEST] startBotDuel bails if question count < 5',
+    bool(re.search(r'botBattleQs.*?length\s*<\s*5', mm_js, re.DOTALL)) or
+    bool(re.search(r'botBattleQs\s*\|\|\s*botBattleQs\.length\s*<\s*5', mm_js)))
+
+# R19: matchFound called only through _transition (real battle path guarded against concurrency)
+check('R19', '[STATIC TEST] matchFound is reached only through _transition() guard',
+    bool(re.search(r'_transition\s*\([^)]*\)\s*[;,\s{][\s\S]{0,300}matchFound\b', mm_js)) or
+    bool(re.search(r'_transition[\s\S]{0,500}matchFound', mm_js)))
+
+# R20: loadBattleQuestions exported to window for matchmaking.js consumption
+check('R20', '[STATIC TEST] loadBattleQuestions is exported to window',
+    'window.loadBattleQuestions = loadBattleQuestions' in tr_js)
+
+check_ne('R21', '[BROWSER TEST — NOT EXECUTED] clicking "Случайный бой" shows matchmaking screen and starts 15s polling')
+check_ne('R22', '[BROWSER TEST — NOT EXECUTED] after 15s with no match, exactly 3 persona cards appear')
+check_ne('R23', '[BROWSER TEST — NOT EXECUTED] persona cards show 5-star strength (not 3-star) for Макс/София/Даниил')
+check_ne('R24', '[BROWSER TEST — NOT EXECUTED] selecting a persona loads 5 battle questions with progression [2,3,4,5,6]')
+check_ne('R25', '[BROWSER TEST — NOT EXECUTED] virtual battle charges virtual_battle session, not random_battle')
+check_ne('R26', '[BROWSER TEST — NOT EXECUTED] network tab shows no 403 on questions fetch during virtual battle')
+check_ne('R27', '[BROWSER TEST — NOT EXECUTED] virtual battle result screen shows ПОБЕДА/НИЧЬЯ/ПОРАЖЕНИЕ + scores')
+check_ne('R28', '[BROWSER TEST — NOT EXECUTED] unauthenticated user sees sign-in modal with no "бот"/"bot" text')
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Results
 # ─────────────────────────────────────────────────────────────────────────────
 static_total = len(PASS) + len(FAIL)

@@ -510,7 +510,7 @@ function _showBotOffer(_ignored) {
   BOT_PLAYERS.forEach(bot => {
     const card = document.createElement('button');
     card.style.cssText = 'flex:1;min-width:90px;max-width:120px;padding:12px 8px;border-radius:12px;border:1px solid var(--border);background:var(--bg2);cursor:pointer;font-family:inherit;text-align:center';
-    const skillLabel = bot.skill >= 0.8 ? '★★★' : bot.skill >= 0.65 ? '★★☆' : '★☆☆';
+    const skillLabel = bot.skill >= 0.8 ? '★★★★☆' : bot.skill >= 0.65 ? '★★★☆☆' : '★★☆☆☆';
     card.innerHTML = `<div style="font-size:22px">${bot.avatar}</div>
       <div style="font-weight:700;font-size:14px;margin:4px 0">${bot.name}</div>
       <div style="font-size:11px;color:var(--muted)">${bot.flag} ${bot.city}</div>
@@ -729,7 +729,7 @@ function _showSignInToPlay() {
     </button>
     <button onclick="document.getElementById('signin-to-play-modal').remove();if(typeof window.startBotDuel==='function')window.startBotDuel(window.pickRandomBot?.()?.name||'Bot')"
       style="width:100%;background:rgba(255,255,255,.07);border:0.5px solid var(--border);border-radius:14px;padding:13px;font-size:14px;font-weight:700;color:var(--text);cursor:pointer;font-family:inherit;margin-bottom:8px">
-      🤖 ${L ? 'Сыграть с ботом (без регистрации)' : 'Play vs bot (no sign-in)'}
+      ⚡ ${L ? 'Сыграть с виртуальным игроком (без регистрации)' : 'Play vs virtual player (no sign-in)'}
     </button>
     <button onclick="document.getElementById('signin-to-play-modal').remove()"
       style="width:100%;background:transparent;border:none;padding:10px;font-size:13px;color:var(--muted);cursor:pointer;font-family:inherit">

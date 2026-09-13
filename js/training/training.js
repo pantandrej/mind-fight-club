@@ -2048,20 +2048,18 @@ if (typeof getTodayKey         !== 'undefined') window.getTodayKey         = get
 // NO fallback to local/seed questions — only admin-approved DB questions.
 export async function loadBattleQuestions(lang = 'ru') {
   const PROGRESSION = [2, 3, 4, 5, 6];
-  const SUPA_URL = 'https://nhmidxkohjpcnhjucuuh.supabase.co';
-  const SUPA_KEY = 'sb_publishable_lFVRCP-PPnGnNzn9G60A3A_gTy40vMs';
 
-  // Single request — load all active questions at once
+  // Use authenticated sb client + status='published' (RLS blocks status='active' for anon)
   let dbRows = [];
   try {
-    const r = await fetch(
-      `${SUPA_URL}/rest/v1/questions?status=eq.active&select=id,question_text,answers_ru,category`,
-      { headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` } }
-    );
-    if (r.ok) {
-      dbRows = await r.json();
-      await _mergeCorrectIndexes(dbRows);
-    }
+    const { data, error } = await sb
+      .from('questions')
+      .select('id,question_text,answers_ru,category')
+      .eq('status', 'published')
+      .limit(2000);
+    if (error) throw new Error(error.message);
+    dbRows = data || [];
+    if (dbRows.length) await _mergeCorrectIndexes(dbRows);
   } catch (e) {
     console.warn('[battle] DB fetch failed:', e.message);
     return null;
