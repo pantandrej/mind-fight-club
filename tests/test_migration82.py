@@ -1343,6 +1343,88 @@ check_ne('RB_B1', '[BROWSER TEST — NOT EXECUTED] clicking Случайный �
 check_ne('RB_B2', '[BROWSER TEST — NOT EXECUTED] clicking Случайный бой in duel grid opens matchmaking screen')
 
 # ─────────────────────────────────────────────────────────────────────────────
+# M86 — Migration86: fix start_daily_bf_session subscription schema mismatch
+#
+# Root cause: start_daily_bf_session() queried subscriptions.expires_at which
+# does not exist in production. Migration86 replaces it with current_period_end.
+# ─────────────────────────────────────────────────────────────────────────────
+M86_SQL_PATH = pathlib.Path(__file__).parent.parent / 'sql' / '86_fix_daily_bf_subscription_period.sql'
+m86_sql = M86_SQL_PATH.read_text(encoding='utf-8')
+m86_sql_nc = re.sub(r'--[^\n]*', '', m86_sql)  # strip line comments
+
+# M86-01: file exists and is non-empty
+check('M86-01', '[M86] sql/86_fix_daily_bf_subscription_period.sql exists and is non-empty',
+    M86_SQL_PATH.exists() and len(m86_sql.strip()) > 0)
+
+# M86-02: contains CREATE OR REPLACE FUNCTION start_daily_bf_session
+check('M86-02', '[M86] contains CREATE OR REPLACE FUNCTION start_daily_bf_session',
+    bool(re.search(
+        r'CREATE\s+OR\s+REPLACE\s+FUNCTION\s+public\.start_daily_bf_session\s*\(\s*\)',
+        m86_sql, re.IGNORECASE
+    ))
+)
+
+# M86-03: does NOT reference expires_at anywhere in live SQL (only in comments is ok)
+check('M86-03', '[M86] no reference to expires_at in function body (stripped of comments)',
+    not bool(re.search(r'\bexpires_at\b', m86_sql_nc, re.IGNORECASE))
+)
+
+# M86-04: references current_period_end in the subscriptions WHERE clause
+check('M86-04', '[M86] current_period_end used in subscriptions plan query WHERE clause',
+    bool(re.search(
+        r'FROM\s+subscriptions[\s\S]{0,200}current_period_end',
+        m86_sql_nc, re.IGNORECASE
+    ))
+)
+
+# M86-05: current_period_end used in ORDER BY (all 3 replacements present)
+check('M86-05', '[M86] current_period_end appears at least 3 times (WHERE IS NULL, WHERE > now(), ORDER BY)',
+    len(re.findall(r'\bcurrent_period_end\b', m86_sql_nc, re.IGNORECASE)) >= 3
+)
+
+# M86-06: SECURITY DEFINER is present
+check('M86-06', '[M86] function is SECURITY DEFINER',
+    bool(re.search(r'\bSECURITY\s+DEFINER\b', m86_sql, re.IGNORECASE))
+)
+
+# M86-07: SET search_path = public is present
+check('M86-07', '[M86] SET search_path = public is present',
+    bool(re.search(r'SET\s+search_path\s*=\s*public', m86_sql, re.IGNORECASE))
+)
+
+# M86-08: REVOKE ALL on function from PUBLIC and anon
+check('M86-08', '[M86] REVOKE ALL ON FUNCTION from PUBLIC and anon present',
+    bool(re.search(r'REVOKE\s+ALL\s+ON\s+FUNCTION\s+public\.start_daily_bf_session', m86_sql, re.IGNORECASE))
+    and bool(re.search(r'REVOKE[\s\S]{0,200}FROM\s+PUBLIC', m86_sql, re.IGNORECASE))
+    and bool(re.search(r'REVOKE[\s\S]{0,200}anon', m86_sql, re.IGNORECASE))
+)
+
+# M86-09: GRANT EXECUTE to authenticated
+check('M86-09', '[M86] GRANT EXECUTE ON FUNCTION to authenticated present',
+    bool(re.search(
+        r'GRANT\s+EXECUTE\s+ON\s+FUNCTION\s+public\.start_daily_bf_session[\s\S]{0,100}authenticated',
+        m86_sql, re.IGNORECASE
+    ))
+)
+
+# M86-10: advisory lock on training key is preserved
+check('M86-10', '[M86] advisory lock on training key is preserved',
+    bool(re.search(r'pg_advisory_xact_lock', m86_sql_nc, re.IGNORECASE))
+    and bool(re.search(r"':training'", m86_sql_nc))
+)
+
+# M86-11: progression array ARRAY[2,2,3,3,4,4,5,5,6,6] is preserved
+check('M86-11', '[M86] question progression ARRAY[2,2,3,3,4,4,5,5,6,6] preserved',
+    bool(re.search(r'ARRAY\s*\[\s*2\s*,\s*2\s*,\s*3\s*,\s*3\s*,\s*4\s*,\s*4\s*,\s*5\s*,\s*5\s*,\s*6\s*,\s*6\s*\]', m86_sql))
+)
+
+# M86-12: correct_index is NOT returned in the select payload (P0 security preserved)
+check('M86-12', '[M86] correct_index is not included in the sanitized question payload returned to client',
+    not bool(re.search(r"'correct_index'\s*,\s*[^,\)]+[,\)][\s\S]{0,100}jsonb_build_object", m86_sql_nc))
+    and bool(re.search(r'correct_index\s+IS\s+NOT\s+NULL', m86_sql_nc, re.IGNORECASE))
+)
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Results
 # ─────────────────────────────────────────────────────────────────────────────
 static_total = len(PASS) + len(FAIL)
