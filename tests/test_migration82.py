@@ -902,6 +902,78 @@ check_ne('I15', '[BROWSER TEST — NOT EXECUTED] user clicks Cancel during slow 
 check_ne('I16', '[BROWSER TEST — NOT EXECUTED] user clicks virtual opponent during slow claim boundary → no duplicate real+virtual start')
 
 # ─────────────────────────────────────────────────────────────────────────────
+# J01-J12  Quick Play / Daily Game runtime bug fix — false daily limit
+# ─────────────────────────────────────────────────────────────────────────────
+
+check('J01', '[STATIC TEST] authenticated Quick Play does not direct-select questions.correct_index (no anon fetch with correct_index)',
+    # loadPublishedQuickQuestionsFromDB must not request correct_index column in REST fetch
+    # It uses sb.from('questions').select(...) — check select string does not include correct_index
+    'correct_index' not in re.search(
+        r'loadPublishedQuickQuestionsFromDB\(\)[^{]*\{.*?\.from\([\'"]questions[\'"]\).*?\.select\([\'"]([^\'"]+)[\'"]',
+        tr_js, re.DOTALL
+    ).group(1) if re.search(
+        r'loadPublishedQuickQuestionsFromDB\(\)[^{]*\{.*?\.from\([\'"]questions[\'"]\).*?\.select\([\'"]([^\'"]+)[\'"]',
+        tr_js, re.DOTALL
+    ) else False)
+
+check('J02', '[STATIC TEST] authenticated Quick Play calls start_daily_bf_session as canonical quota+question source before any question fetch',
+    # startQuickPlay must call tryStartDailyBfSession before loadPublishedQuickQuestionsFromDB
+    bool(re.search(
+        r'async function startQuickPlay\b.*?tryStartDailyBfSession\(\).*?loadPublishedQuickQuestionsFromDB',
+        tr_js, re.DOTALL
+    )))
+
+check('J03', '[STATIC TEST] RPC error (rpc_error reason) shows toast/warn, not showDailyLimitScreen',
+    # rpc_error path falls to start_game_session fallback with a console.warn, not directly to limit screen
+    bool(re.search(r"rpc_error", tr_js)) and
+    bool(re.search(r"console\.warn.*start_daily_bf_session fallback", tr_js)))
+
+check('J04', '[STATIC TEST] only explicit training_limit_reached reason shows daily-limit screen',
+    bool(re.search(
+        r"reason.*?['\"]training_limit_reached['\"].*?showDailyLimitScreen",
+        tr_js, re.DOTALL
+    )))
+
+check('J05', '[STATIC TEST] successful BF RPC payload (ok===true, questions.length) starts quiz without legacy question fetch',
+    bool(re.search(
+        r'bfResult.*?ok.*?true.*?questions.*?length.*?serverQs',
+        tr_js, re.DOTALL
+    )))
+
+check('J06', '[STATIC TEST] no local correct_index fallback introduced in BF question mapping (c: undefined)',
+    bool(re.search(r'c:\s*undefined', tr_js)))
+
+check('J07', '[STATIC TEST] Daily Game submit still uses submit_daily_bf_answer',
+    'submit_daily_bf_answer' in tr_js)
+
+check('J08', '[STATIC TEST] Daily completion still uses complete_daily_bf_session',
+    'complete_daily_bf_session' in tr_js)
+
+check('J09', '[STATIC TEST] loadPublishedQuickQuestionsFromDB uses status=published (not status=active) for REST/Supabase query',
+    bool(re.search(r"\.eq\(['\"]status['\"],\s*['\"]published['\"]", tr_js)) and
+    not bool(re.search(
+        r"loadPublishedQuickQuestionsFromDB[\s\S]{0,300}status=eq\.active",
+        tr_js
+    )))
+
+check('J10', '[STATIC TEST] loadPublishedQuickQuestionsFromDB uses authenticated sb client, not hardcoded anon key',
+    bool(re.search(r'async function loadPublishedQuickQuestionsFromDB', tr_js)) and
+    bool(re.search(r"\.from\(['\"]questions['\"]", tr_js)) and
+    # anon key must not appear in the function body
+    'sb_publishable_lFVRCP' not in tr_js[
+        tr_js.find('async function loadPublishedQuickQuestionsFromDB'):
+        tr_js.find('async function loadPublishedQuickQuestionsFromDB') + 600
+    ])
+
+check('J11', '[STATIC TEST] tryStartDailyBfSession returns structured result with ok/reason fields (not bare null)',
+    bool(re.search(r"return\s*\{\s*ok\s*:\s*false,\s*reason\s*:\s*['\"]rpc_error", tr_js)))
+
+check_ne('J12', '[BROWSER TEST — NOT EXECUTED] owner with zero sessions today can start Daily Game — no 403 questions request, quiz starts')
+check_ne('J13', '[BROWSER TEST — NOT EXECUTED] network failure on start_daily_bf_session shows retry/error, not fake limit screen')
+check_ne('J14', '[BROWSER TEST — NOT EXECUTED] actual exhausted user sees limit screen')
+check_ne('J15', '[BROWSER TEST — NOT EXECUTED] no 403 direct questions request in Network tab after fix')
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Results
 # ─────────────────────────────────────────────────────────────────────────────
 static_total = len(PASS) + len(FAIL)

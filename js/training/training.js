@@ -240,24 +240,27 @@ let _quickPlayServerRemaining = 0;
 let _bfSession = null; // { session_id, bf_eligible }
 
 // Try to start a Daily BF session via start_daily_bf_session().
-// Returns truthy if the session should be used (bf_eligible or not — questions always provided).
-// Returns null if quota is exhausted (caller should fall back to start_game_session).
+// Returns { ok:true, ...data } on success.
+// Returns { ok:false, reason:'training_limit_reached', ... } on quota exhaustion.
+// Returns { ok:false, reason:'rpc_error' } on network/server error.
 async function tryStartDailyBfSession() {
   try {
     const { data, error } = await sb.rpc('start_daily_bf_session');
-    if (error || !data?.ok) return null;
+    if (error) return { ok: false, reason: 'rpc_error', message: error.message };
+    if (!data)  return { ok: false, reason: 'rpc_error', message: 'no_data' };
+    if (data.ok !== true) return data; // pass through ok:false with reason
     _bfSession = { session_id: data.session_id, bf_eligible: data.bf_eligible };
     window._currentSessionId   = data.session_id;
     window._quickPlaySessionId = data.session_id;
     _quickPlayServerRemaining  = data.remaining ?? 0;
     return data;
-  } catch (_) {
-    return null;
+  } catch (e) {
+    return { ok: false, reason: 'rpc_error', message: e?.message || 'exception' };
   }
 }
 
 async function startQuickPlay(){
-  // ── In-flight guard: prevents double-tap race (two concurrent start_game_session) ──
+  // ── In-flight guard: prevents double-tap race ──
   if(_quickPlayStartInProgress) return;
   _quickPlayStartInProgress = true;
   _quickPlayServerRemaining = 0;
@@ -275,19 +278,86 @@ async function startQuickPlay(){
       return;
     }
 
-    // ── Authenticated: BUILD QUESTIONS FIRST, consume quota only if valid ──
+    // ── Authenticated: quota check FIRST via start_daily_bf_session ──
+    // Server assigns questions, checks quota, and tracks BF eligibility in one call.
+    // Do NOT fetch questions from REST before confirming quota — a 403/error on the
+    // question fetch must never be displayed as a daily-limit screen.
+    _bfSession = null;
+    const bfResult = await tryStartDailyBfSession();
 
-    // Step 1: load published questions (safe columns, no correct_index)
+    if (bfResult?.ok === true && bfResult.questions?.length) {
+      // ── BF path: server provided questions — use them directly ──
+      const serverQs = bfResult.questions.map(sq => ({
+        id:    sq.sq_id,
+        sq_id: sq.sq_id,
+        q:     sq.q,
+        a:     sq.a,
+        c:     undefined,  // correct_index never sent to client
+        cat:   sq.cat,
+        t:     sq.t,
+      }));
+      window._preparedQuickPlaySet = serverQs;
+      currentGameType = 'quick'; currentPackKey = null; selectedCat = 'ALL';
+      _scoreShownForGame = false; _roundAnswers = [];
+      _quickPlayCompletedThisSession = false;
+      await startQuiz(null, false);
+      return;
+    }
+
+    // ── BF RPC did not grant a session — determine why ──
+    if (bfResult?.reason === 'training_limit_reached') {
+      // Server explicitly confirmed limit exhaustion
+      window.track?.('training_limit_reached', {
+        plan: bfResult.plan || 'free',
+        used: bfResult.used ?? '?',
+        limit: bfResult.limit ?? 1,
+      });
+      window.track?.('premium_paywall_viewed', { trigger: 'training_limit', plan: bfResult.plan || 'free' });
+      if(typeof showDailyLimitScreen === 'function') showDailyLimitScreen('training');
+      else window.showScreen?.('daily-limit');
+      return;
+    }
+
+    // BF RPC had an error (not_enough_questions, rpc_error, etc.) —
+    // fall back to start_game_session + local question fetch.
+    console.warn('[training] start_daily_bf_session fallback:', bfResult?.reason, bfResult?.message);
+
+    // Fallback Step A: check quota via legacy start_game_session
+    const { data: sessionData, error: sessionErr } = await window.sb.rpc('start_game_session', {
+      p_mode: 'training'
+    });
+    if(sessionErr){
+      console.error('[training] start_game_session error:', sessionErr.message);
+      window.toast?.(lang==='ru'
+        ? 'Не удалось проверить лимит. Проверь интернет и попробуй ещё раз.'
+        : 'Could not check daily limit. Check your connection and try again.');
+      return;
+    }
+    if(!sessionData?.allowed){
+      const plan  = sessionData?.plan  || 'free';
+      const used  = sessionData?.used  ?? '?';
+      const limit = sessionData?.limit ?? 1;
+      window.track?.('training_limit_reached', { plan, used, limit });
+      window.track?.('premium_paywall_viewed', { trigger: 'training_limit', plan });
+      if(typeof showDailyLimitScreen === 'function') showDailyLimitScreen('training');
+      else window.showScreen?.('daily-limit');
+      return;
+    }
+    _quickPlayServerRemaining = sessionData.remaining ?? 0;
+    if(sessionData.session_id){
+      window._currentSessionId   = sessionData.session_id;
+      window._quickPlaySessionId = sessionData.session_id;
+    }
+
+    // Fallback Step B: load questions from DB (authenticated, published status)
     const dbPool = await loadPublishedQuickQuestionsFromDB();
     if(!dbPool || dbPool.length === 0){
       window.toast?.(lang==='ru'
         ? '❌ Не удалось загрузить вопросы из базы'
         : "❌ Couldn't load questions", 3000);
-      if(typeof showNoFreshQuickQuestionsScreen === 'function') showNoFreshQuickQuestionsScreen();
       return;
     }
 
-    // Step 2: filter seen questions
     const playedIds = await getPlayedQuestionIds('quick');
     const pool = dbPool.filter(q => !playedIds.has(String(q.id)));
     if(!pool.length){
@@ -295,67 +365,10 @@ async function startQuickPlay(){
       return;
     }
 
-    // Step 3: build gold-standard 10 (hard block if cannot)
     const standard = buildStandardPackQuestions(pool);
-    if(!standard){
-      if(typeof showNoFreshQuickQuestionsScreen === 'function') showNoFreshQuickQuestionsScreen();
-      return;
-    }
+    if(!standard) return;
 
-    // ── Step 4: quota check via start_daily_bf_session (preferred) ──
-    // start_daily_bf_session handles quota (same limits as start_game_session),
-    // assigns server-side questions, and tracks BF eligibility.
-    // On failure/unavailability, fall back to start_game_session.
-    _bfSession = null;
-    const bfData = await tryStartDailyBfSession();
-    if (!bfData) {
-      // BF RPC unavailable or quota exhausted — try legacy start_game_session
-      const { data: sessionData, error: sessionErr } = await window.sb.rpc('start_game_session', {
-        p_mode: 'training'
-      });
-      if(sessionErr){
-        console.error('[training] start_game_session error:', sessionErr.message);
-        window.toast?.('Не удалось проверить дневной лимит. Проверь интернет и попробуй ещё раз.');
-        return;
-      }
-      if(!sessionData.allowed){
-        const plan  = sessionData.plan  || 'free';
-        const used  = sessionData.used  ?? '?';
-        const limit = sessionData.limit ?? 1;
-        window.track?.('training_limit_reached', { plan, used, limit });
-        window.track?.('premium_paywall_viewed', { trigger: 'training_limit', plan });
-        if(typeof showDailyLimitScreen === 'function') showDailyLimitScreen('training');
-        else window.showScreen?.('daily-limit');
-        return;
-      }
-      _quickPlayServerRemaining = sessionData.remaining ?? 0;
-      if(sessionData.session_id){
-        window._currentSessionId   = sessionData.session_id;
-        window._quickPlaySessionId = sessionData.session_id;
-      }
-    }
-
-    // Session granted (either via BF path or fallback)
-
-    // ── Step 5: hand pre-built questions to startQuiz (skips re-fetch) ──
-    // BF path: use server-assigned questions (carry sq_id for answer submission).
-    // Fallback path: use locally-built standard set.
-    if (bfData?.questions?.length) {
-      // Normalize server question payload to training.js format.
-      // Server returns: {sq_id, pos, q, a, cat, t} — no correct_index, no q_id.
-      const serverQs = bfData.questions.map((sq, idx) => ({
-        id:    sq.sq_id,   // use sq_id as local identity token
-        sq_id: sq.sq_id,
-        q:     sq.q,
-        a:     sq.a,
-        c:     undefined,  // no correct_index sent to client
-        cat:   sq.cat,
-        t:     sq.t,
-      }));
-      window._preparedQuickPlaySet = serverQs;
-    } else {
-      window._preparedQuickPlaySet = standard;
-    }
+    window._preparedQuickPlaySet = standard;
     currentGameType = 'quick'; currentPackKey = null; selectedCat = 'ALL';
     _scoreShownForGame = false; _roundAnswers = [];
     _quickPlayCompletedThisSession = false;
@@ -895,18 +908,18 @@ async function _mergeCorrectIndexes(rows) {
 }
 
 // Returns normalised + validated array, or [] on error.
+// Uses authenticated Supabase client + status='published' (RLS-allowed).
+// correct_index is merged via get_question_reveals RPC after fetch.
 async function loadPublishedQuickQuestionsFromDB(){
-  const SUPA_URL = 'https://nhmidxkohjpcnhjucuuh.supabase.co';
-  const SUPA_KEY = 'sb_publishable_lFVRCP-PPnGnNzn9G60A3A_gTy40vMs';
   try{
-    // Direct fetch bypasses Vercel proxy — avoids 400 errors on large selects
-    const r = await fetch(
-      `${SUPA_URL}/rest/v1/questions?status=eq.active&order=approved_at.desc&limit=2000` +
-      `&select=id,question_text,answers_ru,category,image_url,audio_url`,
-      { headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` } }
-    );
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    const rows = await r.json();
+    const { data: rows, error } = await sb
+      .from('questions')
+      .select('id,question_ru,question_text,answers_ru,answers_json,category,image_url,audio_url,media_type')
+      .eq('status', 'published')
+      .order('id')
+      .limit(2000);
+    if(error) throw new Error(error.message);
+    if(!rows || !rows.length) return [];
     await _mergeCorrectIndexes(rows);
     const normalised = rows
       .map(row => normalizeDBQuestionForQuickPlay(row))
