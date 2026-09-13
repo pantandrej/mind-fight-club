@@ -319,61 +319,15 @@ async function startQuickPlay(){
       return;
     }
 
-    // BF RPC had an error (not_enough_questions, rpc_error, etc.) —
-    // fall back to start_game_session + local question fetch.
-    console.warn('[training] start_daily_bf_session fallback:', bfResult?.reason, bfResult?.message);
-
-    // Fallback Step A: check quota via legacy start_game_session
-    const { data: sessionData, error: sessionErr } = await window.sb.rpc('start_game_session', {
-      p_mode: 'training'
-    });
-    if(sessionErr){
-      console.error('[training] start_game_session error:', sessionErr.message);
-      window.toast?.(lang==='ru'
-        ? 'Не удалось проверить лимит. Проверь интернет и попробуй ещё раз.'
-        : 'Could not check daily limit. Check your connection and try again.');
-      return;
-    }
-    if(!sessionData?.allowed){
-      const plan  = sessionData?.plan  || 'free';
-      const used  = sessionData?.used  ?? '?';
-      const limit = sessionData?.limit ?? 1;
-      window.track?.('training_limit_reached', { plan, used, limit });
-      window.track?.('premium_paywall_viewed', { trigger: 'training_limit', plan });
-      if(typeof showDailyLimitScreen === 'function') showDailyLimitScreen('training');
-      else window.showScreen?.('daily-limit');
-      return;
-    }
-    _quickPlayServerRemaining = sessionData.remaining ?? 0;
-    if(sessionData.session_id){
-      window._currentSessionId   = sessionData.session_id;
-      window._quickPlaySessionId = sessionData.session_id;
-    }
-
-    // Fallback Step B: load questions from DB (authenticated, published status)
-    const dbPool = await loadPublishedQuickQuestionsFromDB();
-    if(!dbPool || dbPool.length === 0){
-      window.toast?.(lang==='ru'
-        ? '❌ Не удалось загрузить вопросы из базы'
-        : "❌ Couldn't load questions", 3000);
-      return;
-    }
-
-    const playedIds = await getPlayedQuestionIds('quick');
-    const pool = dbPool.filter(q => !playedIds.has(String(q.id)));
-    if(!pool.length){
-      if(typeof showNoFreshQuickQuestionsScreen === 'function') showNoFreshQuickQuestionsScreen();
-      return;
-    }
-
-    const standard = buildStandardPackQuestions(pool);
-    if(!standard) return;
-
-    window._preparedQuickPlaySet = standard;
-    currentGameType = 'quick'; currentPackKey = null; selectedCat = 'ALL';
-    _scoreShownForGame = false; _roundAnswers = [];
-    _quickPlayCompletedThisSession = false;
-    await startQuiz(null, false);
+    // start_daily_bf_session returned an error (rpc_error, not_enough_questions, etc.).
+    // Do NOT fall back to start_game_session — that path creates a second session
+    // and can show a false limit screen. Show an explicit retry/error instead.
+    console.error('[training] start_daily_bf_session error:', bfResult?.reason, bfResult?.message);
+    window.toast?.(lang === 'ru'
+      ? '⚠️ Не удалось начать тренировку. Проверь интернет и попробуй ещё раз.'
+      : '⚠️ Could not start training. Check your connection and try again.',
+      4000
+    );
 
   }finally{
     _quickPlayStartInProgress = false;

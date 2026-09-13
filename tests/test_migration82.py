@@ -927,10 +927,11 @@ check('J02', '[STATIC TEST] authenticated Quick Play calls start_daily_bf_sessio
         tr_js, re.DOTALL
     )))
 
-check('J03', '[STATIC TEST] RPC error (rpc_error reason) shows toast/warn, not showDailyLimitScreen',
-    # rpc_error path falls to start_game_session fallback with a console.warn, not directly to limit screen
+check('J03', '[STATIC TEST] RPC error path shows error/toast, does NOT call start_game_session or showDailyLimitScreen',
+    # rpc_error path must show an error toast and NOT call start_game_session or showDailyLimitScreen
     bool(re.search(r"rpc_error", tr_js)) and
-    bool(re.search(r"console\.warn.*start_daily_bf_session fallback", tr_js)))
+    bool(re.search(r"console\.error.*start_daily_bf_session", tr_js)) and
+    not bool(re.search(r"rpc.*start_game_session", tr_js)))
 
 check('J04', '[STATIC TEST] only explicit training_limit_reached reason shows daily-limit screen',
     bool(re.search(
@@ -1151,24 +1152,24 @@ index_html = INDEX_HTML_PATH.read_text(encoding='utf-8')
 training_js = TRAINING_JS_PATH.read_text(encoding='utf-8')
 legacy_qp   = legacy_js  # already loaded above
 
-# Q01: daily-question.js select does NOT include correct_index at load time
-check('Q01', '[STATIC TEST] daily-question.js initial select does NOT contain correct_index',
-    not bool(re.search(r"\.select\(.*correct_index", daily_js))
+# Q01: daily-question.js does NOT directly query questions table (RLS incompatible)
+check('Q01', '[STATIC TEST] daily-question.js does NOT do direct .from(questions) REST query',
+    not bool(re.search(r"\.from\(['\"]questions", daily_js))
 )
 
-# Q02: daily-question.js fetches correct_index via get_question_reveals at answer time
-check('Q02', '[STATIC TEST] daily-question.js calls get_question_reveals at answer time',
-    bool(re.search(r'get_question_reveals', daily_js))
+# Q02: daily-question.js teaser is disabled (loadDailyQuestion hides the element)
+check('Q02', '[STATIC TEST] daily-question.js loadDailyQuestion hides the teaser element',
+    bool(re.search(r'display.*none', daily_js))
 )
 
-# Q03: _dailyPick is async (waits for RPC before rendering result)
-check('Q03', '[STATIC TEST] _dailyPick is async function',
-    bool(re.search(r'_dailyPick\s*=\s*async\s+function', daily_js))
-)
-
-# Q04: _dailyPick does NOT reference q.correct_index directly
-check('Q04', '[STATIC TEST] _dailyPick does NOT reference q.correct_index directly',
+# Q03: daily-question.js does NOT reference q.correct_index
+check('Q03', '[STATIC TEST] daily-question.js does NOT reference q.correct_index',
     not bool(re.search(r'q\.correct_index', daily_js))
+)
+
+# Q04: daily-question.js does NOT directly select correct_index from questions
+check('Q04', '[STATIC TEST] daily-question.js does NOT select correct_index from questions',
+    not bool(re.search(r"correct_index", daily_js))
 )
 
 # Q05: training.js exports _quickPlayStartInProgress to window
@@ -1208,6 +1209,68 @@ check('Q10', '[STATIC TEST] training.js Quick Play does not directly select corr
 # Q11: training.js Quick Play flow checks training_limit_reached flag from RPC response
 check('Q11', '[STATIC TEST] training.js handles training_limit_reached from start_daily_bf_session',
     bool(re.search(r'training_limit_reached', training_js))
+)
+
+# Q2 (spec): rpc_error never calls start_game_session RPC in authenticated Quick Play
+# Check: no actual .rpc('start_game_session') call exists in training.js
+check('Q2', '[STATIC TEST] authenticated Quick Play rpc_error does NOT call start_game_session RPC',
+    not bool(re.search(r"\.rpc\(['\"]start_game_session", training_js))
+)
+
+# Shared helper: extract startQuickPlay body up to the finally block
+_q5_qp_body = re.search(
+    r'async function startQuickPlay\(\)\s*\{([\s\S]{0,4000}?)finally\{',
+    training_js
+)
+
+# Q3 (spec): rpc_error path does NOT show daily-limit screen
+# Scoped to startQuickPlay body up to finally block.
+# After training_limit_reached block returns, remaining code must NOT call showDailyLimitScreen.
+_q3_ok = False
+if _q5_qp_body:
+    fn_body = _q5_qp_body.group(1)
+    limit_pos = fn_body.rfind('training_limit_reached')  # last occurrence
+    if limit_pos >= 0:
+        # Find the return; after the training_limit_reached block
+        after_limit = fn_body[limit_pos:]
+        first_return = after_limit.find('return;')
+        if first_return >= 0:
+            error_path = after_limit[first_return + 7:]
+            _q3_ok = not bool(re.search(r'showDailyLimitScreen', error_path))
+check('Q3', '[STATIC TEST] rpc_error path inside startQuickPlay does NOT call showDailyLimitScreen',
+    _q3_ok
+)
+
+# Q4 (spec): training_limit_reached IS present in startQuickPlay body and triggers limit screen
+check('Q4', '[STATIC TEST] training_limit_reached triggers showDailyLimitScreen in startQuickPlay',
+    bool(_q5_qp_body) and
+    bool(re.search(
+        r'training_limit_reached[\s\S]{0,300}showDailyLimitScreen',
+        _q5_qp_body.group(1)
+    ))
+)
+
+# Q5 (spec): no authenticated fallback to loadPublishedQuickQuestionsFromDB in startQuickPlay body
+check('Q5', '[STATIC TEST] no loadPublishedQuickQuestionsFromDB call inside startQuickPlay body',
+    bool(_q5_qp_body) and
+    not bool(re.search(r'loadPublishedQuickQuestionsFromDB', _q5_qp_body.group(1)))
+)
+
+# Q9 (spec): Home makes no direct questions?status=eq.active request
+check('Q9', '[STATIC TEST] daily-question.js makes no direct questions REST query',
+    not bool(re.search(r"from\(['\"]questions", daily_js))
+)
+
+# Q10 (spec): daily-question.js uses correct RPC signature p_ids OR is safely disabled
+# get_question_reveals takes p_ids (uuid[]) — confirmed in migration 77 line 330
+check('Q10', '[STATIC TEST] daily-question.js does NOT use wrong p_question_ids argument name',
+    not bool(re.search(r'p_question_ids', daily_js))
+)
+
+# Q11 (spec): no direct client correct_index read in Quick Play path
+check('Q11_new', '[STATIC TEST] no direct q.correct_index in startQuickPlay body',
+    bool(_q5_qp_body) and
+    not bool(re.search(r'q\.correct_index', _q5_qp_body.group(1)))
 )
 
 # ─────────────────────────────────────────────────────────────────────────────
