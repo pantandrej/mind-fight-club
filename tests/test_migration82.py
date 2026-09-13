@@ -299,13 +299,17 @@ check('T00_structure', 'All SECURITY DEFINER functions have SET search_path = pu
 #         MANUAL/BROWSER TEST = requires human verification (NOT EXECUTED here)
 # ─────────────────────────────────────────────────────────────────────────────
 
-MATCHMAKING_JS_PATH = pathlib.Path(__file__).parent.parent / 'js' / 'battles' / 'matchmaking.js'
-STREAK_JS_PATH      = pathlib.Path(__file__).parent.parent / 'js' / 'training' / 'streak.js'
-LEGACY_JS_PATH      = pathlib.Path(__file__).parent.parent / 'js' / 'legacy.js'
+MATCHMAKING_JS_PATH  = pathlib.Path(__file__).parent.parent / 'js' / 'battles' / 'matchmaking.js'
+FRIEND_BATTLE_JS_PATH= pathlib.Path(__file__).parent.parent / 'js' / 'battles' / 'friend-battle.js'
+STREAK_JS_PATH       = pathlib.Path(__file__).parent.parent / 'js' / 'training' / 'streak.js'
+LEGACY_JS_PATH       = pathlib.Path(__file__).parent.parent / 'js' / 'legacy.js'
+SQL85_PATH           = pathlib.Path(__file__).parent.parent / 'sql' / '85_virtual_battle_server_auth.sql'
 
 mm_js     = MATCHMAKING_JS_PATH.read_text(encoding='utf-8')
+fb_js     = FRIEND_BATTLE_JS_PATH.read_text(encoding='utf-8')
 streak_js = STREAK_JS_PATH.read_text(encoding='utf-8')
 legacy_js = LEGACY_JS_PATH.read_text(encoding='utf-8')
+sql85     = SQL85_PATH.read_text(encoding='utf-8') if SQL85_PATH.exists() else ''
 
 # ── P0: Remove Answer-Reveal Bypass ──────────────────────────────────────────
 
@@ -1022,9 +1026,9 @@ check('R06', '[STATIC TEST] BOT_PLAYERS has 3 entries with skill values 0.575, 0
 check('R07', '[STATIC TEST] BOT_PLAYERS persona names are Макс, София, Даниил',
     all(name in mm_js for name in ['Макс', 'София', 'Даниил']))
 
-# R08: BOT_PLAYERS cities are Казань, Алматы, Тбилиси
-check('R08', '[STATIC TEST] BOT_PLAYERS cities are Казань, Алматы, Тбилиси',
-    all(city in mm_js for city in ['Казань', 'Алматы', 'Тбилиси']))
+# R08: BOT_PLAYERS cities (updated to global: Берлин, Буэнос-Айрес, Сингапур)
+check('R08', '[STATIC TEST] BOT_PLAYERS cities are Берлин, Буэнос-Айрес, Сингапур',
+    all(city in mm_js for city in ['Берлин', 'Буэнос-Айрес', 'Сингапур']))
 
 # R09: sign-in modal does NOT use the words "бот" or "bot" in its text
 check('R09', '[STATIC TEST] sign-in modal does not use "бот" or "bot" in button label',
@@ -1102,6 +1106,103 @@ check_ne('R25', '[BROWSER TEST — NOT EXECUTED] virtual battle charges virtual_
 check_ne('R26', '[BROWSER TEST — NOT EXECUTED] network tab shows no 403 on questions fetch during virtual battle')
 check_ne('R27', '[BROWSER TEST — NOT EXECUTED] virtual battle result screen shows ПОБЕДА/НИЧЬЯ/ПОРАЖЕНИЕ + scores')
 check_ne('R28', '[BROWSER TEST — NOT EXECUTED] unauthenticated user sees sign-in modal with no "бот"/"bot" text')
+
+# ─────────────────────────────────────────────────────────────────────────────
+# S-series: Random Battle final security + global personas
+# ─────────────────────────────────────────────────────────────────────────────
+
+# S01: real Random Battle host question payload has no correct_index field
+# startDuelGame() uses res.questions from start_duel() — server strips correct_index.
+# Verify the host code never maps a correct_index field from the RPC response.
+check('S01', '[STATIC TEST] real Random Battle host question payload never maps correct_index from start_duel response',
+    bool(re.search(r'function startDuelGame\b', fb_js)) and
+    not bool(re.search(
+        r'function startDuelGame[\s\S]{0,600}correct_index',
+        fb_js
+    )))
+
+# S02: real Random Battle host question payload has no "c:" field mapping
+# duelQs = res.questions — never spreads a "c:" key from server response
+check('S02', '[STATIC TEST] real Random Battle host does not map "c:" field from start_duel questions',
+    bool(re.search(r'duelQs\s*=\s*res\.questions', fb_js)) and
+    not bool(re.search(
+        r'function startDuelGame[\s\S]{0,600}\bc\s*:.*correct',
+        fb_js, re.IGNORECASE
+    )))
+
+# S03: real Random Battle host path calls no get_question_reveals / _mergeCorrectIndexes
+check('S03', '[STATIC TEST] real Random Battle host (startDuelGame) calls no get_question_reveals or _mergeCorrectIndexes',
+    not bool(re.search(
+        r'function startDuelGame[\s\S]{0,800}(?:get_question_reveals|_mergeCorrectIndexes)',
+        fb_js
+    )))
+
+# S04: virtual battle answer correctness must come from server submit RPC
+# (Migration85 required — NOT EXECUTED until migration applied + client updated)
+check_ne('S04', '[NOT EXECUTED — requires Migration85] virtual answer correctness is server-derived (submit_virtual_battle_answer)')
+
+# S05: virtual wrong answer is always an actual incorrect option (server bot_wrong_indices)
+check_ne('S05', '[NOT EXECUTED — requires Migration85] virtual wrong answer comes from server bot_wrong_indices, not from client-loaded c')
+
+# S06: virtual battle charges virtual_battle mode, awards 0 BF
+check('S06', '[STATIC TEST] startBotDuel charges start_game_session with mode virtual_battle (0 BF)',
+    bool(re.search(
+        r'startBotDuel[\s\S]{0,600}virtual_battle',
+        mm_js
+    )) and '_bf_award_duel_win' not in mm_js[
+        mm_js.find('async function startBotDuel'):
+        mm_js.find('async function startBotDuel') + 2500
+    ])
+
+# S07: real Random Battle host never receives correct_index before answering
+# Guest questions come from data.questions (comment: "sanitized: {idx,cat,q,a,t} — no c field")
+check('S07', '[STATIC TEST] real Random Battle guest questions explicitly noted as no-c (sanitized comment present)',
+    bool(re.search(r'sanitized.*no.*c\s+field|no.*correct_index.*no.*id', fb_js)))
+
+# S08: PROGRESSION remains [2,3,4,5,6] in loadBattleQuestions
+check('S08', '[STATIC TEST] question progression remains [2,3,4,5,6]',
+    bool(re.search(r'PROGRESSION\s*=\s*\[2,\s*3,\s*4,\s*5,\s*6\]', tr_js)) or
+    'ARRAY[2, 3, 4, 5, 6]' in sql85)
+
+# S09: Макс = Berlin 🇩🇪, skill 0.575, delay 4000-14000ms
+check('S09', '[STATIC TEST] Макс = Берлин 🇩🇪 / skill 0.575 / delay 4000-14000ms',
+    'Берлин' in mm_js and '🇩🇪' in mm_js and '0.575' in mm_js and
+    'minDelay:4000' in mm_js and 'maxDelay:14000' in mm_js)
+
+# S10: София = Buenos Aires 🇦🇷, skill 0.705, delay 3000-12000ms
+check('S10', '[STATIC TEST] София = Буэнос-Айрес 🇦🇷 / skill 0.705 / delay 3000-12000ms',
+    'Буэнос-Айрес' in mm_js and '🇦🇷' in mm_js and '0.705' in mm_js and
+    'minDelay:3000' in mm_js and 'maxDelay:12000' in mm_js)
+
+# S11: Даниил = Singapore 🇸🇬, skill 0.84, delay 2000-10000ms
+check('S11', '[STATIC TEST] Даниил = Сингапур 🇸🇬 / skill 0.84 / delay 2000-10000ms',
+    'Сингапур' in mm_js and '🇸🇬' in mm_js and '0.84' in mm_js and
+    'minDelay:2000' in mm_js and 'maxDelay:10000' in mm_js)
+
+# S12: no "бот"/"bot"/🤖 in virtual opponent selection UI text
+# _showBotOffer label, persona card HTML, _renderBattleBoard, sign-in modal
+check('S12', '[STATIC TEST] no "бот"/"bot"/🤖 in virtual opponent selection and sign-in UI',
+    # _showBotOffer label does not contain бот/bot
+    not bool(re.search(
+        r"_showBotOffer[\s\S]{0,800}(?:бот|play vs bot|сыграть с ботом)",
+        mm_js, re.IGNORECASE
+    )) and
+    # sign-in modal button does not say бот/bot
+    not bool(re.search(
+        r"_showSignInToPlay[\s\S]{0,1500}(?:бот\b|play vs bot)",
+        mm_js, re.IGNORECASE
+    )) and
+    # battle board virtual row does not show 🤖 emoji
+    not bool(re.search(
+        r"isBot\s*\?[^:'\n]*🤖",
+        mm_js
+    )))
+
+check_ne('S13', '[BROWSER TEST — NOT EXECUTED] no real player → 15s → 3 global opponent cards with Berlin/Buenos-Aires/Singapore')
+check_ne('S14', '[BROWSER TEST — NOT EXECUTED] choose each persona → battle starts')
+check_ne('S15', '[BROWSER TEST — NOT EXECUTED] inspect Network before answering → no correct_index in any response')
+check_ne('S16', '[BROWSER TEST — NOT EXECUTED] answer question → correct_index appears only in submit_virtual_battle_answer response')
+check_ne('S17', '[BROWSER TEST — NOT EXECUTED] two browsers real match → neither gets correct_index before answer')
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Results

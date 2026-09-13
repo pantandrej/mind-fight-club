@@ -301,8 +301,8 @@ async function startDuelBattle({ chargeSession = true, mode = 'friend_battle', q
   if(window._isBotDuel){
     const bot = window._botPlayer;
     oppLabel = bot
-      ? ((bot.flag ? bot.flag + ' ' : '🤖 ') + bot.name)
-      : (window._botName || '🤖 Bot');
+      ? ((bot.flag ? bot.flag + ' ' : '') + bot.name)
+      : (window._botName || 'Виртуальный игрок');
   } else {
     oppLabel = duelRole==='host' ? 'Соперник' : 'Host';
   }

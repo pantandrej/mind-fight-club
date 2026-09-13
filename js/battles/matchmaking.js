@@ -14,9 +14,9 @@ let mmClaimFlight  = false; // true while a claim_random_match RPC is in-flight
 
 // Canonical virtual opponents — exactly 3, structurally isolated from real duels
 const BOT_PLAYERS = [
-  { name:'Макс',   city:'Казань',   flag:'🇷🇺', avatar:'⚡', skill:0.575, minDelay:4000, maxDelay:14000 },
-  { name:'София',  city:'Алматы',   flag:'🇰🇿', avatar:'🌸', skill:0.705, minDelay:3000, maxDelay:12000 },
-  { name:'Даниил', city:'Тбилиси',  flag:'🇬🇪', avatar:'🧠', skill:0.84,  minDelay:2000, maxDelay:10000 },
+  { name:'Макс',   city:'Берлин',       flag:'🇩🇪', avatar:'⚡', skill:0.575, minDelay:4000, maxDelay:14000 },
+  { name:'София',  city:'Буэнос-Айрес', flag:'🇦🇷', avatar:'🌸', skill:0.705, minDelay:3000, maxDelay:12000 },
+  { name:'Даниил', city:'Сингапур',     flag:'🇸🇬', avatar:'🧠', skill:0.84,  minDelay:2000, maxDelay:10000 },
 ];
 
 function pickRandomBot(){
@@ -422,6 +422,7 @@ async function startBotDuel(botName){
   if (bot) {
     const oppEl = document.getElementById('ds-opp-name');
     if (oppEl) oppEl.textContent = (bot.flag ? bot.flag + ' ' : '') + bot.name;
+
   }
   window._pendingDuelQs = botBattleQs;
   showScreen('duel');
@@ -484,7 +485,7 @@ function _showBotOffer(_ignored) {
   document.getElementById('mm-confirm-wrap').style.display= 'none';
 
   // Reset VS row to generic
-  document.getElementById('mm-av-opp').textContent  = '🤖';
+  document.getElementById('mm-av-opp').textContent  = '⚔️';
   document.getElementById('mm-av-opp').className    = 'mm-av';
   document.getElementById('mm-name-opp').textContent= lang === 'ru' ? 'виртуальный игрок' : 'virtual player';
 
@@ -494,8 +495,8 @@ function _showBotOffer(_ignored) {
 
   const label = document.getElementById('mm-bot-offer-label');
   if (label) label.textContent = lang === 'ru'
-    ? 'Живых соперников не нашли. Выбери виртуального:'
-    : 'No live opponents found. Choose a virtual player:';
+    ? 'Выбери соперника:'
+    : 'Choose your opponent:';
 
   // Render persona cards (replace any previously rendered ones)
   let cardWrap = document.getElementById('mm-persona-cards');
@@ -618,7 +619,7 @@ async function _renderBattleBoard() {
           </div>
           <div>
             <div style="font-size:13px;font-weight:700;color:var(--text)">${r.display_name}</div>
-            <div style="font-size:11px;color:var(--muted)">${r.isBot ? '🤖 виртуальный игрок' : '🟢 Онлайн'}</div>
+            <div style="font-size:11px;color:var(--muted)">${r.isBot ? 'виртуальный игрок' : '🟢 Онлайн'}</div>
           </div>
         </div>
         <button onclick="window._acceptBoardRow(${idx})"
