@@ -1553,20 +1553,28 @@ function showScore(){
     if(currentUser && currentGameType === 'quick' && window._quickPlaySessionId){
       if (_bfSession?.session_id) {
         // BF session: answers were submitted per-question via submit_daily_bf_answer.
-        // Just finalize — server counts correct from session_questions ledger (A3).
+        // Sequence: complete → streak (complete must succeed first to prove session done).
         const _bfSessionId = _bfSession.session_id;
         _bfSession = null;
-        sb.rpc('complete_daily_bf_session', {
-          p_session_id: _bfSessionId,
-        }).then(({ data }) => {
-          if (data?.ok && data.bf_pts > 0) {
-            window.toast?.(`⚡ +${data.bf_pts} BF`, 2500);
-          }
-        }).catch(() => {});
-        // Also complete training session for streak tracking.
+        // Also mark for daily_goal (fire-and-forget)
         sb.rpc('complete_training_session', {
           p_session_id: window._quickPlaySessionId,
         }).catch(() => {});
+        // Complete + streak chain — streak only after complete confirms session valid
+        (async () => {
+          try{
+            const { data: completeData } = await sb.rpc('complete_daily_bf_session', {
+              p_session_id: _bfSessionId,
+            });
+            if(completeData?.ok){
+              if((completeData.bf_pts ?? 0) > 0){
+                window.toast?.(`⚡ +${completeData.bf_pts} BF`, 2500);
+              }
+              // complete confirms 10 questions answered — safe to award streak
+              await updateDailyStreakOnQuickPlayComplete(_bfSessionId);
+            }
+          }catch(e){ /* silent */ }
+        })();
       } else {
         // No BF session (fallback path): mark complete for daily_goal.
         sb.rpc('complete_training_session', {
@@ -1592,7 +1600,9 @@ function showScore(){
     lockQuickPlayCompleted();
     // Single idempotent RPC call
     activateReferral();
-    updateDailyStreakOnQuickPlayComplete();
+    // For guests: streak recorded immediately. For auth users: streak is called
+    // from the complete_daily_bf_session chain above (after server confirms session).
+    if(!getState().currentUser) updateDailyStreakOnQuickPlayComplete(null);
     // Ask for push permission after game (best moment — user just had fun)
     setTimeout(()=>maybeAskPushAfterGame(), 2200);
   }

@@ -2,16 +2,14 @@
 // Streak is credited only after completing a full daily training session.
 // Milestones award neurons (NOT XP — XP reflects gameplay, not attendance).
 //
-// Rewards per config.js STREAK_REWARDS:
-//   3 days: +20 neurons
-//   7 days: +50 neurons
-//  14 days: +75 neurons
-//  30 days: +150 neurons
-//  Every 7 days after 30: +50 neurons
+// Server-canonical milestones (award_currency config):
+//   7 days:  +50 neurons
+//  30 days: +200 neurons
+// 100 days: +500 neurons
 //
 // UI reminder text (for daily-limit screen and home):
 //   "Заверши сегодняшние 10 вопросов, чтобы сохранить серию."
-//   "За 3, 7, 14 и 30 дней подряд ты получаешь бонусные нейроны."
+//   "За 7, 30 и 100 дней подряд ты получаешь бонусные нейроны."
 
 // DAILY STREAK SYSTEM
 // ═══════════════════════════════════════════
@@ -156,69 +154,90 @@ async function loadDailyStreakData(){
   scheduleDailyStreakReminder();
 }
 
-async function updateDailyStreakOnQuickPlayComplete(){
-  const today     = getTodayDateKey();
-  const yesterday = getYesterdayDateKey();
+// sessionId — the game_sessions.id returned by start_daily_bf_session().
+// For authenticated users, ALL streak state comes from the server response.
+// Client must not pre-increment or cache streak before the RPC confirms.
+// For guests, local-only path is preserved.
+async function updateDailyStreakOnQuickPlayComplete(sessionId){
+  if(!currentUser){
+    // Guest path: local-only streak (no server validation)
+    const today     = getTodayDateKey();
+    const yesterday = getYesterdayDateKey();
+    if(_lastQuickPlayDate === today) return;
 
-  // Guard: only Quick Play in main quiz screen
-  const wasQuickPlay = (_gameId !== null); // game created means it was a real game
+    let newStreak;
+    if(!_lastQuickPlayDate)                newStreak = 1;
+    else if(_lastQuickPlayDate === yesterday) newStreak = _dailyStreak + 1;
+    else if(_lastQuickPlayDate < yesterday){
+      const freezeSaved = consumeStreakFreezeIfNeeded(_lastQuickPlayDate, today, yesterday);
+      newStreak = freezeSaved ? _dailyStreak + 1 : 1;
+    } else                                 newStreak = _dailyStreak || 1;
 
-  if(_lastQuickPlayDate === today){
-    // Already counted today — silent, no celebration popup again
+    const newBest = Math.max(_bestDailyStreak, newStreak);
+    const isRecord = newStreak > _bestDailyStreak && newStreak > 1;
+    _dailyStreak = newStreak; _bestDailyStreak = newBest;
+    _lastQuickPlayDate = today; _streakPlayedToday = true;
+    localStorage.setItem('mfc_streak', JSON.stringify({streak:newStreak,best:newBest,date:today}));
+    renderDailyStreakUI();
+    showStreakCelebration(newStreak, isRecord);
     return;
   }
 
-  let newStreak;
-  if(!_lastQuickPlayDate){
-    newStreak = 1; // first ever
-  } else if(_lastQuickPlayDate === yesterday){
-    newStreak = _dailyStreak + 1; // consecutive
-  } else if(_lastQuickPlayDate < yesterday){
-    // Missed a day — check if freeze saves it
-    const freezeSaved = consumeStreakFreezeIfNeeded(_lastQuickPlayDate, today, yesterday);
-    newStreak = freezeSaved ? _dailyStreak + 1 : 1;
-  } else {
-    newStreak = _dailyStreak || 1; // already played today somehow
+  // Authenticated path: server is the SOLE authority for streak.
+  // Do NOT touch local streak state until the RPC returns ok=true.
+  if(!sessionId){
+    console.warn('[MFC] record_daily_activity: no sessionId — streak not awarded');
+    return;
   }
+  try{
+    const { data: rpcData, error } = await sb.rpc('record_daily_activity', {
+      p_session_id: sessionId
+    });
+    if(error || !rpcData?.ok){
+      // Session invalid, incomplete, or not found — no streak awarded, no state change
+      const reason = rpcData?.reason || error?.message || 'unknown';
+      console.warn('[MFC] streak not awarded:', reason);
+      return;
+    }
 
-  const newBest   = Math.max(_bestDailyStreak, newStreak);
-  const isRecord  = newStreak > _bestDailyStreak && newStreak > 1;
-  const wasAlready = (_lastQuickPlayDate === today);
+    // Success: update local state ONLY from server response
+    const serverStreak = rpcData.streak;
+    const serverBest   = rpcData.best_streak;
+    const serverDate   = rpcData.streak_last_date;
+    const isRecord     = serverStreak > _bestDailyStreak && serverStreak > 1;
 
-  _dailyStreak       = newStreak;
-  _bestDailyStreak   = newBest;
-  _lastQuickPlayDate = today;
-  _streakPlayedToday = true;
+    _dailyStreak       = serverStreak;
+    _bestDailyStreak   = serverBest;
+    _lastQuickPlayDate = serverDate || getTodayDateKey();
+    _streakPlayedToday = true;
 
-  // For authenticated users the server is authoritative for streak/best_streak.
-  // record_daily_activity() calculates and persists the canonical streak values;
-  // we update local state from its response (no direct profiles.update for auth users).
-  if(currentUser){
-    try{
-      const { data: rpcData } = await sb.rpc('record_daily_activity');
-      if(rpcData?.ok){
-        // Use server's canonical values (M91: best_streak included in response)
-        _dailyStreak     = rpcData.streak     ?? newStreak;
-        _bestDailyStreak = rpcData.best_streak ?? newBest;
-      }
-      if(rpcData?.freeze_used){
-        toast(lang==='ru'?'❄️ Заморозка сработала — серия сохранена!':'❄️ Freeze used — streak saved!', 3000);
-      }
-      if(rpcData?.milestone){
-        const bonuses = {7:50, 30:200, 100:500};
-        const b = bonuses[rpcData.milestone] || '';
-        const msg = lang==='ru'
-          ? `🔥 ${rpcData.milestone} дней подряд! +${b} ⚡ нейронов`
-          : `🔥 ${rpcData.milestone}-day streak! +${b} ⚡ neurons`;
-        setTimeout(()=>toast(msg, 5000), 1500);
-      }
-    }catch(e){ console.warn('[MFC] streak save error:', e.message); }
+    // Cache server-canonical values (UI fast-path on next load)
+    localStorage.setItem('mfc_streak', JSON.stringify({
+      streak: serverStreak,
+      best:   serverBest,
+      date:   serverDate || getTodayDateKey()
+    }));
+
+    renderDailyStreakUI();
+
+    if(!rpcData.already_recorded){
+      showStreakCelebration(serverStreak, isRecord);
+    }
+    if(rpcData.freeze_used){
+      toast(lang==='ru'?'❄️ Заморозка сработала — серия сохранена!':'❄️ Freeze used — streak saved!', 3000);
+    }
+    if(rpcData.milestone){
+      const bonuses = {7:50, 30:200, 100:500};
+      const b = bonuses[rpcData.milestone] || '';
+      const msg = lang==='ru'
+        ? `🔥 ${rpcData.milestone} дней подряд! +${b} ⚡ нейронов`
+        : `🔥 ${rpcData.milestone}-day streak! +${b} ⚡ neurons`;
+      setTimeout(()=>toast(msg, 5000), 1500);
+    }
+  }catch(e){
+    console.warn('[MFC] streak RPC error:', e.message);
+    // No local state change on failure
   }
-  // Cache locally
-  localStorage.setItem('mfc_streak', JSON.stringify({streak:newStreak,best:newBest,date:today}));
-
-  renderDailyStreakUI();
-  showStreakCelebration(newStreak, isRecord);
 }
 
 function renderDailyStreakUI(){

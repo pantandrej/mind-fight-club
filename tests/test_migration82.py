@@ -2223,6 +2223,110 @@ check_ne('DAILY91-DB-04', '[DB TEST] complete_daily_bf_session uses session.day_
 check_ne('DAILY91-DB-05', '[DB TEST] record_daily_activity returns best_streak >= streak in all code paths')
 
 # ─────────────────────────────────────────────────────────────────────────────
+# DAILY91-13..24 — M91 Final Safety Fix tests
+# ─────────────────────────────────────────────────────────────────────────────
+_training_js2 = open(_os.path.join(_os.path.dirname(__file__), '..', 'js', 'training', 'training.js')).read()
+
+# DAILY91-13: record_daily_activity now requires p_session_id (no no-arg signature)
+_rda_sig = _sql91[_sql91.find('CREATE OR REPLACE FUNCTION public.record_daily_activity'):
+                  _sql91.find('CREATE OR REPLACE FUNCTION public.record_daily_activity')+60]
+check('DAILY91-13', '[STATIC TEST] M91 record_daily_activity requires p_session_id uuid parameter',
+    'p_session_id uuid' in _sql91[_sql91.find('CREATE OR REPLACE FUNCTION public.record_daily_activity'):
+                                   _sql91.find('CREATE OR REPLACE FUNCTION public.record_daily_activity')+200]
+)
+
+# DAILY91-14: record_daily_activity validates session ownership (game_sessions ownership check)
+_rda_fn_14 = _sql91[_sql91.find('CREATE OR REPLACE FUNCTION public.record_daily_activity'):
+                     _sql91.find('REVOKE ALL ON FUNCTION public.record_daily_activity')]
+check('DAILY91-14', '[STATIC TEST] record_daily_activity verifies session ownership in game_sessions',
+    'game_sessions' in _rda_fn_14
+    and 'user_id = v_user_id' in _rda_fn_14
+)
+
+# DAILY91-15: record_daily_activity checks 10 questions answered
+check('DAILY91-15', '[STATIC TEST] record_daily_activity requires 10 assigned and 10 answered questions',
+    'v_assigned_cnt' in _rda_fn_14
+    and 'v_resolved_cnt' in _rda_fn_14
+    and '<> 10' in _rda_fn_14
+)
+
+# DAILY91-16: record_daily_activity uses session.day_utc for streak date
+check('DAILY91-16', '[STATIC TEST] record_daily_activity uses session.day_utc as canonical streak date',
+    'v_today := v_session.day_utc' in _rda_fn_14
+)
+
+# DAILY91-17: streak.js auth path does not pre-increment before RPC
+_streak_auth_fn = _streak_js[_streak_js.find('async function updateDailyStreakOnQuickPlayComplete'):
+                              _streak_js.find('async function updateDailyStreakOnQuickPlayComplete')+2500]
+_auth_block_start = _streak_auth_fn.find('if(!currentUser)')
+_auth_block = _streak_auth_fn[_auth_block_start:]
+# The auth block (after !currentUser guard returns) must not assign _dailyStreak before RPC
+# Use extended window (3500 chars) to cover the full auth path of updateDailyStreakOnQuickPlayComplete
+_streak_full_fn = _streak_js[_streak_js.find('async function updateDailyStreakOnQuickPlayComplete'):
+                              _streak_js.find('async function updateDailyStreakOnQuickPlayComplete')+3500]
+_after_guest_return = _streak_full_fn[_streak_full_fn.find("if(!currentUser)"):
+                                       _streak_full_fn.find("if(!currentUser)")+3500]
+check('DAILY91-17', '[STATIC TEST] auth path does not assign _dailyStreak before RPC returns',
+    'rpcData.streak' in _after_guest_return
+    and _after_guest_return.find('rpcData.streak') < _after_guest_return.rfind('_dailyStreak       =')
+      + 200
+)
+
+# DAILY91-18: RPC failure leaves auth streak state unchanged (no fallback assignment)
+check('DAILY91-18', '[STATIC TEST] RPC failure path does not mutate _dailyStreak',
+    "!rpcData?.ok" in _streak_full_fn or "!rpcData.ok" in _streak_full_fn or "rpcData?.ok" in _streak_full_fn
+)
+
+# DAILY91-19: localStorage uses server-returned values for auth
+check('DAILY91-19', '[STATIC TEST] localStorage.setItem for auth uses server streak/best/date values',
+    "streak: serverStreak" in _streak_full_fn
+    and "best:   serverBest" in _streak_full_fn
+)
+
+# DAILY91-20: celebration uses server streak value
+check('DAILY91-20', '[STATIC TEST] showStreakCelebration called with server-returned streak for auth users',
+    'showStreakCelebration(serverStreak' in _streak_full_fn
+)
+
+# DAILY91-21: M91 blocks direct authenticated writes to profiles.timezone
+check('DAILY91-21', '[STATIC TEST] M91 creates trigger to block direct timezone writes by authenticated',
+    'guard_profile_timezone' in _sql91
+    and "current_user = 'authenticated'" in _sql91
+    and 'trg_guard_profile_timezone' in _sql91
+)
+
+# DAILY91-22: M91 start_daily_bf_session has defensive tz fallback (invalid tz → UTC)
+_start_fn_91 = _sql91[_sql91.find('CREATE OR REPLACE FUNCTION public.start_daily_bf_session'):
+                       _sql91.find('REVOKE ALL ON FUNCTION public.start_daily_bf_session')]
+check('DAILY91-22', '[STATIC TEST] M91 start_daily_bf_session has defensive invalid-tz fallback to UTC',
+    'pg_timezone_names' in _start_fn_91
+    and "v_tz := 'UTC'" in _start_fn_91
+)
+
+# DAILY91-23: training.js passes session_id to updateDailyStreakOnQuickPlayComplete
+check('DAILY91-23', '[STATIC TEST] training.js passes _bfSessionId to updateDailyStreakOnQuickPlayComplete',
+    'updateDailyStreakOnQuickPlayComplete(_bfSessionId)' in _training_js2
+)
+
+# DAILY91-24: training.js sequences complete → streak (complete awaited before streak)
+# Anchor on the await call itself so we don't land mid-string
+_bf_await_start = _training_js2.find("await sb.rpc('complete_daily_bf_session'")
+_bf_block = _training_js2[_bf_await_start:_bf_await_start+600]
+check('DAILY91-24', '[STATIC TEST] complete_daily_bf_session is awaited before record_daily_activity is called',
+    'await sb.rpc' in _bf_block
+    and 'updateDailyStreakOnQuickPlayComplete' in _bf_block
+    and _bf_block.find('await sb.rpc') < _bf_block.find('updateDailyStreakOnQuickPlayComplete')
+)
+
+check_ne('DAILY91-DB-13', '[DB TEST] record_daily_activity(null) returns ok=false (no valid session)')
+check_ne('DAILY91-DB-14', '[DB TEST] record_daily_activity with unowned session_id returns ok=false')
+check_ne('DAILY91-DB-15', '[DB TEST] record_daily_activity with 9-question session returns ok=false')
+check_ne('DAILY91-DB-16', '[DB TEST] record_daily_activity streak_last_date = session.day_utc not clock')
+check_ne('DAILY91-DB-21', '[DB TEST] direct authenticated UPDATE profiles SET timezone = X leaves timezone unchanged')
+check_ne('DAILY91-DB-22', '[DB TEST] invalid stored timezone in profile does not crash start_daily_bf_session')
+check_ne('DAILY91-DB-24', '[DB TEST] midnight-spanning game: streak_last_date = Sep 15 when session started Sep 15, completed Sep 16')
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Results
 # ─────────────────────────────────────────────────────────────────────────────
 static_total = len(PASS) + len(FAIL)

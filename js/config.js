@@ -22,12 +22,11 @@ export const DAILY_GOAL_BONUS    = 50;
 export const STREAK_FREEZE_PRICE = 200;
 
 // ── Streak milestone bonuses (neurons only, NOT XP) ──────────────
+// Canonical values match award_currency() in sql/04_rpc_award_and_spend.sql
 export const STREAK_REWARDS = [
-  { days:  3, neurons:  20 },
-  { days:  7, neurons:  50 },
-  { days: 14, neurons:  75 },
-  { days: 30, neurons: 150 },
-  { days: 'every7after30', neurons: 50 },
+  { days:   7, neurons:  50 },
+  { days:  30, neurons: 200 },
+  { days: 100, neurons: 500 },
 ];
 
 // ── Premium plans ─────────────────────────────────────────────────
