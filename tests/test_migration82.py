@@ -526,9 +526,9 @@ check('D43', '[STATIC TEST] C5: finishOnboarding does NOT call awardNeurons',
 check('D44', '[STATIC TEST] C3: legacy.js next goal widget uses self-explanatory text',
     'До 100 нейронов: осталось' in legacy_js)
 
-# STATIC TEST: C7 — rank badge shows "Ранг:" prefix
-check('D45', "[STATIC TEST] C7: legacy.js profile rank badge includes 'Ранг:' prefix",
-    "'Ранг: ' + rank.icon" in legacy_js)
+# STATIC TEST: C7 — rank badge JS no longer writes "Ранг:" (removed in v1 UI cleanup)
+check('D45', "[STATIC TEST] C7: legacy.js profile rank badge no longer writes 'Ранг:' text",
+    "'Ранг: ' + rank.icon" not in legacy_js)
 
 # ── D46/D47: Migration safety guards ─────────────────────────────────────────
 
@@ -1619,6 +1619,33 @@ check('QP05', '[STATIC TEST] daily-limit training copy does not claim "10 бес
     and not bool(re.search(r'answered 10 free questions', dl_js))
     and bool(re.search(r'Бесплатная тренировка', dl_js))
 )
+
+# ── PROFILE-RANK: rank badge UI removal (v1 cleanup) ────────────────────────
+
+INDEX_HTML_PATH = pathlib.Path(__file__).parent.parent / 'index.html'
+index_html = INDEX_HTML_PATH.read_text(encoding='utf-8')
+
+# PROFILE-RANK-01: no visible "Новобранец" in profile HTML
+check('PROFILE-RANK-01', '[STATIC TEST] no visible "Новобранец" text in profile HTML',
+    'Новобранец' not in index_html)
+
+# PROFILE-RANK-02: no "Ранг:" badge in profile HTML
+check('PROFILE-RANK-02', '[STATIC TEST] no "Ранг:" badge text in profile HTML',
+    'Ранг:' not in index_html)
+
+# PROFILE-RANK-03: XP label is plain "XP" without rank name appended
+check('PROFILE-RANK-03', '[STATIC TEST] XP card label is plain "XP" (no rank name appended)',
+    '>XP<' in index_html and 'XP · Новобранец' not in index_html)
+
+# PROFILE-RANK-04: no DB schema changes (no DROP/ALTER TABLE on rank columns)
+check('PROFILE-RANK-04', '[STATIC TEST] no DB schema changes for rank cleanup',
+    not bool(re.search(r'(DROP|ALTER)\s+(TABLE|COLUMN).*rank', index_html, re.IGNORECASE))
+    and not bool(re.search(r'(DROP|ALTER)\s+(TABLE|COLUMN).*rank', legacy_js, re.IGNORECASE)))
+
+# PROFILE-RANK-05: profile header still contains name element and edit action
+check('PROFILE-RANK-05', '[STATIC TEST] profile header still has name + edit action',
+    'id="profile-name"' in index_html
+    and 'pp-btn-edit' in index_html)
 
 check_ne('ANS_DB01', '[DB TEST — NOT EXECUTED] football question: clicking index 0 (Премьер-лига in answers_json order) is graded correct after M87 applied')
 check_ne('ANS_DB02', '[DB TEST — NOT EXECUTED] bank-wide: after M87 applied, all 671 previously-mismatch questions grade correctly')

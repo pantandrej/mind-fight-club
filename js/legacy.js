@@ -1451,11 +1451,10 @@ function showProfile(){
       <div style="font-size:10px;color:var(--muted);margin-top:2px">${nextInfo}</div>
     </div>`;
 
-  // New profile design: update static rank badge element
+  // Rank badge removed from v1 profile UI — element no longer rendered.
   const rankBadgeEl = document.getElementById('profile-rank-badge');
   if (rankBadgeEl) {
-    const rank = getRank(xp);
-    rankBadgeEl.textContent = 'Ранг: ' + rank.icon + ' ' + rank.name;
+    // no-op: badge hidden at HTML level
   } else {
     // Fallback for old profile layout
     const afterEl = document.getElementById('profile-email');
@@ -1474,7 +1473,7 @@ function showProfile(){
   const ppXp = document.getElementById('pp-xp-val');
   if(ppXp) ppXp.textContent = (xp || 0).toLocaleString('ru');
   const ppRankTxt = document.getElementById('pp-rank-txt');
-  if(ppRankTxt){ const r=getRank(xp); ppRankTxt.textContent = 'XP · ' + r.name; }
+  if(ppRankTxt) ppRankTxt.textContent = 'XP'; // rank name removed from v1 XP label
   // Load stats from DB
   loadProfileStats();
   renderProfileCity();
