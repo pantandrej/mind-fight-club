@@ -5,11 +5,26 @@
 -- Total deterministic repairs: 704
 -- Unresolved rows (manual review needed): 196
 --
--- Root cause: admin_update_question / tester saveTesterEdit wrote
---   answers_json in a reordered form without remapping correct_index.
---   answers_ru preserved the original ordering from the export snapshot.
---   correct_index was set against the original (answers_ru) ordering
---   but answers_json was shuffled → mismatch.
+-- Root causes (multiple historical write paths):
+--
+-- PATH A — saveTesterEdit (pre-commit 11bdc42):
+--   Displayed answers_ru order. Admin could retype answer texts in different
+--   positions and click a new radio button → both answers_json order AND
+--   correct_index changed. answers_ru was NOT written (left at original order).
+--   Saved: answers_json: JSON.stringify(newAnswers), correct_index: <radio int>
+--   Did NOT save: answers_ru
+--   This explains why correct_index itself CHANGED (Titanic 3→1, Моне 1→3):
+--   admin saw answers_ru order, rearranged answer texts, clicked different radio.
+--
+-- PATH B — aqSaveEdit (historical, pre-11bdc42):
+--   Displayed answers_ru||answers_json order. Had a numeric <select> for ci.
+--   Wrote answers_json: JSON.stringify(newAnswers), answers_ru: newAnswers (same).
+--   Admin could independently set ci from the dropdown without matching answer text.
+--   Both arrays written identically but ci could be set to any integer value.
+--
+-- PATH C — admin_update_question RPC (sql/45_qmod_update.sql):
+--   Updates answers_json and correct_index only. Does NOT update answers_ru.
+--   Any save via this RPC diverged answers_json from answers_ru if arrays differed.
 --
 -- Pattern P3 (519 rows): answers_json reordered, answers_ru preserved, ci not remapped
 -- Pattern P4 ( 23 rows): both arrays reordered independently, ci not remapped
@@ -5156,6 +5171,45 @@ UPDATE questions
 -- Export ci=0, proposed=1, correct_text='Thriller — Michael Jackson'
 -- UPDATE questions SET correct_index = 1
 --   WHERE id = 'ff778969-feff-42c3-834e-f85817b381e8' AND correct_index = 0;
+
+-- ── TRANSACTION ASSERTION: verify key repairs landed before committing
+DO $$
+DECLARE
+  v_brazil  integer;
+  v_titanic integer;
+  v_mone    integer;
+  v_dushan  integer;
+BEGIN
+  -- Brazil (5135c0dd): correct answer '5', must be at index 0
+  SELECT correct_index INTO v_brazil
+    FROM questions WHERE id = '5135c0dd-e88d-4cf3-8c46-457d1a273540';
+  IF v_brazil IS DISTINCT FROM 0 THEN
+    RAISE EXCEPTION 'M88 ASSERTION FAILED: Brazil correct_index = %, expected 0', v_brazil;
+  END IF;
+
+  -- Titanic (bb8dc652): correct answer 'Титаник', must be at index 4
+  SELECT correct_index INTO v_titanic
+    FROM questions WHERE id = 'bb8dc652-1e42-47ff-a60c-6d5d03c61af9';
+  IF v_titanic IS DISTINCT FROM 4 THEN
+    RAISE EXCEPTION 'M88 ASSERTION FAILED: Titanic correct_index = %, expected 4', v_titanic;
+  END IF;
+
+  -- Моне (de2df98a): correct answer 'Импрессионизм', must be at index 0
+  SELECT correct_index INTO v_mone
+    FROM questions WHERE id = 'de2df98a-f8f3-44f3-94a5-cd243b9f5101';
+  IF v_mone IS DISTINCT FROM 0 THEN
+    RAISE EXCEPTION 'M88 ASSERTION FAILED: Mone correct_index = %, expected 0', v_mone;
+  END IF;
+
+  -- Дюшан (f8aefc3c): correct answer 'Французский дадаист', must be at index 1
+  SELECT correct_index INTO v_dushan
+    FROM questions WHERE id = 'f8aefc3c-8628-477e-844f-d6976e0629c2';
+  IF v_dushan IS DISTINCT FROM 1 THEN
+    RAISE EXCEPTION 'M88 ASSERTION FAILED: Dushan correct_index = %, expected 1', v_dushan;
+  END IF;
+
+  RAISE NOTICE 'M88 assertions passed: Brazil=0 Titanic=4 Mone=0 Dushan=1';
+END $$;
 
 COMMIT;
 

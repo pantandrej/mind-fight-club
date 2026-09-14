@@ -10996,8 +10996,8 @@ function saveTesterEdit(){
     const _savedAnswers = newAnswers.filter(Boolean);
     sb.from('questions').update({
       question_ru: newQ, question: newQ,
-      answers_json: JSON.stringify(_savedAnswers),
-      answers_ru: _savedAnswers,  // keep in sync; answers_json is canonical
+      answers_json: _savedAnswers,  // JSONB column: send JS array, never JSON.stringify
+      answers_ru: _savedAnswers,    // keep in sync; answers_json is canonical
       correct_index: newCorrect,
       category: newCat,
       difficulty: newDiff,
@@ -11988,8 +11988,8 @@ async function aqSaveEdit(qId, ansCount){
   const updatePayload = {
     question_ru: newQ,
     question_text: newQ,
-    answers_json: JSON.stringify(newAnswers),
-    answers_ru: newAnswers,
+    answers_json: newAnswers,  // JSONB column: send JS array, never JSON.stringify
+    answers_ru: newAnswers,    // keep in sync; answers_json is canonical
     correct_index: newCI,
     category: newCat||'GENERAL',
     explanation_ru: newExpl,

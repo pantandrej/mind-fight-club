@@ -1669,9 +1669,10 @@ check('BANK01', '[STATIC TEST] no shuffle of answer arrays in admin write paths'
 )
 
 # BANK02: answers_json + correct_index remain coupled — aqSaveEdit writes both
-check('BANK02', '[STATIC TEST] aqSaveEdit writes both answers_json and answers_ru identically',
-    'answers_json: JSON.stringify(newAnswers)' in legacy_js
+check('BANK02', '[STATIC TEST] aqSaveEdit writes both answers_json and answers_ru as raw JS array (no JSON.stringify)',
+    'answers_json: newAnswers' in legacy_js
     and 'answers_ru: newAnswers' in legacy_js
+    and 'answers_json: JSON.stringify(newAnswers)' not in legacy_js
 )
 
 # BANK03: answers_ru copy preserves ordering — saveTesterEdit now syncs both
@@ -1738,6 +1739,82 @@ check('BANK10', '[STATIC TEST] M88 does not mutate question text',
     and 'SET answers_json' not in _m88_sql
     and 'SET answers_ru' not in _m88_sql
 )
+# BANK11-20: M88 Safety Review — historical corruption paths + transaction assertions
+# ─────────────────────────────────────────────────────────────────────────────
+
+import subprocess as _subprocess
+_REPO_ROOT = pathlib.Path(__file__).parent.parent
+_hist_src_result = _subprocess.run(
+    ['git', 'show', '94ef524:js/legacy.js'],
+    capture_output=True, text=True, cwd=str(_REPO_ROOT)
+)
+_hist_src = _hist_src_result.stdout if _hist_src_result.returncode == 0 else ''
+
+_hist_bt_start = _hist_src.find('function buildTesterQuestions')
+_hist_buildTester = _hist_src[_hist_bt_start:_hist_bt_start + 600] if _hist_bt_start >= 0 else ''
+
+_hist_ste_start = _hist_src.find('function saveTesterEdit')
+_hist_saveTE = _hist_src[_hist_ste_start:_hist_ste_start + 2000] if _hist_ste_start >= 0 else ''
+
+# BANK11: Historical buildTesterQuestions displayed answers_ru||answers_json order
+check('BANK11', '[STATIC TEST] historical buildTesterQuestions (94ef524) displayed answers_ru||answers_json order',
+    'q.answers_ru||q.answers_json' in _hist_buildTester
+)
+
+# BANK12: Historical saveTesterEdit wrote answers_json only, NOT answers_ru
+check('BANK12', '[STATIC TEST] historical saveTesterEdit (94ef524) wrote answers_json but NOT answers_ru',
+    'answers_json' in _hist_saveTE
+    and 'answers_ru' not in _hist_saveTE
+)
+
+# BANK13: Historical saveTesterEdit set correct_index from radio button integer position
+check('BANK13', '[STATIC TEST] historical saveTesterEdit (94ef524) set correct_index from radio button integer (parseInt)',
+    'input[name="te-correct"]:checked' in _hist_src
+    and 'parseInt(correctEl.value)' in _hist_saveTE
+)
+
+# BANK14: Admin editor had no drag/reorder — only import drop zone has drag, not answer inputs
+check('BANK14', '[STATIC TEST] admin tester editor (94ef524) has no drag/sortable UI on answer inputs',
+    'ondragstart' not in _hist_src
+    and _hist_src.lower().count('sortable') == 0
+)
+
+# BANK15: M88 header documents PATH A (saveTesterEdit) as a corruption source
+check('BANK15', '[STATIC TEST] M88 header documents saveTesterEdit as historical corruption path (PATH A)',
+    'PATH A' in _m88_sql
+    and 'saveTesterEdit' in _m88_sql
+)
+
+# BANK16: M88 header documents PATH C (admin_update_question RPC) as a corruption source
+check('BANK16', '[STATIC TEST] M88 header documents admin_update_question RPC as historical corruption path (PATH C)',
+    'PATH C' in _m88_sql
+    and 'admin_update_question' in _m88_sql
+)
+
+# BANK17: M88 contains BEGIN/COMMIT transaction wrapper
+check('BANK17', '[STATIC TEST] M88 contains BEGIN/COMMIT transaction wrapper',
+    'BEGIN;' in _m88_sql and 'COMMIT;' in _m88_sql
+)
+
+# BANK18: M88 contains DO $$ assertion block checking key repairs (Brazil + Titanic at minimum)
+_do_block_start = _m88_sql.find('DO $$')
+check('BANK18', '[STATIC TEST] M88 contains DO $$ assertion block covering Brazil and Titanic',
+    _do_block_start >= 0
+    and 'M88 ASSERTION FAILED' in _m88_sql
+    and '5135c0dd' in _m88_sql[_do_block_start:]
+    and 'bb8dc652' in _m88_sql[_do_block_start:]
+)
+
+# BANK19: M88 Titanic (bb8dc652): SET correct_index = 4 WHERE correct_index = 1
+check('BANK19', '[STATIC TEST] M88 Titanic (bb8dc652) repair: SET correct_index = 4 WHERE correct_index = 1',
+    "SET correct_index = 4\n  WHERE id = 'bb8dc652-1e42-47ff-a60c-6d5d03c61af9'\n    AND correct_index = 1;" in _m88_sql
+)
+
+# BANK20: M88 Моне (de2df98a): SET correct_index = 0 WHERE correct_index = 1
+check('BANK20', '[STATIC TEST] M88 Mone (de2df98a) repair: SET correct_index = 0 WHERE correct_index = 1',
+    "SET correct_index = 0\n  WHERE id = 'de2df98a-f8f3-44f3-94a5-cd243b9f5101'\n    AND correct_index = 1;" in _m88_sql
+)
+
 check_ne('NAME_B01', '[BROWSER TEST — NOT EXECUTED] matchmaking screen shows profile display_name "Дружочек" not email prefix')
 check_ne('UX_B01',   '[BROWSER TEST — NOT EXECUTED] after 15s timeout, matchmaking shows 3 persona cards with light text and no "бот"')
 
