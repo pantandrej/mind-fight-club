@@ -2327,6 +2327,58 @@ check_ne('DAILY91-DB-22', '[DB TEST] invalid stored timezone in profile does not
 check_ne('DAILY91-DB-24', '[DB TEST] midnight-spanning game: streak_last_date = Sep 15 when session started Sep 15, completed Sep 16')
 
 # ─────────────────────────────────────────────────────────────────────────────
+# DAILY91-25..30 — M91 Final Two Fixes
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Reload M91 SQL (may have been updated)
+with open(_sql91_path) as _f91:
+    _sql91_v2 = _f91.read()
+
+# DAILY91-25: M91 record_daily_activity has stale-session (monotonic) guard
+_rda_v2 = _sql91_v2[_sql91_v2.find('CREATE OR REPLACE FUNCTION public.record_daily_activity'):
+                     _sql91_v2.find('REVOKE ALL ON FUNCTION public.record_daily_activity')]
+check('DAILY91-25', '[STATIC TEST] record_daily_activity has monotonic guard blocking v_today < streak_last_date',
+    'stale_session' in _rda_v2
+    and 'v_today < v_profile.streak_last_date' in _rda_v2
+)
+
+# DAILY91-26: guard returns ok=false (not ok=true) so client knows streak not awarded
+_stale_block = _rda_v2[_rda_v2.find('stale_session')-200:_rda_v2.find('stale_session')+200]
+check('DAILY91-26', '[STATIC TEST] stale-session guard returns ok=false',
+    "'ok'" in _stale_block and 'false' in _stale_block
+    and _stale_block.find("'ok'") < _stale_block.find('false')
+    and 'true' not in _stale_block[_stale_block.find("'ok'"):_stale_block.find("'ok'")+30]
+)
+
+# DAILY91-27: idempotent (v_today == streak_last_date) path is still present
+check('DAILY91-27', '[STATIC TEST] same-day session remains idempotent (already_recorded path present)',
+    'already_recorded' in _rda_v2
+)
+
+# DAILY91-28: only v_today > streak_last_date can mutate streak (gap > 0 paths)
+check('DAILY91-28', '[STATIC TEST] streak mutation only happens after monotonic guard passes',
+    # Guard block appears before UPDATE statements
+    _rda_v2.find('stale_session') < _rda_v2.find('UPDATE profiles')
+)
+
+# DAILY91-29: no duplicate STREAK_FREEZE_PRICE constant in streak.js
+_streak_js_v2 = open(_os.path.join(_os.path.dirname(__file__), '..', 'js', 'training', 'streak.js')).read()
+check('DAILY91-29', '[STATIC TEST] streak.js does not declare its own STREAK_FREEZE_PRICE constant',
+    'const STREAK_FREEZE_PRICE' not in _streak_js_v2
+    and 'STREAK_FREEZE_PRICE' in _streak_js_v2  # still uses it (imported)
+)
+
+# DAILY91-30: streak.js imports STREAK_FREEZE_PRICE from config.js
+check('DAILY91-30', '[STATIC TEST] streak.js imports STREAK_FREEZE_PRICE from config.js',
+    "import { STREAK_FREEZE_PRICE } from '../config.js'" in _streak_js_v2
+    or "STREAK_FREEZE_PRICE } from '../config.js'" in _streak_js_v2
+)
+
+check_ne('DAILY91-DB-25', '[DB TEST] record_daily_activity with session.day_utc < streak_last_date returns ok=false reason=stale_session')
+check_ne('DAILY91-DB-26', '[DB TEST] stale session call leaves streak_last_date unchanged (no backdate)')
+check_ne('DAILY91-DB-27', '[DB TEST] same-day second call returns already_recorded=true, streak unchanged')
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Results
 # ─────────────────────────────────────────────────────────────────────────────
 static_total = len(PASS) + len(FAIL)

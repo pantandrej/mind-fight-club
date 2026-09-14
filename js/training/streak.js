@@ -1,3 +1,5 @@
+import { STREAK_FREEZE_PRICE } from '../config.js';
+
 // ── Streak System ─────────────────────────────────────────────────
 // Streak is credited only after completing a full daily training session.
 // Milestones award neurons (NOT XP — XP reflects gameplay, not attendance).
@@ -38,8 +40,8 @@ function getYesterdayDateKey(){
 // Currently stored in localStorage only — can be tampered with by the user.
 // Safe for demo/testing but not for real economy before server-side check.
 // ═══════════════════════════════════════════
-const STREAK_FREEZE_KEY   = 'mfc_streak_freeze_v1';
-const STREAK_FREEZE_PRICE = 150;
+const STREAK_FREEZE_KEY = 'mfc_streak_freeze_v1';
+// STREAK_FREEZE_PRICE imported from config.js — canonical value matches buy_streak_freeze() server RPC
 
 function getStreakFreeze(){
   try{

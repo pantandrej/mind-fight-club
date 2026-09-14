@@ -426,6 +426,21 @@ BEGIN
 
   SELECT * INTO v_profile FROM profiles WHERE id = v_user_id FOR UPDATE;
 
+  -- Monotonic guard: v_today must not precede the current streak_last_date.
+  -- Prevents replay of old sessions (backdating) from resetting streak to 1
+  -- or clobbering a later streak_last_date with an earlier one.
+  IF v_profile.streak_last_date IS NOT NULL
+     AND v_today < v_profile.streak_last_date
+  THEN
+    RETURN jsonb_build_object(
+      'ok',               false,
+      'reason',           'stale_session',
+      'streak',           v_profile.daily_streak,
+      'best_streak',      COALESCE(v_profile.best_daily_streak, v_profile.daily_streak),
+      'streak_last_date', v_profile.streak_last_date
+    );
+  END IF;
+
   -- Idempotent: already recorded for this session's day
   IF v_profile.streak_last_date = v_today THEN
     RETURN jsonb_build_object(
