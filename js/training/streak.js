@@ -23,12 +23,14 @@ let _lastQuickPlayDate = null;
 let _streakPlayedToday = false;
 
 function getTodayDateKey(){
-  return new Date().toISOString().slice(0,10); // YYYY-MM-DD UTC
+  // Local calendar date — matches player's midnight boundary (not UTC)
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
 function getYesterdayDateKey(){
   const d = new Date();
-  d.setUTCDate(d.getUTCDate()-1);
-  return d.toISOString().slice(0,10);
+  d.setDate(d.getDate()-1);
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
 
 // ═══════════════════════════════════════════

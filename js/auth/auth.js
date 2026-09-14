@@ -319,6 +319,15 @@ function _redirectAfterAuth() {
 }
 
 // ── Called once per session after sign-in ─────────────────────────
+// Sync IANA timezone to profile so server can use player-local day boundary (M90)
+function _syncTimezoneToProfile(userId) {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (!tz || tz === 'UTC') return;
+    sb.from('profiles').update({ timezone: tz }).eq('id', userId).then(() => {}).catch(() => {});
+  } catch(e) {}
+}
+
 async function _onUserLoaded(user) {
   console.count('[auth] onUserLoaded');
   if (!user) return;
@@ -328,6 +337,7 @@ async function _onUserLoaded(user) {
   // 2. loadUserNeurons reads neurons/xp from the (now guaranteed) profile row.
   // 3. loadCurrentUserRole reads admin_users (independent of profile, but consistent).
   await ensureProfile();
+  _syncTimezoneToProfile(user.id); // fire-and-forget: keep server day boundary consistent
   await loadUserNeurons();
   if (typeof window.loadCurrentUserRole === 'function') await window.loadCurrentUserRole();
   if (typeof window.loadRefCode === 'function') await window.loadRefCode();

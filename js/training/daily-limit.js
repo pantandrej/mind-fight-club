@@ -93,7 +93,9 @@ function showDailyLimitScreen(type){
   const L = lang === 'ru';
   const now = new Date();
   const midnight = new Date(now); midnight.setHours(24,0,0,0);
-  const hoursLeft = Math.ceil((midnight - now) / 3600000);
+  const msLeft = midnight - now;
+  const hoursLeft = Math.ceil(msLeft / 3600000);
+  const minsLeft  = Math.ceil(msLeft / 60000);
 
   const isBattle = type === 'battle';
   const icon  = document.getElementById('dl-icon');
@@ -120,7 +122,9 @@ function showDailyLimitScreen(type){
     : (isBattle
         ? '10 battles/day, 50 training questions and early tournament access'
         : '50 questions/day, 10 battles/day and exclusive packs');
-  if(next) next.textContent = L ? `Сброс через ~${hoursLeft} ч` : `Resets in ~${hoursLeft}h`;
+  if(next) next.textContent = hoursLeft < 1
+    ? (L ? `Сброс через ~${minsLeft} мин` : `Resets in ~${minsLeft} min`)
+    : (L ? `Сброс через ~${hoursLeft} ч`  : `Resets in ~${hoursLeft} h`);
 
   const inviteBtn = document.getElementById('dl-invite-btn');
   if(inviteBtn) inviteBtn.textContent = L ? '🔗 Позвать друга играть' : '🔗 Invite a friend';

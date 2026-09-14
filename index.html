@@ -281,18 +281,18 @@
       </div>
       <div class="hdb-action-card" onclick="showScreen('duel')">
         <div class="hdb-action-icon">⚔️</div>
-        <div class="hdb-action-name">Дуэль</div>
-        <div class="hdb-action-desc">С другом по коду</div>
+        <div class="hdb-action-name" id="hdb-action-duel">Дуэль</div>
+        <div class="hdb-action-desc" id="hdb-action-duel-sub">С другом по коду</div>
       </div>
       <div class="hdb-action-card" onclick="showScreen('brain-fights-screen')">
         <div class="hdb-action-icon">🧠</div>
         <div class="hdb-action-name">Brain Fights</div>
-        <div class="hdb-action-desc">Командное соревнование</div>
+        <div class="hdb-action-desc" id="hdb-action-bf-sub">Командное соревнование</div>
       </div>
       <div class="hdb-action-card" onclick="showCupScreen()">
         <div class="hdb-action-icon">🏆</div>
-        <div class="hdb-action-name">События</div>
-        <div class="hdb-action-desc">Турниры и пак-игры</div>
+        <div class="hdb-action-name" id="hdb-action-events">События</div>
+        <div class="hdb-action-desc" id="hdb-action-events-sub">Турниры и пак-игры</div>
       </div>
     </div>
 
@@ -320,22 +320,16 @@
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px;margin-bottom:16px">
       <div onclick="showScreen('club-finder');window.loadClubFinder?.()" style="background:rgba(74,222,128,.06);border:0.5px solid rgba(74,222,128,.2);border-radius:14px;padding:12px 14px;cursor:pointer;display:flex;align-items:center;gap:10px">
         <div style="font-size:22px;flex-shrink:0">🔎</div>
-        <div><div style="font-size:13px;font-weight:800;margin-bottom:1px">Ищешь команду?</div><div style="font-size:11px;color:var(--muted)">Объявления →</div></div>
+        <div><div id="hdb-cta-team-title" style="font-size:13px;font-weight:800;margin-bottom:1px">Ищешь команду?</div><div id="hdb-cta-team-sub" style="font-size:11px;color:var(--muted)">Объявления →</div></div>
       </div>
       <div onclick="showScreen('organizer-apply')" style="background:rgba(0,237,181,.06);border:0.5px solid rgba(0,237,181,.2);border-radius:14px;padding:12px 14px;cursor:pointer;display:flex;align-items:center;gap:10px">
         <div style="font-size:22px;flex-shrink:0">🏟️</div>
-        <div><div style="font-size:13px;font-weight:800;margin-bottom:1px">Проводишь квизы?</div><div style="font-size:11px;color:var(--muted)">Организатор →</div></div>
+        <div><div id="hdb-cta-org-title" style="font-size:13px;font-weight:800;margin-bottom:1px">Проводишь квизы?</div><div id="hdb-cta-org-sub" style="font-size:11px;color:var(--muted)">Организатор →</div></div>
       </div>
     </div>
 
-    <!-- legacy next-goal widget -->
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-      <div class="hdb-section-label" style="margin-bottom:0">🏅 Следующая цель</div>
-      <button onclick="showScreen('profile')" style="background:none;border:none;font-size:11px;color:var(--muted);cursor:pointer;font-family:inherit;padding:0">Все →</button>
-    </div>
-    <div id="home-next-goal-widget" style="background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:24px">
-      <div style="font-size:13px;color:var(--muted)">Загрузка...</div>
-    </div>
+    <!-- next-goal widget removed for v1 (HOME-UX-01, HOME-UX-02) -->
+    <div id="home-next-goal-widget" style="display:none"></div>
 
     <!-- legacy IDs expected by other scripts -->
     <div id="home-player-count" style="display:none"><span id="home-player-count-val">0</span></div>

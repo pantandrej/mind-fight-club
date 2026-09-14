@@ -31,10 +31,16 @@ const HOME_STRINGS = {
   duel:         { ru: 'Дуэль',                 en: 'Duel' },
   duelSub:      { ru: 'С другом по коду',      en: 'With a friend by code' },
   brainFights:  { ru: 'Brain Fights',          en: 'Brain Fights' },
+  bfSub:        { ru: 'Командное соревнование', en: 'Team competition' },
   soon:         { ru: 'Скоро',                 en: 'Soon' },
   liveNow:      { ru: 'Идёт сейчас',           en: 'Live now' },
   events:       { ru: 'События',               en: 'Events' },
   eventsSub:    { ru: 'Турниры и пак-игры',    en: 'Tournaments & packs' },
+  ctaTeamTitle: { ru: 'Ищешь команду?',        en: 'Looking for a team?' },
+  ctaTeamSub:   { ru: 'Объявления →',          en: 'Listings →' },
+  ctaOrgTitle:  { ru: 'Проводишь квизы?',      en: 'Run quizzes?' },
+  ctaOrgSub:    { ru: 'Организатор →',         en: 'Organizer →' },
+  bfWeekPts:    { ru: 'очк. на этой неделе',   en: 'pts this week' },
 };
 
 function s(key) {
@@ -97,10 +103,19 @@ function _setGreeting(firstName) {
 
 function _renderTexts() {
   const map = {
-    'hdb-today-label':  s('todayLabel'),
-    'hdb-neurons-unit': s('neurons'),
-    'hdb-team-label':   s('teamLabel'),
-    'hdb-play-label':   s('playLabel'),
+    'hdb-today-label':    s('todayLabel'),
+    'hdb-neurons-unit':   s('neurons'),
+    'hdb-team-label':     s('teamLabel'),
+    'hdb-play-label':     s('playLabel'),
+    'hdb-action-duel':    s('duel'),
+    'hdb-action-duel-sub':s('duelSub'),
+    'hdb-action-bf-sub':  s('bfSub'),
+    'hdb-action-events':  s('events'),
+    'hdb-action-events-sub': s('eventsSub'),
+    'hdb-cta-team-title': s('ctaTeamTitle'),
+    'hdb-cta-team-sub':   s('ctaTeamSub'),
+    'hdb-cta-org-title':  s('ctaOrgTitle'),
+    'hdb-cta-org-sub':    s('ctaOrgSub'),
   };
   for (const [id, text] of Object.entries(map)) {
     const el = document.getElementById(id);
@@ -253,7 +268,7 @@ async function _loadTeamBF(_teamId) {
     const bfLine = document.getElementById('hdb-bf-line');
     if (bfLine) {
       bfLine.style.display = '';
-      bfLine.textContent = `🧠 Brain Fights: ${pts} очк. на этой неделе`;
+      bfLine.textContent = `🧠 Brain Fights: ${pts} ${s('bfWeekPts')}`;
     }
   } catch(e) { /* silently ignore */ }
 }

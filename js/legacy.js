@@ -7662,12 +7662,15 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
 
-  // HOOK showScore TO TRIGGER STREAK UPDATE
+  // HOOK showScore TO TRIGGER STREAK UPDATE (quick play only — DAILY-DAY-07)
   if (typeof window.showScore === 'function') {
     const _origShowScore_v68 = window.showScore;
     window.showScore = function(){
       _origShowScore_v68.apply(this, arguments);
-      setTimeout(()=> { if(typeof updateDailyStreakOnQuickPlayComplete==='function') updateDailyStreakOnQuickPlayComplete(); }, 800);
+      // Only credit streak for completed quick play, not duels/packs/tester
+      if(typeof currentGameType !== 'undefined' && currentGameType === 'quick'){
+        setTimeout(()=> { if(typeof updateDailyStreakOnQuickPlayComplete==='function') updateDailyStreakOnQuickPlayComplete(); }, 800);
+      }
     };
   }
 

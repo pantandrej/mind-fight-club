@@ -2003,6 +2003,118 @@ check_ne('NAME_B01', '[BROWSER TEST — NOT EXECUTED] matchmaking screen shows p
 check_ne('UX_B01',   '[BROWSER TEST — NOT EXECUTED] after 15s timeout, matchmaking shows 3 persona cards with light text and no "бот"')
 
 # ─────────────────────────────────────────────────────────────────────────────
+# HOME-UX: "Следующая цель" removal
+# ─────────────────────────────────────────────────────────────────────────────
+_index_html = open('index.html').read()
+
+check('HOME-UX-01', '[STATIC TEST] "Следующая цель" / "Next goal" absent from index.html',
+    'Следующая цель' not in _index_html
+    and 'Next goal' not in _index_html
+)
+
+check('HOME-UX-02', '[STATIC TEST] orphan goal row (Все →) absent; widget hidden',
+    'Все →' not in _index_html.split('home-next-goal-widget')[0]  # no "Все →" before the stub
+    and 'display:none' in _index_html[_index_html.find('home-next-goal-widget'):_index_html.find('home-next-goal-widget')+100]
+)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# HOME-I18N: localization correctness
+# ─────────────────────────────────────────────────────────────────────────────
+_hdb_js = open('js/home-dashboard.js').read()
+
+# Hardcoded RU system strings removed from index.html action cards
+check('HOME-I18N-01', '[STATIC TEST] action card labels have IDs for JS localization (not hardcoded RU)',
+    'id="hdb-action-duel"' in _index_html
+    and 'id="hdb-action-events"' in _index_html
+    and 'id="hdb-cta-team-title"' in _index_html
+    and 'id="hdb-cta-org-title"' in _index_html
+)
+
+check('HOME-I18N-02', '[STATIC TEST] home-dashboard.js has EN translations for duel/events/CTA labels',
+    "en: 'Duel'" in _hdb_js
+    and "en: 'Events'" in _hdb_js
+    and "en: 'Looking for a team?'" in _hdb_js
+    and "en: 'Run quizzes?'" in _hdb_js
+    and "en: 'Organizer →'" in _hdb_js
+)
+
+check('HOME-I18N-03', '[STATIC TEST] BF points line uses s() helper not hardcoded Russian',
+    "s('bfWeekPts')" in _hdb_js
+    and 'очк. на этой неделе`' not in _hdb_js
+)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DAILY-DAY: Day boundary and streak invariants
+# ─────────────────────────────────────────────────────────────────────────────
+_daily_limit_js = open('js/training/daily-limit.js').read()
+_streak_js      = open('js/training/streak.js').read()
+_legacy_js      = open('js/legacy.js').read()
+_auth_js        = open('js/auth/auth.js').read()
+_m90_sql        = open('sql/90_player_timezone_daily_boundary.sql').read()
+
+# DAILY-DAY-01: authenticated quota source is server RPC, not only localStorage
+check('DAILY-DAY-01', '[STATIC TEST] blockQuickPlayIfLocked allows authenticated users past local lock (server is authoritative)',
+    'For authenticated users, the RPC call below is authoritative' in _training_js
+    or 'server RPC (start_game_session) is the authoritative limit check' in _training_js
+)
+
+# DAILY-DAY-02: M90 SQL adds timezone column to profiles
+check('DAILY-DAY-02', '[STATIC TEST] M90 adds timezone column to profiles',
+    'ADD COLUMN IF NOT EXISTS timezone text' in _m90_sql
+)
+
+# DAILY-DAY-03: start_daily_bf_session in M90 uses player timezone (not hardcoded UTC)
+_sdb_fn = _m90_sql[_m90_sql.find('start_daily_bf_session'):]
+check('DAILY-DAY-03', '[STATIC TEST] M90 start_daily_bf_session uses player timezone not hardcoded UTC',
+    "AT TIME ZONE v_tz" in _sdb_fn
+    and "'UTC')::date;" not in _sdb_fn[:_sdb_fn.find('END;')]
+)
+
+# DAILY-DAY-04: countdown uses local midnight boundary (setHours(24,0,0,0))
+check('DAILY-DAY-04', '[STATIC TEST] countdown uses local midnight (setHours(24,0,0,0)) not UTC',
+    'setHours(24,0,0,0)' in _daily_limit_js
+    and ('мин' in _daily_limit_js or 'min' in _daily_limit_js)  # sub-hour minute precision
+)
+
+# DAILY-DAY-05: training_limit_reached does NOT call updateDailyStreak
+_limit_reached_ctx = _training_js[_training_js.find("training_limit_reached"):_training_js.find("training_limit_reached")+400]
+check('DAILY-DAY-05', '[STATIC TEST] training_limit_reached path does not call updateDailyStreak',
+    'updateDailyStreakOnQuickPlayComplete' not in _limit_reached_ctx
+)
+
+# DAILY-DAY-06: home screen render (showScreen home hook) does NOT call updateDailyStreak
+_home_hook = _legacy_js[_legacy_js.find("Hook showScreen home"):_legacy_js.find("Hook showScreen home")+300]
+check('DAILY-DAY-06', '[STATIC TEST] showScreen home hook does not call updateDailyStreak',
+    'updateDailyStreakOnQuickPlayComplete' not in _home_hook
+)
+
+# DAILY-DAY-07: showScore legacy hook is guarded — only fires for quick play
+_score_hook = _legacy_js[_legacy_js.find("HOOK showScore TO TRIGGER STREAK UPDATE"):_legacy_js.find("HOOK showScore TO TRIGGER STREAK UPDATE")+600]
+check('DAILY-DAY-07', '[STATIC TEST] showScore streak hook is guarded for quick play only',
+    "currentGameType === 'quick'" in _score_hook
+)
+
+# DAILY-DAY-08: stale local lock cannot block authenticated session (blockQuickPlayIfLocked returns false for auth users)
+_block_fn = _training_js[_training_js.find('function blockQuickPlayIfLocked'):_training_js.find('function blockQuickPlayIfLocked')+800]
+check('DAILY-DAY-08', '[STATIC TEST] blockQuickPlayIfLocked does not early-return for authenticated users with local lock',
+    'authoritative' in _block_fn
+    and 'return true' not in _block_fn  # never hard-blocks authenticated path
+)
+
+# streak.js uses local date (not UTC ISO) for getTodayDateKey
+_today_fn = _streak_js[_streak_js.find('function getTodayDateKey'):_streak_js.find('function getTodayDateKey')+250]
+check('DAILY-STREAK-LOCAL', '[STATIC TEST] getTodayDateKey uses local date not UTC toISOString',
+    'toISOString' not in _today_fn
+    and '.getDate()' in _today_fn
+)
+
+# timezone sync added to auth on login
+check('DAILY-TZ-SYNC', '[STATIC TEST] auth.js syncs IANA timezone to profile on login',
+    '_syncTimezoneToProfile' in _auth_js
+    and 'resolvedOptions().timeZone' in _auth_js
+)
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Results
 # ─────────────────────────────────────────────────────────────────────────────
 static_total = len(PASS) + len(FAIL)
