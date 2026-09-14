@@ -1285,6 +1285,9 @@ function pick(i){
 
   // BF session: submit to server first; derive correctness from authoritative response (A1)
   if(_bfSession?.session_id && q.sq_id){
+    // Neutral pending state — never green before server confirms
+    const _pendingBtn = document.querySelectorAll('#answers .ans')[i];
+    if(_pendingBtn) _pendingBtn.className = 'ans selected';
     const _submitPick = () => sb.rpc('submit_daily_bf_answer', {
       p_session_id:  _bfSession.session_id,
       p_sq_id:       q.sq_id,

@@ -1965,6 +1965,40 @@ check('BANK36', '[STATIC TEST] M89 does not define or alter any gameplay functio
     and 'start_duel' not in _m89_sql
 )
 
+# ─────────────────────────────────────────────────────────────────────────────
+# QUICK-ANSWER-UX: Answer feedback pending state (training.js)
+# ─────────────────────────────────────────────────────────────────────────────
+_training_js = open('js/training/training.js').read()
+
+# QUICK-ANSWER-UX-01: BF session path sets 'ans selected' (neutral) on click before server responds
+check('QUICK-ANSWER-UX-01', '[STATIC TEST] BF session path sets neutral pending state before _submitPick',
+    "'ans selected'" in _training_js
+    and '_pendingBtn' in _training_js
+    and '_pendingBtn.className = \'ans selected\'' in _training_js
+)
+
+# QUICK-ANSWER-UX-02: Neutral state is applied BEFORE _submitPick() is called (order check)
+_bf_block_start = _training_js.find("if(_bfSession?.session_id && q.sq_id){")
+_pending_pos = _training_js.find("_pendingBtn.className = 'ans selected'", _bf_block_start)
+_submit_pos  = _training_js.find("_submitPick();", _bf_block_start)
+check('QUICK-ANSWER-UX-02', '[STATIC TEST] pending state is set before _submitPick() fires',
+    _bf_block_start > 0
+    and 0 < _pending_pos < _submit_pos
+)
+
+# QUICK-ANSWER-UX-03: _applyPickFeedback overwrites with 'ans correct' and 'ans wrong' (no pending leaks)
+check('QUICK-ANSWER-UX-03', '[STATIC TEST] _applyPickFeedback sets ans correct and ans wrong (never ans selected)',
+    "className='ans correct'" in _training_js
+    and "className='ans wrong'" in _training_js
+    and "className='ans selected'" not in _training_js.split('_applyPickFeedback')[1]
+)
+
+# QUICK-ANSWER-UX-04: no green applied directly inside pick() before server response in BF path
+_pick_fn = _training_js[_training_js.find('function pick(i){'):_training_js.find('\nfunction _applyPickFeedback')]
+check('QUICK-ANSWER-UX-04', '[STATIC TEST] pick() does not set ans correct before server responds',
+    "'ans correct'" not in _pick_fn
+)
+
 check_ne('NAME_B01', '[BROWSER TEST — NOT EXECUTED] matchmaking screen shows profile display_name "Дружочек" not email prefix')
 check_ne('UX_B01',   '[BROWSER TEST — NOT EXECUTED] after 15s timeout, matchmaking shows 3 persona cards with light text and no "бот"')
 
