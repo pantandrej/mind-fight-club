@@ -190,20 +190,17 @@ async function updateDailyStreakOnQuickPlayComplete(){
   _lastQuickPlayDate = today;
   _streakPlayedToday = true;
 
-  // Save to DB — always write the locally-calculated value first (direct update),
-  // then call RPC for milestone bonuses and freeze handling.
-  // We don't trust RPC streak value because DB may have stale/null starting state.
+  // For authenticated users the server is authoritative for streak/best_streak.
+  // record_daily_activity() calculates and persists the canonical streak values;
+  // we update local state from its response (no direct profiles.update for auth users).
   if(currentUser){
     try{
-      // Direct update: always authoritative based on local state
-      await sb.from('profiles').update({
-        daily_streak: newStreak,
-        best_daily_streak: newBest,
-        streak_last_date: today
-      }).eq('id', currentUser.id);
-
-      // Call RPC for milestones + freeze side-effects only (ignore its streak value)
       const { data: rpcData } = await sb.rpc('record_daily_activity');
+      if(rpcData?.ok){
+        // Use server's canonical values (M91: best_streak included in response)
+        _dailyStreak     = rpcData.streak     ?? newStreak;
+        _bestDailyStreak = rpcData.best_streak ?? newBest;
+      }
       if(rpcData?.freeze_used){
         toast(lang==='ru'?'❄️ Заморозка сработала — серия сохранена!':'❄️ Freeze used — streak saved!', 3000);
       }

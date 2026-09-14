@@ -319,12 +319,13 @@ function _redirectAfterAuth() {
 }
 
 // ── Called once per session after sign-in ─────────────────────────
-// Sync IANA timezone to profile so server can use player-local day boundary (M90)
-function _syncTimezoneToProfile(userId) {
+// Sync IANA timezone to profile so server can use player-local day boundary (M91)
+async function _syncTimezoneToProfile() {
   try {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    if (!tz || tz === 'UTC') return;
-    sb.from('profiles').update({ timezone: tz }).eq('id', userId).then(() => {}).catch(() => {});
+    if (!tz) return;
+    // Use validated RPC (set_my_timezone checks pg_timezone_names; skips write if unchanged)
+    await sb.rpc('set_my_timezone', { p_timezone: tz });
   } catch(e) {}
 }
 
@@ -337,7 +338,7 @@ async function _onUserLoaded(user) {
   // 2. loadUserNeurons reads neurons/xp from the (now guaranteed) profile row.
   // 3. loadCurrentUserRole reads admin_users (independent of profile, but consistent).
   await ensureProfile();
-  _syncTimezoneToProfile(user.id); // fire-and-forget: keep server day boundary consistent
+  await _syncTimezoneToProfile(); // awaited: server needs correct tz before start_daily_bf_session
   await loadUserNeurons();
   if (typeof window.loadCurrentUserRole === 'function') await window.loadCurrentUserRole();
   if (typeof window.loadRefCode === 'function') await window.loadRefCode();

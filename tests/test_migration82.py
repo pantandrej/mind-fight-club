@@ -2115,6 +2115,114 @@ check('DAILY-TZ-SYNC', '[STATIC TEST] auth.js syncs IANA timezone to profile on 
 )
 
 # ─────────────────────────────────────────────────────────────────────────────
+# M91 tests — DAILY91-01 through DAILY91-12
+# ─────────────────────────────────────────────────────────────────────────────
+import os as _os
+_sql91_path = _os.path.join(_os.path.dirname(__file__), '..', 'sql', '91_fix_daily_local_day_consistency.sql')
+with open(_sql91_path) as _f:
+    _sql91 = _f.read()
+
+# DAILY91-01: M91 file exists and has expected header
+check('DAILY91-01', '[STATIC TEST] sql/91_fix_daily_local_day_consistency.sql exists',
+    'BEGIN;' in _sql91 and 'COMMIT;' in _sql91
+)
+
+# DAILY91-02: set_my_timezone RPC is defined
+check('DAILY91-02', '[STATIC TEST] M91 defines set_my_timezone(p_timezone text)',
+    'set_my_timezone' in _sql91 and 'p_timezone text' in _sql91
+)
+
+# DAILY91-03: set_my_timezone validates against pg_timezone_names
+check('DAILY91-03', '[STATIC TEST] set_my_timezone validates against pg_timezone_names',
+    'pg_timezone_names' in _sql91
+)
+
+# DAILY91-04: set_my_timezone is SECURITY DEFINER and granted to authenticated only
+check('DAILY91-04', '[STATIC TEST] set_my_timezone is SECURITY DEFINER with correct GRANTs',
+    'SECURITY DEFINER' in _sql91
+    and "GRANT  EXECUTE ON FUNCTION public.set_my_timezone(text) TO authenticated" in _sql91
+    and "REVOKE ALL ON FUNCTION public.set_my_timezone(text) FROM PUBLIC, anon" in _sql91
+)
+
+# DAILY91-05: complete_daily_bf_session function body does not compute today from UTC clock
+_complete_start_91 = _sql91.find('CREATE OR REPLACE FUNCTION public.complete_daily_bf_session')
+_complete_end_91   = _sql91.find('REVOKE ALL ON FUNCTION public.complete_daily_bf_session', _complete_start_91)
+_complete_fn_91    = _sql91[_complete_start_91:_complete_end_91]
+check('DAILY91-05', '[STATIC TEST] M91 complete_daily_bf_session does not use UTC clock for v_today',
+    "now() AT TIME ZONE 'UTC'" not in _complete_fn_91
+)
+
+# DAILY91-06: complete_daily_bf_session uses session.day_utc for v_today
+check('DAILY91-06', '[STATIC TEST] M91 complete_daily_bf_session derives v_today from v_session.day_utc',
+    'v_today      := v_session.day_utc' in _complete_fn_91
+)
+
+# DAILY91-07: complete_daily_bf_session derives week_start from v_today (session day)
+check('DAILY91-07', '[STATIC TEST] M91 complete_daily_bf_session derives v_week_start from corrected v_today',
+    'v_week_start := v_today' in _complete_fn_91
+)
+
+# DAILY91-08: record_daily_activity in M91 maintains best_daily_streak
+_rda_fn_91 = _sql91[_sql91.find('record_daily_activity'):_sql91.find('REVOKE ALL ON FUNCTION record_daily_activity')]
+check('DAILY91-08', '[STATIC TEST] M91 record_daily_activity maintains best_daily_streak',
+    'best_daily_streak' in _rda_fn_91
+    and 'GREATEST' in _rda_fn_91
+)
+
+# DAILY91-09: record_daily_activity in M91 returns best_streak in response
+check('DAILY91-09', '[STATIC TEST] M91 record_daily_activity returns best_streak in JSON response',
+    "'best_streak'" in _rda_fn_91
+)
+
+# DAILY91-10: streak.js no longer does direct profiles.update for auth users
+_streak_update_fn = _streak_js[_streak_js.find('async function updateDailyStreakOnQuickPlayComplete'):
+                                _streak_js.find('async function updateDailyStreakOnQuickPlayComplete')+1600]
+check('DAILY91-10', '[STATIC TEST] streak.js updateDailyStreakOnQuickPlayComplete does not direct-write profiles for auth users',
+    # actual write call has .eq( chained; a comment mentioning profiles.update is ok
+    "profiles').update({" not in _streak_update_fn
+    and "record_daily_activity" in _streak_update_fn
+)
+
+# DAILY91-11: auth.js uses set_my_timezone RPC (not direct profiles.update for timezone)
+_tz_fn = _auth_js[_auth_js.find('_syncTimezoneToProfile'):_auth_js.find('_syncTimezoneToProfile')+400]
+check('DAILY91-11', '[STATIC TEST] auth.js _syncTimezoneToProfile uses set_my_timezone RPC',
+    'set_my_timezone' in _tz_fn
+    and "profiles').update" not in _tz_fn
+)
+
+# DAILY91-12: auth.js awaits _syncTimezoneToProfile (not fire-and-forget)
+check('DAILY91-12', '[STATIC TEST] auth.js awaits _syncTimezoneToProfile in _onUserLoaded',
+    'await _syncTimezoneToProfile()' in _auth_js
+)
+
+# Referral card i18n tests
+# DAILY91-REF-01: referral card title is localized
+_ref_mini_fn = open(_os.path.join(_os.path.dirname(__file__), '..', 'js', 'training', 'daily-limit.js')).read()
+check('DAILY91-REF-01', '[STATIC TEST] daily-limit.js referral card title is localized',
+    'YOUR REFERRAL LINK' in _ref_mini_fn
+    and 'ТВОЯ РЕФЕРАЛЬНАЯ ССЫЛКА' in _ref_mini_fn
+)
+
+# DAILY91-REF-02: loading stats text is localized
+check('DAILY91-REF-02', '[STATIC TEST] daily-limit.js referral loading text is localized',
+    'Loading stats...' in _ref_mini_fn
+    and 'Загружаем статистику...' in _ref_mini_fn
+)
+
+# DAILY91-REF-03: stats row is localized
+check('DAILY91-REF-03', '[STATIC TEST] daily-limit.js referral stats row is localized',
+    'Invited:' in _ref_mini_fn
+    and 'Active:' in _ref_mini_fn
+    and 'Earned:' in _ref_mini_fn
+)
+
+check_ne('DAILY91-DB-01', '[DB TEST] set_my_timezone rejects unknown timezone → {ok:false, reason:invalid_timezone}')
+check_ne('DAILY91-DB-02', '[DB TEST] set_my_timezone accepts UTC → {ok:true}')
+check_ne('DAILY91-DB-03', '[DB TEST] set_my_timezone skips write when timezone already matches')
+check_ne('DAILY91-DB-04', '[DB TEST] complete_daily_bf_session uses session.day_utc not clock when crossing midnight')
+check_ne('DAILY91-DB-05', '[DB TEST] record_daily_activity returns best_streak >= streak in all code paths')
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Results
 # ─────────────────────────────────────────────────────────────────────────────
 static_total = len(PASS) + len(FAIL)

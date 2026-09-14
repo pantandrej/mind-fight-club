@@ -160,7 +160,7 @@ async function _showReferralInviteCard(code, link){
   mini.id = 'dl-ref-mini';
   mini.style.cssText = 'width:100%;background:rgba(0,237,181,.12);border:1px solid rgba(0,237,181,.3);border-radius:14px;padding:14px 16px;margin:6px 0;text-align:left';
   mini.innerHTML = `
-    <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:1px;margin-bottom:8px">🔗 ТВОЯ РЕФЕРАЛЬНАЯ ССЫЛКА</div>
+    <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:1px;margin-bottom:8px">🔗 ${lang==='ru'?'ТВОЯ РЕФЕРАЛЬНАЯ ССЫЛКА':'YOUR REFERRAL LINK'}</div>
     <div style="font-size:12px;color:var(--accent2);word-break:break-all;margin-bottom:10px;line-height:1.4">${link}</div>
     <div style="font-size:12px;color:var(--muted);margin-bottom:10px">${lang==='ru'?'Друг регистрируется → оба получают <b style="color:var(--gold)">+50 ⚡</b>':'Friend signs up → both get <b style="color:var(--gold)">+50 ⚡</b>'}</div>
     <div style="display:flex;gap:8px">
@@ -173,7 +173,7 @@ async function _showReferralInviteCard(code, link){
         ✈️ Telegram
       </button>
     </div>
-    <div id="dl-ref-stats" style="margin-top:10px;font-size:12px;color:var(--muted)">Загружаем статистику...</div>
+    <div id="dl-ref-stats" style="margin-top:10px;font-size:12px;color:var(--muted)">${lang==='ru'?'Загружаем статистику...':'Loading stats...'}</div>
   `;
   container.prepend(mini);
 
@@ -188,7 +188,9 @@ async function _showReferralInviteCard(code, link){
       const earned   = (data||[]).filter(r=>r.status==='rewarded').reduce((s,r)=>s+(r.reward_referrer||50),0);
       const statsEl = document.getElementById('dl-ref-stats');
       if(statsEl) statsEl.innerHTML = total
-        ? `📊 Приглашено: <b style="color:var(--text)">${total}</b> &nbsp;·&nbsp; Активных: <b style="color:var(--green)">${rewarded}</b> &nbsp;·&nbsp; Заработано: <b style="color:var(--gold)">${earned} ⚡</b>`
+        ? (lang==='ru'
+          ? `📊 Приглашено: <b style="color:var(--text)">${total}</b> &nbsp;·&nbsp; Активных: <b style="color:var(--green)">${rewarded}</b> &nbsp;·&nbsp; Заработано: <b style="color:var(--gold)">${earned} ⚡</b>`
+          : `📊 Invited: <b style="color:var(--text)">${total}</b> &nbsp;·&nbsp; Active: <b style="color:var(--green)">${rewarded}</b> &nbsp;·&nbsp; Earned: <b style="color:var(--gold)">${earned} ⚡</b>`)
         : `📊 ${lang==='ru'?'Ты первый среди знакомых! Пригласи друга.':'Be the first! Invite a friend.'}`;
     }catch(e){ /* silent */ }
   }
