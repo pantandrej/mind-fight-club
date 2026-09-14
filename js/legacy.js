@@ -10992,7 +10992,8 @@ function saveTesterEdit(){
   };
 
   // If it has a real Supabase id, try to update
-  if(q._id && !String(q._id).startsWith('q_')){
+  const _dbId = q._dbId || null;
+  if(_dbId){
     const _savedAnswers = newAnswers.filter(Boolean);
     sb.from('questions').update({
       question_ru: newQ, question: newQ,
@@ -11003,7 +11004,7 @@ function saveTesterEdit(){
       difficulty: newDiff,
       explanation_ru: newExpl,
       media_type: newMType, media_url: newMUrl,
-    }).eq('id', q._id).then(({error})=>{
+    }).eq('id', _dbId).then(({error})=>{
       if(error) toast('⚠️ Supabase: '+error.message.slice(0,50));
       else toast('✅ Сохранено в Supabase');
     });

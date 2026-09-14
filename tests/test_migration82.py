@@ -1680,11 +1680,9 @@ check('BANK03', '[STATIC TEST] saveTesterEdit writes answers_ru alongside answer
     'answers_ru: _savedAnswers' in legacy_js
 )
 
-# BANK04: Brazil regression — M88 fixes ci 2→0 for current answers_json=['5','6','4']
-check('BANK04', '[STATIC TEST] M88 draft repairs Brazil (5135c0dd) ci 2→0 targeting json["5"] at index 0',
-    "id = '5135c0dd-e88d-4cf3-8c46-457d1a273540'" in _m88_sql
-    and "SET correct_index = 0" in _m88_sql
-    and "AND correct_index = 2" in _m88_sql
+# BANK04: Brazil regression — M88 maps Brazil (5135c0dd) old_ci=2, new_ci=0
+check('BANK04', '[STATIC TEST] M88 repair map contains Brazil (5135c0dd) with old_ci=2 new_ci=0',
+    "'5135c0dd-e88d-4cf3-8c46-457d1a273540'::uuid, 2, 0" in _m88_sql
 )
 
 # BANK05: Islam regression — Islam (e9e00742) is in unresolved list (not_in_export), NOT in M88
@@ -1695,31 +1693,30 @@ check('BANK05', '[STATIC TEST] Islam (e9e00742) is in unresolved list, NOT auto-
             for r in _json.loads(_UNRESOLVED_PATH.read_text()))
 )
 
-# BANK06: Titanic regression — M88 fixes ci 1→4 for current answers_json order
-check('BANK06', '[STATIC TEST] M88 draft repairs Titanic (bb8dc652) ci 1→4 (Титаник at json[4])',
-    "id = 'bb8dc652-1e42-47ff-a60c-6d5d03c61af9'" in _m88_sql
-    and "SET correct_index = 4" in _m88_sql
+# BANK06: Titanic regression — M88 maps Titanic (bb8dc652) old_ci=1, new_ci=4
+check('BANK06', '[STATIC TEST] M88 repair map contains Titanic (bb8dc652) with old_ci=1 new_ci=4',
+    "'bb8dc652-1e42-47ff-a60c-6d5d03c61af9'::uuid, 1, 4" in _m88_sql
 )
 
-# BANK07: M88 only targets exact UUIDs with old-value predicates
-check('BANK07', '[STATIC TEST] M88 draft uses AND correct_index = <old_value> safety predicate on every UPDATE',
-    _m88_sql.count('AND correct_index =') >= 542  # P3+P4 = 519+23 = 542 live UPDATEs
-    and 'WHERE id =' in _m88_sql
+# BANK07: M88 uses VALUES map with old-value predicate retained (AND q.correct_index = r.old_ci)
+check('BANK07', '[STATIC TEST] M88 uses VALUES repair map with old-value predicate in WHERE clause',
+    'WITH repairs(id, old_ci, new_ci) AS (VALUES' in _m88_sql
+    and 'AND q.correct_index = r.old_ci' in _m88_sql
 )
 
-# BANK08: Unresolved rows are NOT included as live UPDATEs in M88
-# (P5 rows are commented out with --)
+# BANK08: Unresolved rows are NOT in the executable VALUES map in M88
 _unresolved_ids_in_m88 = []
 if _UNRESOLVED_PATH.exists():
     _unresolved = _json.loads(_UNRESOLVED_PATH.read_text())
+    # Find the VALUES block (between WITH repairs ... AS (VALUES and the closing ))
+    _values_block_start = _m88_sql.find('WITH repairs(id, old_ci, new_ci) AS (VALUES')
+    _values_block_end   = _m88_sql.find('  UPDATE questions q', _values_block_start) if _values_block_start >= 0 else -1
+    _values_block = _m88_sql[_values_block_start:_values_block_end] if _values_block_start >= 0 and _values_block_end >= 0 else ''
     for _row in _unresolved:
         _uid = _row.get('id', '')
-        # Check if that UUID appears as an active (non-commented) UPDATE line
-        _active_update = re.search(r"^UPDATE questions\s*$.*?WHERE id = '" + re.escape(_uid) + "'",
-                                   _m88_sql, re.MULTILINE | re.DOTALL)
-        if _active_update:
+        if _uid and _uid in _values_block:
             _unresolved_ids_in_m88.append(_uid)
-check('BANK08', '[STATIC TEST] unresolved rows not included as live UPDATEs in M88',
+check('BANK08', '[STATIC TEST] unresolved rows not included in M88 executable VALUES map',
     len(_unresolved_ids_in_m88) == 0
 )
 
@@ -1796,23 +1793,83 @@ check('BANK17', '[STATIC TEST] M88 contains BEGIN/COMMIT transaction wrapper',
     'BEGIN;' in _m88_sql and 'COMMIT;' in _m88_sql
 )
 
-# BANK18: M88 contains DO $$ assertion block checking key repairs (Brazil + Titanic at minimum)
-_do_block_start = _m88_sql.find('DO $$')
-check('BANK18', '[STATIC TEST] M88 contains DO $$ assertion block covering Brazil and Titanic',
-    _do_block_start >= 0
+# BANK18: M88 DO block asserts GET DIAGNOSTICS row count + zero unmatched rows
+check('BANK18', '[STATIC TEST] M88 DO block asserts GET DIAGNOSTICS count and zero unmatched rows',
+    'DO $$' in _m88_sql
+    and 'GET DIAGNOSTICS v_affected = ROW_COUNT' in _m88_sql
+    and 'v_unmatched <> 0' in _m88_sql
     and 'M88 ASSERTION FAILED' in _m88_sql
-    and '5135c0dd' in _m88_sql[_do_block_start:]
-    and 'bb8dc652' in _m88_sql[_do_block_start:]
 )
 
-# BANK19: M88 Titanic (bb8dc652): SET correct_index = 4 WHERE correct_index = 1
-check('BANK19', '[STATIC TEST] M88 Titanic (bb8dc652) repair: SET correct_index = 4 WHERE correct_index = 1',
-    "SET correct_index = 4\n  WHERE id = 'bb8dc652-1e42-47ff-a60c-6d5d03c61af9'\n    AND correct_index = 1;" in _m88_sql
+# BANK19: M88 Titanic (bb8dc652) in VALUES map with old_ci=1 new_ci=4
+check('BANK19', '[STATIC TEST] M88 VALUES map: Titanic (bb8dc652) old_ci=1 new_ci=4',
+    "'bb8dc652-1e42-47ff-a60c-6d5d03c61af9'::uuid, 1, 4" in _m88_sql
 )
 
-# BANK20: M88 Моне (de2df98a): SET correct_index = 0 WHERE correct_index = 1
-check('BANK20', '[STATIC TEST] M88 Mone (de2df98a) repair: SET correct_index = 0 WHERE correct_index = 1',
-    "SET correct_index = 0\n  WHERE id = 'de2df98a-f8f3-44f3-94a5-cd243b9f5101'\n    AND correct_index = 1;" in _m88_sql
+# BANK20: M88 Моне (de2df98a) in VALUES map with old_ci=1 new_ci=0
+check('BANK20', '[STATIC TEST] M88 VALUES map: Mone (de2df98a) old_ci=1 new_ci=0',
+    "'de2df98a-f8f3-44f3-94a5-cd243b9f5101'::uuid, 1, 0" in _m88_sql
+)
+
+# BANK21-27: Final blockers — tester ID fix + M88 VALUES-map assertions
+# ─────────────────────────────────────────────────────────────────────────────
+
+# BANK21: buildTesterQuestions uses _dbId (not _id) as the canonical DB identity field
+_bt_start = legacy_js.find('function buildTesterQuestions')
+_bt_block  = legacy_js[_bt_start:_bt_start+800] if _bt_start >= 0 else ''
+check('BANK21', '[STATIC TEST] buildTesterQuestions sets _dbId: q.id (canonical DB id field)',
+    '_dbId: q.id' in _bt_block
+)
+
+# BANK22: saveTesterEdit uses _dbId (not _id) for Supabase write guard and .eq()
+_ste_start = legacy_js.find('function saveTesterEdit')
+_ste_block  = legacy_js[_ste_start:_ste_start+2500] if _ste_start >= 0 else ''
+check('BANK22', '[STATIC TEST] saveTesterEdit guards DB write with q._dbId, never undefined/null id',
+    'const _dbId = q._dbId || null' in _ste_block
+    and 'if(_dbId)' in _ste_block
+    and '.eq(\'id\', _dbId)' in _ste_block
+    and '.eq(\'id\', q._id)' not in _ste_block  # old buggy form removed
+)
+
+# BANK23: M88 executable targets are represented by a single canonical VALUES mapping
+check('BANK23', '[STATIC TEST] M88 has one canonical repair map: WITH repairs(id, old_ci, new_ci) AS (VALUES...)',
+    'WITH repairs(id, old_ci, new_ci) AS (VALUES' in _m88_sql
+)
+
+# BANK24: M88 executable VALUES map contains exactly 542 rows
+import re as _re
+_values_entries = _re.findall(r"'\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b'::uuid,\s+\d+,\s+\d+", _m88_sql)
+_values_entries_dedup = list(dict.fromkeys(_values_entries))  # deduplicate (VALUES appears twice: UPDATE + assertion)
+check('BANK24', '[STATIC TEST] M88 VALUES map contains exactly 542 unique repair rows',
+    len(_values_entries_dedup) == 542
+)
+
+# BANK25: M88 transaction asserts GET DIAGNOSTICS row count equals 542 exactly
+check('BANK25', '[STATIC TEST] M88 DO block: GET DIAGNOSTICS + IF v_affected <> 542 aborts transaction',
+    'GET DIAGNOSTICS v_affected = ROW_COUNT' in _m88_sql
+    and 'IF v_affected <> 542 THEN' in _m88_sql
+    and 'RAISE EXCEPTION' in _m88_sql
+)
+
+# BANK26: M88 transaction asserts every mapped row reached new_ci (zero unmatched)
+check('BANK26', '[STATIC TEST] M88 DO block: second query asserts zero rows with wrong new_ci after UPDATE',
+    'SELECT COUNT(*) INTO v_unmatched' in _m88_sql
+    and 'WHERE q.correct_index <> r.new_ci' in _m88_sql
+    and 'IF v_unmatched <> 0 THEN' in _m88_sql
+)
+
+# BANK27: P5/unresolved UUIDs absent from the executable VALUES map (first occurrence only)
+_first_values_start = _m88_sql.find('WITH repairs(id, old_ci, new_ci) AS (VALUES')
+_first_values_end   = _m88_sql.find('  UPDATE questions q', _first_values_start) if _first_values_start >= 0 else -1
+_first_values_block = _m88_sql[_first_values_start:_first_values_end] if _first_values_start >= 0 and _first_values_end >= 0 else ''
+_p5_unresolved_leak = []
+if _UNRESOLVED_PATH.exists():
+    for _row in _json.loads(_UNRESOLVED_PATH.read_text()):
+        _uid = _row.get('id', '')
+        if _uid and _uid in _first_values_block:
+            _p5_unresolved_leak.append(_uid)
+check('BANK27', '[STATIC TEST] P5/unresolved UUIDs absent from M88 executable VALUES map',
+    len(_p5_unresolved_leak) == 0
 )
 
 check_ne('NAME_B01', '[BROWSER TEST — NOT EXECUTED] matchmaking screen shows profile display_name "Дружочек" not email prefix')
