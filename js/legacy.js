@@ -4539,7 +4539,8 @@ async function startTesterMode(mode, packImportKey){
 function buildTesterQuestions(data){
   return data.map(q=>{
     const lang_q = lang==='ru'?(q.question_ru||q.question_text):(q.question_text||q.question_ru);
-    const lang_a = lang==='ru'?(q.answers_ru||q.answers_json):(q.answers_json||q.answers_ru);
+    // answers_json is canonical post-M87; never show answers_ru-first in editor (causes ci mismatch on save)
+    const lang_a = q.answers_json||q.answers_ru;
     const mtype = q.media_type||'none';
     const murl  = q.image_url||q.audio_url||q.video_url||'';
     return {
@@ -5570,7 +5571,7 @@ async function startCommunityFeed(){
   _cfQuestions = data.map(q=>({
     cat: q.category||'GENERAL',
     q: q.question_ru||q.question_text,
-    a: q.answers_ru||q.answers_json||[],
+    a: q.answers_json||q.answers_ru||[],  // answers_json is canonical post-M87
     c: q.correct_index||0, t:20,
     img: q.media_type==='image'?q.image_url:null,
     audio: q.audio_url, video: q.video_url,
@@ -10992,9 +10993,11 @@ function saveTesterEdit(){
 
   // If it has a real Supabase id, try to update
   if(q._id && !String(q._id).startsWith('q_')){
+    const _savedAnswers = newAnswers.filter(Boolean);
     sb.from('questions').update({
       question_ru: newQ, question: newQ,
-      answers_json: JSON.stringify(newAnswers.filter(Boolean)),
+      answers_json: JSON.stringify(_savedAnswers),
+      answers_ru: _savedAnswers,  // keep in sync; answers_json is canonical
       correct_index: newCorrect,
       category: newCat,
       difficulty: newDiff,
@@ -11179,7 +11182,7 @@ function aqGetFiltered(searchStr){
     const hasMissedMedia = mtype!=='none' && !murl;
     const isDupe = (textCount[qtext]||0) > 1;
     const answers = (() => {
-      let a = q.answers_ru||q.answers_json;
+      let a = q.answers_json||q.answers_ru;  // answers_json is canonical post-M87
       if(typeof a==='string'){ try{ a=JSON.parse(a); }catch(e){ a=[]; } }
       return Array.isArray(a) ? a.filter(Boolean) : [];
     })();
@@ -11273,7 +11276,7 @@ function aqRender(searchStr){
     const shortId = String(q.id||'').slice(0,8);
     const date = q.created_at ? q.created_at.slice(0,10) : '—';
 
-    let answers = q.answers_ru||q.answers_json||[];
+    let answers = q.answers_json||q.answers_ru||[];  // answers_json is canonical post-M87
     if(typeof answers==='string'){ try{ answers=JSON.parse(answers); }catch(e){ answers=[]; } }
     if(!Array.isArray(answers)) answers=[];
     answers = answers.filter(Boolean);
@@ -11636,7 +11639,7 @@ async function adminActivateUser(id){
 function aqPreviewQuestion(qId){
   const raw = _aqData.find(r=>String(r.id)===String(qId));
   if(!raw){ toast('Вопрос не найден'); return; }
-  let answers = raw.answers_ru||raw.answers_json||[];
+  let answers = raw.answers_json||raw.answers_ru||[];  // answers_json is canonical post-M87
   if(typeof answers==='string'){ try{ answers=JSON.parse(answers); }catch(e){ answers=[]; } }
   if(!Array.isArray(answers)) answers=[];
   answers = answers.filter(Boolean);
@@ -11727,7 +11730,7 @@ function aqRenderBulkReview(){
     return;
   }
   const q = _brRows[_brIdx];
-  let answers = q.answers_ru||q.answers_json||[];
+  let answers = q.answers_json||q.answers_ru||[];  // answers_json is canonical post-M87
   if(typeof answers==='string'){ try{ answers=JSON.parse(answers); }catch(e){ answers=[]; } }
   if(!Array.isArray(answers)) answers=[];
   answers = answers.filter(Boolean);
@@ -11804,7 +11807,7 @@ function aqOpenQuestion(qId){
   const existing = document.getElementById('aq-open-overlay');
   if(existing) existing.remove();
 
-  let answers = q.answers_ru||q.answers_json||[];
+  let answers = q.answers_json||q.answers_ru||[];  // answers_json is canonical post-M87
   if(typeof answers==='string'){ try{ answers=JSON.parse(answers); }catch(e){ answers=[]; } }
   if(!Array.isArray(answers)) answers=[];
   answers = answers.filter(Boolean);
@@ -11872,7 +11875,8 @@ function aqEditQuestion(qId){
   const existing = document.getElementById('aq-edit-overlay');
   if(existing) existing.remove();
 
-  let answers = q.answers_ru||q.answers_json||[];
+  // answers_json is canonical post-M87; display from it so the saved correct_index matches
+  let answers = q.answers_json||q.answers_ru||[];
   if(typeof answers==='string'){ try{ answers=JSON.parse(answers); }catch(e){ answers=[]; } }
   if(!Array.isArray(answers)) answers=[];
   answers = answers.filter(Boolean);

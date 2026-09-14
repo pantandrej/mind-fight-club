@@ -1649,6 +1649,95 @@ check('PROFILE-RANK-05', '[STATIC TEST] profile header still has name + edit act
 
 check_ne('ANS_DB01', '[DB TEST — NOT EXECUTED] football question: clicking index 0 (Премьер-лига in answers_json order) is graded correct after M87 applied')
 check_ne('ANS_DB02', '[DB TEST — NOT EXECUTED] bank-wide: after M87 applied, all 671 previously-mismatch questions grade correctly')
+
+# ─────────────────────────────────────────────────────────────────────────────
+# BANK01-10: Question Bank Repair (M88 ground-truth + write-path safety)
+# ─────────────────────────────────────────────────────────────────────────────
+import json as _json
+import pathlib as _pathlib
+
+_M88_PATH = _pathlib.Path(__file__).parent.parent / 'sql' / '88_repair_question_correct_indices.sql'
+_UNRESOLVED_PATH = _pathlib.Path(__file__).parent.parent / 'scripts' / 'm88_unresolved_manual_review.json'
+_m88_sql = _M88_PATH.read_text(encoding='utf-8') if _M88_PATH.exists() else ''
+
+# BANK01: Future importer never shuffles without remapping correct_index
+# (no random/sort shuffle on answer arrays in write paths)
+_write_paths = legacy_js  # bulk_import_competitive doesn't shuffle; publish_game copies same array
+check('BANK01', '[STATIC TEST] no shuffle of answer arrays in admin write paths',
+    'answers_ru: _savedAnswers' in legacy_js  # saveTesterEdit now keeps in sync
+    and 'answers_json||q.answers_ru' in legacy_js   # display uses canonical order
+)
+
+# BANK02: answers_json + correct_index remain coupled — aqSaveEdit writes both
+check('BANK02', '[STATIC TEST] aqSaveEdit writes both answers_json and answers_ru identically',
+    'answers_json: JSON.stringify(newAnswers)' in legacy_js
+    and 'answers_ru: newAnswers' in legacy_js
+)
+
+# BANK03: answers_ru copy preserves ordering — saveTesterEdit now syncs both
+check('BANK03', '[STATIC TEST] saveTesterEdit writes answers_ru alongside answers_json',
+    'answers_ru: _savedAnswers' in legacy_js
+)
+
+# BANK04: Brazil regression — M88 fixes ci 2→0 for current answers_json=['5','6','4']
+check('BANK04', '[STATIC TEST] M88 draft repairs Brazil (5135c0dd) ci 2→0 targeting json["5"] at index 0',
+    "id = '5135c0dd-e88d-4cf3-8c46-457d1a273540'" in _m88_sql
+    and "SET correct_index = 0" in _m88_sql
+    and "AND correct_index = 2" in _m88_sql
+)
+
+# BANK05: Islam regression — Islam (e9e00742) is in unresolved list (not_in_export), NOT in M88
+check('BANK05', '[STATIC TEST] Islam (e9e00742) is in unresolved list, NOT auto-repaired by M88',
+    "id = 'e9e00742-ebbd-4d43-b026-4e81c0e18b42'" not in _m88_sql
+    and _UNRESOLVED_PATH.exists()
+    and any(r.get('id') == 'e9e00742-ebbd-4d43-b026-4e81c0e18b42'
+            for r in _json.loads(_UNRESOLVED_PATH.read_text()))
+)
+
+# BANK06: Titanic regression — M88 fixes ci 1→4 for current answers_json order
+check('BANK06', '[STATIC TEST] M88 draft repairs Titanic (bb8dc652) ci 1→4 (Титаник at json[4])',
+    "id = 'bb8dc652-1e42-47ff-a60c-6d5d03c61af9'" in _m88_sql
+    and "SET correct_index = 4" in _m88_sql
+)
+
+# BANK07: M88 only targets exact UUIDs with old-value predicates
+check('BANK07', '[STATIC TEST] M88 draft uses AND correct_index = <old_value> safety predicate on every UPDATE',
+    _m88_sql.count('AND correct_index =') >= 542  # P3+P4 = 519+23 = 542 live UPDATEs
+    and 'WHERE id =' in _m88_sql
+)
+
+# BANK08: Unresolved rows are NOT included as live UPDATEs in M88
+# (P5 rows are commented out with --)
+_unresolved_ids_in_m88 = []
+if _UNRESOLVED_PATH.exists():
+    _unresolved = _json.loads(_UNRESOLVED_PATH.read_text())
+    for _row in _unresolved:
+        _uid = _row.get('id', '')
+        # Check if that UUID appears as an active (non-commented) UPDATE line
+        _active_update = re.search(r"^UPDATE questions\s*$.*?WHERE id = '" + re.escape(_uid) + "'",
+                                   _m88_sql, re.MULTILINE | re.DOTALL)
+        if _active_update:
+            _unresolved_ids_in_m88.append(_uid)
+check('BANK08', '[STATIC TEST] unresolved rows not included as live UPDATEs in M88',
+    len(_unresolved_ids_in_m88) == 0
+)
+
+# BANK09: No gameplay RPC changes in M88
+check('BANK09', '[STATIC TEST] M88 does not modify any gameplay RPCs',
+    'start_daily_bf_session' not in _m88_sql
+    and 'submit_daily_bf_answer' not in _m88_sql
+    and 'start_virtual_battle_session' not in _m88_sql
+    and 'submit_virtual_battle_answer' not in _m88_sql
+    and 'start_duel' not in _m88_sql
+)
+
+# BANK10: No question text mutation in M88 (no SET question_ru or question_text)
+check('BANK10', '[STATIC TEST] M88 does not mutate question text',
+    'SET question_ru' not in _m88_sql
+    and 'SET question_text' not in _m88_sql
+    and 'SET answers_json' not in _m88_sql
+    and 'SET answers_ru' not in _m88_sql
+)
 check_ne('NAME_B01', '[BROWSER TEST — NOT EXECUTED] matchmaking screen shows profile display_name "Дружочек" not email prefix')
 check_ne('UX_B01',   '[BROWSER TEST — NOT EXECUTED] after 15s timeout, matchmaking shows 3 persona cards with light text and no "бот"')
 
