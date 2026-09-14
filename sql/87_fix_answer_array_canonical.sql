@@ -213,7 +213,10 @@ BEGIN
       AND q.question_type = 'multiple_choice'
       AND q.correct_index IS NOT NULL
       AND q.correct_index >= 0
-      AND q.is_competitive_secret = true
+      AND q.is_competitive_secret = false                              -- public bank
+      AND q.source_type = 'official_general'                          -- curated bank only
+      AND q.correct_index < jsonb_array_length(                       -- upper-bound guard
+            COALESCE(q.answers_json, q.answers_ru, '[]'::jsonb))      -- M87 fix
       AND jsonb_array_length(COALESCE(q.answers_json, q.answers_ru, '[]'::jsonb)) = _opt_count  -- M87 fix
       AND NOT (q.id = ANY(_used_ids))
       AND q.id NOT IN (
@@ -228,7 +231,7 @@ BEGIN
     IF NOT FOUND OR _q_id IS NULL THEN
       RETURN jsonb_build_object(
         'ok', false,
-        'error', 'not_enough_secure_questions',
+        'error', 'not_enough_questions',
         'needed_opt_count', _opt_count
       );
     END IF;
