@@ -1,0 +1,2542 @@
+[
+  {
+    "id": "014e06b5-4f45-4363-a610-b1a1e9f962dc",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "0179c630-485f-4c34-b3f5-fd574d6b1a8c",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Кто такой Геркулес?",
+    "unresolved_reason": "correct_text_not_in_db_json"
+  },
+  {
+    "id": "018cc5a6-c228-40f6-99ec-f07341883d6c",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Какой художник написал «Звёздную ночь»?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "01b0d4e5-6774-463c-b77a-794bd5f58032",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "036c9ea2-f5cd-4487-bd28-e1f2b8001577",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "046b6d46-fa88-44b9-bafd-50772c850649",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "04e9db4b-7e43-4436-a680-2f6902e67dbc",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "05540a40-6d53-4a40-87cd-3714efa8efa3",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Какая эпидемия унесла треть населения Европы в XIV веке?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "05efbeec-9211-4cf5-b5b9-0a6fdc9d50d1",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "066baca0-abf0-40a3-9325-0b9fcc8781c4",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Кто из философов жил в бочке?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "06d2af3f-f645-4f61-8912-761f3adea4cd",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "071153d9-19fd-4c75-ad7c-c09f39ba4659",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Что значит «cogito ergo sum» (Декарт)?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "072731c5-7c27-48f0-812d-0c93976b017b",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Как называется самый большой океан на Земле?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "0817d6c1-06ee-4290-a005-99d3a8aad550",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Кто написал «Так говорил Заратустра»?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "08ccfbec-bab7-47e6-affb-1b34e3e71d09",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "0928370c-5949-4867-8aee-fdd141eee9dd",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "093786de-7642-410a-8d60-185fbbdc1430",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "099006b9-e5b6-429e-b900-f45f05ae7147",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Что означает GPS?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "0b5fffb5-9705-44b5-96cc-1f4c649cbadb",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Столица Австралии — это…?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "0d25dff7-0514-4b6f-baa0-f46756b1a95c",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Что такое VPN?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "0da4e156-6a71-4e85-985d-809691284888",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Что изображено на картине Мунка «Крик»?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "0e6c3c92-cf9c-4f66-b72b-6877508dd8a2",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Какая планета Солнечной системы самая большая?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "0e8f58f4-875e-4743-bc15-70a18b09760a",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Как называется японский стиль уличной моды с яркими элементами?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "0f61a7a1-50c2-46da-a12a-c766d9902c81",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "В каком году вышел первый Doom?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "10130c64-d1c3-4878-a6c3-fababf5dea5d",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Как называется главный злодей в игре Mario?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "106274fb-cfd5-4052-a4cb-cff64a122333",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Как звали трёх сестёр в пьесе Чехова?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "128c5cc4-f7a2-4cfb-9e24-168bb8d05f42",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Как называется высший мужской голос в опере?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "135e643d-30f4-4873-a2b5-88f0c98bca76",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "136953fd-cdeb-461c-90d6-8f7891285dc4",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Какой цвет получается при смешении красного и синего?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "13a54ee2-ee6f-4a92-9bbb-3b243caa7f5b",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Что такое омонимы?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "141cac5b-2baf-4db9-b847-7b80a9e28b6e",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "В каком стиле построен Нотр-Дам-де-Пари?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "14b69d6c-5ddc-4b80-b4d0-7768408aca2c",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "1573210e-eccd-4aa1-90d5-a51b8e61e4f2",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Как называется эффект, когда люди помнят события иначе, чем они произошли?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "160a6c7a-6e64-4626-8fe9-55bf17e7ef81",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "1667259b-96c1-4451-8ea1-acf46aa63451",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Что такое деним?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "176765ff-28b5-4175-96d5-dbaa957d2679",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "179787bd-b850-459f-9eac-51eb8a393dfe",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Как называется учение о том, что наслаждение — высшее благо?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "182d5161-e89e-4d3d-97bb-432bbe074aa3",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "18c7968d-8e32-45d3-840b-d40677948897",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Как называется антиутопия Хаксли?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "1acc5486-8e05-483c-b0d1-d21b6539c2cc",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "1bf856ef-9082-4c9a-accb-b67fc98c607e",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Сальвадор Дали — представитель какого художественного направления?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "1ccc8bc9-a3aa-4b39-bdd8-093ac11c244a",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Как называется процесс деления клетки?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "1ce98e16-2284-4bed-a1e0-7dbf0e932590",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "1df1cbaf-6910-4b3d-83f2-f44abd131131",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "В каком городе родился Наполеон Бонапарт?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "1e0184d6-ec79-406a-8a53-2444d86a4917",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Как называется первый искусственный спутник Земли?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "1f1042da-424a-4aa9-9df6-18f115a731c0",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "1f7f6c50-0fdf-4f6b-862e-c40743ef3dfb",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Что такое «Баухаус»?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "20317c43-81f4-4bc0-8903-00ff4d86ceab",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Полотно «Герника» Пикассо написано в знак протеста против чего?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "206542b0-c638-4dc4-8be2-efeab18b6025",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "В каком городе находится собор Саграда Фамилия?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "206aa7fd-b8b6-48f5-97dc-5c03daa57974",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "2201ce1f-79e6-493e-89dd-b8bac240d675",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Как называется самый быстрый бросок в теннисе?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "224a8ee7-0e0f-4111-bb13-197b4e1912f6",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "В каком стиле выполнен дворец Версаль?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "224e24a5-43d8-490b-9763-1a099e09a72a",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Как называется наука о языке?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "22cdb96c-18db-475d-8eee-1541c815a05b",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Что такое нигилизм?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "2415cd0f-884c-4f36-8d48-36256050e220",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "245b69a0-264a-4002-8200-1bcc3f7332a5",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "25485fb1-36d1-4797-a6e6-1947e70af052",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Какая птица не умеет летать, но хорошо плавает?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "254cb6e6-6e11-478c-9020-3809f395d9e1",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "266ab9f4-2b91-42ce-81c9-865f5003a511",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Какой витамин синтезируется под воздействием солнца?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "2688dddd-9057-45dc-8e99-d8cdff95a12b",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "В каком году началась Первая мировая война?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "26903f38-fb70-445c-a7ab-a5016d752009",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Что такое «фальцет»?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "26ad0b85-f013-427b-afea-39cafb25be14",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "27f086aa-4d3b-49c1-accc-cda8f0a3159c",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "28aff3c1-dc44-4be9-878c-9c32da29b684",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Что такое гравитация?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "29bbc4ac-5b78-4717-b6cb-08c7af10669c",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "В серии игр Portal главный герой использует что?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "29c14309-254a-4522-a0d6-1681b1a03ed2",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "2a6ba0fe-213b-4f56-b2e9-79420047542d",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "2a8bd0fa-1a94-48fd-a534-097c266da4f0",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "2bd88366-aad1-46ce-8095-5546c6858f90",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Какой пролив соединяет Чёрное и Средиземное моря?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "2d78acab-78b4-4885-afc2-e8b833411d2d",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Что такое ДНК?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "2ee86ae3-e698-4dd7-985e-457cb775f194",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Как называется техника живописи водяными красками на сырой штукатурке?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "2eed4241-c54a-49a8-be52-222ba255f61f",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Какой аксессуар стал символом Одри Хепберн?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "2f8144f5-35ec-4088-8706-0b1061f654f3",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Кто создал скульптуру «Мыслитель»?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "32176739-c106-4eb4-bf79-e86d4ee1e99f",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "323aa9e7-0eaf-4e18-a098-4eb4cbe6fd68",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "323b46db-eae7-4e2c-b2d3-21190f18ca93",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "В каком году вышел первый фильм «Крёстный отец»?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "33163416-58b7-472f-8cb7-6328f116315a",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Сколько сердец у осьминога?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "344ef3e4-23a0-4db8-8a8d-ca668a4ea559",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "34f11b37-f4e4-4640-8c5b-f7e52940c0a9",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Кто придумал теорию психоанализа?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "359b7c52-d73f-49fd-8c9f-7faf1728af3f",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Сколько процентов поверхности Земли покрыто водой?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "36232e73-1d92-4214-83f9-b9373ecc5875",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Кто основал Rolling Stones?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "37342d2a-5eed-4fcb-80de-1d7acf50df73",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "3819c37c-d074-45c3-b3ff-c8cb9a86d532",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Кто написал «Государство» — трактат об идеальном обществе?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "382681fa-1574-4b67-9389-920f7a36ae59",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "39358f0b-be75-492b-b2d4-21f5080a43c3",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Как называется иерархия потребностей Маслоу?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "39452896-0e42-46d1-8baf-2c484d6388ea",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Как называется японский традиционный халат?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "3b299d20-fbd1-487b-8b72-e81e4bfb8bc4",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Как зовут главного героя серии игр Halo?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "3b92312a-d28b-4fe4-8c78-19107d1e7b0f",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Что такое верлибр?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "3bc258d5-8b5d-407b-9f00-f9be650baf78",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Кто снял фильм «Интерстеллар»?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "3cb303ed-3642-4820-a169-71330710af0f",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Кто снял «Матрицу»?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "3d3f347d-f413-4fe7-b104-4c60b3cb175d",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "В каком произведении Гоголя главный герой — Хлестаков?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "3d76390d-fc2c-4f78-b5df-a3e387558aed",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Какой остров является самым большим в мире?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "3f909a23-cf98-4f5c-b959-d00c13e1c6db",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Кто открыл пенициллин?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "409a28ee-45c5-4a31-9e66-4de9c4dc2d74",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Как называется вид борьбы, разработанный в Японии?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "40d74625-dfcd-4e90-927b-61f65853c1cb",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Кто изобрёл Всемирную паутину (WWW)?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "4115da3a-dec4-4944-80d9-756d262b9c89",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "В каком фильме звучит фраза «Я чувствую запах страха»?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "41381167-4b7c-4e57-ab1f-715497ba6837",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "41a64c5b-74e8-4228-816a-2b36a5bd2a90",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "422e419d-3aaa-407a-a5e9-f878d1ee9a36",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "4461d009-dacd-41d5-99ca-8476e292670f",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "44b079b7-d2d5-43ac-8ec9-987d28f45c6a",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Что означает аббревиатура RPG в играх?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "45851b2d-6d88-4b69-9d67-c69d814fd8b7",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Кто такой Гленн Миллер?",
+    "unresolved_reason": "correct_text_not_in_db_json"
+  },
+  {
+    "id": "45b50a20-b8af-480a-a55b-ce29555a9d92",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "461b6e9a-4b72-454b-bcae-59718a8467a8",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Какая компания разработала игру Minecraft?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "4652b3d1-67a0-4173-b83f-e0c99546b707",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "47620bfe-aded-4654-94b0-62e76bedef7a",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "485c19ea-3fcf-4aa8-9a05-d0fce310eb93",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Кто сыграл Ганнибала Лектера в «Молчании ягнят»?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "485c4c21-d173-466d-af70-e46d6de7a2f2",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Какой элемент обозначается символом Au?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "489083c7-b255-4cb8-a684-072b147c2930",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "4958ece5-3c28-43b0-a666-e2dcfa05045e",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Какой орган у человека самый большой по площади?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "4990c9c3-c7bc-484d-84e4-454c83db3859",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Что такое «умные часы»?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "49f3b30a-e255-4a93-b4b2-38bb88dfc9a5",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Сколько атомов содержит молекула воды?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "4db10abf-a671-4dc7-841f-251ae59ae277",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "4dd038fe-f575-4de5-b801-37e5ae4308a5",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Как называется изучение окаменелостей?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "4f38fa69-7d43-487a-971e-3f421b749608",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Что такое комета?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "4f4a69e5-4959-4c49-a403-cf07dc1a8d67",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Кто режиссёр «Списка Шиндлера»?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "5031a2b4-1e40-4efc-9b15-20ffca778622",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "50534f27-ab1f-41cd-9e4f-180c8f13a994",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "50641bcf-1e91-43c9-8a2e-6e3ca35ee8c1",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Что изучает психология?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "51f963a5-8cdc-40ed-a23a-ac71d310cd55",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Как называется ценная бумага, дающая долю в компании?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "5211d881-ab8d-4841-bab9-ccbf314400a2",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "5212ed86-a05b-46fc-87f0-e3b1919627be",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "52d1b65f-72d0-4788-a5ff-3ca0d1f7cc71",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "53684673-6d03-44e4-97cd-8461929d26a4",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Какая гора является высочайшей в Африке?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "5455d61b-e11e-442d-84b4-2e9792adc518",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "547be2f6-2bd3-404a-9cd1-f1f57c1df95f",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "54b0f96d-7214-4aca-ae0d-be5357da89e0",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Кто выиграл больше всего «Гран Слэмов» в истории тенниса среди мужчин?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "54e5a3f9-04eb-4dd6-bb6f-446296789167",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "55cea65d-abf3-47c9-858e-449731d071e9",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "59104d47-d686-488e-a90d-1d12307340a8",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Кто записал альбом «Thriller» — самый продаваемый в истории?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "5a1cdf8c-f66d-46cd-9be3-34c136a90e36",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "5a7a6e5b-9f6b-4fb4-8131-75651104a0f9",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Какая игра установила мировой рекорд по числу проданных копий (среди отдельных игр)?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "5ad2cc11-a697-4876-9335-71ded3dae55e",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "5adae6c1-b083-429f-84b4-f4ffb5d0fd92",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Какой стиль живописи связан с разложением форм на геометрические фигуры?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "5af0ee55-1a9f-4206-a390-5071a9df0fbc",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "5cff36c2-e42f-4114-bfe7-2e06be9155f8",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "5dfa2516-c2f7-4104-b66f-7163cba8d57c",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "5e4a9ffa-a548-4f32-9fe9-87011a732a03",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "5e779fd0-e351-45ca-94b5-00b6ec609f35",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Сколько байт в одном килобайте (в двоичной системе)?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "5fdb32f3-33c0-4a77-adca-73ba589e3ad1",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Как называется процесс превращения куколки в бабочку?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "609329af-2626-4441-8044-2e0d4a33c495",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "60d05f57-d0f0-4c11-9919-d9bfcc77e9c3",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Какой фильм Тарантино вышел первым?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "6100cf1c-5a5f-4578-b871-e4703113ee63",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "62a3b995-1bdc-48fe-ae86-ba2857b1a02c",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "62f13086-677f-40ba-b1cd-b23d0be6d27f",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Что такое синкопа в музыке?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "6368d08f-b686-45e8-8e07-4655670395e9",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Что такое монополия?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "636ddb11-7901-42bc-adb9-d6dfba15e1b6",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "В каком году вышла первая игра серии The Legend of Zelda?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "653bd4a9-b0ab-422d-842a-8ad23c3624c2",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "65e87898-a336-4024-871f-693c6baf4e47",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Как зовут главного героя романа «Идиот» Достоевского?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "671b0334-3562-4936-906e-3addf825b682",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Сколько очков стоит трёхочковый бросок в баскетболе?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "679f16e1-0301-4c75-8d23-c6442646e8e3",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Из какой страны происходит суши?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "67d47cca-d0f0-4dc0-ad7c-a3a5ca00a721",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "69f78236-31b5-40b9-b876-e17c40729d5b",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Что такое экосистема?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "6b66b69a-cd6d-4ffa-a5db-eaaa0349b665",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "6bd63d09-b7bd-4ccc-8979-14a52a4a3d45",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "6c7b9c45-4c19-4555-8469-0cd4a4ec1123",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "6ca72a6d-68f8-4d79-82ba-b851fe1af3dc",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "6d8535b7-5dd0-4c81-b6c0-9c78e1d0829f",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "6dfab6ab-c2f7-46e7-a046-547ccc14b45a",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "6f17d6ef-9662-4b30-a72b-4d7b72507282",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Как называется первый коммерческий веб-браузер?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "6f1c81ea-60ea-4f56-b541-264a251d4e0e",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Из какого зерна делают традиционный японский напиток саке?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "702a9a3b-a16b-4e74-b5d2-1b3ebc27e35c",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Как называется приём, когда сцена идёт в замедленном темпе?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "70d41599-85fd-4b7e-a427-6e32f2c58800",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "726416d6-c8bf-4f38-ac93-f55f1ef2b583",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Что такое энтропия?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "73b115f4-d8a4-4df1-a547-a6daa0052dfd",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "740f8414-ea1b-4a2b-890f-1b668c83b9ec",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Сколько игроков в хоккейной команде на льду?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "74245473-5f80-45d8-b006-8e8975eed9d0",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Как называется страх открытых пространств?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "74c33097-3c52-4b37-9287-c98ea2e7fd66",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "763da553-b9b5-4eb9-b0fd-bd442099686b",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Что такое Колизей?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "76ec8f19-4c64-41c1-a58f-8176523f9ea9",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "771aba82-7b85-4958-86dc-d26fd3fa6636",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "7890b37f-a41c-46ce-8824-fec49611f683",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "798d3c0e-3b67-4201-86b6-8b5c1f9ac020",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Сколько лет свету лететь до ближайшей к Солнцу звезды (Проксима Центавра)?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "7a872519-e1cc-42f8-8985-60430122f78c",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "7b857624-7b30-4fc9-80c3-c1181f45b117",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Кто стал первым лауреатом Нобелевской премии мира?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "7d03cdb2-489b-4508-85c2-0395f197b5e9",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "В какой игре главный герой Джерат из Ривии?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "7dcdff1f-fcdd-40d6-abcb-d245bf731bcb",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Какая река самая длинная в мире?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "7dd20a2f-9672-40be-85c9-2494a519b9a8",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Как называется язык программирования со змеёй в логотипе?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "7eb3496c-d9df-4492-86de-91bbf72cd956",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Как называется архитектурный элемент — полукруглый свод?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "8155c724-50b4-42c5-993b-1c3528117c8b",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "8199e467-02e1-4d3c-a0bd-1f39a6495f7a",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Кто построил первый стеклянный небоскрёб (Сигрем-билдинг)?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "819f9e52-2213-4f51-bdc1-dab4c1d2a1a2",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "820935a4-5c0c-46f3-ab87-aea5f7bafd9d",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Что такое «permadeath» в играх?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "83bc5830-4393-4726-91fe-7494ec449458",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Что такое ЭКГ?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "846a9450-2796-454f-880b-1357512ca7de",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "87b1b7bc-b280-46f0-b985-462d20367394",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "889fc3db-c5ce-4541-9421-8c78810c5c24",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Что такое BPM в музыке?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "894eb5db-3774-44f1-9a4f-6f6e76f4e11d",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Как называется приём съёмки, когда камера медленно надвигается на объект?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "89e1d0da-154f-4746-8147-724f78d406ce",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Что такое «облако» в IT?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "8a7e0294-aed9-4dbb-a5dd-37d280273b87",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Сколько основных частей в серии Dark Souls?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "8bc1ba29-0ef4-4a0f-8d20-e09346caf172",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Как называется японская традиционная архитектура с многоярусными крышами?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "8be525ce-49f7-4774-bf48-e504cb940657",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Кто спроектировал здание Сиднейской оперы?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "8c51a27d-a2a8-4e53-977d-270f1ba6d271",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Как называлась операция по высадке союзников в Нормандии (1944)?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "8f0835e7-79f0-4ef0-84f8-1cace86671c7",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "8f3602fb-4120-427c-95a6-efdf64ec841a",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "9034ccd9-d2ea-47ac-8640-2e8e7bebec71",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "90980d32-31a2-4c36-a169-368b28af5cd2",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Кто такая Афродита?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "90a38de5-18c5-44c7-93d4-f540585845d3",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "В каком городе проходит Неделя моды чаще всего упоминаемая?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "90eab39d-994b-437a-a62c-b3f74ce80c60",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Какой компании принадлежит операционная система Android?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "929d7a8c-ae0b-4734-a4d1-f26a3b284280",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "92de23cb-57e3-42a0-8d8d-1c21543b781c",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "93fc72b7-8057-4bed-9bd7-c9d9e042fe96",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Как называется галактика, в которой находится Земля?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "94a3bcb9-ce15-44fd-8b06-12bab3684fba",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "9618bd10-15cd-4364-ae9b-1111bd84b3b0",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Кто такой Ганнибал (карфагенский полководец)?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "96d99166-fa5e-45bf-adcc-5a3e0a8340b4",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "96e6d2d5-3637-494f-99f7-479056630118",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "977ab6ef-4e7f-45bd-9030-5ce9ebcb5791",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Какая страна изобрела баскетбол?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "97860ed8-7688-4be7-8796-48d731d86def",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Что такое атом?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "979e1206-c53a-4a8b-8114-ab94b94a64dd",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "98033b5b-fdbc-4de7-ab90-2d904f397838",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "997dbd46-a138-4288-b662-cbebce4b434d",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Что такое чёрная дыра?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "998e8bd3-a3b7-4615-aabb-10d8afa3fa70",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "99b620e1-93e9-439c-9297-4fe5a59dc657",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Как называется итальянское мороженое из взбитых сливок?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "9b03246a-e8f4-4304-a0bc-bc60eb9c4ca5",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Как называется французский суп из лука?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "9c288e16-594c-4b4c-b5ce-fb6e40384421",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Какая планета ближе всего к Солнцу?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "9c3d91c9-014f-4667-bc51-c1b329ae1ef6",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "9e4f8ac6-3be2-4240-bad4-3482668e5e20",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "На каком континенте нет постоянного населения?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "a0200e54-0160-41a2-90b4-14204e26634d",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "В каком музее хранится «Джоконда» Леонардо да Винчи?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "a0ab23e9-5e9d-4041-a955-1c3c3db7fb86",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "a0b716bb-3201-4e1e-aab7-f80b60e00c7a",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Что такое «Биткоин»?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "a0b8b023-a9ad-4dbc-8e1a-655495209836",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "a24c6f80-2f84-41d8-84d8-5c9c4f826e75",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Как называется оскароносный фильм Альфонсо Куарона про космос (2013)?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "a2923e45-a9a2-496d-95ef-36a2a2f618c5",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Какой закон описывает F = ma?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "a5227870-4ad7-437f-adba-05751fe39ca0",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "a52a60d9-3738-494c-8a66-bed1f19a6322",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "a53cb372-9118-47b4-8fbc-0064e93515e5",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "a6e42224-b100-48b4-827c-9a63a6da673c",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "a80c8789-d87b-4198-93a1-c5a1b42d8826",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Как называется испанский рис с морепродуктами?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "a8676fa0-d476-4427-a925-65224367134f",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Сколько очков даёт тачдаун в американском футболе?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "aaf7d44b-78de-4db1-8877-9adc3e94a8ae",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "ab313ddb-287a-4455-a191-bab9e8dd1709",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "acb3839b-503e-4bdd-9625-b4959278b940",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "acfa85dc-9086-4dab-a5b8-44592ed7cf79",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "В каком море нет рыб из-за высокой солёности?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "ad71c2b1-021a-465f-9788-66165315a832",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "ae287590-67c5-4489-b0e2-3f5f198c7148",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Какая страна первой выиграла Чемпионат мира по футболу?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "aeb92825-6cf4-4ff9-8b4f-cbbb34065744",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Как называется процесс, при котором растения вырабатывают кислород?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "aed47ab0-a780-4bca-9bff-4d50a9539b11",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "b0235358-5482-4bc5-914f-b6fe17fb563a",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Какая спортивная дисциплина включает упражнения на бревне?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "b0acd50d-946e-4c62-898e-3b3b25648bb2",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "b20dc531-6893-42d4-b93b-9feb4a2cdbd7",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Сколько столпов (основ) в исламе?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "b2293a22-5fb9-470a-be7c-e8b2847d61ef",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "b260db8e-389e-4125-b070-831b78b35cdc",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Кто был последним российским императором?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "b26264f5-bc25-49b8-9f3a-c015a653adfc",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "b2c42f62-54cb-49b4-9b33-491281102d15",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "b2ed0d9d-e2db-44bb-92eb-c3509c60b7af",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Какая группа крови считается «универсальным донором»?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "b43d111e-4613-419e-ad3c-d6fe8b2ae370",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Из чего делают традиционный итальянский сыр пармезан?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "b54b5e45-2e9e-4bd6-8f66-58c7181044e7",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "b5505728-1f4a-4ae5-b825-8443431dc8f7",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "b752e636-8092-4da9-a776-5496604274de",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Какой музыкальный инструмент имеет наибольшее число струн?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "b761eec3-63ae-4eab-8f38-7f5ccfd35c5f",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "b8c9f6f8-30ca-44c8-bd6b-d76a4d07d048",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "b941ce74-dce4-41d5-9ee1-2423da625dd3",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "b954629d-d0f4-4292-8eaa-753e16ba3162",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "b9b0e6cc-bd71-4b63-a335-9cda29b8fc02",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "ba6de4a9-1442-49fd-89f2-d663bb4eb1ca",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Как называется орган, вырабатывающий инсулин?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "bb00c146-bf54-4803-91da-0214e597fe06",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Кто создал персонажа Соника?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "bb1f2ced-4b1d-4d37-83d9-58742a214072",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Что такое «тапас»?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "bbc4357b-d40e-454d-83bc-d99bf931c5e9",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "bc7746bd-6d8b-4a81-9016-db3d5e1c36df",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "be4bb9bd-e22f-44cd-84ba-d0c7c1d9c4cf",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Как называется крупнейший тропический лес в мире?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "bf5994d6-a693-4ebc-b890-e8163b30fb83",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "bf6adac2-969f-46b9-ac34-3e4c936e5e34",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Кто написал поэму «Евгений Онегин»?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "c2c4f429-58e0-44f3-97cf-aae234a7a7e5",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "c46f19de-7140-420c-9a07-d40875c57d7d",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "c58db7ae-3fb4-4888-9eba-ae1031d34cf7",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "c79571b1-7039-4fa1-96c1-02db765b6e4c",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "c7995fef-3064-4c6a-9deb-adb84764a04a",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "c7a01a8b-2895-41a6-be95-e57703dbc689",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "В каком году был основан Google?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "c89ad229-4d91-4c31-bd15-4517e92a8c7e",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Как называется литературный приём, когда неживой предмет наделяется свойствами живого?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "caf1345b-bcbd-4e7c-a82a-b393c28bf09e",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Какой фильм получил первый «Оскар» за лучший фильм?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "cb4d0552-9bd7-4e79-a330-5dbbf3696123",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "cb99723b-b936-47d3-a934-8cf5de43523e",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Кто написал «Рождение Венеры»?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "ccde3c6b-cf20-44f7-bc76-5ffd7125de29",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Как называется самая длинная велогонка в мире?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "cd5a8429-8948-4fbd-9f3d-3507d1de3288",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "cd6d1026-d745-4920-8d68-1ce63406e35d",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Как называется группа, в которой играл Фредди Меркьюри?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "cde1a3f8-891a-4600-a5d5-c7647137c4cb",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "ce51247a-0366-4cb4-b853-c11009b30458",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Что такое прокрастинация?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "d04c8853-f5a7-4ba9-95e6-9f4ed7b8d363",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Какой фрукт называют «королём тропических фруктов»?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "d11dc3af-fd49-405f-b71d-6128e07306ea",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Кто основал компанию Apple?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "d2460a53-ca66-4354-8ee8-127c449fa8e4",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "d2bb672e-eec6-4e54-94de-611c16ac32c9",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "d355abbc-5793-4d29-8abe-bc4fbbaf1ac1",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "d414c0bd-699b-49e2-ba37-21248742926d",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Какое животное является самым быстрым на суше?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "d4dfb8ad-1454-4635-9827-ccc8477fc886",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Какой сыр используется в классическом греческом салате?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "d5d46f1e-d55d-4640-bef7-3ee2035b43a9",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "d615a7fc-db2f-492e-8a63-00916cebe6e6",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Как называется музыкальный жанр, родившийся в Новом Орлеане?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "d6484666-6901-4fa9-8677-12db25064ac1",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "d64bb71d-17ec-402e-b04e-f20eef5e6fcc",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "d68a1909-c01e-4960-9c79-61fa4e8b7e0f",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "d6ed9d75-888a-4703-b734-3474e21fb814",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Какая страна омывается тремя океанами?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "d76ba13a-5ada-480c-979c-6d2d36f033fa",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "d780882a-aaa1-409b-9da3-5078f47d1237",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "В каком году открылся Лувр как публичный музей?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "d84a8a88-13d0-4224-8cfc-618ee96774ae",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "В каком году был создан интернет (ARPANET)?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "d85d553e-deee-4952-9ee9-8a4daad4a3a6",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "d87922c9-9e62-46cc-a203-512bc091fc4a",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Что такое палиндром?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "d8b695c1-3ba0-42fc-a10e-d5892c54a2d4",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "d8d12b9d-ff3f-480f-94af-5dd77c12eb10",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "d8f12536-ce22-4a1f-a479-2c27c40ccbf6",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "d9d80282-99cc-4a5e-a70a-5b9e1a8dbbce",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "d9f80e05-fbef-42d3-a013-edbf834ad41c",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "d9ffe158-eeee-41d4-b101-38a1c614e251",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "dc987cb7-d75b-49ea-aba0-e0070335968b",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Какая страна имеет наибольшую площадь в мире?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "dc9ed93f-c6a1-4468-80ad-3bf51f8b70ec",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "dd9f72dd-e32d-4d88-a52e-3eba7f12e6a4",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Что такое «прошутто»?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "ddb7df80-ba7c-41ad-b9ff-293427c24a27",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "ddd81933-6b85-4736-95ee-e14adf46c3ea",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "debd6162-c0f7-424d-a329-743e684ff2fb",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Кто начал строить Великую Китайскую стену?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "def6c07b-e084-479f-a896-ef852faf6b9e",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Сколько хромосом в клетке здорового человека?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "df2a7cc9-f165-4c9f-88cc-8089d2a6d20e",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Кто финансировал первую экспедицию Колумба?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "df4b36c7-a527-4ca6-bffc-0bfec50050ae",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Из чего делается тофу?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "dffb6616-a2dd-477a-bb33-519f598ea064",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Что такое «хет-трик» в спорте?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "e134134c-3fd6-4c05-819b-b6fdfa89fd36",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Чему равен корень из 144?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "e38b2c19-4776-4659-a8fb-56d4885ab72f",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Что является главным ингредиентом хумуса?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "e4e72342-7447-4150-86b7-35a080a19bdd",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Какая страна выиграла ЧМ по футболу 2022?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "e61943c3-7435-44ed-b55b-fc853e58bc53",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "e678e5a7-cc1e-4620-9cb4-dbafa6a992cf",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Что такое «ноль» в философии математики?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "e67bb11e-4406-45be-8b9b-a15f271a64ae",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "e6d966d9-0e94-46a3-9a86-3fa07c26b767",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "e79633fb-b87d-4def-90e4-a1d33125e4a5",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "e7c1e026-96f2-4e21-be79-4fadc7a02562",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "e85b565a-b3fa-413d-ae80-30056b3ea04b",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Какая страна имеет самое длинное морское побережье?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "e896bd8f-41ec-4fa9-9afe-02bbb63367cf",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Кто написал «Сикстинскую мадонну»?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "e89c2cab-0d90-431a-a5b4-7ec8d91f7b59",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Какая религия самая многочисленная в мире?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "e932459f-60ed-486e-b3d6-3caa2b1b7b62",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "e989195b-82ec-423b-993d-34e3457b4ed1",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Как называется страх замкнутых пространств?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "e9e00742-ebbd-4d43-b026-4e81c0e18b42",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Как называется священная книга ислама?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "ebef835f-3e1d-4915-a981-3a19f6fbd6af",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "ec747d71-117c-45e8-9f95-73ea65b9506c",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "ec9cd27c-cf27-4836-be91-8ad32c3cd461",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Как называется открытый мир в GTA V?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "ed3394d1-9fc2-4cf4-8c01-a272e61c0894",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "В каком году проходили Олимпийские игры в Москве?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "ede968d6-675b-49ce-b5fd-2e3e69aa4191",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "eec1d8bd-f357-4fbf-b5d9-21c769e08b8b",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "eedbf707-4ca7-4ec5-8c8d-f0bf8b906bb2",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "ef3539fc-3a69-43a6-b209-65d4b9b93a0c",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Кто придумал аббревиатуру «лол»?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "ef446c28-cff6-40cf-9502-71806b0c0502",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Кто написал Девятую симфонию, будучи глухим?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "ef45bf4a-ead0-4aba-936d-a6642c9a5f1e",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "f0a14368-9df7-4094-9173-dd9b5149041d",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "В каком стиле написан Зимний дворец в Санкт-Петербурге?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "f2aec520-af4d-4fbd-be7e-62c7e0931f4d",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "В какой игре строят базы и собирают ресурсы в реальном времени?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "f2c9d156-8e78-4093-9e92-1dd735a55bcb",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "f31063ad-b0da-4e58-afe8-556cf37fca03",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "f4a90f05-d1ae-4dec-98c8-3e71c3680df0",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Что такое иммунитет?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "f55aac3a-8015-4fcb-b61d-fecc9c0bc3ed",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "f586f532-f65e-48dc-bf07-3ac88a18226c",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "В каком году СССР запустил первого человека в космос?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "f5da697e-a0cd-4cdf-83da-56e79df0673e",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Что такое квазар?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "f5e3462e-82e5-4bd5-9cb5-9634377af2ab",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Как называется самое большое наземное животное?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "f7445645-efdd-406f-bb2f-31f4603d7688",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "f90b8570-6f5d-4396-a1ca-57deccdba01d",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Столица Бразилии — это…?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "f978362f-ef75-4ec7-84a3-62c5cebc1445",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Что такое эмпатия?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "fa025154-5df6-4196-a045-95610f893deb",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "fa32646d-22ad-43f0-a583-5768094d93c9",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "fa9767e6-da71-40fb-ac0e-e498de38a577",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Чему равно число π (приближённо)?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "fb2044f5-009f-4982-9dbb-cc6fbf01d66b",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Кто исполняет песню «Bohemian Rhapsody»?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "fbaf21b1-0d62-44ab-a4bf-4c68d910cee6",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Как зовут скандинавского бога грома?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "fc24f908-083c-40c1-8894-595eb6acb331",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "fc8df99e-38fe-45d6-87c9-458bb60446aa",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Кто держит рекорд по количеству золотых олимпийских медалей?",
+    "unresolved_reason": "not_in_export"
+  },
+  {
+    "id": "fce38745-8596-4fc1-b4fc-6469973e9434",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "ff778969-feff-42c3-834e-f85817b381e8",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "P5"
+  },
+  {
+    "id": "ffb37e11-16e1-43bd-8276-563db20a2c54",
+    "old_status": "active",
+    "new_status": "pending",
+    "reason": "unresolved",
+    "question_ru": "Кто стал первым президентом США?",
+    "unresolved_reason": "not_in_export"
+  }
+]

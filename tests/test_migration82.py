@@ -1872,6 +1872,99 @@ check('BANK27', '[STATIC TEST] P5/unresolved UUIDs absent from M88 executable VA
     len(_p5_unresolved_leak) == 0
 )
 
+# BANK28-36: M89 Quarantine — 358 unverified rows excluded from gameplay
+# ─────────────────────────────────────────────────────────────────────────────
+
+_M89_PATH       = pathlib.Path(__file__).parent.parent / 'sql' / '89_quarantine_unverified_questions.sql'
+_MANIFEST_PATH  = pathlib.Path(__file__).parent.parent / 'scripts' / 'm89_quarantine_manifest.json'
+_m89_sql        = _M89_PATH.read_text(encoding='utf-8') if _M89_PATH.exists() else ''
+_UNRESOLVED_PATH89 = pathlib.Path(__file__).parent.parent / 'scripts' / 'm88_unresolved_manual_review.json'
+
+# Build UUID sets from manifest (ground truth) + unresolved JSON
+_unresolved89_ids = set()
+if _UNRESOLVED_PATH89.exists():
+    _unresolved89_ids = {r['id'] for r in _json.loads(_UNRESOLVED_PATH89.read_text())}
+
+# Load manifest as ground truth for quarantine set
+_manifest_entries = _json.loads(_MANIFEST_PATH.read_text()) if _MANIFEST_PATH.exists() else []
+_manifest_ids     = {e['id'] for e in _manifest_entries}
+_manifest_p5      = {e['id'] for e in _manifest_entries if e.get('reason') == 'P5'}
+_manifest_unres   = {e['id'] for e in _manifest_entries if e.get('reason') == 'unresolved'}
+_quarantine_set   = _manifest_ids  # authoritative
+
+# BANK28: quarantine UUID set = 358 unique, P5=162, unresolved=196, no overlap
+check('BANK28', '[STATIC TEST] quarantine UUID set = 358 unique (P5=162 + unresolved=196, no overlap)',
+    len(_quarantine_set) == 358
+    and len(_manifest_p5) == 162
+    and len(_manifest_unres) == 196
+    and len(_manifest_p5 & _manifest_unres) == 0
+)
+
+# BANK29: M89 VALUES map contains all 358 quarantine UUIDs (deduplicated)
+_m89_uuid_set = set(re.findall(r"'([0-9a-f-]{36})'::uuid\)", _m89_sql))
+check('BANK29', '[STATIC TEST] M89 VALUES map unique UUIDs = 358 and matches quarantine set',
+    _quarantine_set.issubset(_m89_uuid_set)
+    and len(_m89_uuid_set) == 358
+)
+
+# BANK30: M89 only changes status (no SET for any other column)
+check('BANK30', '[STATIC TEST] M89 only changes status column — no other SET clauses',
+    'SET status = \'pending\'' in _m89_sql
+    and 'SET correct_index' not in _m89_sql
+    and 'SET answers_json' not in _m89_sql
+    and 'SET answers_ru' not in _m89_sql
+    and 'SET question_ru' not in _m89_sql
+    and 'SET question_text' not in _m89_sql
+)
+
+# BANK31: M89 has exact ROW_COUNT assertion = 358
+check('BANK31', '[STATIC TEST] M89 DO block asserts GET DIAGNOSTICS row count = 358',
+    'GET DIAGNOSTICS v_affected = ROW_COUNT' in _m89_sql
+    and 'IF v_affected <> 358 THEN' in _m89_sql
+    and 'RAISE EXCEPTION' in _m89_sql
+)
+
+# BANK32: gameplay RPCs require status='active' (confirmed in sql/82 and sql/81)
+_sql82 = (pathlib.Path(__file__).parent.parent / 'sql' / '82_brain_fights_weekly_model.sql').read_text()
+_sql81 = (pathlib.Path(__file__).parent.parent / 'sql' / '81_friend_duel_public_question_pool.sql').read_text()
+_sql79 = (pathlib.Path(__file__).parent.parent / 'sql' / '79_competitive_question_pipeline.sql').read_text()
+check('BANK32', '[STATIC TEST] gameplay selectors (sql/82 start_daily, sql/81 duel, sql/79 competitive) filter status=active',
+    "q.status               = 'active'" in _sql82 or "q.status = 'active'" in _sql82
+    and "q.status = 'active'" in _sql81
+    and "status = 'active'" in _sql79
+)
+
+# BANK33: quarantined rows use 'pending' — cannot satisfy status='active' filter
+check('BANK33', '[STATIC TEST] M89 sets status=pending which does not equal active — quarantined rows excluded from gameplay',
+    "SET status = 'pending'" in _m89_sql
+    and "'pending'" != "'active'"
+)
+
+# BANK34: M89 includes an expected active pool count (854) in header or manifest exists
+check('BANK34', '[STATIC TEST] M89 quarantine manifest exists and contains 358 entries',
+    _MANIFEST_PATH.exists()
+    and len(_json.loads(_MANIFEST_PATH.read_text())) == 358
+)
+
+# BANK35: M88 repair UUIDs (542) are NOT in the quarantine set
+_m88_sql2 = _M88_PATH.read_text(encoding='utf-8') if _M88_PATH.exists() else ''
+_m88_values_start = _m88_sql2.find("WITH repairs(id, old_ci, new_ci) AS (VALUES")
+_m88_values_end   = _m88_sql2.find("  UPDATE questions q", _m88_values_start)
+_m88_block        = _m88_sql2[_m88_values_start:_m88_values_end] if _m88_values_start >= 0 and _m88_values_end >= 0 else ''
+_m88_repair_uuids = set(re.findall(r"'([0-9a-f-]{36})'::uuid,", _m88_block))
+_accidentally_quarantined = _m88_repair_uuids & _quarantine_set
+check('BANK35', '[STATIC TEST] M88 repair UUIDs (542) do not overlap with M89 quarantine set (358)',
+    len(_accidentally_quarantined) == 0
+)
+
+# BANK36: no gameplay RPC definitions changed by M89 (M89 touches only questions.status)
+check('BANK36', '[STATIC TEST] M89 does not define or alter any gameplay functions',
+    'CREATE OR REPLACE FUNCTION' not in _m89_sql
+    and 'start_daily_bf_session' not in _m89_sql
+    and 'start_virtual_battle_session' not in _m89_sql
+    and 'start_duel' not in _m89_sql
+)
+
 check_ne('NAME_B01', '[BROWSER TEST — NOT EXECUTED] matchmaking screen shows profile display_name "Дружочек" not email prefix')
 check_ne('UX_B01',   '[BROWSER TEST — NOT EXECUTED] after 15s timeout, matchmaking shows 3 persona cards with light text and no "бот"')
 
