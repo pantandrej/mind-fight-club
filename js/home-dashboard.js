@@ -235,6 +235,7 @@ async function _loadRealData(state) {
     _loadDisplayName(state),
     _loadTeam(),
     _loadTodayEarned(),
+    _loadDailyState(),
   ]);
 }
 
@@ -257,25 +258,57 @@ async function _loadDisplayName(state) {
   }
 }
 
-// Queries currency_ledger for today's awarded neurons (positive only, UTC day).
-// RLS allows authenticated users to SELECT their own ledger rows.
-// Updates hdb-neurons + hdb-today-label with canonical earned-today value.
+// Calls get_my_today_neurons() RPC — uses player's canonical local-day timezone
+// (profiles.timezone, validated in M91). Server sums positive currency_ledger entries.
 async function _loadTodayEarned() {
   if (!window.sb) return;
   try {
-    const todayStart = new Date().toISOString().slice(0, 10) + 'T00:00:00.000Z';
-    const { data, error } = await window.sb
-      .from('currency_ledger')
-      .select('awarded_neurons')
-      .gte('created_at', todayStart)
-      .gt('awarded_neurons', 0);
-    if (error) return;
-    const earned = (data || []).reduce((s, r) => s + (r.awarded_neurons || 0), 0);
+    const { data, error } = await window.sb.rpc('get_my_today_neurons');
+    if (error || !data?.ok) return;
     const el = document.getElementById('hdb-neurons');
-    if (el) el.textContent = earned.toLocaleString('ru');
+    if (el) el.textContent = (data.earned ?? 0).toLocaleString('ru');
     const label = document.getElementById('hdb-today-label');
     if (label) label.textContent = s('todayLabel');
-  } catch(e) { /* keep skeleton value (total balance) as fallback */ }
+  } catch(e) { /* keep skeleton value (total balance from state) as fallback */ }
+}
+
+// Calls get_my_daily_state() RPC — returns canonical streak from profiles.
+// Updates streak widget with server-authoritative state.
+async function _loadDailyState() {
+  if (!window.sb) return;
+  try {
+    const { data, error } = await window.sb.rpc('get_my_daily_state');
+    if (error || !data?.ok) return;
+
+    const streak = data.streak ?? 0;
+    const best   = data.best_streak ?? 0;
+    const saved  = !!data.streak_saved_today;
+
+    const valEl = document.getElementById('hdb-streak-val');
+    if (valEl) valEl.textContent = streak;
+
+    const subEl = document.getElementById('hdb-streak-sub');
+    if (subEl) {
+      if (saved) {
+        subEl.textContent = streak > 0
+          ? `${s('streakBest')}: ${best} ${s('streakDays')} · Серия сохранена сегодня`
+          : `${s('streakBest')}: ${best} ${s('streakDays')}`;
+      } else if (streak === 0) {
+        // Streak not yet saved today — check if limit is exhausted
+        const rem = typeof window.getRemainingFreeQuestions === 'function'
+          ? window.getRemainingFreeQuestions()
+          : null;
+        subEl.textContent = (rem !== null && rem <= 0)
+          ? 'Тренировка не завершена · серия не сохранена'
+          : s('streakStart');
+      } else {
+        subEl.textContent = `${s('streakBest')}: ${best} ${s('streakDays')}`;
+      }
+    }
+
+    const flame = document.getElementById('hdb-streak-flame');
+    if (flame) flame.textContent = streak >= 3 ? '🔥' : '💡';
+  } catch(e) { /* streak widget retains skeleton value from _renderStreak */ }
 }
 
 async function _loadTeam() {

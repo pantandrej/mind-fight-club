@@ -1569,7 +1569,7 @@ async function loadProfileStats(){
     setText('ps-games',         data.games_played || 0);
     setText('ps-streak',        data.best_streak  || 0);
     setText('ps-acc',           (data.accuracy_pct || 0) + '%');
-    setText('ps-duels',         data.duels_played  || 0);
+    setText('ps-duels',         data.duels_won     || 0);
     setText('ps-correct',       data.correct_total || 0);
     setText('ps-duels-played',  data.duels_played  || 0);
     setText('ps-packs',         data.games_played  || 0);

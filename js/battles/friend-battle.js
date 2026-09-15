@@ -687,10 +687,6 @@ async function _saveDuelStats(myS, oppS, win) {
     try {
       await window.sb.rpc('complete_virtual_battle_session', {
         p_session_id: sessionId,
-        p_score:      myS,
-        p_correct:    duelMyCorrect || 0,
-        p_questions:  duelQs?.length || 5,
-        p_won:        !!win,
       });
     } catch(e) { /* silent — history row stays with nulls rather than crash */ }
   }

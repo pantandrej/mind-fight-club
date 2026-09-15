@@ -2777,18 +2777,17 @@ check('HOME-NEURON-03b', '[STATIC TEST] todayLabel string updated to "Зараб
     'Заработано сегодня' in _hdb_full
 )
 
-# HOME-NEURON-04: _loadTodayEarned queries currency_ledger positive awarded_neurons
-check('HOME-NEURON-04', '[STATIC TEST] _loadTodayEarned queries currency_ledger with gt(awarded_neurons,0)',
-    'currency_ledger' in _hdb_full
-    and bool(re.search(r'awarded_neurons', _hdb_full))
-    and bool(re.search(r'gt\s*\(|gte\s*\(|> 0', _hdb_full))
+# HOME-NEURON-04: _loadTodayEarned calls get_my_today_neurons RPC (server-authoritative, uses player timezone)
+check('HOME-NEURON-04', '[STATIC TEST] _loadTodayEarned calls get_my_today_neurons RPC (not direct ledger query)',
+    bool(re.search(r'get_my_today_neurons', _hdb_full))
+    and bool(re.search(r'data\.earned', _hdb_full))
 )
 
-# HOME-NEURON-05: ⓘ info copy describes earned-today semantics and live sources
-check('HOME-NEURON-05', '[STATIC TEST] ⓘ button copy mentions earned today, quick play, duel win, daily login',
-    bool(re.search(r'Быстрой игре|quick.*play', _idx_full, re.IGNORECASE))
-    and bool(re.search(r'дуэли|duel', _idx_full, re.IGNORECASE))
+# HOME-NEURON-05: ⓘ info copy is conservative (does not claim unverified amounts)
+check('HOME-NEURON-05', '[STATIC TEST] ⓘ button uses conservative neuron copy without unverified reward amounts',
+    bool(re.search(r'Нейроны.*валюта|neurons.*currency', _idx_full, re.IGNORECASE))
     and 'ⓘ' in _idx_full
+    and not bool(re.search(r'\+10.*Быстрой|\+50.*дуэл', _idx_full))
 )
 
 # HOME-STREAK-04: streak value comes from profiles.daily_streak (server-canonical)
@@ -2852,16 +2851,17 @@ check('HISTORY-05', '[STATIC TEST] _saveDuelStats uses complete_virtual_battle_s
     and not bool(re.search(r"from\s*\(\s*['\"]game_sessions['\"].*?\.update\s*\(", _fb_full, re.DOTALL))
 )
 
-# HISTORY-06: RPC call passes p_correct and p_questions
-check('HISTORY-06', '[STATIC TEST] complete_virtual_battle_session called with p_correct + p_questions',
-    bool(re.search(r'p_correct\s*:', _fb_full))
-    and bool(re.search(r'p_questions\s*:', _fb_full))
+# HISTORY-06: RPC call passes only p_session_id — no client result params
+check('HISTORY-06', '[STATIC TEST] complete_virtual_battle_session called with p_session_id only (no client results)',
+    bool(re.search(r'complete_virtual_battle_session', _fb_full))
+    and not bool(re.search(r'p_correct\s*:', _fb_full))
+    and not bool(re.search(r'p_questions\s*:', _fb_full))
 )
 
-# HISTORY-07: RPC call passes p_won boolean
-check('HISTORY-07', '[STATIC TEST] complete_virtual_battle_session called with p_won boolean',
-    bool(re.search(r'p_won\s*:', _fb_full))
-    and bool(re.search(r'!!\s*win|!!win', _fb_full))
+# HISTORY-07: RPC call does not supply p_won (server does not accept it)
+check('HISTORY-07', '[STATIC TEST] complete_virtual_battle_session RPC call does not pass p_won',
+    bool(re.search(r'complete_virtual_battle_session', _fb_full))
+    and not bool(re.search(r'p_won\s*:', _fb_full))
 )
 
 # HISTORY-08: M94 complete_virtual_battle_session is idempotent (already_set path)
@@ -2893,6 +2893,108 @@ check('PROFILE-STATS-02', '[STATIC TEST] M94 player_stats duels_played still cou
 check('PROFILE-STATS-03', '[STATIC TEST] player_stats accuracy_pct uses ROUND(correct/questions*100)',
     bool(re.search(r'ROUND\s*\(.*correct_answers.*questions_count|ROUND.*correct.*100', _m94_sql, re.DOTALL))
     or bool(re.search(r'accuracy_pct', _m94_sql) and re.search(r'SUM.*correct_answers', _m94_sql, re.DOTALL))
+)
+
+# ─── SPRINT-RC2 SECURITY ROUND ───────────────────────────────────────────────
+
+# M94-SEC-01: RPC accepts only p_session_id — no score/correct/questions/won params
+check('M94-SEC-01', '[STATIC TEST] complete_virtual_battle_session accepts session_id only (no client result params)',
+    bool(re.search(r'complete_virtual_battle_session\s*\(\s*p_session_id\s+uuid\s*\)', _m94_sql))
+    and not bool(re.search(r'p_score\s+int|p_correct\s+int|p_questions\s+int|p_won\s+bool', _m94_sql))
+)
+
+# M94-SEC-02: client cannot submit score — score column not set in UPDATE
+check('M94-SEC-02', '[STATIC TEST] complete_virtual_battle_session does not write score column',
+    not bool(re.search(r'score\s*=\s*[^C]', _m94_sql.split('complete_virtual_battle_session')[1].split('get_my_today_neurons')[0]))
+)
+
+# M94-SEC-03: correct count derived from session_questions, not client param
+check('M94-SEC-03', '[STATIC TEST] correct_answers derived from session_questions (server COUNT)',
+    bool(re.search(r'COUNT\(\*\).*FILTER.*is_correct.*=.*true|COUNT\(\*\).*is_correct\s*=\s*true', _m94_sql, re.DOTALL))
+)
+
+# M94-SEC-04: won not written
+check('M94-SEC-04', '[STATIC TEST] complete_virtual_battle_session does not write won column',
+    not bool(re.search(r'\bwon\s*=', _m94_sql.split('complete_virtual_battle_session')[1].split('get_my_today_neurons')[0]))
+)
+
+# M94-SEC-05: questions_count derived from session_questions COUNT
+check('M94-SEC-05', '[STATIC TEST] questions_count derived from session_questions COUNT(*)',
+    bool(re.search(r'questions_count\s*=\s*v_total', _m94_sql))
+    and bool(re.search(r'v_total\s*:=.*\d|COUNT\(\*\)\s*INTO.*v_total|INTO v_total', _m94_sql, re.DOTALL))
+)
+
+# M94-SEC-06: incomplete session rejected — v_answered check
+check('M94-SEC-06', '[STATIC TEST] incomplete virtual session rejected (all 5 must be answered)',
+    bool(re.search(r'v_answered\s*<>\s*5|v_answered\s*!=\s*5', _m94_sql))
+    and bool(re.search(r"incomplete_session", _m94_sql))
+)
+
+# M94-SEC-07: ownership enforced — user_id = v_uid AND mode = virtual_battle
+check('M94-SEC-07', '[STATIC TEST] complete_virtual_battle_session enforces user_id = auth.uid()',
+    bool(re.search(r"user_id\s*=\s*v_uid.*mode\s*=\s*'virtual_battle'|mode\s*=\s*'virtual_battle'.*user_id\s*=\s*v_uid", _m94_sql, re.DOTALL))
+    and bool(re.search(r'v_uid\s+uuid\s*:=\s*auth\.uid\(\)', _m94_sql))
+)
+
+# M94-SEC-08: anon denied — REVOKE from anon present
+check('M94-SEC-08', '[STATIC TEST] complete_virtual_battle_session revokes execute from anon',
+    bool(re.search(r'REVOKE.*complete_virtual_battle_session.*anon|REVOKE.*anon.*complete_virtual_battle_session', _m94_sql, re.DOTALL))
+    or bool(re.search(r'FROM PUBLIC, anon', _m94_sql))
+)
+
+# HOME-TODAY-01: _loadTodayEarned uses get_my_today_neurons RPC (not direct ledger query)
+check('HOME-TODAY-01', '[STATIC TEST] _loadTodayEarned calls get_my_today_neurons RPC',
+    bool(re.search(r'get_my_today_neurons', _hdb_full))
+    and not bool(re.search(r"from\s*\(\s*['\"]currency_ledger['\"]", _hdb_full))
+)
+
+# HOME-TODAY-02: get_my_today_neurons uses profiles.timezone (not UTC hardcoded)
+check('HOME-TODAY-02', '[STATIC TEST] get_my_today_neurons RPC uses profiles.timezone for local day',
+    bool(re.search(r'get_my_today_neurons', _m94_sql))
+    and bool(re.search(r'profiles.*timezone|timezone.*profiles', _m94_sql, re.DOTALL))
+    and bool(re.search(r'AT TIME ZONE', _m94_sql))
+)
+
+# HOME-TODAY-03: get_my_today_neurons sums only positive awards (no spends)
+check('HOME-TODAY-03', '[STATIC TEST] get_my_today_neurons sums awarded_neurons > 0 only',
+    bool(re.search(r'awarded_neurons\s*>\s*0', _m94_sql))
+    and bool(re.search(r'SUM.*awarded_neurons', _m94_sql, re.DOTALL))
+)
+
+# HOME-STREAK-07: _loadDailyState calls get_my_daily_state RPC
+check('HOME-STREAK-07', '[STATIC TEST] home-dashboard calls get_my_daily_state RPC for canonical streak',
+    bool(re.search(r'get_my_daily_state', _hdb_full))
+)
+
+# HOME-STREAK-08: streak_saved_today path renders "Серия сохранена"
+check('HOME-STREAK-08', '[STATIC TEST] streak_saved_today state shows saved message',
+    bool(re.search(r'streak_saved_today|Серия сохранена', _hdb_full))
+)
+
+# HOME-STREAK-09: incomplete state does not claim saved streak
+check('HOME-STREAK-09', '[STATIC TEST] streak=0 + limit exhausted shows incomplete-session message',
+    bool(re.search(r'не завершена|not.*completed', _hdb_full, re.IGNORECASE))
+    and bool(re.search(r'getRemainingFreeQuestions', _hdb_full))
+)
+
+# PROFILE-STATS-04: ps-duels element renders data.duels_won (not duels_played)
+_legacy_full = open(_os5.path.join(_os5.path.dirname(__file__), '..', 'js', 'legacy.js')).read()
+check('PROFILE-STATS-04', '[STATIC TEST] ps-duels element renders data.duels_won not data.duels_played',
+    bool(re.search(r"setText\s*\(\s*['\"]ps-duels['\"].*duels_won", _legacy_full))
+    and not bool(re.search(r"setText\s*\(\s*['\"]ps-duels['\"].*duels_played", _legacy_full))
+)
+
+# PROFILE-STATS-05: virtual_battle excluded from duels_won in M94 view
+check('PROFILE-STATS-05', '[STATIC TEST] player_stats duels_won filter: friend+random only (virtual excluded)',
+    bool(re.search(r"mode IN \('friend_battle','random_battle'\)\s*\n\s*AND gs\.won = true", _m94_sql))
+    and not bool(re.search(r"mode IN \('friend_battle','random_battle','virtual_battle'\)\s*\n\s*AND gs\.won", _m94_sql))
+)
+
+# LISTING-10: crb_creator_write policy uses auth.uid() = creator_id (insert is ownership-tied)
+_m28_sql = open(_os5.path.join(_os5.path.dirname(__file__), '..', 'sql', '28_dating_club_finder.sql')).read()
+check('LISTING-10', '[STATIC TEST] club_recruitment_board insert policy ties to auth.uid() = creator_id',
+    bool(re.search(r'auth\.uid\(\)\s*=\s*creator_id|creator_id\s*=\s*auth\.uid\(\)', _m28_sql))
+    and bool(re.search(r'crb_creator_write|creator_write', _m28_sql))
 )
 
 static_total = len(PASS) + len(FAIL)
