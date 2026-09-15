@@ -1485,9 +1485,9 @@ check('UX02', '[STATIC TEST] no visible "Играть с ботом" button (mus
     ))
 )
 
-# UX03: exactly three persona cards rendered via BOT_PLAYERS in matchmaking.js
-check('UX03', '[STATIC TEST] exactly 3 virtual persona entries in BOT_PLAYERS',
-    len(re.findall(r'\{\s*name\s*:', mm_js.split('const BOT_PLAYERS')[1].split('];')[0])) == 3
+# UX03: BOT_PLAYERS pool has ≥12 entries (expanded from 3 for variety)
+check('UX03', '[STATIC TEST] BOT_PLAYERS pool has ≥12 entries (expanded persona pool)',
+    len(re.findall(r'\{\s*name\s*:', mm_js.split('const BOT_PLAYERS')[1].split('];')[0])) >= 12
     if 'const BOT_PLAYERS' in mm_js else False
 )
 
@@ -1497,16 +1497,15 @@ check('UX04', '[STATIC TEST] persona cards are button elements with onclick hand
     or bool(re.search(r"createElement\(['\"]button['\"]\)[\s\S]{0,200}card\.onclick", mm_js))
 )
 
-# UX05: persona card name has explicit white/light color
-check('UX05', '[STATIC TEST] persona card name has explicit light color (color:#fff or color:rgba)',
-    bool(re.search(r"color\s*:\s*#fff['\"]>\$\{bot\.name\}", mm_js))
-    or bool(re.search(r'color:#fff.*\$\{bot\.name\}', mm_js))
+# UX05: persona card name uses theme-aware color (var(--text)) for light/dark theme compat
+check('UX05', '[STATIC TEST] persona card name uses var(--text) for theme-aware readability',
+    bool(re.search(r'color:var\(--text\).*\$\{bot\.name\}|\$\{bot\.name\}.*color:var\(--text\)', mm_js, re.DOTALL))
+    or bool(re.search(r"color:var\(--text\)", mm_js))
 )
 
-# UX06: persona card city text is readable (explicit color)
-check('UX06', '[STATIC TEST] persona card city text has explicit color for readability',
-    bool(re.search(r'color\s*:\s*rgba\(255,255,255,0\.\d+\)[^>]*>\$\{bot\.flag\}', mm_js))
-    or bool(re.search(r'rgba\(255,255,255.*\$\{bot\.city\}', mm_js))
+# UX06: persona card city text uses theme-aware muted color
+check('UX06', '[STATIC TEST] persona card city text uses var(--muted) for theme-aware readability',
+    bool(re.search(r'color:var\(--muted\)', mm_js))
 )
 
 # UX07: strengths correct — Макс=2, София=3, Даниил=4 (out of 5)
@@ -2678,6 +2677,73 @@ check('PROFILE-09', '[STATIC TEST] loadDuelHistory has fallback label for missin
 # ─────────────────────────────────────────────────────────────────────────────
 # Results
 # ─────────────────────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
+# SPRINT-UX: Release Candidate UX/Runtime sprint
+# ─────────────────────────────────────────────────────────────────────────────
+import os as _os4
+_mm_js_path  = _os4.path.join(_os4.path.dirname(__file__), '..', 'js', 'battles', 'matchmaking.js')
+_mm_full     = open(_mm_js_path).read() if _os4.path.exists(_mm_js_path) else ''
+_idx_path    = _os4.path.join(_os4.path.dirname(__file__), '..', 'index.html')
+_idx_full    = open(_idx_path).read() if _os4.path.exists(_idx_path) else ''
+
+# BATTLE-PTS-01: renderDuelTimer shows dynamic score for virtual battle
+check('BATTLE-PTS-01', '[STATIC TEST] renderDuelTimer shows dynamic pts for bot duel (not always +10)',
+    bool(re.search(r'_isBotDuel.*?duelTimeLeft|duelTimeLeft.*?_isBotDuel', _fb_full, re.DOTALL))
+    and bool(re.search(r"d-p-val", _fb_full))
+)
+
+# BATTLE-PTS-02: virtual battle scoring uses Math.max(1, duelTimeLeft)
+check('BATTLE-PTS-02', '[STATIC TEST] virtual battle answer path uses Math.max(1, duelTimeLeft) for pts',
+    bool(re.search(r'Math\.max\s*\(\s*1\s*,\s*duelTimeLeft\s*\)', _fb_full))
+)
+
+# BATTLE-PTS-03: friend duel shows +10 (server-fixed scoring)
+check('BATTLE-PTS-03', '[STATIC TEST] renderDuelTimer keeps +10 for non-bot (friend duel) path',
+    bool(re.search(r"['\+]10['\"]", _fb_full))
+    and bool(re.search(r'_isBotDuel', _fb_full))
+)
+
+# RB-PERSONA-01: BOT_PLAYERS pool has at least 12 entries
+check('RB-PERSONA-01', '[STATIC TEST] BOT_PLAYERS pool expanded to ≥12 entries',
+    len(re.findall(r'\{\s*name\s*:', _mm_full)) >= 12
+)
+
+# RB-PERSONA-02: _showBotOffer picks random 3 (not forEach all)
+check('RB-PERSONA-02', '[STATIC TEST] _showBotOffer picks 3 random unique personas (not forEach BOT_PLAYERS)',
+    bool(re.search(r'sort\s*\(\s*\(\)\s*=>\s*Math\.random', _mm_full))
+    and bool(re.search(r'slice\s*\(\s*0\s*,\s*3\s*\)', _mm_full))
+)
+
+# RB-LIGHT-01: persona cards use theme-aware CSS vars not hardcoded rgba white bg
+check('RB-LIGHT-01', '[STATIC TEST] persona card background uses var(--bg2) not rgba(255,255,255,0.09)',
+    'var(--bg2)' in _mm_full
+    and 'rgba(255,255,255,0.09)' not in _mm_full
+)
+
+# RB-LIGHT-02: persona card text uses var(--text) / var(--muted) not hardcoded white
+check('RB-LIGHT-02', '[STATIC TEST] persona card text uses var(--text)/var(--muted) not hardcoded #fff/rgba-white',
+    bool(re.search(r'color:var\(--text\)', _mm_full))
+    and bool(re.search(r'color:var\(--muted\)', _mm_full))
+)
+
+# HOME-NEURON-01: neurons widget has ⓘ info button
+check('HOME-NEURON-01', '[STATIC TEST] home neurons widget has ⓘ info affordance',
+    'ⓘ' in _idx_full
+    and 'hdb-neurons' in _idx_full
+)
+
+# HOME-NEURON-02: ⓘ button triggers toast with neuron explanation
+check('HOME-NEURON-02', '[STATIC TEST] ⓘ button calls window.toast with neuron description',
+    bool(re.search(r'ⓘ.*?toast|toast.*?ⓘ', _idx_full, re.DOTALL))
+    and bool(re.search(r'Нейроны|нейроны', _idx_full))
+)
+
+# HOME-NEURON-03: hdb-neurons shows state.neurons (total balance, not today-only)
+check('HOME-NEURON-03', '[STATIC TEST] home dashboard renders hdb-neurons from state.neurons',
+    bool(re.search(r'state\.neurons', open(_os4.path.join(_os4.path.dirname(__file__), '..', 'js', 'home-dashboard.js')).read()))
+    and bool(re.search(r'hdb-neurons', _idx_full))
+)
+
 static_total = len(PASS) + len(FAIL)
 ne_total = len(NOT_EXECUTED)
 print(f"\n{'='*60}")

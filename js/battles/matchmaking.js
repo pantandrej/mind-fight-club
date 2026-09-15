@@ -12,11 +12,23 @@ let mmTimeout      = null;
 let mmAttemptId    = 0;   // monotonic generation counter
 let mmClaimFlight  = false; // true while a claim_random_match RPC is in-flight
 
-// Canonical virtual opponents — exactly 3, structurally isolated from real duels
+// Virtual opponent pool — 15 personas, 3 random shown per offer
 const BOT_PLAYERS = [
-  { name:'Макс',   city:'Казань',   flag:'🇷🇺', avatar:'⚡', skill:0.575, minDelay:4000, maxDelay:14000 },
-  { name:'София',  city:'Алматы',   flag:'🇰🇿', avatar:'🌸', skill:0.705, minDelay:3000, maxDelay:12000 },
-  { name:'Даниил', city:'Тбилиси',  flag:'🇬🇪', avatar:'🧠', skill:0.84,  minDelay:2000, maxDelay:10000 },
+  { name:'Макс',      city:'Казань',           flag:'🇷🇺', avatar:'⚡', skill:0.575, minDelay:4000, maxDelay:14000 },
+  { name:'София',     city:'Алматы',           flag:'🇰🇿', avatar:'🌸', skill:0.705, minDelay:3000, maxDelay:12000 },
+  { name:'Даниил',    city:'Тбилиси',          flag:'🇬🇪', avatar:'🧠', skill:0.84,  minDelay:2000, maxDelay:10000 },
+  { name:'Алина',     city:'Москва',           flag:'🇷🇺', avatar:'🎯', skill:0.52,  minDelay:5000, maxDelay:16000 },
+  { name:'Тимур',     city:'Ташкент',          flag:'🇺🇿', avatar:'🔥', skill:0.63,  minDelay:4000, maxDelay:13000 },
+  { name:'Наташа',    city:'Минск',            flag:'🇧🇾', avatar:'🌺', skill:0.68,  minDelay:3500, maxDelay:12000 },
+  { name:'Артём',     city:'Новосибирск',      flag:'🇷🇺', avatar:'🚀', skill:0.77,  minDelay:3000, maxDelay:11000 },
+  { name:'Камила',    city:'Астана',           flag:'🇰🇿', avatar:'💫', skill:0.60,  minDelay:4500, maxDelay:14000 },
+  { name:'Георгий',   city:'Ереван',           flag:'🇦🇲', avatar:'🏛', skill:0.72,  minDelay:3000, maxDelay:11000 },
+  { name:'Вика',      city:'Одесса',           flag:'🇺🇦', avatar:'🎵', skill:0.55,  minDelay:5000, maxDelay:15000 },
+  { name:'Рустам',    city:'Баку',             flag:'🇦🇿', avatar:'🌊', skill:0.80,  minDelay:2500, maxDelay:10000 },
+  { name:'Лена',      city:'Екатеринбург',     flag:'🇷🇺', avatar:'🦋', skill:0.48,  minDelay:6000, maxDelay:18000 },
+  { name:'Азиз',      city:'Бишкек',           flag:'🇰🇬', avatar:'⭐', skill:0.66,  minDelay:4000, maxDelay:13000 },
+  { name:'Марина',    city:'Санкт-Петербург',  flag:'🇷🇺', avatar:'🎭', skill:0.73,  minDelay:3000, maxDelay:11000 },
+  { name:'Нур',       city:'Шымкент',          flag:'🇰🇿', avatar:'🌙', skill:0.88,  minDelay:2000, maxDelay:9000  },
 ];
 
 function pickRandomBot(){
@@ -541,25 +553,28 @@ function _showBotOffer(_ignored) {
   }
   cardWrap.innerHTML = '';
 
-  BOT_PLAYERS.forEach(bot => {
+  // Pick 3 random unique personas each time
+  const shownBots = [...BOT_PLAYERS].sort(() => Math.random() - 0.5).slice(0, 3);
+
+  shownBots.forEach(bot => {
     const card = document.createElement('button');
     card.style.cssText = [
       'flex:1;min-width:90px;max-width:120px;padding:14px 8px',
-      'border-radius:14px;border:1px solid rgba(255,255,255,0.18)',
-      'background:rgba(255,255,255,0.09);cursor:pointer',
+      'border-radius:14px;border:1px solid var(--border)',
+      'background:var(--bg2);cursor:pointer',
       'font-family:inherit;text-align:center;transition:background .15s',
     ].join(';');
-    card.onmouseover = () => { card.style.background = 'rgba(255,255,255,0.16)'; };
-    card.onmouseout  = () => { card.style.background = 'rgba(255,255,255,0.09)'; };
-    // Stars: filled ★ gold, unfilled ☆ dimmed
+    card.onmouseover = () => { card.style.background = 'var(--bg3,var(--bg2))'; card.style.borderColor = 'var(--accent)'; };
+    card.onmouseout  = () => { card.style.background = 'var(--bg2)'; card.style.borderColor = 'var(--border)'; };
+    // Stars: filled ★ gold, unfilled ☆ muted
     const filled  = bot.skill >= 0.8 ? 4 : bot.skill >= 0.65 ? 3 : 2;
     const starHTML = `<span style="color:#fbbf24">${'★'.repeat(filled)}</span>`
-                   + `<span style="color:rgba(255,255,255,0.22)">${'☆'.repeat(5 - filled)}</span>`;
+                   + `<span style="color:var(--muted)">${'☆'.repeat(5 - filled)}</span>`;
     card.innerHTML = `<div style="font-size:24px;margin-bottom:4px">${bot.avatar}</div>
-      <div style="font-weight:800;font-size:14px;margin:4px 0;color:#fff">${bot.name}</div>
-      <div style="font-size:11px;color:rgba(255,255,255,0.55);margin-bottom:6px">${bot.flag} ${bot.city}</div>
+      <div style="font-weight:800;font-size:14px;margin:4px 0;color:var(--text)">${bot.name}</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px">${bot.flag} ${bot.city}</div>
       <div style="font-size:13px;margin-top:2px">${starHTML}</div>
-      <div style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:4px;letter-spacing:.5px">виртуальный игрок</div>`;
+      <div style="font-size:10px;color:var(--muted);margin-top:4px;letter-spacing:.5px">виртуальный игрок</div>`;
     card.onclick = async () => {
       window._pendingBot = bot;
       window._botPlayer  = bot;

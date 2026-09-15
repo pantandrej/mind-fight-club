@@ -438,8 +438,8 @@ function renderDuelTimer(){
   fill.style.width=pct+'%';fill.style.background=pct<35?'#e05555':pct<60?'#f0a050':'var(--accent)';
   const tv=document.getElementById('d-t-val');
   tv.textContent=duelTimeLeft+'s';tv.style.color=duelTimeLeft<=5?'#e05555':duelTimeLeft<=10?'#f0a050':'var(--accent2)';
-  // v1: fixed server scoring — timer is for pacing only, not speed-based points
-  document.getElementById('d-p-val').textContent='+10';
+  const pv = document.getElementById('d-p-val');
+  if (pv) pv.textContent = window._isBotDuel ? '+' + Math.max(1, duelTimeLeft) : '+10';
 }
 function duelTick(){if(duelTimeLeft<=0){clearInterval(duelTimer);duelExpire();return;}duelTimeLeft--;renderDuelTimer();}
 async function duelExpire(){
