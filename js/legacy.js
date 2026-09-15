@@ -1673,20 +1673,23 @@ async function loadDuelHistory() {
   list.innerHTML = sessions.map(s => {
     const won   = s.won;
     const date  = new Date(s.started_at).toLocaleDateString('ru', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-    const mode  = s.mode === 'friend_battle' ? 'Друг' : s.mode === 'random_battle' ? 'Случайный' : 'Бот';
-    const opp   = mode;
-    const result = won === true ? '🏆 Победа' : won === false ? '💀 Поражение' : '🤝 Ничья';
+    const modeLabel = s.mode === 'friend_battle' ? 'Друг' : s.mode === 'random_battle' ? 'Случайный' : 'виртуальный игрок';
+    // won=null means result was never written (real duel sessions in v1)
+    const result = won === true ? '🏆 Победа' : won === false ? '💀 Поражение' : '— Нет данных';
+    const icon   = won === true ? '🏆' : won === false ? '💀' : '⚔️';
     const color  = won === true ? 'var(--green, #4ade80)' : won === false ? 'var(--red, #f87171)' : 'var(--muted)';
-    const acc    = s.questions_count > 0 ? Math.round((s.correct_answers || 0) / s.questions_count * 100) : 0;
+    const acc    = s.questions_count > 0 ? Math.round((s.correct_answers || 0) / s.questions_count * 100) : null;
+    const accTxt = acc !== null ? `${acc}%` : '—';
+    const scoreTxt = s.score != null ? `⚡${s.score}` : '—';
     return `<div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:12px">
-      <div style="font-size:20px">${won === true ? '🏆' : won === false ? '💀' : '🤝'}</div>
+      <div style="font-size:20px">${icon}</div>
       <div style="flex:1;min-width:0">
-        <div style="font-weight:700;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">vs ${opp}</div>
-        <div style="font-size:11px;color:var(--muted)">${date} · ${mode}</div>
+        <div style="font-weight:700;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">vs ${modeLabel}</div>
+        <div style="font-size:11px;color:var(--muted)">${date} · ${modeLabel}</div>
       </div>
       <div style="text-align:right">
         <div style="font-weight:800;font-size:13px;color:${color}">${result}</div>
-        <div style="font-size:11px;color:var(--muted)">⚡${s.score || 0} · ${acc}%</div>
+        <div style="font-size:11px;color:var(--muted)">${scoreTxt} · ${accTxt}</div>
       </div>
     </div>`;
   }).join('');

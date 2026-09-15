@@ -24,6 +24,7 @@ let _isRandomBattle = false; // true when came from matchmaking (not friend duel
 let _oppScoreAtQStart = 0;  // opponent score when current question started (to detect miss)
 let _myAnswers = []; // per-question points for this player (0 = miss)
 let _duelChannel = null; // Supabase Realtime broadcast channel for reactions/phrases
+let _duelChannelCode = null; // guard: skip channel re-init when already on same code
 
 // Simulate bot answer independently of whether the player has answered.
 // Uses qIndex to ignore stale timeouts that fired after "Next" was pressed.
@@ -489,6 +490,8 @@ async function duelExpire(){
   } catch(e){ console.warn('[duel] expire submit failed:', e.message); }
   showFb('d-fb','⏱ Время вышло',false);
   setMyDot(duelIdx, null); // neutral timeout state — correctness unknown during LIVE
+  // Broadcast timeout to opponent as an answer event (no correctness info)
+  _duelChannel?.send({ type: 'broadcast', event: 'ans', payload: { qi: duelIdx } });
   document.getElementById('d-next-btn').className='next-btn show';
 }
 function triggerCorrectAnimation(pts, buttonEl){
@@ -575,6 +578,8 @@ async function pickDuel(i){
     showFb('d-fb','✓ Ответ принят',true);
     // Neutral dot: null = submitted, correctness unknown during LIVE
     setMyDot(duelIdx, null);
+    // Broadcast to opponent: "I answered question qi" — no correctness info
+    _duelChannel?.send({ type: 'broadcast', event: 'ans', payload: { qi: duelIdx } });
     if(res.completed){
       // Player answered all questions — score/result comes from get_duel_result
       duelMyCorrect = 0; // will be set from server result
@@ -864,10 +869,26 @@ function duelPlayAgain(){
 // ── Duel chat / reactions ────────────────────────────────────────────────────
 
 function _initDuelChannel(code) {
+  // Skip re-init if already subscribed to this same duel code — prevents
+  // tearing down a live subscription just as the battle screen opens.
+  if (_duelChannel && _duelChannelCode === code) return;
   if (_duelChannel) { try { sb.removeChannel(_duelChannel); } catch(e){} _duelChannel = null; }
   if (window._isBotDuel) return;
+  _duelChannelCode = code;
   _duelChannel = sb.channel(`duel-chat:${code}`, { config: { broadcast: { self: false } } });
   _duelChannel.on('broadcast', { event: 'msg' }, ({ payload }) => _onDuelMsg(payload));
+  // Opponent answered notification — no correctness info, just question index
+  _duelChannel.on('broadcast', { event: 'ans' }, ({ payload }) => {
+    const qi = payload?.qi;
+    if (typeof qi !== 'number') return;
+    setOppDot(qi, null); // null = neutral answered, no correctness shown
+    const hint = document.getElementById('opp-hint');
+    if (hint) {
+      const total = duelQs.length || 5;
+      hint.textContent = `• ${duelOppNameStr} ответил (${qi + 1}/${total})`;
+      hint.className = 'opp-hint answered';
+    }
+  });
   _duelChannel.subscribe();
 }
 
@@ -931,6 +952,7 @@ function resetDuel(){
   clearInterval(duelTimer); duelTimer = null;
   if(_oppPollInterval){ clearInterval(_oppPollInterval); _oppPollInterval = null; }
   if(_duelChannel){ try { sb.removeChannel(_duelChannel); } catch(e){} _duelChannel = null; }
+  _duelChannelCode = null;
   if(window._botAnswerTimeout){ clearTimeout(window._botAnswerTimeout); window._botAnswerTimeout = null; }
   // Full state reset
   duelCode=null; duelRole=null; duelQs=[]; duelIdx=0;

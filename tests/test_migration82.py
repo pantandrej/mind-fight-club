@@ -2416,6 +2416,111 @@ check_ne('M92-DB-02', '[DB TEST] authenticated role retains EXECUTE on record_da
 check_ne('M92-DB-03', '[DB TEST] PUBLIC has no EXECUTE on record_daily_activity(uuid)')
 
 # ─────────────────────────────────────────────────────────────────────────────
+# FRIEND-RT: Realtime reaction channel contract
+# ─────────────────────────────────────────────────────────────────────────────
+import os as _os2
+_fb_js_path = _os2.path.join(_os2.path.dirname(__file__), '..', 'js', 'battles', 'friend-battle.js')
+_fb_full = open(_fb_js_path).read()
+
+# FRIEND-RT-01: send path calls channel.send with type broadcast and event msg
+check('FRIEND-RT-01', '[STATIC TEST] sendDuelReaction calls _duelChannel.send with type=broadcast event=msg',
+    bool(re.search(r'sendDuelReaction.*?_duelChannel', _fb_full, re.DOTALL))
+    and bool(re.search(r"event:\s*['\"]msg['\"]", _fb_full))
+)
+
+# FRIEND-RT-02: subscription filters on same duel code (channel name includes code variable)
+check('FRIEND-RT-02', '[STATIC TEST] _initDuelChannel creates channel namespaced by duel code',
+    bool(re.search(r"sb\.channel\s*\(\s*`duel-chat:\$\{code\}`", _fb_full))
+)
+
+# FRIEND-RT-03: incoming msg broadcast rendered by _onDuelMsg
+check('FRIEND-RT-03', '[STATIC TEST] _initDuelChannel subscribes to msg event and calls _onDuelMsg',
+    bool(re.search(r"event:\s*['\"]msg['\"].*?_onDuelMsg", _fb_full, re.DOTALL))
+)
+
+# FRIEND-RT-04: idempotency guard prevents duplicate subscription teardown
+check('FRIEND-RT-04', '[STATIC TEST] _duelChannelCode guard skips re-init when same code already subscribed',
+    '_duelChannelCode' in _fb_full
+    and bool(re.search(r'_duelChannelCode\s*===\s*code', _fb_full))
+    and bool(re.search(r'if\s*\(\s*_duelChannel.*?_duelChannelCode\s*===\s*code\s*\)\s*return', _fb_full, re.DOTALL))
+)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# FRIEND-ANS: Opponent answer real-time notification contract
+# ─────────────────────────────────────────────────────────────────────────────
+
+# FRIEND-ANS-01: answer submit goes through server RPC (submit_duel_answer)
+check('FRIEND-ANS-01', '[STATIC TEST] pickDuel calls submit_duel_answer RPC (server-authoritative)',
+    bool(re.search(r"sb\.rpc\s*\(\s*['\"]submit_duel_answer['\"]", _fb_full))
+)
+
+# FRIEND-ANS-02: answered state uses realtime broadcast 'ans' event (not only poll)
+check('FRIEND-ANS-02', '[STATIC TEST] pickDuel/duelExpire broadcast ans event to opponent in real-duel path',
+    bool(re.search(r"event:\s*['\"]ans['\"]", _fb_full))
+    and bool(re.search(r"_duelChannel.*?send.*?event.*?ans", _fb_full, re.DOTALL))
+)
+
+# FRIEND-ANS-03: 'ans' broadcast payload contains qi (question index) but NOT correct_index
+check('FRIEND-ANS-03', '[STATIC TEST] ans broadcast payload has qi but no correct_index leak',
+    bool(re.search(r"payload:\s*\{\s*qi\s*:", _fb_full))
+    and not bool(re.search(r"payload:\s*\{[^}]*correct_index[^}]*\}", _fb_full))
+)
+
+# FRIEND-ANS-04: receiver of 'ans' event shows neutral indicator without revealing correctness
+check('FRIEND-ANS-04', '[STATIC TEST] ans listener calls setOppDot with null (neutral) not a correctness flag',
+    bool(re.search(r"setOppDot\s*\(\s*qi\s*,\s*null\s*\)", _fb_full))
+)
+
+# FRIEND-ANS-05: final resolution uses get_duel_result RPC (canonical scores from server)
+check('FRIEND-ANS-05', '[STATIC TEST] duel resolution calls get_duel_result RPC',
+    bool(re.search(r"sb\.rpc\s*\(\s*['\"]get_duel_result['\"]", _fb_full))
+)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PROFILE: Profile stats and history display contract
+# ─────────────────────────────────────────────────────────────────────────────
+import os as _os3
+_legacy_js_path = _os3.path.join(_os3.path.dirname(__file__), '..', 'js', 'legacy.js')
+_legacy_full = open(_legacy_js_path).read()
+_screens_css_path = _os3.path.join(_os3.path.dirname(__file__), '..', 'css', 'screens.css')
+_screens_css = open(_screens_css_path).read()
+_m93_path = _os3.path.join(_os3.path.dirname(__file__), '..', 'sql', '93_duel_session_link_and_stats.sql')
+_m93_sql = open(_m93_path).read() if _os3.path.exists(_m93_path) else ''
+
+# PROFILE-01: duels_won computed from game_sessions.won=true (wins exclude draws/ties)
+check('PROFILE-01', '[STATIC TEST] M93 player_stats view counts duels_won only where gs.won=true',
+    bool(re.search(r'gs\.won\s*=\s*true', _m93_sql))
+    and 'duels_won' in _m93_sql
+)
+
+# PROFILE-02: history null-won shown as no-data (not Ничья/draw) — canonical inconsistency removed
+check('PROFILE-02', '[STATIC TEST] loadDuelHistory shows "— Нет данных" for null won (not Ничья)',
+    '— Нет данных' in _legacy_full
+    # Pattern: ternary with won===true / won===false / else '— Нет данных' (null falls to else branch)
+    and bool(re.search(r"won\s*===\s*true.*?won\s*===\s*false.*?Нет данных", _legacy_full, re.DOTALL))
+    and 'Ничья' not in _legacy_full[_legacy_full.find('loadDuelHistory'):_legacy_full.find('loadDuelHistory')+3000]
+)
+
+# PROFILE-03: history never shows "Бот" — uses "виртуальный игрок" label
+check('PROFILE-03', '[STATIC TEST] loadDuelHistory uses "виртуальный игрок" not "Бот" for virtual mode',
+    'виртуальный игрок' in _legacy_full
+    and bool(re.search(r"modeLabel.*виртуальный игрок|виртуальный игрок.*modeLabel", _legacy_full, re.DOTALL))
+    and not bool(re.search(r"modeLabel\s*=.*?['\"]Бот['\"]", _legacy_full))
+)
+
+# PROFILE-04: accuracy is derived from canonical data (correct_answers/questions_count)
+check('PROFILE-04', '[STATIC TEST] M93 player_stats accuracy_pct uses SUM(correct_answers)/SUM(questions_count)',
+    bool(re.search(r'SUM\s*\(\s*gs\.correct_answers\s*\)', _m93_sql, re.IGNORECASE))
+    and bool(re.search(r'SUM\s*\(\s*gs\.questions_count\s*\)', _m93_sql, re.IGNORECASE))
+    and 'accuracy_pct' in _m93_sql
+)
+
+# PROFILE-05: light-theme profile name has explicit readable color (color:var(--text) on .pp-name)
+check('PROFILE-05', '[STATIC TEST] .pp-name has explicit color:var(--text) for light-theme contrast',
+    bool(re.search(r'\.pp-name\s*\{[^}]*color\s*:\s*var\(--text\)', _screens_css, re.DOTALL))
+)
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Results
 # ─────────────────────────────────────────────────────────────────────────────
 static_total = len(PASS) + len(FAIL)
