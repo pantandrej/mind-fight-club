@@ -507,6 +507,7 @@
 }
 [data-theme="light"] .pp-name { color: #111827; }
 [data-theme="light"] .pp-bio { color: #374151; }
+[data-theme="light"] .pp-bio-ph { color: #9ca3af; }
 [data-theme="light"] .pp-rank-badge {
   background: rgba(0,191,150,.1);
   border-color: rgba(0,191,150,.25);

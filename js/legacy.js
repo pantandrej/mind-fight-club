@@ -1695,8 +1695,9 @@ async function loadDuelHistory() {
     } else {
       oppLabel = s.mode === 'random_battle' ? 'Соперник' : 'Друг';
     }
-    // won=null means result was never written (real duel sessions in v1)
-    const result = won === true ? '🏆 Победа' : won === false ? '💀 Поражение' : '— Нет данных';
+    // won=null: virtual battle abandoned, or real duel (v1 — winner tracked in duel_rooms)
+    const isRealDuel = (s.mode === 'friend_battle' || s.mode === 'random_battle') && won === null;
+    const result = won === true ? '🏆 Победа' : won === false ? '💀 Поражение' : isRealDuel ? '⚔️ Дуэль сыграна' : '— Нет данных';
     const icon   = won === true ? '🏆' : won === false ? '💀' : '⚔️';
     const color  = won === true ? 'var(--green, #4ade80)' : won === false ? 'var(--red, #f87171)' : 'var(--muted)';
     const acc    = s.questions_count > 0 ? Math.round((s.correct_answers || 0) / s.questions_count * 100) : null;

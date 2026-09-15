@@ -1695,6 +1695,7 @@ function updateScoreScreenButtons(){
   // Remove any inline onclick attribute that may compete with .onclick
   scAgainBtn.removeAttribute('onclick');
   scAgainBtn.disabled = false;
+  scAgainBtn.classList.remove('score-main-btn--locked');
 
   // For authenticated premium users, server may allow more rounds today.
   // _quickPlayServerRemaining is set from start_game_session.remaining after each granted round.
@@ -1712,6 +1713,7 @@ function updateScoreScreenButtons(){
     scAgainBtn.onclick = function(e){ e.preventDefault(); startQuickPlay(); return false; };
   } else if(isQuickLocked){
     scAgainBtn.textContent = lang==='ru' ? '🔒 Лимит на сегодня исчерпан' : '🔒 Daily limit reached';
+    scAgainBtn.classList.add('score-main-btn--locked');
     scAgainBtn.onclick = function(e){ e.preventDefault(); showDailyLimitScreen('training'); return false; };
   } else if(currentGameType === 'pack' && currentPackKey){
     scAgainBtn.textContent = lang==='ru' ? '🔄 Играть пак снова' : '🔄 Play pack again';
@@ -1724,6 +1726,7 @@ function updateScoreScreenButtons(){
     scAgainBtn.onclick = function(e){ e.preventDefault(); playDailyChallenge(); return false; };
   } else {
     scAgainBtn.textContent = lang==='ru' ? '🔒 Лимит на сегодня исчерпан' : '🔒 Daily limit reached';
+    scAgainBtn.classList.add('score-main-btn--locked');
     scAgainBtn.onclick = function(e){ e.preventDefault(); showDailyLimitScreen('training'); return false; };
   }
 }
