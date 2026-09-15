@@ -1184,27 +1184,33 @@ REVOKE ALL ON TABLE public.matchmaking_queue FROM authenticated;
 GRANT INSERT ON TABLE public.matchmaking_queue TO authenticated;
 GRANT SELECT ON TABLE public.matchmaking_queue TO authenticated;
 
--- INSERT policy: own row only, non-anonymous users only.
+-- INSERT policy: own row only, fresh waiting row only, non-anonymous only.
+-- status='waiting' and matched_duel_id IS NULL enforced server-side so a client
+-- cannot inject a pre-matched row — claim_random_match() is the only path that
+-- sets status='matched'.
 CREATE POLICY mm_insert_own
   ON public.matchmaking_queue
   FOR INSERT
   TO authenticated
   WITH CHECK (
-    user_id = auth.uid()
+    user_id         = auth.uid()
     AND NOT COALESCE((auth.jwt() ->> 'is_anonymous')::boolean, false)
+    AND status          = 'waiting'
+    AND matched_duel_id IS NULL
   );
 
--- SELECT policy: own row + other waiting rows (needed for battle board display).
--- Anonymous users are blocked by jwt check; they have no queue rows anyway.
+-- SELECT policy: non-anonymous users only; own row OR other waiting rows.
+-- The anon guard wraps the whole USING expression so an anonymous uid cannot
+-- read its own row via the first branch.
 CREATE POLICY mm_select_own_or_waiting
   ON public.matchmaking_queue
   FOR SELECT
   TO authenticated
   USING (
-    user_id = auth.uid()
-    OR (
-      status = 'waiting'
-      AND NOT COALESCE((auth.jwt() ->> 'is_anonymous')::boolean, false)
+    NOT COALESCE((auth.jwt() ->> 'is_anonymous')::boolean, false)
+    AND (
+      user_id = auth.uid()
+      OR status = 'waiting'
     )
   );
 

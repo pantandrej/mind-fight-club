@@ -3367,6 +3367,43 @@ check('GUEST-QUEUE-08', '[STATIC TEST] cancel_random_matchmaking is SECURITY DEF
     and bool(re.search(r'cancel_random_matchmaking[\s\S]{0,2000}anonymous_not_allowed', _m95_sql))
 )
 
+# GUEST-QUEUE-09: INSERT policy enforces status = 'waiting'
+check('GUEST-QUEUE-09', '[STATIC TEST] mm_insert_own WITH CHECK enforces status = \'waiting\'',
+    bool(re.search(
+        r'mm_insert_own[\s\S]{0,400}status\s*=\s*\'waiting\'',
+        _m95_sql
+    ))
+)
+
+# GUEST-QUEUE-10: INSERT policy enforces matched_duel_id IS NULL
+check('GUEST-QUEUE-10', '[STATIC TEST] mm_insert_own WITH CHECK enforces matched_duel_id IS NULL',
+    bool(re.search(
+        r'mm_insert_own[\s\S]{0,500}matched_duel_id\s+IS\s+NULL',
+        _m95_sql
+    ))
+)
+
+# GUEST-QUEUE-11: SELECT policy anon check wraps entire USING expression (not just one OR branch)
+check('GUEST-QUEUE-11', '[STATIC TEST] mm_select_own_or_waiting USING guards anon at top level (wraps full condition)',
+    bool(re.search(
+        r'mm_select_own_or_waiting[\s\S]{0,200}NOT COALESCE[\s\S]{0,50}is_anonymous[\s\S]{0,200}AND\s*\(',
+        _m95_sql
+    ))
+)
+
+# GUEST-QUEUE-12: claim_random_match is the only M95 path that sets status='matched'
+# Verifies exactly one SET status='matched' in file and it sits inside claim_random_match body.
+check('GUEST-QUEUE-12', '[STATIC TEST] only claim_random_match in M95 sets status=\'matched\' (no rogue UPDATE paths)',
+    (lambda sql: (
+        # Exactly one occurrence total
+        len(re.findall(r"SET status\s*=\s*'matched'", sql)) == 1
+        # The single occurrence is between claim_random_match CREATE and its closing $$
+        and (lambda m: m is not None and 'claim_random_match' in sql[max(0, m.start()-5000):m.start()])(
+            re.search(r"SET status\s*=\s*'matched'", sql)
+        )
+    ))(_m95_sql)
+)
+
 static_total = len(PASS) + len(FAIL)
 ne_total = len(NOT_EXECUTED)
 print(f"\n{'='*60}")
