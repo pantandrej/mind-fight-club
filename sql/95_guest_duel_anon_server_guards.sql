@@ -21,33 +21,15 @@
 --   4. record_daily_activity(uuid)         — guests cannot earn streak rewards
 --   5. _bf_award_duel_win(uuid,text,date)  — anonymous winner gets 0 BF
 --   6. claim_random_match()                — anonymous cannot join Random Battle
---   7. cancel_random_matchmaking()         — anonymous cannot cancel (they shouldn't be in queue)
+--   7. cancel_random_matchmaking()            — anonymous cannot cancel
+--   8. start_game_session(text,uuid,uuid)     — guests cannot start any game mode
+--   9. matchmaking_queue RLS + privileges     — anon locked out; authenticated INSERT/SELECT only
 --
 -- RPCs intentionally left open for anonymous users (product contract):
 --   join_duel_by_code, get_duel, submit_duel_answer,
 --   get_duel_result, forfeit_duel
 --
--- BLOCKER — start_game_session:
---   This function is NOT tracked in this repo's SQL files (created via
---   Supabase dashboard). It MUST be patched manually with the same guard.
---   Run in Supabase SQL Editor:
---
---   SELECT pg_get_functiondef('public.start_game_session(text)'::regprocedure);
---   -- (if that fails, discover signature first:)
---   SELECT proname, pg_get_function_identity_arguments(oid)
---     FROM pg_proc WHERE proname = 'start_game_session';
---
---   Then CREATE OR REPLACE the full live body and insert ONLY this guard
---   immediately after the `IF v_uid IS NULL THEN` check:
---
---     IF COALESCE((auth.jwt() ->> 'is_anonymous')::boolean, false) THEN
---       RETURN jsonb_build_object('ok', false, 'reason', 'anonymous_not_allowed',
---         'allowed', false);
---     END IF;
---
---   DO NOT APPLY this migration until start_game_session is also patched
---   or confirmed safe (e.g., RLS on game_sessions INSERT, or the modes
---   virtual_battle/random_battle/training are safe to lock via other means).
+-- No manual dashboard steps remain — all blockers resolved.
 --
 -- Guard pattern used in caller-context functions (auth.jwt() available):
 --   IF COALESCE((auth.jwt() ->> 'is_anonymous')::boolean, false) THEN
@@ -55,8 +37,8 @@
 --   END IF;
 --
 -- Guard for _bf_award_duel_win (called from trigger, not user context):
---   Checks winner_id against auth.users.is_anonymous column.
---   auth.users.is_anonymous is set by Supabase anonymous auth on sign-in.
+--   Checks winner_id against auth.users.is_anonymous column (confirmed live).
+--   auth.users.is_anonymous boolean NOT NULL — set by Supabase anonymous auth.
 -- ══════════════════════════════════════════════════════════════════════════════
 
 BEGIN;
@@ -985,36 +967,246 @@ REVOKE ALL ON FUNCTION public.cancel_random_matchmaking() FROM PUBLIC, anon;
 GRANT  EXECUTE ON FUNCTION public.cancel_random_matchmaking() TO authenticated;
 
 
--- ── NOTE: start_game_session — MANUAL PATCH REQUIRED (BLOCKER) ────────────────
--- start_game_session is not tracked in this repo's SQL files (created via
--- Supabase dashboard). This migration MUST NOT be applied until this function
--- is also patched. Steps:
+-- ── 8. start_game_session(text, uuid, uuid) — guests cannot start any game mode ─
+-- Live body reproduced verbatim from Supabase (preflight 2026-09-16).
+-- Exact live signature: start_game_session(p_mode text, p_opponent_id uuid, p_invite_id uuid)
+-- Anon guard inserted immediately after uid null check, before mode validation.
+-- All other logic (limits, social bonus, advisory locks, return shape) unchanged.
+CREATE OR REPLACE FUNCTION public.start_game_session(
+  p_mode        text,
+  p_opponent_id uuid DEFAULT NULL::uuid,
+  p_invite_id   uuid DEFAULT NULL::uuid
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public', 'pg_temp'
+AS $$
+DECLARE
+  v_user_id          UUID    := auth.uid();
+  v_day              DATE    := (NOW() AT TIME ZONE 'UTC')::DATE;
+  v_plan             TEXT    := 'free';
+
+  v_is_battle        BOOLEAN := p_mode IN ('friend_battle','random_battle','virtual_battle');
+  v_is_training      BOOLEAN := p_mode = 'training';
+
+  v_training_limit   INTEGER;
+  v_battle_limit     INTEGER;
+
+  v_training_used    INTEGER := 0;
+  v_battles_used     INTEGER := 0;
+  v_social_used      INTEGER := 0;
+
+  v_is_social_bonus  BOOLEAN := false;
+  v_session_id       UUID;
+BEGIN
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated';
+  END IF;
+
+  -- Anonymous users (guest duel participants) must not create any game session.
+  -- Guest Friend Duel uses the canonical duel RPCs — not this generic session starter.
+  IF COALESCE((auth.jwt() ->> 'is_anonymous')::boolean, false) THEN
+    RETURN jsonb_build_object(
+      'allowed', false,
+      'reason',  'anonymous_not_allowed'
+    );
+  END IF;
+
+  IF p_mode NOT IN ('training','friend_battle','random_battle','virtual_battle') THEN
+    RAISE EXCEPTION 'Invalid mode: %', p_mode;
+  END IF;
+
+  IF v_is_training THEN
+    PERFORM pg_advisory_xact_lock(
+      hashtext(v_user_id::TEXT || ':' || v_day::TEXT || ':training')
+    );
+  ELSE
+    PERFORM pg_advisory_xact_lock(
+      hashtext(v_user_id::TEXT || ':' || v_day::TEXT || ':battle')
+    );
+  END IF;
+
+  SELECT get_user_plan(v_user_id) INTO v_plan;
+
+  IF v_plan = 'premium' THEN
+    v_training_limit := 5;
+    v_battle_limit   := 10;
+  ELSE
+    v_training_limit := 1;
+    v_battle_limit   := 3;
+  END IF;
+
+  IF v_is_training THEN
+    SELECT COUNT(*) INTO v_training_used
+    FROM game_sessions
+    WHERE user_id = v_user_id
+      AND day_utc = v_day
+      AND mode = 'training';
+
+    IF v_training_used >= v_training_limit THEN
+      RETURN jsonb_build_object(
+        'allowed', false,
+        'reason',  'training_limit_reached',
+        'used',    v_training_used,
+        'limit',   v_training_limit,
+        'plan',    v_plan
+      );
+    END IF;
+  END IF;
+
+  IF v_is_battle THEN
+    SELECT COUNT(*) INTO v_battles_used
+    FROM game_sessions
+    WHERE user_id = v_user_id
+      AND day_utc = v_day
+      AND mode IN ('friend_battle','random_battle','virtual_battle')
+      AND social_bonus = false;
+
+    IF v_battles_used >= v_battle_limit THEN
+
+      IF p_invite_id IS NOT NULL AND p_opponent_id IS NOT NULL THEN
+        IF EXISTS (
+          SELECT 1
+          FROM battle_invites
+          WHERE id          = p_invite_id
+            AND receiver_id = v_user_id
+            AND sender_id   = p_opponent_id
+            AND status      = 'accepted'
+        ) THEN
+
+          SELECT COUNT(*) INTO v_social_used
+          FROM game_sessions
+          WHERE user_id    = v_user_id
+            AND day_utc    = v_day
+            AND social_bonus = true;
+
+          IF v_social_used < 1 THEN
+            v_is_social_bonus := true;
+
+            UPDATE battle_invites
+            SET status      = 'expired',
+                accepted_at = NOW()
+            WHERE id = p_invite_id;
+          ELSE
+            RETURN jsonb_build_object(
+              'allowed', false,
+              'reason',  'social_bonus_already_used',
+              'used',    v_battles_used,
+              'limit',   v_battle_limit,
+              'plan',    v_plan
+            );
+          END IF;
+        ELSE
+          RETURN jsonb_build_object(
+            'allowed', false,
+            'reason',  'invalid_invite',
+            'used',    v_battles_used,
+            'limit',   v_battle_limit,
+            'plan',    v_plan
+          );
+        END IF;
+      ELSE
+        RETURN jsonb_build_object(
+          'allowed', false,
+          'reason',  'battle_limit_reached',
+          'used',    v_battles_used,
+          'limit',   v_battle_limit,
+          'plan',    v_plan
+        );
+      END IF;
+    END IF;
+  END IF;
+
+  INSERT INTO game_sessions(
+    user_id,
+    mode,
+    day_utc,
+    opponent_id,
+    invite_id,
+    social_bonus
+  )
+  VALUES (
+    v_user_id,
+    p_mode,
+    v_day,
+    p_opponent_id,
+    p_invite_id,
+    v_is_social_bonus
+  )
+  RETURNING id INTO v_session_id;
+
+  RETURN jsonb_build_object(
+    'allowed',      true,
+    'session_id',   v_session_id,
+    'social_bonus', v_is_social_bonus,
+    'plan',         v_plan,
+    'remaining',
+      CASE
+        WHEN v_is_training THEN
+          v_training_limit - v_training_used - 1
+        WHEN v_is_battle THEN
+          v_battle_limit - v_battles_used - CASE WHEN v_is_social_bonus THEN 0 ELSE 1 END
+        ELSE NULL
+      END
+  );
+END;
+$$;
+REVOKE ALL ON FUNCTION public.start_game_session(text, uuid, uuid) FROM PUBLIC, anon;
+GRANT  EXECUTE ON FUNCTION public.start_game_session(text, uuid, uuid) TO authenticated;
+
+
+-- ── 9. matchmaking_queue — lock down direct table access ─────────────────────
+-- Live preflight (2026-09-16) found:
+--   RLS enabled = true, FORCE = false
+--   Policy mm_all: roles={public}, cmd=ALL, qual=true, with_check=true  ← unsafe
+--   Table grants: anon + authenticated have ALL privileges              ← unsafe
 --
--- 1. Run in Supabase SQL Editor to find the signature:
---    SELECT proname, pg_get_function_identity_arguments(oid)
---      FROM pg_proc WHERE proname = 'start_game_session';
+-- Client access pattern (matchmaking.js):
+--   • Direct INSERT to create caller's waiting row (line 137)
+--   • Direct SELECT of waiting rows for battle board display (line 654)
+--   • UPDATE/DELETE only through SECURITY DEFINER claim_random_match /
+--     cancel_random_matchmaking (which bypass RLS by design)
 --
--- 2. Get the live body:
---    SELECT pg_get_functiondef('public.start_game_session(<exact_sig>)'::regprocedure);
---
--- 3. CREATE OR REPLACE with the full live body and insert ONLY this guard
---    immediately after the `IF v_uid IS NULL THEN` check:
---
---    IF COALESCE((auth.jwt() ->> 'is_anonymous')::boolean, false) THEN
---      RETURN jsonb_build_object('ok', false, 'reason', 'anonymous_not_allowed',
---        'allowed', false);
---    END IF;
---
--- Until start_game_session is patched, anonymous users could:
---   • Start a virtual_battle session (low risk: no real opponent, BF not awarded)
---   • Start a random_battle session (medium risk: enters real matchmaking queue;
---     claim_random_match is now guarded so they won't be matched, but the queue
---     INSERT itself may still succeed if matchmaking.js sends the RPC directly)
---   • Start a training session (medium risk: start_daily_bf_session is now
---     guarded so BF won't be awarded, but the game_sessions row will be created)
---
--- Client-side `is_anonymous` guards in matchmaking.js and training.js prevent
--- UI-level access, but a determined guest can call the API directly.
+-- New model:
+--   anon   — no table access at all
+--   authenticated — INSERT own row only (user_id = auth.uid(), not anonymous)
+--                   SELECT own row + waiting rows of others (for battle board)
+--                   no UPDATE/DELETE/TRUNCATE (handled by SECURITY DEFINER RPCs)
+
+-- Drop the unsafe catch-all policy.
+DROP POLICY IF EXISTS mm_all ON public.matchmaking_queue;
+
+-- Remove all direct table privileges; re-grant only what the client needs.
+REVOKE ALL ON TABLE public.matchmaking_queue FROM anon;
+REVOKE ALL ON TABLE public.matchmaking_queue FROM authenticated;
+
+GRANT INSERT ON TABLE public.matchmaking_queue TO authenticated;
+GRANT SELECT ON TABLE public.matchmaking_queue TO authenticated;
+
+-- INSERT policy: own row only, non-anonymous users only.
+CREATE POLICY mm_insert_own
+  ON public.matchmaking_queue
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    user_id = auth.uid()
+    AND NOT COALESCE((auth.jwt() ->> 'is_anonymous')::boolean, false)
+  );
+
+-- SELECT policy: own row + other waiting rows (needed for battle board display).
+-- Anonymous users are blocked by jwt check; they have no queue rows anyway.
+CREATE POLICY mm_select_own_or_waiting
+  ON public.matchmaking_queue
+  FOR SELECT
+  TO authenticated
+  USING (
+    user_id = auth.uid()
+    OR (
+      status = 'waiting'
+      AND NOT COALESCE((auth.jwt() ->> 'is_anonymous')::boolean, false)
+    )
+  );
 
 
 COMMIT;

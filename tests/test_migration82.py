@@ -3223,10 +3223,11 @@ check('GUEST-SEC-24', '[STATIC TEST] M95 start_daily_bf_session uses M91 body (v
     and bool(re.search(r'COALESCE\(timezone.*INTO v_tz', _m95_sql))
 )
 
-# GUEST-SEC-25: M95 documents start_game_session blocker explicitly
-check('GUEST-SEC-25', '[STATIC TEST] M95 documents start_game_session as unpatched blocker (not silently missing)',
+# GUEST-SEC-25: M95 contains start_game_session (fully patched, no longer a blocker)
+check('GUEST-SEC-25', '[STATIC TEST] M95 contains start_game_session (live body patched, blocker resolved)',
     bool(re.search(r'start_game_session', _m95_sql))
-    and bool(re.search(r'BLOCKER|MANUAL PATCH|pg_get_functiondef', _m95_sql))
+    and bool(re.search(r'anonymous_not_allowed', _m95_sql))
+    and not bool(re.search(r'MANUAL PATCH REQUIRED', _m95_sql))
 )
 
 # ── GUEST-BF: Brain Fights — guest cannot earn BF points ─────────────────────
@@ -3285,6 +3286,85 @@ check('GUEST-RANDOM-02', '[STATIC TEST] cancel_random_matchmaking has anon guard
 check('GUEST-RANDOM-03', '[STATIC TEST] M95 is one atomic BEGIN...COMMIT transaction',
     bool(re.search(r'^\s*BEGIN\s*;', _m95_sql, re.MULTILINE))
     and bool(re.search(r'^\s*COMMIT\s*;', _m95_sql, re.MULTILINE))
+)
+
+# ── GUEST-SEC-26..28: start_game_session patch ────────────────────────────────
+
+# GUEST-SEC-26: M95 contains exact start_game_session(text,uuid,uuid) signature
+check('GUEST-SEC-26', '[STATIC TEST] M95 contains start_game_session(text,uuid,uuid) CREATE OR REPLACE',
+    bool(re.search(
+        r'CREATE OR REPLACE FUNCTION public\.start_game_session\s*\(\s*p_mode\s+text',
+        _m95_sql
+    ))
+)
+
+# GUEST-SEC-27: start_game_session has anonymous_not_allowed guard after auth null check
+check('GUEST-SEC-27', '[STATIC TEST] start_game_session anon guard present after uid-null check',
+    (lambda sql: (
+        (uid := sql.find("RAISE EXCEPTION 'Not authenticated'")) != -1
+        and (anon := sql.find('anonymous_not_allowed', uid)) != -1
+        and (anon > uid)
+    ))(_m95_sql)
+)
+
+# GUEST-SEC-28: registered start_game_session preserves live battle/training limits
+check('GUEST-SEC-28', '[STATIC TEST] M95 start_game_session preserves training_limit_reached and battle_limit_reached',
+    bool(re.search(r'training_limit_reached', _m95_sql))
+    and bool(re.search(r'battle_limit_reached', _m95_sql))
+    and bool(re.search(r'get_user_plan', _m95_sql))
+)
+
+# ── GUEST-QUEUE-01..08: matchmaking_queue RLS lockdown ───────────────────────
+
+# GUEST-QUEUE-01: mm_all public policy is dropped
+check('GUEST-QUEUE-01', '[STATIC TEST] M95 drops mm_all policy on matchmaking_queue',
+    bool(re.search(r'DROP POLICY.*mm_all.*matchmaking_queue', _m95_sql))
+)
+
+# GUEST-QUEUE-02: anon has no direct table mutation privileges after M95
+check('GUEST-QUEUE-02', '[STATIC TEST] M95 revokes all table privileges from anon on matchmaking_queue',
+    bool(re.search(r'REVOKE ALL ON TABLE public\.matchmaking_queue FROM anon', _m95_sql))
+)
+
+# GUEST-QUEUE-03: authenticated INSERT policy requires user_id = auth.uid()
+check('GUEST-QUEUE-03', '[STATIC TEST] M95 INSERT policy on matchmaking_queue enforces user_id = auth.uid()',
+    bool(re.search(r'FOR INSERT[\s\S]{0,200}user_id\s*=\s*auth\.uid\(\)', _m95_sql))
+)
+
+# GUEST-QUEUE-04: authenticated INSERT policy rejects JWT is_anonymous=true
+check('GUEST-QUEUE-04', '[STATIC TEST] M95 INSERT policy on matchmaking_queue rejects anonymous JWT',
+    bool(re.search(r'FOR INSERT[\s\S]{0,300}is_anonymous', _m95_sql))
+)
+
+# GUEST-QUEUE-05: no USING true / WITH CHECK true public queue policy remains
+check('GUEST-QUEUE-05', '[STATIC TEST] M95 does not create a USING true or WITH CHECK true public matchmaking_queue policy',
+    not bool(re.search(
+        r'CREATE POLICY[\s\S]{0,300}matchmaking_queue[\s\S]{0,300}(?:USING|WITH CHECK)\s*\(\s*true\s*\)',
+        _m95_sql
+    ))
+)
+
+# GUEST-QUEUE-06: no authenticated TRUNCATE permission granted on matchmaking_queue
+check('GUEST-QUEUE-06', '[STATIC TEST] M95 does not grant TRUNCATE on matchmaking_queue to authenticated',
+    not bool(re.search(r'GRANT.*TRUNCATE.*matchmaking_queue.*authenticated', _m95_sql))
+)
+
+# GUEST-QUEUE-07: claim_random_match remains SECURITY DEFINER and guarded
+check('GUEST-QUEUE-07', '[STATIC TEST] claim_random_match is SECURITY DEFINER and has anon guard',
+    bool(re.search(
+        r'FUNCTION public\.claim_random_match[\s\S]{0,500}SECURITY DEFINER',
+        _m95_sql
+    ))
+    and bool(re.search(r'claim_random_match[\s\S]{0,2000}anonymous_not_allowed', _m95_sql))
+)
+
+# GUEST-QUEUE-08: cancel_random_matchmaking remains SECURITY DEFINER and guarded
+check('GUEST-QUEUE-08', '[STATIC TEST] cancel_random_matchmaking is SECURITY DEFINER and has anon guard',
+    bool(re.search(
+        r'FUNCTION public\.cancel_random_matchmaking[\s\S]{0,500}SECURITY DEFINER',
+        _m95_sql
+    ))
+    and bool(re.search(r'cancel_random_matchmaking[\s\S]{0,2000}anonymous_not_allowed', _m95_sql))
 )
 
 static_total = len(PASS) + len(FAIL)
