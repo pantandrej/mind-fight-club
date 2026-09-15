@@ -12,26 +12,51 @@
 --   Client-side `currentUser.is_anonymous` checks alone are insufficient;
 --   a guest can call the API directly or via dev tools.
 --
--- This migration adds server-authoritative guards to the four entry-point RPCs
--- that violate the guest product contract if called by an anonymous user:
+-- This migration adds server-authoritative guards to entry-point RPCs that
+-- violate the guest product contract if called by an anonymous user:
 --
---   1. create_duel()                  — guests cannot be hosts
---   2. award_currency(text,text,int,boolean) — guests cannot earn neurons/XP
---   3. start_daily_bf_session()       — guests cannot play Brain Fights
---   4. record_daily_activity(uuid)    — guests cannot earn streak rewards
+--   1. create_duel()                       — guests cannot be hosts
+--   2. award_currency(text,text,int,bool)  — guests cannot earn neurons/XP
+--   3. start_daily_bf_session()            — guests cannot play Brain Fights
+--   4. record_daily_activity(uuid)         — guests cannot earn streak rewards
+--   5. _bf_award_duel_win(uuid,text,date)  — anonymous winner gets 0 BF
+--   6. claim_random_match()                — anonymous cannot join Random Battle
+--   7. cancel_random_matchmaking()         — anonymous cannot cancel (they shouldn't be in queue)
 --
 -- RPCs intentionally left open for anonymous users (product contract):
 --   join_duel_by_code, get_duel, submit_duel_answer,
 --   get_duel_result, forfeit_duel
 --
--- start_game_session is not in this repo's SQL files (created via dashboard);
--- it must be patched separately in the Supabase dashboard with the same guard.
--- Client-side `is_anonymous` check in matchmaking.js prevents UI access.
+-- BLOCKER — start_game_session:
+--   This function is NOT tracked in this repo's SQL files (created via
+--   Supabase dashboard). It MUST be patched manually with the same guard.
+--   Run in Supabase SQL Editor:
 --
--- Guard pattern used in all functions:
+--   SELECT pg_get_functiondef('public.start_game_session(text)'::regprocedure);
+--   -- (if that fails, discover signature first:)
+--   SELECT proname, pg_get_function_identity_arguments(oid)
+--     FROM pg_proc WHERE proname = 'start_game_session';
+--
+--   Then CREATE OR REPLACE the full live body and insert ONLY this guard
+--   immediately after the `IF v_uid IS NULL THEN` check:
+--
+--     IF COALESCE((auth.jwt() ->> 'is_anonymous')::boolean, false) THEN
+--       RETURN jsonb_build_object('ok', false, 'reason', 'anonymous_not_allowed',
+--         'allowed', false);
+--     END IF;
+--
+--   DO NOT APPLY this migration until start_game_session is also patched
+--   or confirmed safe (e.g., RLS on game_sessions INSERT, or the modes
+--   virtual_battle/random_battle/training are safe to lock via other means).
+--
+-- Guard pattern used in caller-context functions (auth.jwt() available):
 --   IF COALESCE((auth.jwt() ->> 'is_anonymous')::boolean, false) THEN
 --     RETURN jsonb_build_object('ok', false, 'reason', 'anonymous_not_allowed');
 --   END IF;
+--
+-- Guard for _bf_award_duel_win (called from trigger, not user context):
+--   Checks winner_id against auth.users.is_anonymous column.
+--   auth.users.is_anonymous is set by Supabase anonymous auth on sign-in.
 -- ══════════════════════════════════════════════════════════════════════════════
 
 BEGIN;
@@ -326,7 +351,11 @@ GRANT  EXECUTE ON FUNCTION public.award_currency(text, text, int, boolean) TO au
 
 
 -- ── 3. start_daily_bf_session() — guests cannot play Brain Fights ──────────────
--- Reproduces M87 body verbatim; adds anon guard after uid check.
+-- Reproduces M91 body verbatim (timezone-aware, current_period_end semantics).
+-- Adds anon guard immediately after uid null check, before timezone resolution.
+-- WARNING: This is the M91 body — NOT the M87 body (UTC-only).
+-- The M91 contract: v_today derived from profiles.timezone, validated against
+-- pg_timezone_names, with UTC fallback. Advisory lock key includes v_today.
 CREATE OR REPLACE FUNCTION public.start_daily_bf_session()
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -335,7 +364,8 @@ SET search_path = public
 AS $$
 DECLARE
   v_uid           uuid := auth.uid();
-  v_today         date := (now() AT TIME ZONE 'UTC')::date;
+  v_tz            text := 'UTC';
+  v_today         date;
   v_plan          text := 'free';
   v_train_limit   int;
   v_train_used    int;
@@ -361,6 +391,13 @@ BEGIN
   IF COALESCE((auth.jwt() ->> 'is_anonymous')::boolean, false) THEN
     RETURN jsonb_build_object('ok', false, 'reason', 'anonymous_not_allowed');
   END IF;
+
+  -- M91: defensive timezone resolution — invalid stored tz falls back to UTC
+  SELECT COALESCE(timezone, 'UTC') INTO v_tz FROM profiles WHERE id = v_uid;
+  IF NOT EXISTS (SELECT 1 FROM pg_timezone_names WHERE name = v_tz) THEN
+    v_tz := 'UTC';
+  END IF;
+  v_today := (now() AT TIME ZONE v_tz)::date;
 
   PERFORM pg_advisory_xact_lock(
     hashtext(v_uid::text || ':' || v_today::text || ':training')
@@ -644,17 +681,340 @@ REVOKE ALL ON FUNCTION public.record_daily_activity(uuid) FROM PUBLIC;
 GRANT  EXECUTE ON FUNCTION public.record_daily_activity(uuid) TO authenticated;
 
 
--- ── NOTE: start_game_session ───────────────────────────────────────────────────
+-- ── 5. _bf_award_duel_win(uuid, text, date) — anonymous winner gets 0 BF ───────
+-- Reproduces M82 body verbatim; adds winner anonymity check via auth.users.
+-- CRITICAL: Uses auth.users.is_anonymous column (set by Supabase anonymous auth).
+-- This function is called from a trigger (_trg_duel_finished_bf), so auth.jwt()
+-- reflects the finalizing player — NOT the winner. Must check winner_id against
+-- auth.users directly. auth.users.is_anonymous = true means the account was
+-- created via signInAnonymously() and has never been converted to a full account.
+CREATE OR REPLACE FUNCTION public._bf_award_duel_win(
+  p_winner_id uuid,
+  p_duel_code text,
+  p_today     date
+) RETURNS int   -- bf_pts awarded (3 or 0)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_week_start date := p_today - ((EXTRACT(DOW FROM p_today)::int + 6) % 7);
+  v_team_id    uuid;
+  v_source_id  uuid;
+  v_wins_today int;
+  v_rows       int;
+BEGIN
+  -- No winner (tie) → 0 BF, nothing to do.
+  IF p_winner_id IS NULL THEN RETURN 0; END IF;
+
+  -- Anonymous winner never earns BF — check winner's auth record, not caller JWT.
+  -- auth.users.is_anonymous is set by Supabase when the account was created via
+  -- signInAnonymously() and has not been linked to a permanent identity.
+  IF EXISTS (
+    SELECT 1 FROM auth.users WHERE id = p_winner_id AND is_anonymous = true
+  ) THEN
+    RETURN 0;
+  END IF;
+
+  -- Serialize: one BF duel award at a time per winner per UTC day.
+  PERFORM pg_advisory_xact_lock(
+    hashtext(p_winner_id::text || '::bf_duel_wins::' || p_today::text)
+  );
+
+  -- Stable source_id for this specific win (duel code + winner).
+  v_source_id := md5(p_duel_code || '::duel_win::' || p_winner_id::text)::uuid;
+
+  -- Already awarded for this exact duel+winner? Idempotent guard.
+  IF EXISTS (
+    SELECT 1 FROM brain_fight_contributions
+    WHERE scoring_user_id = p_winner_id
+      AND source_type     = 'duel'
+      AND source_id       = v_source_id
+  ) THEN
+    RETURN 0;
+  END IF;
+
+  -- Count today's verified duel wins (under lock — race-safe).
+  SELECT COUNT(*) INTO v_wins_today
+  FROM brain_fight_contributions
+  WHERE scoring_user_id = p_winner_id
+    AND source_type     = 'duel'
+    AND activity_date   = p_today;
+
+  IF v_wins_today >= 3 THEN
+    RETURN 0;  -- daily cap reached
+  END IF;
+
+  -- Team attribution at event time (not at query time).
+  SELECT t.id INTO v_team_id
+  FROM profiles pr
+  LEFT JOIN teams t ON t.id = pr.team_id AND t.disbanded_at IS NULL
+  WHERE pr.id = p_winner_id;
+
+  INSERT INTO brain_fight_contributions (
+    scoring_user_id, user_id, team_id, week_start, source_type, source_id,
+    activity_date, points, occurred_at
+  ) VALUES (
+    p_winner_id, p_winner_id, v_team_id, v_week_start,
+    'duel', v_source_id, p_today, 3, now()
+  )
+  ON CONFLICT DO NOTHING;
+
+  GET DIAGNOSTICS v_rows = ROW_COUNT;
+  RETURN CASE WHEN v_rows > 0 THEN 3 ELSE 0 END;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public._bf_award_duel_win(uuid, text, date)
+  FROM PUBLIC, anon, authenticated;
+
+
+-- ── 6. claim_random_match() — anonymous cannot initiate Random Battle ──────────
+-- Reproduces M82 body verbatim; adds anon guard after uid check.
+CREATE OR REPLACE FUNCTION public.claim_random_match()
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_uid          uuid := auth.uid();
+  v_my_row       matchmaking_queue%ROWTYPE;
+  v_opp_row      matchmaking_queue%ROWTYPE;
+  v_duel         duel_rooms%ROWTYPE;
+  v_duel_code    text;
+  v_my_name      text;
+  v_role         text;
+  v_opp_name     text;
+  v_attempt      int := 0;
+BEGIN
+  IF v_uid IS NULL THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'unauthenticated');
+  END IF;
+
+  -- Anonymous users cannot participate in Random Battle.
+  IF COALESCE((auth.jwt() ->> 'is_anonymous')::boolean, false) THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'anonymous_not_allowed');
+  END IF;
+
+  -- Serialize all pairing operations under a single advisory lock.
+  PERFORM pg_advisory_xact_lock(hashtext('bfc_random_matchmaking'));
+
+  -- Re-read caller's LATEST active queue row under lock (DESC = newest wins).
+  -- Include 'matched': guest's row is already 'matched' after host paired them;
+  -- returning the existing duel avoids guest staying stuck until 15s timeout.
+  -- DESC ensures a new 'waiting' row beats any old 'matched' row from a prior battle.
+  SELECT * INTO v_my_row
+  FROM matchmaking_queue
+  WHERE user_id = v_uid
+    AND status IN ('waiting', 'matched')
+  ORDER BY created_at DESC
+  LIMIT 1;
+
+  IF NOT FOUND THEN
+    -- No active queue row — cancelled or never queued
+    RETURN jsonb_build_object('ok', false, 'reason', 'not_in_queue');
+  END IF;
+
+  -- If caller is already matched, return canonical duel state immediately.
+  -- Role is derived server-side from duel_rooms — never inferred by client.
+  IF v_my_row.status = 'matched' THEN
+    SELECT * INTO v_duel
+    FROM duel_rooms
+    WHERE code = v_my_row.matched_duel_id
+    LIMIT 1;
+
+    IF NOT FOUND THEN
+      RETURN jsonb_build_object('ok', false, 'reason', 'duel_not_found');
+    END IF;
+
+    IF v_duel.host_user_id = v_uid THEN
+      v_role     := 'host';
+      v_opp_name := v_duel.guest_name;
+    ELSE
+      v_role     := 'guest';
+      v_opp_name := v_duel.host_name;
+    END IF;
+
+    RETURN jsonb_build_object(
+      'ok',            true,
+      'matched',       true,
+      'role',          v_role,
+      'duel_code',     v_duel.code,
+      'opponent_name', v_opp_name
+    );
+  END IF;
+
+  -- status='waiting': attempt normal atomic pairing
+  v_my_name := v_my_row.display_name;
+
+  SELECT * INTO v_opp_row
+  FROM matchmaking_queue
+  WHERE status  = 'waiting'
+    AND user_id <> v_uid
+  ORDER BY created_at ASC
+  LIMIT 1;
+
+  IF NOT FOUND THEN
+    -- No opponent yet — caller stays waiting
+    RETURN jsonb_build_object('ok', true, 'matched', false);
+  END IF;
+
+  -- Generate duel code, retry on collision
+  LOOP
+    v_duel_code := upper(substring(md5(random()::text || clock_timestamp()::text), 1, 6));
+    v_attempt   := v_attempt + 1;
+    BEGIN
+      INSERT INTO duel_rooms (
+        code, host_user_id, guest_user_id,
+        host_name, guest_name,
+        host_score, guest_score,
+        status, created_at
+      ) VALUES (
+        v_duel_code, v_uid, v_opp_row.user_id,
+        v_my_name, v_opp_row.display_name,
+        0, 0,
+        'ready', now()
+      );
+      EXIT;
+    EXCEPTION WHEN unique_violation THEN
+      IF v_attempt >= 5 THEN
+        RETURN jsonb_build_object('ok', false, 'reason', 'code_collision_exhausted');
+      END IF;
+    END;
+  END LOOP;
+
+  UPDATE matchmaking_queue
+  SET status = 'matched', matched_duel_id = v_duel_code
+  WHERE id IN (v_my_row.id, v_opp_row.id);
+
+  -- Caller is host (created the duel); opponent will receive role='guest' on its next tick
+  RETURN jsonb_build_object(
+    'ok',            true,
+    'matched',       true,
+    'role',          'host',
+    'duel_code',     v_duel_code,
+    'opponent_name', v_opp_row.display_name
+  );
+END;
+$$;
+REVOKE ALL ON FUNCTION public.claim_random_match() FROM PUBLIC, anon;
+GRANT  EXECUTE ON FUNCTION public.claim_random_match() TO authenticated;
+
+
+-- ── 7. cancel_random_matchmaking() — anonymous cannot cancel (defensive) ───────
+-- Reproduces M82 body verbatim; adds anon guard after uid check.
+-- Anonymous users should never be in the queue, but guard defensively.
+CREATE OR REPLACE FUNCTION public.cancel_random_matchmaking()
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_uid      uuid := auth.uid();
+  v_row      matchmaking_queue%ROWTYPE;
+  v_duel     duel_rooms%ROWTYPE;
+  v_role     text;
+  v_opp_name text;
+BEGIN
+  IF v_uid IS NULL THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'unauthenticated');
+  END IF;
+
+  -- Anonymous users cannot participate in Random Battle.
+  IF COALESCE((auth.jwt() ->> 'is_anonymous')::boolean, false) THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'anonymous_not_allowed');
+  END IF;
+
+  -- Same advisory lock as claim_random_match — prevents cancel racing a match
+  PERFORM pg_advisory_xact_lock(hashtext('bfc_random_matchmaking'));
+
+  -- Find any active queue row for this caller
+  SELECT * INTO v_row
+  FROM matchmaking_queue
+  WHERE user_id = v_uid
+    AND status IN ('waiting', 'matched')
+  ORDER BY created_at DESC
+  LIMIT 1;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('ok', true, 'cancelled', false, 'matched', false);
+  END IF;
+
+  IF v_row.status = 'matched' THEN
+    -- Server already matched this player — do NOT cancel.
+    -- Resolve role and opponent_name from canonical duel_rooms row.
+    SELECT * INTO v_duel
+    FROM duel_rooms
+    WHERE code = v_row.matched_duel_id
+    LIMIT 1;
+
+    IF NOT FOUND THEN
+      RETURN jsonb_build_object('ok', false, 'reason', 'duel_not_found');
+    END IF;
+
+    IF v_duel.host_user_id = v_uid THEN
+      v_role     := 'host';
+      v_opp_name := v_duel.guest_name;
+    ELSE
+      v_role     := 'guest';
+      v_opp_name := v_duel.host_name;
+    END IF;
+
+    RETURN jsonb_build_object(
+      'ok',            true,
+      'cancelled',     false,
+      'matched',       true,
+      'role',          v_role,
+      'duel_code',     v_duel.code,
+      'opponent_name', v_opp_name
+    );
+  END IF;
+
+  -- status='waiting' — safe to cancel
+  UPDATE matchmaking_queue
+  SET status = 'cancelled'
+  WHERE id = v_row.id;
+
+  RETURN jsonb_build_object('ok', true, 'cancelled', true, 'matched', false);
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.cancel_random_matchmaking() FROM PUBLIC, anon;
+GRANT  EXECUTE ON FUNCTION public.cancel_random_matchmaking() TO authenticated;
+
+
+-- ── NOTE: start_game_session — MANUAL PATCH REQUIRED (BLOCKER) ────────────────
 -- start_game_session is not tracked in this repo's SQL files (created via
--- Supabase dashboard). Apply this equivalent guard manually in the dashboard:
+-- Supabase dashboard). This migration MUST NOT be applied until this function
+-- is also patched. Steps:
 --
---   IF COALESCE((auth.jwt() ->> 'is_anonymous')::boolean, false) THEN
---     RETURN jsonb_build_object('ok', false, 'reason', 'anonymous_not_allowed',
---       'allowed', false);
---   END IF;
+-- 1. Run in Supabase SQL Editor to find the signature:
+--    SELECT proname, pg_get_function_identity_arguments(oid)
+--      FROM pg_proc WHERE proname = 'start_game_session';
 --
--- Add it immediately after the existing `IF v_uid IS NULL THEN` check.
--- Client-side is_anonymous guard in matchmaking.js prevents UI-level access.
+-- 2. Get the live body:
+--    SELECT pg_get_functiondef('public.start_game_session(<exact_sig>)'::regprocedure);
+--
+-- 3. CREATE OR REPLACE with the full live body and insert ONLY this guard
+--    immediately after the `IF v_uid IS NULL THEN` check:
+--
+--    IF COALESCE((auth.jwt() ->> 'is_anonymous')::boolean, false) THEN
+--      RETURN jsonb_build_object('ok', false, 'reason', 'anonymous_not_allowed',
+--        'allowed', false);
+--    END IF;
+--
+-- Until start_game_session is patched, anonymous users could:
+--   • Start a virtual_battle session (low risk: no real opponent, BF not awarded)
+--   • Start a random_battle session (medium risk: enters real matchmaking queue;
+--     claim_random_match is now guarded so they won't be matched, but the queue
+--     INSERT itself may still succeed if matchmaking.js sends the RPC directly)
+--   • Start a training session (medium risk: start_daily_bf_session is now
+--     guarded so BF won't be awarded, but the game_sessions row will be created)
+--
+-- Client-side `is_anonymous` guards in matchmaking.js and training.js prevent
+-- UI-level access, but a determined guest can call the API directly.
 
 
 COMMIT;

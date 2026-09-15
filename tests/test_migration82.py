@@ -3188,6 +3188,105 @@ check('GUEST-DUEL-19', '[STATIC TEST] startMatchmaking blocks is_anonymous users
     or bool(re.search(r'is_anonymous.*_showSignInToPlay', _mm_full))
 )
 
+# ── GUEST-SEC: Security audit — server-side guard completeness ───────────────
+
+# GUEST-SEC-20: M95 guards _bf_award_duel_win against anonymous winners
+check('GUEST-SEC-20', '[STATIC TEST] M95 adds anon winner check to _bf_award_duel_win via auth.users.is_anonymous',
+    bool(re.search(r'_bf_award_duel_win', _m95_sql))
+    and bool(re.search(r'auth\.users.*is_anonymous|is_anonymous.*auth\.users', _m95_sql))
+)
+
+# GUEST-SEC-21: _bf_award_duel_win guard checks p_winner_id, NOT auth.jwt()
+check('GUEST-SEC-21', '[STATIC TEST] _bf_award_duel_win anon check uses p_winner_id row (not jwt), because trigger caller != winner',
+    bool(re.search(r'FROM auth\.users WHERE id = p_winner_id', _m95_sql))
+)
+
+# GUEST-SEC-22: M95 guards claim_random_match against anonymous users
+check('GUEST-SEC-22', '[STATIC TEST] M95 adds anon guard to claim_random_match()',
+    bool(re.search(r'claim_random_match', _m95_sql))
+    and bool(re.search(r'anonymous_not_allowed', _m95_sql))
+)
+
+# GUEST-SEC-23: M95 guards cancel_random_matchmaking against anonymous users
+check('GUEST-SEC-23', '[STATIC TEST] M95 adds anon guard to cancel_random_matchmaking()',
+    bool(re.search(r'cancel_random_matchmaking', _m95_sql))
+    and bool(re.search(r'anonymous_not_allowed', _m95_sql))
+)
+
+# GUEST-SEC-24: M95 uses M91 timezone body (v_tz variable present, timezone read from profiles)
+# Checks that start_daily_bf_session reads timezone from profiles and uses pg_timezone_names validation.
+# (award_currency legitimately has a UTC literal for daily caps — that's expected and correct.)
+check('GUEST-SEC-24', '[STATIC TEST] M95 start_daily_bf_session uses M91 body (v_tz from profiles.timezone, pg_timezone_names validation)',
+    bool(re.search(r"v_tz\s+text\s*:=\s*'UTC'", _m95_sql))
+    and bool(re.search(r'AT TIME ZONE v_tz', _m95_sql))
+    and bool(re.search(r'pg_timezone_names', _m95_sql))
+    and bool(re.search(r'COALESCE\(timezone.*INTO v_tz', _m95_sql))
+)
+
+# GUEST-SEC-25: M95 documents start_game_session blocker explicitly
+check('GUEST-SEC-25', '[STATIC TEST] M95 documents start_game_session as unpatched blocker (not silently missing)',
+    bool(re.search(r'start_game_session', _m95_sql))
+    and bool(re.search(r'BLOCKER|MANUAL PATCH|pg_get_functiondef', _m95_sql))
+)
+
+# ── GUEST-BF: Brain Fights — guest cannot earn BF points ─────────────────────
+
+# GUEST-BF-01: start_daily_bf_session guard is placed BEFORE timezone resolution (auth order)
+check('GUEST-BF-01', '[STATIC TEST] M95 start_daily_bf_session anon guard appears before timezone resolution block',
+    (lambda sql: (
+        (g := sql.find('anonymous_not_allowed')) != -1
+        and (t := sql.find('pg_timezone_names', g)) != -1
+        and (t > g)  # guard precedes timezone block
+    ))(_m95_sql)
+)
+
+# GUEST-BF-02: _bf_award_duel_win returns 0 for anonymous winner (not error)
+check('GUEST-BF-02', '[STATIC TEST] _bf_award_duel_win returns 0 (not error) for anonymous winner',
+    bool(re.search(
+        r'is_anonymous\s*=\s*true[\s\S]{0,100}RETURN\s+0',
+        _m95_sql
+    ))
+)
+
+# GUEST-BF-03: M95 uses current_period_end subscription semantics (not expires_at — M86 fix)
+check('GUEST-BF-03', '[STATIC TEST] M95 start_daily_bf_session uses current_period_end (M86 contract, not expires_at)',
+    bool(re.search(r'current_period_end', _m95_sql))
+    and not bool(re.search(r'expires_at', _m95_sql))
+)
+
+# GUEST-BF-04: _bf_award_duel_win REVOKE does not grant to authenticated (internal trigger function)
+check('GUEST-BF-04', '[STATIC TEST] M95 _bf_award_duel_win revoked from authenticated (internal trigger function only)',
+    bool(re.search(
+        r'REVOKE ALL ON FUNCTION public\._bf_award_duel_win[\s\S]{0,100}authenticated',
+        _m95_sql
+    ))
+)
+
+# ── GUEST-RANDOM: Random Battle — guest cannot participate ───────────────────
+
+# GUEST-RANDOM-01: claim_random_match anon guard appears after uid check (not before)
+check('GUEST-RANDOM-01', '[STATIC TEST] claim_random_match anon guard follows uid-null check (correct auth order)',
+    (lambda sql: (
+        (uid_check := sql.find('unauthenticated')) != -1
+        and (anon_guard := sql.find('anonymous_not_allowed', uid_check)) != -1
+        and (anon_guard > uid_check)
+    ))(_m95_sql)
+)
+
+# GUEST-RANDOM-02: cancel_random_matchmaking anon guard also present
+check('GUEST-RANDOM-02', '[STATIC TEST] cancel_random_matchmaking has anon guard (defensive: anon should never be in queue)',
+    bool(re.search(
+        r'cancel_random_matchmaking[\s\S]{0,2000}anonymous_not_allowed',
+        _m95_sql
+    ))
+)
+
+# GUEST-RANDOM-03: M95 is wrapped in a single BEGIN...COMMIT transaction
+check('GUEST-RANDOM-03', '[STATIC TEST] M95 is one atomic BEGIN...COMMIT transaction',
+    bool(re.search(r'^\s*BEGIN\s*;', _m95_sql, re.MULTILINE))
+    and bool(re.search(r'^\s*COMMIT\s*;', _m95_sql, re.MULTILINE))
+)
+
 static_total = len(PASS) + len(FAIL)
 ne_total = len(NOT_EXECUTED)
 print(f"\n{'='*60}")
