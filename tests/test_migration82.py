@@ -2379,6 +2379,43 @@ check_ne('DAILY91-DB-26', '[DB TEST] stale session call leaves streak_last_date 
 check_ne('DAILY91-DB-27', '[DB TEST] same-day second call returns already_recorded=true, streak unchanged')
 
 # ─────────────────────────────────────────────────────────────────────────────
+# M92: REVOKE anon EXECUTE on record_daily_activity
+# ─────────────────────────────────────────────────────────────────────────────
+
+_sql92_path = _os.path.join(_os.path.dirname(__file__), '..', 'sql', '92_revoke_anon_daily_activity.sql')
+with open(_sql92_path) as _f92:
+    _sql92 = _f92.read()
+
+# M92-01: migration explicitly REVOKEs from anon
+check('M92-01', '[STATIC TEST] M92 migration explicitly REVOKEs EXECUTE from anon role',
+    'REVOKE EXECUTE ON FUNCTION public.record_daily_activity(uuid) FROM anon' in _sql92
+)
+
+# M92-02: migration preserves authenticated EXECUTE grant
+check('M92-02', '[STATIC TEST] M92 migration GRANTs EXECUTE to authenticated role',
+    'GRANT EXECUTE ON FUNCTION public.record_daily_activity(uuid) TO authenticated' in _sql92
+)
+
+# M92-03: migration does not CREATE OR REPLACE record_daily_activity (body unchanged)
+check('M92-03', '[STATIC TEST] M92 migration does not recreate record_daily_activity function body',
+    'CREATE OR REPLACE FUNCTION' not in _sql92.upper() or
+    'RECORD_DAILY_ACTIVITY' not in _sql92.upper()
+)
+
+# M92-04: migration touches only permissions — no gameplay or function-body DDL
+check('M92-04', '[STATIC TEST] M92 migration contains only REVOKE/GRANT statements (no gameplay DDL)',
+    'CREATE TABLE' not in _sql92.upper()
+    and 'ALTER TABLE' not in _sql92.upper()
+    and 'DROP TABLE' not in _sql92.upper()
+    and 'INSERT INTO' not in _sql92.upper()
+    and 'UPDATE ' not in _sql92.upper()
+)
+
+check_ne('M92-DB-01', '[DB TEST] anon role cannot EXECUTE record_daily_activity(uuid) — privilege check returns false')
+check_ne('M92-DB-02', '[DB TEST] authenticated role retains EXECUTE on record_daily_activity(uuid)')
+check_ne('M92-DB-03', '[DB TEST] PUBLIC has no EXECUTE on record_daily_activity(uuid)')
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Results
 # ─────────────────────────────────────────────────────────────────────────────
 static_total = len(PASS) + len(FAIL)
