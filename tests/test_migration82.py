@@ -2744,6 +2744,157 @@ check('HOME-NEURON-03', '[STATIC TEST] home dashboard renders hdb-neurons from s
     and bool(re.search(r'hdb-neurons', _idx_full))
 )
 
+# ─────────────────────────────────────────────────────────────────────────────
+# SPRINT-RC2: RC sprint round-2 additions
+# ─────────────────────────────────────────────────────────────────────────────
+import os as _os5
+_hdb_path = _os5.path.join(_os5.path.dirname(__file__), '..', 'js', 'home-dashboard.js')
+_hdb_full = open(_hdb_path).read() if _os5.path.exists(_hdb_path) else ''
+_m94_path = _os5.path.join(_os5.path.dirname(__file__), '..', 'sql', '94_release_candidate_runtime_fixes.sql')
+_m94_sql  = open(_m94_path).read() if _os5.path.exists(_m94_path) else ''
+_cf_path  = _os5.path.join(_os5.path.dirname(__file__), '..', 'js', 'club-finder.js')
+_cf_full  = open(_cf_path).read() if _os5.path.exists(_cf_path) else ''
+
+# BATTLE-PTS-04: submit_duel_answer awards fixed 10 pts (friend + random human)
+_m87_sql = open(_os5.path.join(_os5.path.dirname(__file__), '..', 'sql', '87_fix_answer_array_canonical.sql')).read()
+check('BATTLE-PTS-04', '[STATIC TEST] submit_duel_answer grants fixed 10 pts per correct answer (M87)',
+    bool(re.search(r'_pts\s*:=\s*10', _m87_sql))
+)
+
+# BATTLE-PTS-05: random human duel uses same submit_duel_answer path (fixed 10)
+check('BATTLE-PTS-05', '[STATIC TEST] random_battle uses submit_duel_answer (same fixed scoring as friend_battle)',
+    bool(re.search(r'submit_duel_answer', _fb_full))
+    and bool(re.search(r"p_code.*?p_question_idx|p_question_idx.*?p_code", _m87_sql, re.DOTALL))
+)
+
+# BATTLE-PTS-06: virtual battle indicator shows dynamic score matching Math.max(1, duelTimeLeft)
+check('BATTLE-PTS-06', '[STATIC TEST] virtual duel UI indicator uses dynamic duelTimeLeft (speed-based)',
+    bool(re.search(r'_isBotDuel.*?Math\.max.*?duelTimeLeft|Math\.max.*?duelTimeLeft.*?_isBotDuel', _fb_full, re.DOTALL))
+)
+
+# HOME-NEURON-03b: todayLabel changed to "Заработано сегодня"
+check('HOME-NEURON-03b', '[STATIC TEST] todayLabel string updated to "Заработано сегодня"',
+    'Заработано сегодня' in _hdb_full
+)
+
+# HOME-NEURON-04: _loadTodayEarned queries currency_ledger positive awarded_neurons
+check('HOME-NEURON-04', '[STATIC TEST] _loadTodayEarned queries currency_ledger with gt(awarded_neurons,0)',
+    'currency_ledger' in _hdb_full
+    and bool(re.search(r'awarded_neurons', _hdb_full))
+    and bool(re.search(r'gt\s*\(|gte\s*\(|> 0', _hdb_full))
+)
+
+# HOME-NEURON-05: ⓘ info copy describes earned-today semantics and live sources
+check('HOME-NEURON-05', '[STATIC TEST] ⓘ button copy mentions earned today, quick play, duel win, daily login',
+    bool(re.search(r'Быстрой игре|quick.*play', _idx_full, re.IGNORECASE))
+    and bool(re.search(r'дуэли|duel', _idx_full, re.IGNORECASE))
+    and 'ⓘ' in _idx_full
+)
+
+# HOME-STREAK-04: streak value comes from profiles.daily_streak (server-canonical)
+check('HOME-STREAK-04', '[STATIC TEST] home dashboard reads streak from state.streak (loaded from profiles.daily_streak)',
+    bool(re.search(r'state\.streak', _hdb_full))
+    and bool(re.search(r'daily_streak', open(_os5.path.join(_os5.path.dirname(__file__), '..', 'js', 'legacy.js')).read()))
+)
+
+# HOME-STREAK-05: completed session path calls record_daily_activity or equivalent
+check('HOME-STREAK-05', '[STATIC TEST] training completion path invokes record_daily_activity',
+    bool(re.search(r'record_daily_activity', open(_os5.path.join(_os5.path.dirname(__file__), '..', 'js', 'training', 'streak.js')).read()))
+)
+
+# HOME-STREAK-06: exhausted limit + streak=0 → shows "не завершена" message not "Сыграй сегодня"
+check('HOME-STREAK-06', '[STATIC TEST] streak sub-label shows incomplete-session message when limit exhausted and streak=0',
+    bool(re.search(r'не завершена|not.*completed', _hdb_full, re.IGNORECASE))
+    and bool(re.search(r'getRemainingFreeQuestions', _hdb_full))
+)
+
+# HOME-GOAL-01: orphan "23" removed — home-player-count never made visible
+check('HOME-GOAL-01', '[STATIC TEST] _loadHomePlayerCount does not set wrap.style.display="" (orphan number hidden)',
+    not bool(re.search(r'wrap\.style\.display\s*=\s*[\'"][\'"]\s*;', open(_os5.path.join(_os5.path.dirname(__file__), '..', 'js', 'legacy.js')).read().split('_loadHomePlayerCount')[1].split('\n}')[0]))
+)
+
+# HOME-GOAL-02: home-player-count stays display:none in HTML
+check('HOME-GOAL-02', '[STATIC TEST] home-player-count element has display:none in HTML',
+    bool(re.search(r'home-player-count.*?display:none|display:none.*?home-player-count', _idx_full, re.DOTALL))
+)
+
+# LISTING-05: M94 makes club_id nullable in club_recruitment_board
+check('LISTING-05', '[STATIC TEST] M94 drops NOT NULL on club_recruitment_board.club_id',
+    bool(re.search(r'ALTER TABLE.*club_recruitment_board.*ALTER COLUMN.*club_id.*DROP NOT NULL', _m94_sql, re.DOTALL))
+    or bool(re.search(r'club_id.*DROP NOT NULL', _m94_sql))
+)
+
+# LISTING-06: listing submit form has name, text, city fields
+check('LISTING-06', '[STATIC TEST] listing form has cf-post-name, cf-post-text, cf-post-city fields',
+    'cf-post-name' in _idx_full and 'cf-post-text' in _idx_full and 'cf-post-city' in _idx_full
+)
+
+# LISTING-07: submit handler validates auth before INSERT
+check('LISTING-07', '[STATIC TEST] _cfSubmitPost checks currentUser before DB insert',
+    bool(re.search(r'_cfUser.*currentUser|currentUser.*_cfUser', _idx_full, re.DOTALL))
+    and bool(re.search(r'if.*!_cfUser', _idx_full))
+)
+
+# LISTING-08: tab button uses "Разместить объявление" not "Подать заявку"
+check('LISTING-08', '[STATIC TEST] listing tab uses "Разместить объявление" label',
+    'Разместить объявление' in _idx_full
+)
+
+# LISTING-09: success flow refreshes browse tab
+check('LISTING-09', '[STATIC TEST] listing submit success calls _cfTab("browse") for refresh',
+    bool(re.search(r"_cfTab\s*\(\s*['\"]browse['\"]", _idx_full))
+    and bool(re.search(r'setTimeout.*_cfTab', _idx_full, re.DOTALL))
+)
+
+# HISTORY-05: virtual battle uses complete_virtual_battle_session RPC (not direct UPDATE)
+check('HISTORY-05', '[STATIC TEST] _saveDuelStats uses complete_virtual_battle_session RPC for bot duels',
+    bool(re.search(r'complete_virtual_battle_session', _fb_full))
+    and not bool(re.search(r"from\s*\(\s*['\"]game_sessions['\"].*?\.update\s*\(", _fb_full, re.DOTALL))
+)
+
+# HISTORY-06: RPC call passes p_correct and p_questions
+check('HISTORY-06', '[STATIC TEST] complete_virtual_battle_session called with p_correct + p_questions',
+    bool(re.search(r'p_correct\s*:', _fb_full))
+    and bool(re.search(r'p_questions\s*:', _fb_full))
+)
+
+# HISTORY-07: RPC call passes p_won boolean
+check('HISTORY-07', '[STATIC TEST] complete_virtual_battle_session called with p_won boolean',
+    bool(re.search(r'p_won\s*:', _fb_full))
+    and bool(re.search(r'!!\s*win|!!win', _fb_full))
+)
+
+# HISTORY-08: M94 complete_virtual_battle_session is idempotent (already_set path)
+check('HISTORY-08', '[STATIC TEST] M94 RPC has idempotent already_set path',
+    'already_set' in _m94_sql
+)
+
+# HISTORY-09: M94 validates user_id + mode=virtual_battle before UPDATE
+check('HISTORY-09', '[STATIC TEST] M94 RPC restricts UPDATE to virtual_battle sessions owned by caller',
+    bool(re.search(r"mode\s*=\s*'virtual_battle'", _m94_sql))
+    and bool(re.search(r'v_uid\s+uuid\s*:=\s*auth\.uid\(\)', _m94_sql))
+    and bool(re.search(r'user_id\s*=\s*v_uid', _m94_sql))
+)
+
+# PROFILE-STATS-01: M94 player_stats excludes virtual_battle from duels_won
+# The duels_won FILTER block must use friend+random only (not virtual_battle)
+check('PROFILE-STATS-01', '[STATIC TEST] M94 player_stats duels_won filter excludes virtual_battle',
+    bool(re.search(r"duels_won", _m94_sql))
+    and bool(re.search(r"mode IN \('friend_battle','random_battle'\)\s*\n\s*AND gs\.won = true", _m94_sql))
+    and not bool(re.search(r"mode IN \('friend_battle','random_battle','virtual_battle'\)\s*\n\s*AND gs\.won", _m94_sql))
+)
+
+# PROFILE-STATS-02: duels_played still includes virtual_battle
+check('PROFILE-STATS-02', '[STATIC TEST] M94 player_stats duels_played still counts virtual_battle',
+    bool(re.search(r"duels_played.*virtual_battle|virtual_battle.*duels_played", _m94_sql, re.DOTALL))
+)
+
+# PROFILE-STATS-03: accuracy_pct computed from correct_total / questions_total (not 0 when data exists)
+check('PROFILE-STATS-03', '[STATIC TEST] player_stats accuracy_pct uses ROUND(correct/questions*100)',
+    bool(re.search(r'ROUND\s*\(.*correct_answers.*questions_count|ROUND.*correct.*100', _m94_sql, re.DOTALL))
+    or bool(re.search(r'accuracy_pct', _m94_sql) and re.search(r'SUM.*correct_answers', _m94_sql, re.DOTALL))
+)
+
 static_total = len(PASS) + len(FAIL)
 ne_total = len(NOT_EXECUTED)
 print(f"\n{'='*60}")

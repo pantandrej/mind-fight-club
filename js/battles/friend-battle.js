@@ -681,17 +681,18 @@ async function _saveDuelStats(myS, oppS, win) {
   // game_sessions is used only for start/limit accounting in v1.
   // won/score/questions_count are intentionally NOT written to game_sessions for real duels
   // (no stable duel→session link exists; heuristic matching was removed).
-  // For bot duels: write session stats locally (unranked, noncompetitive).
+  // For bot duels: write session stats via SECURITY DEFINER RPC (client UPDATE blocked by M70 RLS).
   const sessionId = window._currentDuelSessionId || window._currentSessionId;
   if (window._isBotDuel && window.sb && sessionId) {
     try {
-      await window.sb.from('game_sessions').update({
-        score:           myS,
-        correct_answers: duelMyCorrect || 0,
-        questions_count: duelQs?.length || 5,
-        won:             win,
-      }).eq('id', sessionId);
-    } catch(e) { /* silent */ }
+      await window.sb.rpc('complete_virtual_battle_session', {
+        p_session_id: sessionId,
+        p_score:      myS,
+        p_correct:    duelMyCorrect || 0,
+        p_questions:  duelQs?.length || 5,
+        p_won:        !!win,
+      });
+    } catch(e) { /* silent — history row stays with nulls rather than crash */ }
   }
 
   // Win streak in localStorage (display only, not authoritative)

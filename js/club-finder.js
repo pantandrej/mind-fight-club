@@ -42,7 +42,7 @@ export async function loadClubFinder(filters = {}) {
       <div style="font-size:14px;font-weight:700">Объявлений пока нет</div>
       <div style="font-size:12px;margin-top:6px;margin-bottom:16px">Будь первым — расскажи о себе или своей команде</div>
       <button onclick="window._cfTab?.('post')" style="background:var(--accent);border:none;border-radius:14px;padding:12px 24px;font-size:14px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit">
-        📢 Подать объявление
+        📢 Разместить объявление
       </button>
     </div>`;
     return;

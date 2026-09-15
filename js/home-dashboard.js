@@ -15,7 +15,7 @@ function _t(key, ru, en) {
 
 const HOME_STRINGS = {
   greeting:     { ru: 'Привет',                en: 'Hi' },
-  todayLabel:   { ru: 'Сегодня в BFC',         en: 'Today in BFC' },
+  todayLabel:   { ru: 'Заработано сегодня',    en: 'Earned today' },
   neurons:      { ru: 'нейронов',              en: 'neurons' },
   quickPlay:    { ru: 'Быстрая игра',          en: 'Quick Play' },
   qRemaining:   { ru: 'вопр. осталось',        en: 'left' },
@@ -131,9 +131,19 @@ function _renderStreak(state) {
   if (valEl) valEl.textContent = streak;
 
   const subEl = document.getElementById('hdb-streak-sub');
-  if (subEl) subEl.textContent = streak > 0
-    ? `${s('streakBest')}: ${best} ${s('streakDays')}`
-    : s('streakStart');
+  if (subEl) {
+    if (streak > 0) {
+      subEl.textContent = `${s('streakBest')}: ${best} ${s('streakDays')}`;
+    } else {
+      // Detect exhausted-but-incomplete: quota gone, no streak recorded
+      const rem = typeof window.getRemainingFreeQuestions === 'function'
+        ? window.getRemainingFreeQuestions()
+        : null;
+      subEl.textContent = (rem !== null && rem <= 0)
+        ? 'Тренировка не завершена · серия не сохранена'
+        : s('streakStart');
+    }
+  }
 
   const flame = document.getElementById('hdb-streak-flame');
   if (flame) flame.textContent = streak >= 3 ? '🔥' : '💡';
@@ -224,6 +234,7 @@ async function _loadRealData(state) {
   await Promise.allSettled([
     _loadDisplayName(state),
     _loadTeam(),
+    _loadTodayEarned(),
   ]);
 }
 
@@ -244,6 +255,27 @@ async function _loadDisplayName(state) {
   } catch(e) {
     // greeting already set from metadata
   }
+}
+
+// Queries currency_ledger for today's awarded neurons (positive only, UTC day).
+// RLS allows authenticated users to SELECT their own ledger rows.
+// Updates hdb-neurons + hdb-today-label with canonical earned-today value.
+async function _loadTodayEarned() {
+  if (!window.sb) return;
+  try {
+    const todayStart = new Date().toISOString().slice(0, 10) + 'T00:00:00.000Z';
+    const { data, error } = await window.sb
+      .from('currency_ledger')
+      .select('awarded_neurons')
+      .gte('created_at', todayStart)
+      .gt('awarded_neurons', 0);
+    if (error) return;
+    const earned = (data || []).reduce((s, r) => s + (r.awarded_neurons || 0), 0);
+    const el = document.getElementById('hdb-neurons');
+    if (el) el.textContent = earned.toLocaleString('ru');
+    const label = document.getElementById('hdb-today-label');
+    if (label) label.textContent = s('todayLabel');
+  } catch(e) { /* keep skeleton value (total balance) as fallback */ }
 }
 
 async function _loadTeam() {

@@ -10643,13 +10643,13 @@ async function _loadHomePlayerCount() {
   const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
   if (cached && Date.now() - cached.ts < 600_000) {
     val.textContent = cached.count.toLocaleString('ru');
-    wrap.style.display = '';
+    // wrap stays hidden — bare count with no label is misleading on home
     return;
   }
   const { count } = await sb.from('profiles').select('id', { count: 'exact', head: true });
   if (count && count > 0) {
     val.textContent = count.toLocaleString('ru');
-    wrap.style.display = '';
+    // wrap stays hidden — bare count with no label is misleading on home
     localStorage.setItem(CACHE_KEY, JSON.stringify({ count, ts: Date.now() }));
   }
 }
