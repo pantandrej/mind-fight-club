@@ -2895,6 +2895,76 @@ check('PROFILE-STATS-03', '[STATIC TEST] player_stats accuracy_pct uses ROUND(co
     or bool(re.search(r'accuracy_pct', _m94_sql) and re.search(r'SUM.*correct_answers', _m94_sql, re.DOTALL))
 )
 
+
+# ─── SPRINT-RC2 SECURITY ROUND 2 — ATOMICITY + IDEMPOTENCY + HOME ────────────
+
+# M94-TX-01: BEGIN present as first executable statement
+check('M94-TX-01', '[STATIC TEST] M94 begins with transaction BEGIN',
+    bool(re.search(r'^\s*BEGIN\s*;', _m94_sql, re.MULTILINE))
+)
+
+# M94-TX-02: COMMIT present as last executable statement
+check('M94-TX-02', '[STATIC TEST] M94 ends with COMMIT',
+    bool(re.search(r'COMMIT\s*;?\s*$', _m94_sql.rstrip()))
+)
+
+# M94-TX-03: DROP of old 5-param overload is inside the transaction
+_m94_begin_pos = _m94_sql.find('BEGIN')
+_m94_commit_pos = _m94_sql.rfind('COMMIT')
+_m94_drop_pos = _m94_sql.find('DROP FUNCTION IF EXISTS public.complete_virtual_battle_session(uuid, int, int, int, boolean)')
+check('M94-TX-03', '[STATIC TEST] old 5-param complete_virtual_battle_session DROP is inside BEGIN..COMMIT',
+    _m94_drop_pos > _m94_begin_pos and _m94_drop_pos < _m94_commit_pos
+)
+
+# M94-SEC-09: completed_at is the idempotency sentinel (not questions_count)
+check('M94-SEC-09', '[STATIC TEST] completed_at IS NOT NULL is the idempotency sentinel',
+    bool(re.search(r'completed_at\s+IS\s+NOT\s+NULL', _m94_sql))
+    and bool(re.search(r'already_set.*completed_at|completed_at.*already_set', _m94_sql, re.DOTALL))
+)
+
+# M94-SEC-10: retry returns persisted canonical stats (correct_answers + questions_count from row)
+check('M94-SEC-10', '[STATIC TEST] idempotent retry returns persisted correct_answers and questions_count',
+    bool(re.search(r"already_set.*true.*correct_answers.*v_session\.correct_answers|v_session\.correct_answers.*already_set", _m94_sql, re.DOTALL))
+    or bool(re.search(r"'already_set'.*true.*'correct_answers'.*v_session\.", _m94_sql, re.DOTALL))
+)
+
+# M94-SEC-11: questions_count alone does not mark session complete
+check('M94-SEC-11', '[STATIC TEST] idempotency does not check questions_count IS NOT NULL as sentinel',
+    not bool(re.search(r'questions_count\s+IS\s+NOT\s+NULL.*already_set|already_set.*questions_count\s+IS\s+NOT\s+NULL', _m94_sql, re.DOTALL))
+)
+
+# M94-SEC-12: SELECT FOR UPDATE used for race safety
+check('M94-SEC-12', '[STATIC TEST] complete_virtual_battle_session uses SELECT FOR UPDATE',
+    bool(re.search(r'FOR\s+UPDATE', _m94_sql))
+)
+
+# HOME-TODAY-04: skeleton shows "—" not state.neurons for earned-today
+# The skeleton sets a local var from getElementById('hdb-neurons') then assigns textContent = '—'
+check('HOME-TODAY-04', '[STATIC TEST] skeleton sets hdb-neurons to "—" (not state.neurons)',
+    bool(re.search(r"getElementById\s*\(\s*['\"]hdb-neurons['\"]", _hdb_full))
+    and bool(re.search(r"textContent\s*=\s*['\"]—['\"]", _hdb_full))
+    and not bool(re.search(r"getElementById\s*\(\s*['\"]hdb-neurons['\"].*state\.neurons", _hdb_full, re.DOTALL))
+)
+
+# HOME-TODAY-05: RPC failure path does not update hdb-neurons (keeps "—")
+check('HOME-TODAY-05', '[STATIC TEST] _loadTodayEarned returns early on error without writing hdb-neurons',
+    bool(re.search(r'if\s*\(error.*return|error.*return', _hdb_full))
+    and bool(re.search(r'get_my_today_neurons', _hdb_full))
+)
+
+# HOME-TODAY-06: get_my_today_neurons derives both boundaries as local calendar midnights
+check('HOME-TODAY-06', '[STATIC TEST] get_my_today_neurons derives v_day_start and v_day_end from local date',
+    bool(re.search(r'v_local_today::timestamp\s+AT TIME ZONE', _m94_sql))
+    and bool(re.search(r'\(v_local_today \+ 1\)::timestamp\s+AT TIME ZONE', _m94_sql))
+)
+
+# HOME-TODAY-07: no executable v_day_start + interval '1 day' (only in comment, not in code)
+# Skip comment lines when checking
+_m94_code_lines = '\n'.join(l for l in _m94_sql.split('\n') if not l.strip().startswith('--'))
+check('HOME-TODAY-07', '[STATIC TEST] v_day_start + interval 1 day is not used in executable code (DST-unsafe pattern removed)',
+    not bool(re.search(r"v_day_start\s*\+\s*interval\s*'1 day'", _m94_code_lines))
+)
+
 # ─── SPRINT-RC2 SECURITY ROUND ───────────────────────────────────────────────
 
 # M94-SEC-01: RPC accepts only p_session_id — no score/correct/questions/won params

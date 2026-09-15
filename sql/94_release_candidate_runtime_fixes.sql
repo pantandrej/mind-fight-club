@@ -1,64 +1,35 @@
 -- ══════════════════════════════════════════════════════════════════════════════
--- Migration 94: Release Candidate Runtime Fixes (Security Rev)
+-- Migration 94: Release Candidate Runtime Fixes (Security Rev 2)
 -- Applied: NO
 -- ══════════════════════════════════════════════════════════════════════════════
 -- Changes:
---   1. club_recruitment_board.club_id → nullable
---      Fixes listing submit for players not in a team.
---      RLS (crb_creator_write: auth.uid() = creator_id) still enforces ownership.
---
---   2. complete_virtual_battle_session(p_session_id uuid)
---      Server-authoritative — NO client result params accepted.
---      Derives correct_answers / questions_count from session_questions.
---      score/won are left NULL: speed score is not tracked server-side
---      (no points column in session_questions) and opponent result is not
---      persisted server-side. Security > cosmetic history.
---      Requires exactly 5 answered questions (virtual battle contract).
---
---   3. get_my_today_neurons()
---      Returns earned neurons for the caller's canonical local calendar day
---      (using profiles.timezone, fallback UTC). Sums currency_ledger
---      awarded_neurons > 0 within that window. Authenticated only.
---
---   4. get_my_daily_state()
---      Returns canonical streak state from profiles for the home widget.
---      Compares profiles.streak_last_date against player's local today.
---      Authenticated only.
---
---   5. player_stats VIEW — duels_won = friend_battle + random_battle only
---      M93 included virtual_battle in duels_won. Product decision:
---      virtual wins are non-competitive. Still counted in duels_played.
+--   1. club_recruitment_board.club_id → nullable (solo player listing fix)
+--   2. complete_virtual_battle_session(p_session_id uuid) — server-authoritative
+--      Uses completed_at as idempotency sentinel; SELECT FOR UPDATE to prevent race.
+--      Derives correct_answers/questions_count from session_questions only.
+--      score/won left NULL (not server-provable).
+--   3. get_my_today_neurons() — local-day window from profiles.timezone.
+--      Both boundaries derived as local calendar midnights (DST-safe).
+--   4. get_my_daily_state() — canonical streak state from profiles.
+--   5. player_stats VIEW — duels_won = friend_battle + random_battle only.
 -- ══════════════════════════════════════════════════════════════════════════════
 
+BEGIN;
 
 -- ── 1. club_recruitment_board: make club_id nullable ─────────────────────────
--- Original schema (M28): club_id NOT NULL REFERENCES teams_v2(id).
--- Solo players (no team) fail with NOT NULL constraint on INSERT.
--- Fix: allow null club_id. Ownership still enforced by crb_creator_write RLS.
 ALTER TABLE club_recruitment_board ALTER COLUMN club_id DROP NOT NULL;
 
 
--- ── 2. complete_virtual_battle_session(p_session_id uuid) ────────────────────
--- Server-authoritative session completion for virtual (bot) duels.
--- NO client-supplied score/correct/won. All derived from session_questions.
---
--- Security contract:
---   - SECURITY DEFINER + SET search_path = public
---   - REVOKE from PUBLIC, anon; GRANT to authenticated only
---   - Validates user_id = auth.uid() AND mode = 'virtual_battle'
---   - Validates exactly 5 questions exist for the session
---   - Validates all 5 are answered (is_correct IS NOT NULL)
---
--- Fields written:
---   correct_answers = COUNT(*) FILTER (WHERE is_correct = true)   — provable
---   questions_count = COUNT(*) = 5                                — provable
---   completed_at    = now() (if not already set)                  — provable
---   score           = NOT WRITTEN (no server-side speed tracking)
---   won             = NOT WRITTEN (no server-side opponent result)
---
--- Idempotent: returns {ok:true, already_set:true} if questions_count already set.
+-- ── 2. complete_virtual_battle_session ───────────────────────────────────────
+-- Drop the old 5-param client-result overload (existed before Security Rev).
 DROP FUNCTION IF EXISTS public.complete_virtual_battle_session(uuid, int, int, int, boolean);
 
+-- Server-authoritative completion for virtual (bot) duels.
+-- Idempotency sentinel: completed_at (not questions_count).
+-- Race safety: SELECT ... FOR UPDATE on the owned game_sessions row.
+-- Derives correct_answers/questions_count from session_questions.is_correct
+-- (server-derived by submit_virtual_battle_answer — never client-supplied).
+-- score and won are intentionally NOT written (not server-provable).
 CREATE OR REPLACE FUNCTION public.complete_virtual_battle_session(
   p_session_id uuid
 )
@@ -69,7 +40,7 @@ SET search_path = public
 AS $$
 DECLARE
   v_uid         uuid := auth.uid();
-  v_already_set bool;
+  v_session     game_sessions%ROWTYPE;
   v_total       int;
   v_answered    int;
   v_correct     int;
@@ -78,24 +49,27 @@ BEGIN
     RETURN jsonb_build_object('ok', false, 'reason', 'not_authenticated');
   END IF;
 
-  -- Verify session ownership and mode
-  IF NOT EXISTS (
-    SELECT 1 FROM game_sessions
-    WHERE id = p_session_id AND user_id = v_uid AND mode = 'virtual_battle'
-  ) THEN
+  -- Lock the row to prevent concurrent completion races
+  SELECT * INTO v_session
+  FROM game_sessions
+  WHERE id = p_session_id AND user_id = v_uid AND mode = 'virtual_battle'
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
     RETURN jsonb_build_object('ok', false, 'reason', 'session_not_found');
   END IF;
 
-  -- Idempotent: already completed
-  SELECT (questions_count IS NOT NULL AND questions_count > 0)
-  INTO v_already_set
-  FROM game_sessions WHERE id = p_session_id;
-
-  IF v_already_set THEN
-    RETURN jsonb_build_object('ok', true, 'already_set', true);
+  -- completed_at is the canonical idempotency sentinel
+  IF v_session.completed_at IS NOT NULL THEN
+    RETURN jsonb_build_object(
+      'ok',              true,
+      'already_set',     true,
+      'correct_answers', v_session.correct_answers,
+      'questions_count', v_session.questions_count
+    );
   END IF;
 
-  -- Count canonical questions from session_questions
+  -- Derive canonical counts from session_questions (server-side records)
   SELECT COUNT(*),
          COUNT(*) FILTER (WHERE is_correct IS NOT NULL),
          COUNT(*) FILTER (WHERE is_correct = true)
@@ -103,7 +77,7 @@ BEGIN
   FROM session_questions
   WHERE session_id = p_session_id;
 
-  -- Require exactly 5 questions (virtual battle contract from start_virtual_battle_session)
+  -- Virtual battle contract: exactly 5 questions
   IF v_total <> 5 THEN
     RETURN jsonb_build_object(
       'ok', false, 'reason', 'wrong_question_count',
@@ -111,7 +85,7 @@ BEGIN
     );
   END IF;
 
-  -- Require all questions answered
+  -- All questions must be resolved before completion
   IF v_answered <> 5 THEN
     RETURN jsonb_build_object(
       'ok', false, 'reason', 'incomplete_session',
@@ -120,16 +94,13 @@ BEGIN
   END IF;
 
   -- Write server-provable fields only.
-  -- score and won are intentionally NOT written:
-  --   score: speed points are not tracked in session_questions (no points column).
-  --   won:   virtual opponent result is not persisted server-side.
+  -- score: not written — speed points not tracked per-question server-side.
+  -- won:   not written — virtual opponent result not persisted server-side.
   UPDATE game_sessions
   SET correct_answers = v_correct,
       questions_count = v_total,
-      completed_at    = COALESCE(completed_at, now())
-  WHERE id      = p_session_id
-    AND user_id = v_uid
-    AND mode    = 'virtual_battle';
+      completed_at    = now()
+  WHERE id = p_session_id AND user_id = v_uid AND mode = 'virtual_battle';
 
   RETURN jsonb_build_object(
     'ok',              true,
@@ -145,10 +116,10 @@ GRANT  EXECUTE ON FUNCTION public.complete_virtual_battle_session(uuid) TO authe
 
 
 -- ── 3. get_my_today_neurons() ─────────────────────────────────────────────────
--- Returns earned neurons for the caller's canonical local calendar day.
--- Uses profiles.timezone (M91 validated); falls back to UTC.
--- Sums currency_ledger.awarded_neurons > 0 within [local_day_start, local_day_start + 1day).
--- Does NOT count spends (awarded_neurons <= 0).
+-- Local-day boundaries derived as calendar midnights in profiles.timezone.
+-- Both v_day_start and v_day_end are computed from the local date,
+-- not by adding an interval — DST-safe (clocks can spring/fall on transition).
+-- Sums currency_ledger.awarded_neurons > 0 in [day_start, day_end).
 -- Authenticated only.
 CREATE OR REPLACE FUNCTION public.get_my_today_neurons()
 RETURNS jsonb
@@ -157,31 +128,33 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_uid       uuid := auth.uid();
-  v_tz        text;
-  v_day_start timestamptz;
-  v_day_end   timestamptz;
-  v_earned    bigint;
+  v_uid         uuid := auth.uid();
+  v_tz          text;
+  v_local_today date;
+  v_day_start   timestamptz;
+  v_day_end     timestamptz;
+  v_earned      bigint;
 BEGIN
   IF v_uid IS NULL THEN
     RETURN jsonb_build_object('ok', false, 'reason', 'not_authenticated');
   END IF;
 
   SELECT COALESCE(NULLIF(TRIM(timezone), ''), 'UTC')
-  INTO v_tz
-  FROM profiles WHERE id = v_uid;
-
+  INTO v_tz FROM profiles WHERE id = v_uid;
   v_tz := COALESCE(v_tz, 'UTC');
 
-  -- Validate timezone is usable; fall back to UTC on error
+  -- Derive both boundaries from the local calendar date (DST-safe).
+  -- v_day_start + interval '1 day' would be wrong around DST transitions.
   BEGIN
-    v_day_start := date_trunc('day', now() AT TIME ZONE v_tz) AT TIME ZONE v_tz;
+    v_local_today := (now() AT TIME ZONE v_tz)::date;
+    v_day_start   := v_local_today::timestamp             AT TIME ZONE v_tz;
+    v_day_end     := (v_local_today + 1)::timestamp       AT TIME ZONE v_tz;
   EXCEPTION WHEN OTHERS THEN
-    v_day_start := date_trunc('day', now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC';
-    v_tz := 'UTC';
+    v_tz          := 'UTC';
+    v_local_today := (now() AT TIME ZONE 'UTC')::date;
+    v_day_start   := v_local_today::timestamp             AT TIME ZONE 'UTC';
+    v_day_end     := (v_local_today + 1)::timestamp       AT TIME ZONE 'UTC';
   END;
-
-  v_day_end := v_day_start + interval '1 day';
 
   SELECT COALESCE(SUM(awarded_neurons), 0) INTO v_earned
   FROM currency_ledger
@@ -199,14 +172,7 @@ GRANT  EXECUTE ON FUNCTION public.get_my_today_neurons() TO authenticated;
 
 
 -- ── 4. get_my_daily_state() ───────────────────────────────────────────────────
--- Returns canonical daily streak state for the home widget.
--- Source of truth: profiles.daily_streak, profiles.streak_last_date, profiles.timezone.
--- Returns:
---   ok                bool
---   streak            int    — current daily streak
---   best_streak       int    — best daily streak
---   streak_saved_today bool  — streak_last_date = local today (M91 semantics)
---   local_today       text   — YYYY-MM-DD in player's local timezone
+-- Returns canonical streak state for the home widget.
 -- Authenticated only.
 CREATE OR REPLACE FUNCTION public.get_my_daily_state()
 RETURNS jsonb
@@ -255,13 +221,7 @@ GRANT  EXECUTE ON FUNCTION public.get_my_daily_state() TO authenticated;
 
 
 -- ── 5. player_stats VIEW: duels_won = friend_battle + random_battle only ──────
--- M93 counted virtual_battle wins in duels_won.
--- Product decision: virtual wins are non-competitive.
--- virtual_battle is still counted in duels_played (total games).
 -- No DROP — CREATE OR REPLACE preserves column order and dependent grants.
--- Column list: user_id, display_name, city, neurons, xp, streak, best_streak,
---   games_played, duels_played, packs_played, correct_total, questions_total,
---   accuracy_pct, duels_won  (same as M93, only duels_won expression changes).
 CREATE OR REPLACE VIEW public.player_stats AS
 SELECT
   p.id                                                              AS user_id,
@@ -282,7 +242,6 @@ SELECT
     WHEN COALESCE(SUM(gs.questions_count), 0) = 0 THEN 0
     ELSE ROUND(SUM(gs.correct_answers)::numeric / SUM(gs.questions_count) * 100)
   END                                                               AS accuracy_pct,
-  -- M94: competitive wins only — virtual_battle excluded
   COUNT(DISTINCT gs.id) FILTER (
     WHERE gs.mode IN ('friend_battle','random_battle')
       AND gs.won = true
@@ -293,3 +252,5 @@ GROUP BY p.id, p.display_name, p.city, p.neurons, p.xp,
          p.daily_streak, p.best_daily_streak;
 
 GRANT SELECT ON public.player_stats TO authenticated, anon;
+
+COMMIT;

@@ -87,9 +87,10 @@ function _renderSkeleton(state) {
     || 'Игрок';
   _setGreeting(metaName.split(' ')[0]);
 
-  // Neurons
+  // Earned-today: show placeholder until get_my_today_neurons RPC resolves.
+  // NEVER use state.neurons (total balance) as fallback — different metric.
   const neurons = document.getElementById('hdb-neurons');
-  if (neurons) neurons.textContent = (state.neurons ?? 0).toLocaleString('ru');
+  if (neurons) neurons.textContent = '—';
 
   _renderStreak(state);
   _renderTodayCard(state);
