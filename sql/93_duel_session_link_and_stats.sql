@@ -225,11 +225,18 @@ GRANT EXECUTE ON FUNCTION public.start_duel(text) TO authenticated;
 
 -- ── 3. get_duel_result — write BOTH sessions on finalization ─────
 -- Changes vs M78: added _host_correct/_guest_correct, and the dual
--- UPDATE game_sessions block after UPDATE duel_rooms.  All existing
--- guards, locking, and score logic are identical to M78.
+-- UPDATE game_sessions block.  All existing guards, locking, and score
+-- logic are identical to M78.
 --
--- Already-finished branch: sessions already written, returns stored result.
--- Idempotent: status='started' guard prevents double-finalize.
+-- Already-finished branch (covers forfeit):
+--   forfeit_duel() sets status='finished' directly without writing game_sessions.
+--   When get_duel_result is then called, this branch runs the same idempotent
+--   session-sync using winner_id (not score comparison) so the forfeit result
+--   is canonical regardless of partial duel_answers data.
+--
+-- Normal finalization (status='started' guard):
+--   First caller writes both sessions from score comparison (equivalent to winner_id).
+--   Second caller hits already-finished branch, re-syncs idempotently.
 CREATE OR REPLACE FUNCTION public.get_duel_result(p_code text)
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -247,8 +254,8 @@ DECLARE
   _my_score      int;
   _op_score      int;
   _my_correct    int;
-  _host_correct  int;   -- M93
-  _guest_correct int;   -- M93
+  _host_correct  int;
+  _guest_correct int;
   _win           boolean;
   _tie           boolean;
   _total_qs      int;
@@ -277,17 +284,56 @@ BEGIN
   SELECT COUNT(*) >= _total_qs INTO _guest_done
   FROM duel_answers WHERE duel_code = p_code AND user_id = _room.guest_user_id;
 
-  -- Already finished: idempotent. Sessions were written by first finalizer.
+  -- Already finished (normal second-call OR forfeit path).
+  -- Idempotently sync both game_sessions using canonical winner_id.
+  -- This is the only code path executed after forfeit_duel() because
+  -- forfeit_duel() sets status='finished' without going through this function.
   IF _room.status = 'finished' THEN
     SELECT COALESCE(SUM(points), 0) INTO _host_score
     FROM duel_answers WHERE duel_code = p_code AND user_id = _room.host_user_id;
     SELECT COALESCE(SUM(points), 0) INTO _guest_score
     FROM duel_answers WHERE duel_code = p_code AND user_id = _room.guest_user_id;
-    _my_score := CASE _role WHEN 'host' THEN _host_score ELSE _guest_score END;
-    _op_score := CASE _role WHEN 'host' THEN _guest_score ELSE _host_score END;
-    _win := CASE _role WHEN 'host' THEN _room.winner_id = _room.host_user_id ELSE _room.winner_id = _room.guest_user_id END;
+
+    SELECT COUNT(*) INTO _host_correct
+    FROM duel_answers WHERE duel_code = p_code AND user_id = _room.host_user_id AND is_correct = true;
+    SELECT COUNT(*) INTO _guest_correct
+    FROM duel_answers WHERE duel_code = p_code AND user_id = _room.guest_user_id AND is_correct = true;
+
+    -- Idempotent session sync — uses winner_id so forfeit winner overrides partial score
+    IF _room.host_session_id IS NOT NULL THEN
+      UPDATE game_sessions SET
+        won             = CASE
+                            WHEN _room.winner_id = _room.host_user_id  THEN true
+                            WHEN _room.winner_id = _room.guest_user_id THEN false
+                            ELSE NULL  -- tie (winner_id IS NULL)
+                          END,
+        score           = _host_score,
+        correct_answers = _host_correct,
+        questions_count = _total_qs
+      WHERE id = _room.host_session_id;
+    END IF;
+
+    IF _room.guest_session_id IS NOT NULL THEN
+      UPDATE game_sessions SET
+        won             = CASE
+                            WHEN _room.winner_id = _room.guest_user_id THEN true
+                            WHEN _room.winner_id = _room.host_user_id  THEN false
+                            ELSE NULL  -- tie
+                          END,
+        score           = _guest_score,
+        correct_answers = _guest_correct,
+        questions_count = _total_qs
+      WHERE id = _room.guest_session_id;
+    END IF;
+
+    _my_score   := CASE _role WHEN 'host' THEN _host_score   ELSE _guest_score   END;
+    _op_score   := CASE _role WHEN 'host' THEN _guest_score  ELSE _host_score    END;
+    _my_correct := CASE _role WHEN 'host' THEN _host_correct ELSE _guest_correct END;
+    _win := CASE _role
+      WHEN 'host' THEN _room.winner_id = _room.host_user_id
+      ELSE             _room.winner_id = _room.guest_user_id
+    END;
     _tie := _room.winner_id IS NULL AND _room.finished_at IS NOT NULL;
-    SELECT COUNT(*) INTO _my_correct FROM duel_answers WHERE duel_code = p_code AND user_id = _uid AND is_correct = true;
     RETURN jsonb_build_object(
       'ok', true, 'waiting', false, 'win', _win, 'tie', _tie,
       'my_score', _my_score, 'op_score', _op_score, 'correct_count', _my_correct

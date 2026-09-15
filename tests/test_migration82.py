@@ -2585,6 +2585,69 @@ check('M93-10', '[STATIC TEST] resetDuel clears _duelChannelReady and _duelChann
 )
 
 # ─────────────────────────────────────────────────────────────────────────────
+# M93-11..18: Forfeit session-sync and idempotency contract
+# ─────────────────────────────────────────────────────────────────────────────
+
+# M93-11: already-finished branch syncs host_session_id (forfeit path)
+check('M93-11', '[STATIC TEST] already-finished branch in get_duel_result syncs host_session_id',
+    bool(re.search(
+        r"status\s*=\s*['\"]finished['\"].*?host_session_id\s+IS\s+NOT\s+NULL.*?UPDATE\s+game_sessions",
+        _m93_sql, re.DOTALL | re.IGNORECASE
+    ))
+)
+
+# M93-12: already-finished branch syncs guest_session_id (forfeit path)
+check('M93-12', '[STATIC TEST] already-finished branch in get_duel_result syncs guest_session_id',
+    bool(re.search(
+        r"status\s*=\s*['\"]finished['\"].*?guest_session_id\s+IS\s+NOT\s+NULL.*?UPDATE\s+game_sessions",
+        _m93_sql, re.DOTALL | re.IGNORECASE
+    ))
+)
+
+# M93-13: forfeit winner determined by winner_id not score comparison (in already-finished branch)
+check('M93-13', '[STATIC TEST] already-finished branch uses winner_id for won (not score comparison)',
+    bool(re.search(
+        r"status\s*=\s*['\"]finished['\"].*?winner_id\s*=\s*_room\.host_user_id",
+        _m93_sql, re.DOTALL
+    ))
+    and bool(re.search(
+        r"status\s*=\s*['\"]finished['\"].*?winner_id\s*=\s*_room\.guest_user_id",
+        _m93_sql, re.DOTALL
+    ))
+)
+
+# M93-14: forfeit loser gets won=false — when winner_id=host, guest session gets false
+check('M93-14', '[STATIC TEST] guest gets won=false when host is winner_id in already-finished branch',
+    bool(re.search(r"winner_id\s*=\s*_room\.host_user_id\s+THEN\s+false", _m93_sql))
+)
+
+# M93-15: tie (winner_id IS NULL) → both won=NULL in already-finished branch
+check('M93-15', '[STATIC TEST] already-finished branch writes won=NULL for tie (winner_id IS NULL)',
+    bool(re.search(r'_tie\s*:=\s*_room\.winner_id\s+IS\s+NULL\s+AND\s+_room\.finished_at\s+IS\s+NOT\s+NULL', _m93_sql))
+    and bool(re.search(r'ELSE NULL\b', _m93_sql))
+)
+
+# M93-16: already-finished branch is idempotent (no won IS NULL guard that would skip re-sync)
+check('M93-16', '[STATIC TEST] finished branch session sync is unconditional (idempotent by UPDATE semantics)',
+    bool(re.search(r"status\s*=\s*['\"]finished['\"]", _m93_sql))
+    and not bool(re.search(r"WHERE id = _room\.host_session_id\s+AND\s+won\s+IS\s+NULL", _m93_sql))
+)
+
+# M93-17: already-finished branch writes correct_answers and questions_count
+check('M93-17', '[STATIC TEST] already-finished branch writes correct_answers and questions_count',
+    bool(re.search(
+        r"status\s*=\s*['\"]finished['\"].*?correct_answers\s*=\s*_host_correct.*?questions_count\s*=\s*_total_qs",
+        _m93_sql, re.DOTALL
+    ))
+)
+
+# M93-18: ans event payload has only qi — no correctness fields during live play
+check('M93-18', '[STATIC TEST] ans event payload contains only qi (no is_correct/correct_index leak)',
+    bool(re.search(r"event:\s*['\"]ans['\"].*?payload:\s*\{[^}]*qi", _fb_full, re.DOTALL))
+    and not bool(re.search(r"event:\s*['\"]ans['\"].*?payload:\s*\{[^}]*is_correct", _fb_full, re.DOTALL))
+)
+
+# ─────────────────────────────────────────────────────────────────────────────
 # PROFILE-06..09: Opponent display in history
 # ─────────────────────────────────────────────────────────────────────────────
 
