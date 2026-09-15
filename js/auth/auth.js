@@ -724,13 +724,27 @@ export async function signUpEmail() {
   }
 }
 
-export function continueAsGuest() {
+export async function continueAsGuest() {
   track('guest_started', {});
   if (typeof window.savePendingRef === 'function') window.savePendingRef();
   const p = new URLSearchParams(window.location.search);
   const hypeSlug = p.get('hype') || window._hypeAutoSlug || null;
   if (p.get('pack')) { showScreen('home'); setTimeout(() => window.playDBPack?.(p.get('pack')), 800); }
-  else if (p.get('duel')) { showScreen('duel'); document.getElementById('join-code-input').value = p.get('duel'); }
+  else if (p.get('duel')) {
+    // Guest duel: create anonymous session so all duel RPCs (authenticated role) work.
+    // SIGNED_IN → _onUserLoaded → ensureProfile → _redirectAfterAuth → auto-join via mfc_pending_duel.
+    const code = p.get('duel');
+    sessionStorage.setItem('mfc_pending_duel', code);
+    const { error } = await sb.auth.signInAnonymously();
+    if (error) {
+      // Anonymous auth not enabled or network error — fall back to manual join
+      sessionStorage.removeItem('mfc_pending_duel');
+      showScreen('duel');
+      document.getElementById('join-code-input').value = code;
+      console.warn('[guest-duel] signInAnonymously failed:', error.message);
+    }
+    // On success SIGNED_IN fires and handles the rest — do not showScreen here
+  }
   else if (p.get('official')) { setTimeout(() => window.openOfficialTournament?.(p.get('official'), p.get('ac')), 600); }
   else if (p.get('tourn')) { showScreen('tournament'); document.getElementById('t-join-code').value = p.get('tourn'); }
   else if (p.get('challenge')) { showScreen('home'); setTimeout(_showChallengeModal, 500); }

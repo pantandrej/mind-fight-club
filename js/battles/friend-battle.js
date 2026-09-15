@@ -69,6 +69,7 @@ function showDuelSection(id){
 
 async function createDuel(){
   if(!currentUser){ window._showSignInToPlay?.(); return; }
+  if(currentUser.is_anonymous){ window._showSignInToPlay?.(); return; }
   window._isBotDuel = false; window._botPlayer = null; window._pendingBot = null;
 
   duelRole='host';
@@ -803,6 +804,21 @@ function endDuel(data){
       // Auto-hide after 60s (opponent may have left)
       setTimeout(() => rematchEl.remove(), 60000);
     }, 800);
+  }
+
+  // Guest user: prompt to register after duel
+  if (currentUser?.is_anonymous) {
+    const regEl = document.createElement('div');
+    regEl.id = 'guest-register-hint';
+    regEl.style.cssText = 'margin-top:16px;padding:16px;background:var(--bg2);border:0.5px solid var(--border);border-radius:14px;text-align:center';
+    regEl.innerHTML = `
+      <div style="font-size:14px;font-weight:700;margin-bottom:6px">Зарегистрируйся, чтобы сохранить прогресс</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:12px">Результаты анонимных игр не сохраняются</div>
+      <button onclick="window.sb?.auth.signOut().then(()=>window.location.reload())"
+        style="width:100%;background:var(--accent);border:none;border-radius:12px;padding:13px;font-size:15px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit">
+        Создать аккаунт
+      </button>`;
+    document.getElementById('d-result')?.appendChild(regEl);
   }
 
   // After a win, gently prompt for push permission if not yet asked

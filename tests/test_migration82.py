@@ -3067,6 +3067,69 @@ check('LISTING-10', '[STATIC TEST] club_recruitment_board insert policy ties to 
     and bool(re.search(r'crb_creator_write|creator_write', _m28_sql))
 )
 
+# ── GUEST-DUEL tests (Part B: Guest Friend Duel regression fix) ────────────────
+
+import os as _os6
+_auth_full  = open(_os6.path.join(_os6.path.dirname(__file__), '..', 'js', 'auth', 'auth.js')).read()
+_fb_full    = open(_os6.path.join(_os6.path.dirname(__file__), '..', 'js', 'battles', 'friend-battle.js')).read()
+
+# GUEST-DUEL-01: continueAsGuest is async (needed for await signInAnonymously)
+check('GUEST-DUEL-01', '[STATIC TEST] continueAsGuest is declared async',
+    bool(re.search(r'async\s+function\s+continueAsGuest', _auth_full))
+)
+
+# GUEST-DUEL-02: continueAsGuest stores duel code in mfc_pending_duel before signInAnonymously
+check('GUEST-DUEL-02', '[STATIC TEST] continueAsGuest stores mfc_pending_duel before anonymous sign-in',
+    bool(re.search(r"mfc_pending_duel.*signInAnonymously|setItem\s*\(\s*['\"]mfc_pending_duel['\"].*\n.*signInAnonymously", _auth_full, re.DOTALL))
+)
+
+# GUEST-DUEL-03: continueAsGuest calls signInAnonymously for duel deep-link
+check('GUEST-DUEL-03', '[STATIC TEST] continueAsGuest calls sb.auth.signInAnonymously for ?duel= param',
+    bool(re.search(r"p\.get\s*\(\s*['\"]duel['\"]\s*\).*signInAnonymously|signInAnonymously.*duel", _auth_full, re.DOTALL))
+)
+
+# GUEST-DUEL-04: continueAsGuest has fallback if signInAnonymously fails
+check('GUEST-DUEL-04', '[STATIC TEST] continueAsGuest fallback on signInAnonymously error (shows duel screen)',
+    bool(re.search(r'signInAnonymously.*error.*showScreen|if\s*\(\s*error\s*\).*showScreen\s*\([\'"]duel', _auth_full, re.DOTALL))
+)
+
+# GUEST-DUEL-05: _redirectAfterAuth auto-joins duel via mfc_pending_duel (existing path)
+check('GUEST-DUEL-05', '[STATIC TEST] _redirectAfterAuth reads mfc_pending_duel and auto-joins',
+    bool(re.search(r'mfc_pending_duel', _auth_full))
+    and bool(re.search(r'joinDuel', _auth_full))
+    and bool(re.search(r'mfc_pending_duel.*joinDuel|joinDuel.*mfc_pending_duel', _auth_full, re.DOTALL))
+)
+
+# GUEST-DUEL-06: createDuel blocks anonymous users (is_anonymous guard)
+check('GUEST-DUEL-06', '[STATIC TEST] createDuel blocks is_anonymous users',
+    bool(re.search(r'is_anonymous.*_showSignInToPlay|currentUser\.is_anonymous', _fb_full))
+)
+
+# GUEST-DUEL-07: joinDuel does NOT get an is_anonymous block (guests CAN join)
+check('GUEST-DUEL-07', '[STATIC TEST] joinDuel does not block is_anonymous (guests allowed to join)',
+    not bool(re.search(r'joinDuel[^}]*is_anonymous', _fb_full, re.DOTALL))
+    or bool(re.search(r'async function joinDuel[\s\S]{0,500}async function', _fb_full)
+            and not re.search(r'is_anonymous', _fb_full[_fb_full.find('async function joinDuel'):_fb_full.find('async function joinDuel')+500]))
+)
+
+# GUEST-DUEL-08: endDuel shows register prompt for anonymous users
+check('GUEST-DUEL-08', '[STATIC TEST] endDuel shows register/signup prompt for is_anonymous users',
+    bool(re.search(r'is_anonymous.*register|guest-register|Зарегистрируйся', _fb_full, re.DOTALL))
+)
+
+# GUEST-DUEL-09: deep-link code is written to mfc_pending_duel before signInAnonymously (ordering)
+check('GUEST-DUEL-09', '[STATIC TEST] mfc_pending_duel stored before signInAnonymously call (deep-link survives auth)',
+    _auth_full.find('mfc_pending_duel') < _auth_full.find('signInAnonymously')
+    if 'mfc_pending_duel' in _auth_full and 'signInAnonymously' in _auth_full
+    else False
+)
+
+# GUEST-DUEL-10: No broad anon GRANT added (security — RPCs stay authenticated-only)
+check('GUEST-DUEL-10', '[STATIC TEST] No new GRANT to anon for duel RPCs (anonymous auth provides authenticated role)',
+    not bool(re.search(r'GRANT.*join_duel_by_code.*anon|GRANT.*submit_duel_answer.*anon', _auth_full))
+    and not bool(re.search(r'GRANT.*join_duel_by_code.*anon|GRANT.*submit_duel_answer.*anon', _fb_full))
+)
+
 static_total = len(PASS) + len(FAIL)
 ne_total = len(NOT_EXECUTED)
 print(f"\n{'='*60}")
