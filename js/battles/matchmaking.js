@@ -102,6 +102,7 @@ async function checkBattleLimitBeforeQueue() {
 
 async function startMatchmaking(){
   if(!currentUser){ _showSignInToPlay(); return; }
+  if(currentUser.is_anonymous){ _showSignInToPlay(); return; }
 
   // ── Pre-check: limit BEFORE opening matchmaking screen or inserting to queue ──
   const _preLC = await checkBattleLimitBeforeQueue();

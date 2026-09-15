@@ -3130,6 +3130,64 @@ check('GUEST-DUEL-10', '[STATIC TEST] No new GRANT to anon for duel RPCs (anonym
     and not bool(re.search(r'GRANT.*join_duel_by_code.*anon|GRANT.*submit_duel_answer.*anon', _fb_full))
 )
 
+# ── M95 server-side anonymous auth guard tests ─────────────────────────────────
+
+import os as _os7
+_m95_path = _os7.path.join(_os7.path.dirname(__file__), '..', 'sql', '95_guest_duel_anon_server_guards.sql')
+_m95_sql  = open(_m95_path).read()
+_mm_full  = open(_os7.path.join(_os7.path.dirname(__file__), '..', 'js', 'battles', 'matchmaking.js')).read()
+
+# GUEST-DUEL-11: M95 exists and is NOT applied (Applied: NO comment)
+check('GUEST-DUEL-11', '[STATIC TEST] M95 exists and is marked Applied: NO',
+    bool(re.search(r'Applied:\s*NO', _m95_sql))
+)
+
+# GUEST-DUEL-12: M95 wrapped in BEGIN/COMMIT
+check('GUEST-DUEL-12', '[STATIC TEST] M95 is wrapped in BEGIN...COMMIT for atomicity',
+    bool(re.search(r'^\s*BEGIN\s*;', _m95_sql, re.MULTILINE))
+    and bool(re.search(r'^\s*COMMIT\s*;', _m95_sql, re.MULTILINE))
+)
+
+# GUEST-DUEL-13: M95 adds _is_anon_user helper or inline jwt check pattern
+check('GUEST-DUEL-13', '[STATIC TEST] M95 defines _is_anon_user helper or uses is_anonymous JWT check',
+    bool(re.search(r'_is_anon_user|is_anonymous', _m95_sql))
+)
+
+# GUEST-DUEL-14: M95 guards create_duel against anonymous users
+check('GUEST-DUEL-14', '[STATIC TEST] M95 adds anon guard to create_duel()',
+    bool(re.search(r'create_duel', _m95_sql))
+    and bool(re.search(r'anonymous_not_allowed|is_anonymous', _m95_sql))
+)
+
+# GUEST-DUEL-15: M95 guards award_currency against anonymous users
+check('GUEST-DUEL-15', '[STATIC TEST] M95 adds anon guard to award_currency()',
+    bool(re.search(r'award_currency', _m95_sql))
+    and bool(re.search(r'anonymous_not_allowed', _m95_sql))
+)
+
+# GUEST-DUEL-16: M95 guards start_daily_bf_session against anonymous users
+check('GUEST-DUEL-16', '[STATIC TEST] M95 adds anon guard to start_daily_bf_session()',
+    bool(re.search(r'start_daily_bf_session', _m95_sql))
+    and bool(re.search(r'anonymous_not_allowed', _m95_sql))
+)
+
+# GUEST-DUEL-17: M95 guards record_daily_activity against anonymous users
+check('GUEST-DUEL-17', '[STATIC TEST] M95 adds anon guard to record_daily_activity(uuid)',
+    bool(re.search(r'record_daily_activity', _m95_sql))
+    and bool(re.search(r'anonymous_not_allowed', _m95_sql))
+)
+
+# GUEST-DUEL-18: join_duel_by_code NOT modified by M95 with an anon block (guests must be able to join)
+check('GUEST-DUEL-18', '[STATIC TEST] M95 does NOT CREATE OR REPLACE join_duel_by_code (guests allowed to join)',
+    not bool(re.search(r'CREATE.*FUNCTION.*join_duel_by_code', _m95_sql))
+)
+
+# GUEST-DUEL-19: matchmaking.js blocks is_anonymous in startMatchmaking
+check('GUEST-DUEL-19', '[STATIC TEST] startMatchmaking blocks is_anonymous users (no Random Battle for guests)',
+    bool(re.search(r'startMatchmaking[\s\S]{0,200}is_anonymous', _mm_full))
+    or bool(re.search(r'is_anonymous.*_showSignInToPlay', _mm_full))
+)
+
 static_total = len(PASS) + len(FAIL)
 ne_total = len(NOT_EXECUTED)
 print(f"\n{'='*60}")
