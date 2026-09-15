@@ -25,6 +25,8 @@ let _oppScoreAtQStart = 0;  // opponent score when current question started (to 
 let _myAnswers = []; // per-question points for this player (0 = miss)
 let _duelChannel = null; // Supabase Realtime broadcast channel for reactions/phrases
 let _duelChannelCode = null; // guard: skip channel re-init when already on same code
+let _duelChannelReady = false; // true once SUBSCRIBED handshake completes
+let _duelChannelQueue = []; // outgoing events queued while websocket is joining
 
 // Simulate bot answer independently of whether the player has answered.
 // Uses qIndex to ignore stale timeouts that fired after "Next" was pressed.
@@ -491,7 +493,7 @@ async function duelExpire(){
   showFb('d-fb','⏱ Время вышло',false);
   setMyDot(duelIdx, null); // neutral timeout state — correctness unknown during LIVE
   // Broadcast timeout to opponent as an answer event (no correctness info)
-  _duelChannel?.send({ type: 'broadcast', event: 'ans', payload: { qi: duelIdx } });
+  _duelSend({ type: 'broadcast', event: 'ans', payload: { qi: duelIdx } });
   document.getElementById('d-next-btn').className='next-btn show';
 }
 function triggerCorrectAnimation(pts, buttonEl){
@@ -579,7 +581,7 @@ async function pickDuel(i){
     // Neutral dot: null = submitted, correctness unknown during LIVE
     setMyDot(duelIdx, null);
     // Broadcast to opponent: "I answered question qi" — no correctness info
-    _duelChannel?.send({ type: 'broadcast', event: 'ans', payload: { qi: duelIdx } });
+    _duelSend({ type: 'broadcast', event: 'ans', payload: { qi: duelIdx } });
     if(res.completed){
       // Player answered all questions — score/result comes from get_duel_result
       duelMyCorrect = 0; // will be set from server result
@@ -875,6 +877,8 @@ function _initDuelChannel(code) {
   if (_duelChannel) { try { sb.removeChannel(_duelChannel); } catch(e){} _duelChannel = null; }
   if (window._isBotDuel) return;
   _duelChannelCode = code;
+  _duelChannelReady = false;
+  _duelChannelQueue = [];
   _duelChannel = sb.channel(`duel-chat:${code}`, { config: { broadcast: { self: false } } });
   _duelChannel.on('broadcast', { event: 'msg' }, ({ payload }) => _onDuelMsg(payload));
   // Opponent answered notification — no correctness info, just question index
@@ -889,7 +893,17 @@ function _initDuelChannel(code) {
       hint.className = 'opp-hint answered';
     }
   });
-  _duelChannel.subscribe();
+  _duelChannel.subscribe((status) => {
+    if (status === 'SUBSCRIBED') {
+      _duelChannelReady = true;
+      // Flush queued events exactly once; clear before sending to prevent double-flush
+      const q = _duelChannelQueue.splice(0);
+      q.forEach(msg => { try { _duelChannel?.send(msg); } catch(e){} });
+    } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+      // Drop queue on error — do not retry indefinitely
+      _duelChannelQueue = [];
+    }
+  });
 }
 
 function _onDuelMsg({ text, isReaction }) {
@@ -924,19 +938,26 @@ function _showPhraseToast(text) {
   el._hideTimer = setTimeout(() => { el.style.display = 'none'; }, 3000);
 }
 
+// Send a broadcast message; queues it if the channel is still joining.
+function _duelSend(msg) {
+  if (!_duelChannel || window._isBotDuel) return;
+  if (_duelChannelReady) {
+    try { _duelChannel.send(msg); } catch(e){}
+  } else {
+    _duelChannelQueue.push(msg);
+  }
+}
+
 window.sendDuelReaction = function(emoji) {
   if (window._isBotDuel || !_duelChannel) return;
-  _duelChannel.send({ type: 'broadcast', event: 'msg', payload: { text: emoji, isReaction: true } });
+  _duelSend({ type: 'broadcast', event: 'msg', payload: { text: emoji, isReaction: true } });
   _floatEmoji(emoji, true);
 };
 
 window.sendDuelPhrase = function(text) {
   _showPhraseToast(`Вы: ${text}`);
   if (window._isBotDuel || !duelCode) return;
-  // Send via Realtime if channel is alive
-  if (_duelChannel) {
-    _duelChannel.send({ type: 'broadcast', event: 'msg', payload: { text, isReaction: false } });
-  }
+  _duelSend({ type: 'broadcast', event: 'msg', payload: { text, isReaction: false } });
   // DB last_phrase fallback removed — no UPDATE grant on duel_rooms (v1: Realtime only)
   // Disable the button briefly to prevent spam
   const allBtns = document.querySelectorAll('.duel-phrase-btn');
@@ -953,6 +974,8 @@ function resetDuel(){
   if(_oppPollInterval){ clearInterval(_oppPollInterval); _oppPollInterval = null; }
   if(_duelChannel){ try { sb.removeChannel(_duelChannel); } catch(e){} _duelChannel = null; }
   _duelChannelCode = null;
+  _duelChannelReady = false;
+  _duelChannelQueue = [];
   if(window._botAnswerTimeout){ clearTimeout(window._botAnswerTimeout); window._botAnswerTimeout = null; }
   // Full state reset
   duelCode=null; duelRole=null; duelQs=[]; duelIdx=0;

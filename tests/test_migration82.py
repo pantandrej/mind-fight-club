@@ -2504,8 +2504,8 @@ check('PROFILE-02', '[STATIC TEST] loadDuelHistory shows "— Нет данны�
 # PROFILE-03: history never shows "Бот" — uses "виртуальный игрок" label
 check('PROFILE-03', '[STATIC TEST] loadDuelHistory uses "виртуальный игрок" not "Бот" for virtual mode',
     'виртуальный игрок' in _legacy_full
-    and bool(re.search(r"modeLabel.*виртуальный игрок|виртуальный игрок.*modeLabel", _legacy_full, re.DOTALL))
-    and not bool(re.search(r"modeLabel\s*=.*?['\"]Бот['\"]", _legacy_full))
+    and bool(re.search(r"virtual_battle.*виртуальный игрок|виртуальный игрок.*virtual_battle", _legacy_full, re.DOTALL))
+    and not bool(re.search(r"oppLabel\s*=.*?['\"]Бот['\"]|modeLabel\s*=.*?['\"]Бот['\"]", _legacy_full))
 )
 
 # PROFILE-04: accuracy is derived from canonical data (correct_answers/questions_count)
@@ -2518,6 +2518,98 @@ check('PROFILE-04', '[STATIC TEST] M93 player_stats accuracy_pct uses SUM(correc
 # PROFILE-05: light-theme profile name has explicit readable color (color:var(--text) on .pp-name)
 check('PROFILE-05', '[STATIC TEST] .pp-name has explicit color:var(--text) for light-theme contrast',
     bool(re.search(r'\.pp-name\s*\{[^}]*color\s*:\s*var\(--text\)', _screens_css, re.DOTALL))
+)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# M93: Duel session link and stats migration contract
+# ─────────────────────────────────────────────────────────────────────────────
+
+# M93-01: start_duel must capture host session id into duel_rooms.host_session_id
+check('M93-01', '[STATIC TEST] start_duel captures host_session_id into duel_rooms',
+    bool(re.search(r'host_session_id\s*=\s*_host_sid', _m93_sql))
+    and bool(re.search(r'RETURNING id INTO _host_sid', _m93_sql))
+)
+
+# M93-02: start_duel must capture guest session id into duel_rooms.guest_session_id
+check('M93-02', '[STATIC TEST] start_duel captures guest_session_id into duel_rooms',
+    bool(re.search(r'guest_session_id\s*=\s*_guest_sid', _m93_sql))
+    and bool(re.search(r'RETURNING id INTO _guest_sid', _m93_sql))
+)
+
+# M93-03: get_duel_result finalization writes both host and guest game_sessions atomically
+check('M93-03', '[STATIC TEST] get_duel_result writes both host and guest game_sessions in finalization',
+    bool(re.search(r'host_session_id IS NOT NULL', _m93_sql))
+    and bool(re.search(r'guest_session_id IS NOT NULL', _m93_sql))
+    and _m93_sql.count('UPDATE game_sessions') >= 2
+)
+
+# M93-04: tie contract — NULL won for both players on equal scores
+check('M93-04', '[STATIC TEST] M93 represents tie as won=NULL (not won=false)',
+    bool(re.search(r'ELSE NULL\b', _m93_sql))
+    and bool(re.search(r'_host_score\s*[<>]\s*_guest_score', _m93_sql))
+)
+
+# M93-05: M93 does NOT use DROP VIEW CASCADE (safe view replacement only)
+check('M93-05', '[STATIC TEST] M93 does not use DROP VIEW with CASCADE',
+    not bool(re.search(r'DROP\s+VIEW\s+.*?CASCADE', _m93_sql, re.IGNORECASE))
+)
+
+# M93-06: M93 uses CREATE OR REPLACE VIEW for player_stats (preserves column order)
+check('M93-06', '[STATIC TEST] M93 uses CREATE OR REPLACE VIEW for player_stats',
+    bool(re.search(r'CREATE\s+OR\s+REPLACE\s+VIEW\s+.*?player_stats', _m93_sql, re.IGNORECASE))
+)
+
+# M93-07: start_duel uses questions table (not secure_questions) — matches M87 live body
+check('M93-07', '[STATIC TEST] M93 start_duel queries questions table not secure_questions',
+    bool(re.search(r'FROM\s+questions\b', _m93_sql))
+    and not bool(re.search(r'FROM\s+secure_questions\b', _m93_sql))
+)
+
+# M93-08: _duelSend helper queues events when channel not yet SUBSCRIBED
+check('M93-08', '[STATIC TEST] friend-battle.js _duelSend queues events when _duelChannelReady is false',
+    bool(re.search(r'function\s+_duelSend', _fb_full))
+    and bool(re.search(r'_duelChannelReady', _fb_full))
+    and bool(re.search(r'_duelChannelQueue\.push', _fb_full))
+)
+
+# M93-09: subscribe callback flushes queue once (splice(0) pattern prevents double-flush)
+check('M93-09', '[STATIC TEST] channel subscribe callback uses splice(0) to flush queue atomically',
+    bool(re.search(r'_duelChannelQueue\.splice\s*\(\s*0\s*\)', _fb_full))
+    and bool(re.search(r"status\s*===\s*['\"]SUBSCRIBED['\"]", _fb_full))
+)
+
+# M93-10: resetDuel clears channel readiness and queue state
+check('M93-10', '[STATIC TEST] resetDuel clears _duelChannelReady and _duelChannelQueue',
+    bool(re.search(r'_duelChannelReady\s*=\s*false', _fb_full))
+    and bool(re.search(r'_duelChannelQueue\s*=\s*\[\]', _fb_full))
+)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PROFILE-06..09: Opponent display in history
+# ─────────────────────────────────────────────────────────────────────────────
+
+# PROFILE-06: loadDuelHistory selects opponent_id from game_sessions
+check('PROFILE-06', '[STATIC TEST] loadDuelHistory selects opponent_id in query',
+    bool(re.search(r"\.select\s*\(['\"].*?opponent_id.*?['\"]", _legacy_full, re.DOTALL))
+    and bool(re.search(r'loadDuelHistory|game_sessions', _legacy_full))
+)
+
+# PROFILE-07: batch profile fetch (no N+1) — single profiles query with .in('id', oppIds)
+check('PROFILE-07', '[STATIC TEST] loadDuelHistory uses batched profiles query (not per-session lookup)',
+    bool(re.search(r"\.from\s*\(\s*['\"]profiles['\"]", _legacy_full))
+    and bool(re.search(r"\.in\s*\(\s*['\"]id['\"]", _legacy_full))
+)
+
+# PROFILE-08: virtual_battle always renders "виртуальный игрок" regardless of opponent_id
+check('PROFILE-08', '[STATIC TEST] virtual_battle mode renders "виртуальный игрок" (not opponent lookup)',
+    bool(re.search(r"virtual_battle.*виртуальный игрок|виртуальный игрок.*virtual_battle", _legacy_full, re.DOTALL))
+    and bool(re.search(r"mode\s*===\s*['\"]virtual_battle['\"]", _legacy_full))
+)
+
+# PROFILE-09: missing opponent profile falls back to safe label (Соперник/Друг, not empty/null)
+check('PROFILE-09', '[STATIC TEST] loadDuelHistory has fallback label for missing opponent profile',
+    bool(re.search(r"Соперник|Друг", _legacy_full))
+    and bool(re.search(r'oppNames\[.*?\]', _legacy_full))
 )
 
 # ─────────────────────────────────────────────────────────────────────────────

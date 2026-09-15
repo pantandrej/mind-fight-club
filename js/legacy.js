@@ -1658,7 +1658,7 @@ async function loadDuelHistory() {
 
   const { data: sessions } = await sb
     .from('game_sessions')
-    .select('id, mode, score, correct_answers, questions_count, won, started_at')
+    .select('id, mode, score, correct_answers, questions_count, won, started_at, opponent_id')
     .eq('user_id', currentUser.id)
     .in('mode', ['friend_battle', 'random_battle', 'virtual_battle'])
     .order('started_at', { ascending: false })
@@ -1669,11 +1669,32 @@ async function loadDuelHistory() {
     return;
   }
 
+  // Batch-fetch opponent display names for real-human duels (avoid N+1)
+  const oppIds = [...new Set(sessions
+    .filter(s => s.opponent_id && s.mode !== 'virtual_battle')
+    .map(s => s.opponent_id))];
+  const oppNames = {};
+  if (oppIds.length > 0) {
+    const { data: profiles } = await sb
+      .from('profiles')
+      .select('id, display_name')
+      .in('id', oppIds);
+    (profiles || []).forEach(p => { oppNames[p.id] = p.display_name; });
+  }
+
   wrap.style.display = 'block';
   list.innerHTML = sessions.map(s => {
     const won   = s.won;
     const date  = new Date(s.started_at).toLocaleDateString('ru', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-    const modeLabel = s.mode === 'friend_battle' ? 'Друг' : s.mode === 'random_battle' ? 'Случайный' : 'виртуальный игрок';
+    // Resolve actual opponent name; virtual battles always show generic label
+    let oppLabel;
+    if (s.mode === 'virtual_battle') {
+      oppLabel = 'виртуальный игрок';
+    } else if (s.opponent_id && oppNames[s.opponent_id]) {
+      oppLabel = oppNames[s.opponent_id];
+    } else {
+      oppLabel = s.mode === 'random_battle' ? 'Соперник' : 'Друг';
+    }
     // won=null means result was never written (real duel sessions in v1)
     const result = won === true ? '🏆 Победа' : won === false ? '💀 Поражение' : '— Нет данных';
     const icon   = won === true ? '🏆' : won === false ? '💀' : '⚔️';
@@ -1684,8 +1705,8 @@ async function loadDuelHistory() {
     return `<div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:12px">
       <div style="font-size:20px">${icon}</div>
       <div style="flex:1;min-width:0">
-        <div style="font-weight:700;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">vs ${modeLabel}</div>
-        <div style="font-size:11px;color:var(--muted)">${date} · ${modeLabel}</div>
+        <div style="font-weight:700;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">vs ${oppLabel}</div>
+        <div style="font-size:11px;color:var(--muted)">${date}</div>
       </div>
       <div style="text-align:right">
         <div style="font-weight:800;font-size:13px;color:${color}">${result}</div>
