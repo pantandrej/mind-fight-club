@@ -3428,91 +3428,133 @@ _training_js      = open(_training_js_path).read() if _os96.path.exists(_trainin
 _index_html_path  = _os96.path.join(_os96.path.dirname(__file__), '..', 'index.html')
 _index_html       = open(_index_html_path).read() if _os96.path.exists(_index_html_path) else ''
 
-# ── HISTORY-01: history shows "Дуэль сыграна" for real duels with won=null ──
-check('HISTORY-01', '[STATIC TEST] loadDuelHistory shows "Дуэль сыграна" for real duels with won=null (not direct "Нет данных" for null won)',
-    'Дуэль сыграна' in _legacy_js
-    and bool(re.search(r"isRealDuel\s*\?\s*'[^']*Дуэль сыграна[^']*'", _legacy_js))
+_m96_sql_lower = _m96_sql.lower()
+
+# ── M96-DUEL-01: virtual_battle NOT in duels_won ────────────────────────────
+check('M96-DUEL-01', '[STATIC TEST] M96 player_stats duels_won filter has friend+random only (no virtual)',
+    bool(_m96_sql)
+    and bool(re.search(
+        r"WHERE gs\.mode IN \('friend_battle','random_battle'\)\s*\n\s*AND gs\.won = true",
+        _m96_sql
+    ))
+    # The IN list for duels_won must not include virtual_battle
+    and not bool(re.search(
+        r"WHERE gs\.mode IN \('friend_battle','random_battle','virtual_battle'\)\s*\n\s*AND gs\.won",
+        _m96_sql
+    ))
 )
 
-# ── HISTORY-02: history still shows Победа/Поражение for virtual battles ────
-check('HISTORY-02', '[STATIC TEST] loadDuelHistory still renders "Победа"/"Поражение" labels',
-    'Победа' in _legacy_js and 'Поражение' in _legacy_js
+# ── M96-DUEL-02: M93 real-duel session semantics preserved (won written by get_duel_result) ─
+check('M96-DUEL-02', '[STATIC TEST] M96 player_stats uses game_sessions.won for duels_won (M93 canonical path)',
+    bool(re.search(r'gs\.won\s*=\s*true', _m96_sql))
+    # player_stats VIEW itself must not JOIN duel_rooms (only game_sessions join)
+    and not bool(re.search(
+        r'CREATE OR REPLACE VIEW public\.player_stats[\s\S]{0,3000}JOIN duel_rooms',
+        _m96_sql
+    ))
 )
 
-# ── PROFILE-UX-01: pp-bio-ph light theme override present ───────────────────
+# ── M96-QUOTA-01: _check_duel_battle_eligibility counts only friend+random ──
+check('M96-QUOTA-01', '[STATIC TEST] M96 _check_duel_battle_eligibility counts friend_battle + random_battle only (no virtual)',
+    bool(re.search(
+        r'_check_duel_battle_eligibility[\s\S]{0,3000}mode IN \(\'friend_battle\', \'random_battle\'\)',
+        _m96_sql
+    ))
+    and not bool(re.search(
+        r'_check_duel_battle_eligibility[\s\S]{0,3000}mode IN \(\'friend_battle\', \'random_battle\', \'virtual_battle\'\)',
+        _m96_sql
+    ))
+)
+
+# ── M96-QUOTA-02: virtual battles use separate quota path ────────────────────
+check('M96-QUOTA-02', '[STATIC TEST] M96 start_game_session has separate v_virtual_used counter for virtual_battle',
+    bool(re.search(r'v_virtual_used', _m96_sql))
+    and bool(re.search(r"mode\s*=\s*'virtual_battle'\s*\n\s*AND social_bonus", _m96_sql))
+)
+
+# ── M96-QUOTA-03: social battles still block at limit ────────────────────────
+check('M96-QUOTA-03', '[STATIC TEST] M96 social battle limit check still present for friend/random',
+    bool(re.search(r'v_battles_used\s*>=\s*v_battle_limit', _m96_sql))
+    and bool(re.search(r"mode IN \('friend_battle','random_battle'\)\s*\n\s*AND social_bonus = false", _m96_sql))
+)
+
+# ── M96-DAY-01: start_game_session uses player-local day ─────────────────────
+check('M96-DAY-01', '[STATIC TEST] M96 start_game_session resolves player-local date via profiles.timezone',
+    bool(re.search(r'pg_timezone_names', _m96_sql))
+    and bool(re.search(r'AT TIME ZONE v_tz.*::date', _m96_sql))
+    and bool(re.search(r'v_today', _m96_sql))
+)
+
+# ── M96-DAY-02: _check_duel_battle_eligibility uses local day for p_user_id ──
+check('M96-DAY-02', '[STATIC TEST] M96 _check_duel_battle_eligibility resolves local date for p_user_id',
+    bool(re.search(
+        r'_check_duel_battle_eligibility[\s\S]{0,2000}pg_timezone_names[\s\S]{0,500}v_today',
+        _m96_sql
+    ))
+)
+
+# ── M96-DAY-03: start_duel computes independent local days for host and guest ─
+check('M96-DAY-03', '[STATIC TEST] M96 start_duel uses _host_day and _guest_day separately',
+    bool(re.search(r'_host_day', _m96_sql))
+    and bool(re.search(r'_guest_day', _m96_sql))
+    and bool(re.search(r'_host_tz', _m96_sql))
+    and bool(re.search(r'_guest_tz', _m96_sql))
+)
+
+# ── M96-HISTORY-01: M93+ real duel result path shown in JS ───────────────────
+check('M96-HISTORY-01', '[STATIC TEST] loadDuelHistory renders Победа/Поражение for real duels (M93+ populates won)',
+    bool(re.search(r"won === true.*Победа|Победа.*won === true", _legacy_js))
+    and bool(re.search(r"won === false.*Поражение|Поражение.*won === false", _legacy_js))
+)
+
+# ── M96-HISTORY-02: historical unresolved rows shown truthfully ──────────────
+check('M96-HISTORY-02', '[STATIC TEST] loadDuelHistory shows neutral label for tie/pre-M93 null won rows',
+    bool(re.search(r"isTieOrHistorical|ничья|архив", _legacy_js, re.IGNORECASE))
+)
+
+# ── Preserved good UI fixes ──────────────────────────────────────────────────
 check('PROFILE-UX-01', '[STATIC TEST] desktop.css has [data-theme="light"] .pp-bio-ph override',
     bool(re.search(r'\[data-theme=["\']light["\']\]\s*\.pp-bio-ph\s*\{', _desktop_css))
 )
-
-# ── PROFILE-UX-02: pp-bio-ph light color is readable (not white) ────────────
 check('PROFILE-UX-02', '[STATIC TEST] pp-bio-ph light color is not hardcoded white',
     not bool(re.search(
         r'\[data-theme=["\']light["\']\]\s*\.pp-bio-ph\s*\{[^}]*color\s*:\s*#fff\b',
         _desktop_css
     ))
 )
-
-# ── QUICK-RESULT-01: locked button gets score-main-btn--locked class ─────────
 check('QUICK-RESULT-01', '[STATIC TEST] updateScoreScreenButtons adds score-main-btn--locked class when limit reached',
     'score-main-btn--locked' in _training_js
 )
-
-# ── QUICK-RESULT-02: locked class removed at start of updateScoreScreenButtons ─
 check('QUICK-RESULT-02', '[STATIC TEST] updateScoreScreenButtons removes locked class before applying new state',
     bool(re.search(r'classList\.remove\(["\']score-main-btn--locked["\']\)', _training_js))
 )
-
-# ── QUICK-RESULT-03: locked CSS class defined in components.css ─────────────
 check('QUICK-RESULT-03', '[STATIC TEST] score-main-btn--locked CSS class defined',
     'score-main-btn--locked' in _components_css
 )
-
-# ── NEURON-HELP-01: tooltip lists real earning sources ──────────────────────
 check('NEURON-HELP-01', '[STATIC TEST] neuron help tooltip lists daily login and streak milestones',
     'ежедневный вход' in _index_html and ('серии' in _index_html or 'streak' in _index_html.lower())
 )
-
-# ── NEURON-HELP-02: neuron tooltip does not mention quiz or quick play as neuron sources ──
 check('NEURON-HELP-02', '[STATIC TEST] neuron tooltip does not claim quiz_reward/Quick Play as neuron source',
     not bool(re.search(r'quiz_reward|быстрая игра.*нейрон|нейрон.*быстрая игра', _index_html, re.IGNORECASE))
 )
-
-# ── BATTLE-DAY-01: M96 exists and has BEGIN/COMMIT ──────────────────────────
-check('BATTLE-DAY-01', '[STATIC TEST] M96 file exists with transaction markers',
+check('M96-APPLIED-NO', '[STATIC TEST] M96 has APPLIED = NO comment (do not auto-apply)',
+    'APPLIED = NO' in _m96_sql
+)
+check('M96-TRANSACTION', '[STATIC TEST] M96 has BEGIN/COMMIT transaction markers',
     bool(_m96_sql)
     and bool(re.search(r'^\s*BEGIN\s*;', _m96_sql, re.MULTILINE))
     and bool(re.search(r'COMMIT\s*;?\s*$', _m96_sql.rstrip()))
 )
-
-# ── BATTLE-DAY-02: M96 separates virtual_battle from social battle quota ─────
-check('BATTLE-DAY-02', '[STATIC TEST] M96 start_game_session counts virtual_battle separately from friend/random',
-    bool(re.search(r"mode\s*IN\s*\('friend_battle','random_battle'\)", _m96_sql))
-    and bool(re.search(r"mode\s*=\s*'virtual_battle'", _m96_sql))
-    and not bool(re.search(
-        r"mode\s*IN\s*\('friend_battle','random_battle','virtual_battle'\)\s*\n\s*AND social_bonus",
-        _m96_sql
-    ))
-)
-
-# ── BATTLE-DAY-03: M96 player_stats uses duel_rooms for real duel wins ───────
-check('BATTLE-DAY-03', '[STATIC TEST] M96 player_stats.duels_won counts from duel_rooms.winner_id',
-    bool(re.search(r'duel_rooms.*winner_id\s*=\s*p\.id', _m96_sql, re.DOTALL))
-    or bool(re.search(r'winner_id\s*=\s*p\.id.*duel_rooms', _m96_sql, re.DOTALL))
-)
-
-# ── BATTLE-DAY-04: M96 accuracy_pct excludes sessions with NULL questions_count ─
-check('BATTLE-DAY-04', '[STATIC TEST] M96 accuracy_pct only uses sessions where questions_count IS NOT NULL',
+check('M96-ACCURACY-FIX', '[STATIC TEST] M96 accuracy_pct only uses sessions where questions_count IS NOT NULL',
     bool(re.search(r'questions_count\s+IS\s+NOT\s+NULL', _m96_sql))
 )
 
-# ── BATTLE-DAY-05: M96 APPLIED = NO marker present ──────────────────────────
-check('BATTLE-DAY-05', '[STATIC TEST] M96 has APPLIED = NO comment (do not auto-apply)',
-    'APPLIED = NO' in _m96_sql
-)
-
-NOT_EXECUTED.append(('HISTORY-DB-01', '[DB TEST] player_stats.duels_won > 0 after applying M96 for user with real duel wins'))
-NOT_EXECUTED.append(('HISTORY-DB-02', '[DB TEST] player_stats.accuracy_pct > 0 for user with completed virtual battles'))
-NOT_EXECUTED.append(('BATTLE-DAY-DB-01', '[DB TEST] 3 virtual battles do not block friend_battle after M96'))
+NOT_EXECUTED.append(('M96-QUOTA-02-DB', '[DB TEST] 3 virtual battles do not block friend_battle quota after M96'))
+NOT_EXECUTED.append(('M96-QUOTA-03-DB', '[DB TEST] 3 friend_battle sessions block a 4th free friend_battle after M96'))
+NOT_EXECUTED.append(('M96-DAY-01-DB', '[DB TEST] start_game_session resets quota at user local midnight not UTC midnight'))
+NOT_EXECUTED.append(('M96-DAY-03-DB', '[DB TEST] host in UTC+3 and guest in UTC+8 each get own local-day quota in start_duel'))
+NOT_EXECUTED.append(('M96-DUEL-01-DB', '[DB TEST] player_stats.duels_won > 0 for user with M93+ real duel win (gs.won=true)'))
+NOT_EXECUTED.append(('M96-DUEL-02-DB', '[DB TEST] player_stats.accuracy_pct > 0 for user with completed M93+ real duel or virtual battle'))
 
 static_total = len(PASS) + len(FAIL)
 ne_total = len(NOT_EXECUTED)
