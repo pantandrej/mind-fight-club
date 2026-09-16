@@ -450,7 +450,9 @@ DECLARE
   _idx              int := 0;
   _expires_min      int := 15;
   _lock_first       uuid;
+  _lock_first_day   date;
   _lock_second      uuid;
+  _lock_second_day  date;
   _host_sid         uuid;
   _guest_sid        uuid;
 BEGIN
@@ -490,16 +492,20 @@ BEGIN
   END IF;
   _guest_day := (now() AT TIME ZONE _guest_tz)::date;
 
-  -- Advisory locks — use deterministic ordering to prevent deadlock
+  -- Advisory locks — deterministic UUID ordering, each UUID paired with ITS OWN local day
   IF _room.host_user_id::TEXT < _room.guest_user_id::TEXT THEN
-    _lock_first  := _room.host_user_id;
-    _lock_second := _room.guest_user_id;
+    _lock_first      := _room.host_user_id;
+    _lock_first_day  := _host_day;
+    _lock_second     := _room.guest_user_id;
+    _lock_second_day := _guest_day;
   ELSE
-    _lock_first  := _room.guest_user_id;
-    _lock_second := _room.host_user_id;
+    _lock_first      := _room.guest_user_id;
+    _lock_first_day  := _guest_day;
+    _lock_second     := _room.host_user_id;
+    _lock_second_day := _host_day;
   END IF;
-  PERFORM pg_advisory_xact_lock(hashtext(_lock_first::TEXT  || ':' || _host_day::TEXT  || ':battle'));
-  PERFORM pg_advisory_xact_lock(hashtext(_lock_second::TEXT || ':' || _guest_day::TEXT || ':battle'));
+  PERFORM pg_advisory_xact_lock(hashtext(_lock_first::TEXT  || ':' || _lock_first_day::TEXT  || ':battle'));
+  PERFORM pg_advisory_xact_lock(hashtext(_lock_second::TEXT || ':' || _lock_second_day::TEXT || ':battle'));
 
   -- Eligibility uses updated _check_duel_battle_eligibility (local day + no virtual)
   _host_elig := _check_duel_battle_eligibility(_room.host_user_id, _room.guest_user_id, NULL);

@@ -1695,10 +1695,15 @@ async function loadDuelHistory() {
     } else {
       oppLabel = s.mode === 'random_battle' ? 'Соперник' : 'Друг';
     }
-    // won=null for real duel: tie (M93+) or pre-M93 unresolved session (historical)
-    // won=null for virtual: abandoned (complete_virtual_battle_session never called)
-    const isTieOrHistorical = (s.mode === 'friend_battle' || s.mode === 'random_battle') && won === null;
-    const result = won === true ? '🏆 Победа' : won === false ? '💀 Поражение' : isTieOrHistorical ? '🤝 Ничья / Архив' : '— Нет данных';
+    // Distinguish M93+ real tie (won=null + canonical fields populated) from pre-M93 unresolved.
+    const isRealDuel = s.mode === 'friend_battle' || s.mode === 'random_battle';
+    const isM93Tie   = isRealDuel && won === null && s.score != null && s.questions_count > 0;
+    const isArchival = isRealDuel && won === null && !isM93Tie;
+    const result = won === true  ? '🏆 Победа'
+                 : won === false ? '💀 Поражение'
+                 : isM93Tie      ? '🤝 Ничья'
+                 : isArchival    ? '⚔️ Архивная дуэль'
+                 : '— Нет данных';
     const icon   = won === true ? '🏆' : won === false ? '💀' : '⚔️';
     const color  = won === true ? 'var(--green, #4ade80)' : won === false ? 'var(--red, #f87171)' : 'var(--muted)';
     const acc    = s.questions_count > 0 ? Math.round((s.correct_answers || 0) / s.questions_count * 100) : null;

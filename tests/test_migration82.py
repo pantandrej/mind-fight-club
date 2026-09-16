@@ -3501,6 +3501,26 @@ check('M96-DAY-03', '[STATIC TEST] M96 start_duel uses _host_day and _guest_day 
     and bool(re.search(r'_guest_tz', _m96_sql))
 )
 
+# ── M96-DAY-04: each UUID paired with its own local day in advisory lock ─────
+check('M96-DAY-04', '[STATIC TEST] start_duel advisory lock pairs each UUID with its own resolved local day',
+    bool(re.search(r'_lock_first_day\s*:=\s*_host_day', _m96_sql))
+    and bool(re.search(r'_lock_second_day\s*:=\s*_guest_day', _m96_sql))
+    and bool(re.search(r'_lock_first_day\s*:=\s*_guest_day', _m96_sql))
+    and bool(re.search(r'_lock_second_day\s*:=\s*_host_day', _m96_sql))
+    and bool(re.search(r'_lock_first_day', _m96_sql))
+    and bool(re.search(r'_lock_second_day', _m96_sql))
+)
+
+# ── M96-DAY-05: lock ordering remains deterministic by UUID ──────────────────
+check('M96-DAY-05', '[STATIC TEST] start_duel advisory locks use deterministic UUID ordering',
+    bool(re.search(
+        r'host_user_id::TEXT\s*<\s*_room\.guest_user_id::TEXT',
+        _m96_sql
+    ))
+    and bool(re.search(r'_lock_first\b', _m96_sql))
+    and bool(re.search(r'_lock_second\b', _m96_sql))
+)
+
 # ── M96-HISTORY-01: M93+ real duel result path shown in JS ───────────────────
 check('M96-HISTORY-01', '[STATIC TEST] loadDuelHistory renders Победа/Поражение for real duels (M93+ populates won)',
     bool(re.search(r"won === true.*Победа|Победа.*won === true", _legacy_js))
@@ -3508,8 +3528,24 @@ check('M96-HISTORY-01', '[STATIC TEST] loadDuelHistory renders Победа/По
 )
 
 # ── M96-HISTORY-02: historical unresolved rows shown truthfully ──────────────
-check('M96-HISTORY-02', '[STATIC TEST] loadDuelHistory shows neutral label for tie/pre-M93 null won rows',
-    bool(re.search(r"isTieOrHistorical|ничья|архив", _legacy_js, re.IGNORECASE))
+check('M96-HISTORY-02', '[STATIC TEST] loadDuelHistory shows neutral label for pre-M93 archival null won rows',
+    bool(re.search(r"Архивная дуэль|isArchival", _legacy_js))
+)
+
+# ── M96-HISTORY-03: M93+ real tie detected from populated canonical result fields ─
+check('M96-HISTORY-03', '[STATIC TEST] loadDuelHistory distinguishes M93+ tie using score+questions_count presence',
+    bool(re.search(r"isM93Tie|s\.score\s*!=\s*null.*questions_count", _legacy_js))
+    and bool(re.search(r"Ничья", _legacy_js))
+    and not bool(re.search(r"Ничья / Архив", _legacy_js))
+)
+
+# ── M96-HISTORY-04: pre-M93 unresolved is NOT labeled Ничья ─────────────────
+check('M96-HISTORY-04', '[STATIC TEST] pre-M93 unresolved real session is not labeled Ничья (separate isArchival branch)',
+    bool(re.search(r"isArchival", _legacy_js))
+    and bool(re.search(r"isM93Tie", _legacy_js))
+    # The two are mutually exclusive (isM93Tie gated on score+questions_count)
+    and bool(re.search(r"isM93Tie\s*\?\s*'[^']*Ничья[^']*'", _legacy_js))
+    and bool(re.search(r"isArchival\s*\?\s*'[^']*Архив[^']*дуэль[^']*'|isArchival\s*\?\s*'[^']*Архивная", _legacy_js))
 )
 
 # ── Preserved good UI fixes ──────────────────────────────────────────────────
