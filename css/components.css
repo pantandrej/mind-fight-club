@@ -177,6 +177,7 @@
 .score-btns{display:flex;flex-direction:column;gap:8px}
 .score-main-btn{width:100%;background:var(--accent);border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit}
 .score-main-btn--locked{background:var(--bg2,rgba(255,255,255,.07));border:0.5px solid var(--border);color:var(--muted);cursor:default;pointer-events:none}
+[data-theme="light"] .score-main-btn{color:#003d2e}
 [data-theme="light"] .score-main-btn--locked{background:#f3f4f6;border-color:#d1d5db;color:#6b7280}
 .score-sec-btn{width:100%;background:transparent;border:0.5px solid var(--border);border-radius:12px;padding:12px;font-size:13px;font-weight:700;color:var(--accent2);cursor:pointer;font-family:inherit}
 .score-sec-btn:hover{background:rgba(0,237,181,.1)}

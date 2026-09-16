@@ -3592,6 +3592,106 @@ NOT_EXECUTED.append(('M96-DAY-03-DB', '[DB TEST] host in UTC+3 and guest in UTC+
 NOT_EXECUTED.append(('M96-DUEL-01-DB', '[DB TEST] player_stats.duels_won > 0 for user with M93+ real duel win (gs.won=true)'))
 NOT_EXECUTED.append(('M96-DUEL-02-DB', '[DB TEST] player_stats.accuracy_pct > 0 for user with completed M93+ real duel or virtual battle'))
 
+# ── M97 — 14-day cross-mode question anti-repeat protection ─────────────────
+import os as _os97
+import re as _re97
+
+_m97_path = _os97.path.join(_os97.path.dirname(__file__), '..', 'sql', '97_question_repeat_protection.sql')
+_m97_sql  = open(_m97_path).read() if _os97.path.exists(_m97_path) else ''
+
+# M97-REPEAT-01: file exists and is non-empty
+check('M97-REPEAT-01', '[STATIC TEST] sql/97_question_repeat_protection.sql exists',
+    bool(_m97_sql)
+)
+
+# M97-REPEAT-02: APPLIED = NO marker present
+check('M97-REPEAT-02', '[STATIC TEST] M97 has APPLIED = NO marker (do not auto-apply)',
+    'APPLIED = NO' in _m97_sql
+)
+
+# M97-REPEAT-03: BEGIN/COMMIT transaction
+check('M97-REPEAT-03', '[STATIC TEST] M97 has BEGIN/COMMIT transaction markers',
+    bool(_re97.search(r'^\s*BEGIN\s*;', _m97_sql, _re97.MULTILINE))
+    and bool(_re97.search(r'COMMIT\s*;?\s*$', _m97_sql.rstrip()))
+)
+
+# M97-REPEAT-04: start_daily_bf_session replaced with 14-day seen-IDs exclusion
+check('M97-REPEAT-04', '[STATIC TEST] M97 replaces start_daily_bf_session with cross-mode seen-question exclusion',
+    bool(_re97.search(r'CREATE OR REPLACE FUNCTION public\.start_daily_bf_session', _m97_sql))
+    and bool(_re97.search(r'v_seen_ids', _m97_sql))
+    and 'not_enough_fresh_questions' in _m97_sql
+)
+
+# M97-REPEAT-05: start_virtual_battle_session replaced with 14-day exclusion
+check('M97-REPEAT-05', '[STATIC TEST] M97 replaces start_virtual_battle_session with cross-mode seen-question exclusion',
+    bool(_re97.search(r'CREATE OR REPLACE FUNCTION public\.start_virtual_battle_session', _m97_sql))
+    and bool(_re97.search(r'v_seen_ids', _m97_sql))
+)
+
+# M97-REPEAT-06: start_duel replaced with UNION of host+guest seen IDs
+check('M97-REPEAT-06', '[STATIC TEST] M97 replaces start_duel with host+guest UNION seen-question exclusion',
+    bool(_re97.search(r'CREATE OR REPLACE FUNCTION public\.start_duel', _m97_sql))
+    and bool(_re97.search(r'_seen_ids', _m97_sql))
+    and bool(_re97.search(r'host_user_id.*14|14.*host_user_id|host_day.*-.*13|guest_day.*-.*13', _m97_sql))
+)
+
+# M97-REPEAT-07: session_questions history source used (training + virtual)
+check('M97-REPEAT-07', '[STATIC TEST] M97 seen-ID query reads session_questions joined to game_sessions',
+    bool(_re97.search(r'FROM\s+session_questions\s+sq\s+JOIN\s+game_sessions', _m97_sql))
+)
+
+# M97-REPEAT-08: duel_question_assignments history source used (friend + random)
+check('M97-REPEAT-08', '[STATIC TEST] M97 seen-ID query reads duel_question_assignments for friend/random duels',
+    bool(_re97.search(r'FROM\s+duel_question_assignments', _m97_sql))
+    and bool(_re97.search(r'host_session_id|guest_session_id', _m97_sql))
+)
+
+# M97-REPEAT-09: 14-day window (v_today - 13 = 14 inclusive)
+check('M97-REPEAT-09', '[STATIC TEST] M97 seen-ID window uses v_today - 13 or _host_day - 13 (14 days inclusive)',
+    bool(_re97.search(r'(v_today|_host_day|_guest_day)\s*-\s*13', _m97_sql))
+)
+
+# M97-REPEAT-10: strict pool exhaustion — no fallback to seen questions
+check('M97-REPEAT-10', '[STATIC TEST] M97 returns not_enough_fresh_questions on pool exhaustion (no fallback)',
+    'not_enough_fresh_questions' in _m97_sql
+    and not bool(_re97.search(r'not_enough_fresh_questions.*fallback|fallback.*seen', _m97_sql, _re97.IGNORECASE))
+)
+
+# M97-REPEAT-11: indexes added for anti-repeat lookup performance
+check('M97-REPEAT-11', '[STATIC TEST] M97 adds idx_gs_user_day and idx_dr_host_session_id / idx_dr_guest_session_id indexes',
+    bool(_re97.search(r'CREATE INDEX IF NOT EXISTS idx_gs_user_day', _m97_sql))
+    and bool(_re97.search(r'CREATE INDEX IF NOT EXISTS idx_dr_host_session_id', _m97_sql))
+    and bool(_re97.search(r'CREATE INDEX IF NOT EXISTS idx_dr_guest_session_id', _m97_sql))
+)
+
+# ── QUICK-CTA — light theme contrast on #sc-again-btn ───────────────────────
+# components.css already loaded as _components_css
+
+# QUICK-CTA-01: active score-main-btn has dark-text override in light theme
+check('QUICK-CTA-01', '[STATIC TEST] components.css has [data-theme="light"] .score-main-btn color override (dark text on teal)',
+    bool(_re97.search(r'\[data-theme=["\']light["\']\]\s*\.score-main-btn\b[^-]', _components_css))
+)
+
+# QUICK-CTA-02: light-theme active button color is not #fff (white on teal is invisible)
+check('QUICK-CTA-02', '[STATIC TEST] [data-theme=light] .score-main-btn color is not #fff (sufficient contrast on teal bg)',
+    not bool(_re97.search(
+        r'\[data-theme=["\']light["\']\]\s*\.score-main-btn\b[^-][^}]*color\s*:\s*#fff\b',
+        _components_css
+    ))
+)
+
+# QUICK-CTA-03: locked state has legible color in light theme
+check('QUICK-CTA-03', '[STATIC TEST] [data-theme=light] .score-main-btn--locked defines color (readable disabled label)',
+    bool(_re97.search(
+        r'\[data-theme=["\']light["\']\]\s*\.score-main-btn--locked\s*\{[^}]*color\s*:',
+        _components_css
+    ))
+)
+
+NOT_EXECUTED.append(('M97-REPEAT-DB-01', '[DB TEST] start_daily_bf_session excludes question seen in friend_battle within 14 days'))
+NOT_EXECUTED.append(('M97-REPEAT-DB-02', '[DB TEST] start_duel excludes question seen by guest in Quick Play within 14 days'))
+NOT_EXECUTED.append(('M97-REPEAT-DB-03', '[DB TEST] start_daily_bf_session returns not_enough_fresh_questions when pool exhausted'))
+
 static_total = len(PASS) + len(FAIL)
 ne_total = len(NOT_EXECUTED)
 print(f"\n{'='*60}")
