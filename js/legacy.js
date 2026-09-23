@@ -267,7 +267,7 @@ function applyLang(){
   setText('sc-correct-label',L.scCorrectLabel);
   setText('sc-streak-label',L.scStreakLabel);
   setText('sc-acc-label',L.scAccLabel);
-  setText('sc-again-btn',L.scAgain);
+  {const _sa=safeEl('sc-again-btn');if(_sa){if(_sa.classList.contains('score-main-btn--locked')){if(typeof window.updateScoreScreenButtons==='function')window.updateScoreScreenButtons();}else{_sa.textContent=L.scAgain;}}}
   setText('sc-duel-btn',L.scDuel);
   setText('sc-tourn-btn',L.scTourn);
   setText('sc-join-btn',L.scJoin);

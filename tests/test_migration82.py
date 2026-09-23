@@ -3599,6 +3599,42 @@ import re as _re97
 _m97_path = _os97.path.join(_os97.path.dirname(__file__), '..', 'sql', '97_question_repeat_protection.sql')
 _m97_sql  = open(_m97_path).read() if _os97.path.exists(_m97_path) else ''
 
+# M97-SEC-01: start_daily_bf_session has anonymous_not_allowed guard
+check('M97-SEC-01', '[STATIC TEST] M97 start_daily_bf_session contains anonymous_not_allowed guard after null-auth check',
+    bool(_re97.search(r"is_anonymous", _m97_sql))
+    and bool(_re97.search(r"anonymous_not_allowed", _m97_sql))
+    and bool(_re97.search(r"start_daily_bf_session", _m97_sql))
+)
+
+# M97-SEC-02: M97 does not weaken M95 guest restrictions (guard present, grants preserved)
+check('M97-SEC-02', '[STATIC TEST] M97 does not weaken M95 guest restrictions (anon guard present, REVOKE from PUBLIC/anon preserved)',
+    bool(_re97.search(r'COALESCE\(\(auth\.jwt\(\)\s*->>\s*[\'"]is_anonymous[\'"]', _m97_sql))
+    and bool(_re97.search(r'REVOKE.*start_daily_bf_session.*FROM PUBLIC', _m97_sql, _re97.DOTALL)
+             or _re97.search(r'REVOKE ALL ON FUNCTION public\.start_daily_bf_session.*anon', _m97_sql))
+)
+
+# M97-ATOMIC-01: no INSERT INTO session_questions before all 5 IDs are staged
+check('M97-ATOMIC-01', '[STATIC TEST] M97 virtual: no INSERT INTO session_questions before staging loop completes (Phase-1 only selects)',
+    bool(_re97.search(
+        r'Phase 1.*Stage all 5|Phase-1.*Stage|stage.*before any INSERT',
+        _m97_sql, _re97.IGNORECASE | _re97.DOTALL
+    ))
+    and bool(_re97.search(r'v_staged_ids', _m97_sql))
+)
+
+# M97-ATOMIC-02: not_enough_fresh_questions path occurs before any session_questions insert
+check('M97-ATOMIC-02', '[STATIC TEST] M97 virtual: not_enough_fresh_questions returned before any INSERT (pool exhaustion in Phase 1)',
+    bool(_re97.search(r'v_staged_ids.*not_enough_fresh_questions|not_enough_fresh_questions.*v_staged_ids', _m97_sql, _re97.DOTALL))
+    # Both staging and error must appear before Phase 2 INSERT
+    and _m97_sql.index('not_enough_fresh_questions') < _m97_sql.rindex('INSERT INTO session_questions')
+)
+
+# M97-ATOMIC-03: successful path inserts exactly all 5 staged questions in Phase 2
+check('M97-ATOMIC-03', '[STATIC TEST] M97 virtual: Phase-2 writes all staged questions (5 INSERTs from v_staged_ids array)',
+    bool(_re97.search(r'Phase 2.*all 5 staged|Phase-2.*write', _m97_sql, _re97.IGNORECASE | _re97.DOTALL))
+    and bool(_re97.search(r'v_staged_ids\[v_pos', _m97_sql))
+)
+
 # M97-REPEAT-01: file exists and is non-empty
 check('M97-REPEAT-01', '[STATIC TEST] sql/97_question_repeat_protection.sql exists',
     bool(_m97_sql)
@@ -3687,6 +3723,29 @@ check('QUICK-CTA-03', '[STATIC TEST] [data-theme=light] .score-main-btn--locked 
         _components_css
     ))
 )
+
+_legacy_js_full_path = _os97.path.join(_os97.path.dirname(__file__), '..', 'js', 'legacy.js')
+_legacy_js_full = open(_legacy_js_full_path).read() if _os97.path.exists(_legacy_js_full_path) else ''
+
+# QUICK-CTA-04: applyLang() no longer unconditionally resets sc-again-btn to generic text
+check('QUICK-CTA-04', '[STATIC TEST] applyLang() does not unconditionally setText(sc-again-btn, L.scAgain) — respects locked state',
+    # The old unconditional setText('sc-again-btn',L.scAgain) must be gone
+    not bool(_re97.search(r"setText\('sc-again-btn'\s*,\s*L\.scAgain\)", _legacy_js_full))
+)
+
+# QUICK-CTA-05: applyLang() calls updateScoreScreenButtons when button is locked
+check('QUICK-CTA-05', '[STATIC TEST] applyLang() calls updateScoreScreenButtons when sc-again-btn has score-main-btn--locked class',
+    bool(_re97.search(r'score-main-btn--locked.*updateScoreScreenButtons|updateScoreScreenButtons.*score-main-btn--locked', _legacy_js_full, _re97.DOTALL))
+)
+
+# QUICK-CTA-06: updateScoreScreenButtons produces locked state when quick play is exhausted
+check('QUICK-CTA-06', '[STATIC TEST] updateScoreScreenButtons sets score-main-btn--locked + locked label when isQuickLocked is true',
+    bool(_re97.search(r'isQuickLocked.*score-main-btn--locked|score-main-btn--locked.*isQuickLocked', _training_js, _re97.DOTALL))
+    and bool(_re97.search(r'Лимит на сегодня|Daily limit', _training_js))
+)
+
+NOT_EXECUTED.append(('QUICK-CTA-BROWSER-01', '[BROWSER TEST] completed free Quick Play shows score-main-btn--locked + "Лимит на сегодня исчерпан" label'))
+NOT_EXECUTED.append(('QUICK-CTA-BROWSER-02', '[BROWSER TEST] changing language after completed Quick Play does not reset button to "Играть снова"'))
 
 NOT_EXECUTED.append(('M97-REPEAT-DB-01', '[DB TEST] start_daily_bf_session excludes question seen in friend_battle within 14 days'))
 NOT_EXECUTED.append(('M97-REPEAT-DB-02', '[DB TEST] start_duel excludes question seen by guest in Quick Play within 14 days'))

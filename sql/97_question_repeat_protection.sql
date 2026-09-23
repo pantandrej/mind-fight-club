@@ -113,6 +113,11 @@ BEGIN
     RETURN jsonb_build_object('ok', false, 'reason', 'unauthenticated');
   END IF;
 
+  -- M95: anonymous users (Supabase anonymous auth) must not play Quick Play.
+  IF COALESCE((auth.jwt() ->> 'is_anonymous')::boolean, false) THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'anonymous_not_allowed');
+  END IF;
+
   -- M91: defensive timezone resolution
   SELECT COALESCE(timezone, 'UTC') INTO v_tz FROM profiles WHERE id = v_uid;
   IF NOT EXISTS (SELECT 1 FROM pg_timezone_names WHERE name = v_tz) THEN
@@ -288,8 +293,13 @@ GRANT EXECUTE ON FUNCTION public.start_daily_bf_session() TO authenticated;
 
 
 -- ── 2. start_virtual_battle_session(uuid) ────────────────────────────────────
--- Adds 14-day cross-mode seen-question exclusion.
--- All other logic (M87 answer array, session validation, progression) unchanged.
+-- Adds 14-day cross-mode seen-question exclusion AND atomic staging:
+--   Phase 1 — SELECT all 5 question IDs into staging arrays.
+--             If any bucket is empty → return not_enough_fresh_questions
+--             BEFORE any INSERT (no partial write possible).
+--   Phase 2 — INSERT all 5 session_questions and build client payload.
+-- This eliminates the half-assigned session state: a failed pool exhaustion
+-- always leaves session_questions empty, so retry remains possible.
 CREATE OR REPLACE FUNCTION public.start_virtual_battle_session(
   p_game_session_id uuid
 )
@@ -299,20 +309,25 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_user_id    uuid := auth.uid();
-  v_tz         text := 'UTC';
-  v_today      date;
-  v_seen_ids   uuid[] := ARRAY[]::uuid[];
-  v_qids       uuid[] := ARRAY[]::uuid[];
-  v_q_id       uuid;
-  v_sq_id      uuid;
-  v_q_text     text;
-  v_answers    jsonb;
-  v_category   text;
-  v_questions  jsonb := '[]'::jsonb;
-  progression  int[] := ARRAY[2, 3, 4, 5, 6];
-  v_opt_count  int;
-  v_pos        int;
+  v_user_id         uuid  := auth.uid();
+  v_tz              text  := 'UTC';
+  v_today           date;
+  v_seen_ids        uuid[] := ARRAY[]::uuid[];
+  -- Phase-1 staging arrays (no INSERT until all 5 are found)
+  v_staged_ids      uuid[]   := ARRAY[]::uuid[];
+  v_staged_texts    text[]   := ARRAY[]::text[];
+  v_staged_answers  jsonb[]  := ARRAY[]::jsonb[];
+  v_staged_cats     text[]   := ARRAY[]::text[];
+  -- Phase-2 write
+  v_sq_id           uuid;
+  v_questions       jsonb := '[]'::jsonb;
+  progression       int[] := ARRAY[2, 3, 4, 5, 6];
+  v_opt_count       int;
+  v_pos             int;
+  v_q_id            uuid;
+  v_q_text          text;
+  v_answers         jsonb;
+  v_category        text;
 BEGIN
   IF v_user_id IS NULL THEN
     RETURN jsonb_build_object('ok', false, 'reason', 'not_authenticated');
@@ -340,7 +355,7 @@ BEGIN
   END IF;
   v_today := (now() AT TIME ZONE v_tz)::date;
 
-  -- Build 14-day cross-mode seen-question exclusion set
+  -- Build 14-day cross-mode seen-question exclusion set (M97)
   SELECT ARRAY(
     SELECT sq.question_id
     FROM session_questions sq
@@ -363,6 +378,8 @@ BEGIN
     )
   ) INTO v_seen_ids;
 
+  -- ── Phase 1: Stage all 5 questions BEFORE any INSERT ─────────────────────
+  -- If ANY bucket is empty, return error immediately — no rows have been written.
   FOR v_pos IN 0..4 LOOP
     v_opt_count := progression[v_pos + 1];
 
@@ -380,32 +397,40 @@ BEGIN
       AND q.source_type          = 'official_general'
       AND jsonb_array_length(COALESCE(q.answers_json, q.answers_ru, '[]'::jsonb)) = v_opt_count
       AND q.correct_index < jsonb_array_length(COALESCE(q.answers_json, q.answers_ru, '[]'::jsonb))
-      AND q.id <> ALL(v_qids)
-      AND NOT (q.id = ANY(v_seen_ids))        -- M97: 14-day cross-mode exclusion
+      AND q.id <> ALL(v_staged_ids)
+      AND NOT (q.id = ANY(v_seen_ids))      -- M97: 14-day cross-mode exclusion
     ORDER BY random()
     LIMIT 1;
 
     IF v_q_id IS NULL THEN
+      -- Pool exhausted BEFORE any INSERT — session_questions is still empty,
+      -- retry remains possible.
       RETURN jsonb_build_object(
         'ok',               false,
-        'reason',           'not_enough_fresh_questions',   -- M97: strict pool exhaustion
+        'reason',           'not_enough_fresh_questions',
         'missing_opt_count', v_opt_count,
         'mode',             'virtual_battle'
       );
     END IF;
 
-    v_qids := v_qids || v_q_id;
+    v_staged_ids     := v_staged_ids     || ARRAY[v_q_id];
+    v_staged_texts   := v_staged_texts   || ARRAY[v_q_text];
+    v_staged_answers := v_staged_answers || ARRAY[v_answers];
+    v_staged_cats    := v_staged_cats    || ARRAY[v_category];
+  END LOOP;
 
+  -- ── Phase 2: All 5 staged — write session_questions and build payload ─────
+  FOR v_pos IN 0..4 LOOP
     INSERT INTO session_questions (session_id, question_id, position)
-    VALUES (p_game_session_id, v_q_id, v_pos)
+    VALUES (p_game_session_id, v_staged_ids[v_pos + 1], v_pos)
     RETURNING id INTO v_sq_id;
 
     v_questions := v_questions || jsonb_build_object(
       'sq_id',    v_sq_id,
       'position', v_pos,
-      'q',        v_q_text,
-      'a',        v_answers,
-      'cat',      v_category,
+      'q',        v_staged_texts[v_pos + 1],
+      'a',        v_staged_answers[v_pos + 1],
+      'cat',      v_staged_cats[v_pos + 1],
       't',        30
     );
   END LOOP;
